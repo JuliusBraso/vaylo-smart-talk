@@ -3,8 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useT } from "../../lib/i18n/useT";
-
-type UiLang = "sk" | "de";
 type Level = "ALL" | "A0" | "A1" | "A2" | "B1" | "B2" | "C1";
 type Category = "ALL" | "job" | "tax" | "wohnung";
 
@@ -27,13 +25,8 @@ type Phrase = {
   de: string;
   // target text (user language) - pre MVP stačí sk:
   sk: string;
-
+  t?: Record<string, string>;
 };
-
-const LANGS: { value: UiLang; labelKey: string }[] = [
-  { value: "sk", labelKey: "lang_sk" },
-  { value: "de", labelKey: "lang_de" },
-];
 
 const LEVELS: Level[] = ["ALL", "A0", "A1", "A2", "B1", "B2", "C1"];
 const CATEGORIES: Category[] = ["ALL", "job", "tax", "wohnung"];
@@ -59,11 +52,94 @@ const JOB_SECTORS: { value: JobSector; labelKey: string }[] = [
 
 // Demo seed (môžeš neskôr nahradiť supabase)
 const SEED: Phrase[] = [
-  { id: "p1", level: "A1", category: "job", sector: "warehouse", sk: "Kde mám skener?", de: "Wo ist der Scanner?" },
-  { id: "p2", level: "A1", category: "job", sector: "warehouse", sk: "Mám prestávku?", de: "Habe ich Pause?" },
-  { id: "p3", level: "A1", category: "job", sector: "production", sk: "Stroj má chybu.", de: "Die Maschine hat einen Fehler." },
-  { id: "p4", level: "A1", category: "tax", sk: "Potrebujem daňové číslo.", de: "Ich brauche eine Steuernummer." },
-  { id: "p5", level: "A2", category: "wohnung", sk: "Koľko je nájom mesačne?", de: "Wie hoch ist die Miete pro Monat?" },
+  {
+    id: "p1",
+    level: "A1",
+    category: "job",
+    sector: "warehouse",
+    sk: "Kde mám skener?",
+    de: "Wo ist der Scanner?",
+    t: {
+      sk: "Kde mám skener?",
+      hu: "Kde mám skener?",
+      cs: "Kde mám skener?",
+      pl: "Kde mám skener?",
+      ro: "Kde mám skener?",
+      bg: "Kde mám skener?",
+      uk: "Kde mám skener?",
+      tr: "Kde mám skener?",
+    },
+  },
+  {
+    id: "p2",
+    level: "A1",
+    category: "job",
+    sector: "warehouse",
+    sk: "Mám prestávku?",
+    de: "Habe ich Pause?",
+    t: {
+      sk: "Mám prestávku?",
+      hu: "Mám prestávku?",
+      cs: "Mám prestávku?",
+      pl: "Mám prestávku?",
+      ro: "Mám prestávku?",
+      bg: "Mám prestávku?",
+      uk: "Mám prestávku?",
+      tr: "Mám prestávku?",
+    },
+  },
+  {
+    id: "p3",
+    level: "A1",
+    category: "job",
+    sector: "production",
+    sk: "Stroj má chybu.",
+    de: "Die Maschine hat einen Fehler.",
+    t: {
+      sk: "Stroj má chybu.",
+      hu: "Stroj má chybu.",
+      cs: "Stroj má chybu.",
+      pl: "Stroj má chybu.",
+      ro: "Stroj má chybu.",
+      bg: "Stroj má chybu.",
+      uk: "Stroj má chybu.",
+      tr: "Stroj má chybu.",
+    },
+  },
+  {
+    id: "p4",
+    level: "A1",
+    category: "tax",
+    sk: "Potrebujem daňové číslo.",
+    de: "Ich brauche eine Steuernummer.",
+    t: {
+      sk: "Potrebujem daňové číslo.",
+      hu: "Potrebujem daňové číslo.",
+      cs: "Potrebujem daňové číslo.",
+      pl: "Potrebujem daňové číslo.",
+      ro: "Potrebujem daňové číslo.",
+      bg: "Potrebujem daňové číslo.",
+      uk: "Potrebujem daňové číslo.",
+      tr: "Potrebujem daňové číslo.",
+    },
+  },
+  {
+    id: "p5",
+    level: "A2",
+    category: "wohnung",
+    sk: "Koľko je nájom mesačne?",
+    de: "Wie hoch ist die Miete pro Monat?",
+    t: {
+      sk: "Koľko je nájom mesačne?",
+      hu: "Koľko je nájom mesačne?",
+      cs: "Koľko je nájom mesačne?",
+      pl: "Koľko je nájom mesačne?",
+      ro: "Koľko je nájom mesačne?",
+      bg: "Koľko je nájom mesačne?",
+      uk: "Koľko je nájom mesačne?",
+      tr: "Koľko je nájom mesačne?",
+    },
+  },
 ];
 
 function loadFavorites(): Record<string, boolean> {
@@ -97,10 +173,9 @@ function isSector(x: string): x is JobSector {
 }
 
 export default function PhrasesPage() {
-  const { t } = useT();
+  const { t, locale } = useT();
   const searchParams = useSearchParams();
 
-  const [lang, setLang] = useState<UiLang>("sk");
   const [level, setLevel] = useState<Level>("ALL");
   const [category, setCategory] = useState<Category>("ALL");
   const [sector, setSector] = useState<JobSector>("ALL");
@@ -142,8 +217,9 @@ export default function PhrasesPage() {
       if (onlyFavs && !favs[p.id]) return false;
 
       if (!q) return true;
-      const hay = `${p.sk} ${p.de} ${p.level} ${p.category} ${p.sector || ""}`.toLowerCase();
-      return hay.includes(q);
+      const translationsText = Object.values(p.t ?? {}).join(" ");
+      const haystack = `${p.de} ${translationsText}`.toLowerCase();
+      return haystack.includes(q);
     });
   }, [phrases, level, category, sector, query, onlyFavs, favs]);
 
@@ -166,17 +242,6 @@ export default function PhrasesPage() {
         </div>
 
         <div className="filters">
-          <div className="field">
-            <label className="label">{t.phrases.language}</label>
-            <select className="select" value={lang} onChange={(e) => setLang(e.target.value as UiLang)}>
-              {LANGS.map((l) => (
-                <option key={l.value} value={l.value}>
-                  {t.phrases[l.labelKey]}
-                </option>
-              ))}
-            </select>
-          </div>
-
           <div className="field">
             <label className="label">{t.phrases.level}</label>
             <select className="select" value={level} onChange={(e) => setLevel(e.target.value as Level)}>
@@ -237,34 +302,41 @@ export default function PhrasesPage() {
         </div>
 
         <div className="list">
-          {filtered.map((p) => (
-            <div key={p.id} className="phraseRow">
-              <div className="phraseMeta">
-                <span className="badgeSmall">{p.level}</span>
-                <span className="badgeSmall">{t.phrases[CATEGORY_LABEL_KEYS[p.category]]}</span>
-                {p.category === "job" && p.sector && (
-                  <span className="badgeSmall">
-                    {t.phrases[JOB_SECTORS.find((s) => s.value === p.sector)!.labelKey]}
-                  </span>
-                )}
-              </div>
+          {filtered.map((p) => {
+            const translated =
+              locale === "de"
+                ? p.t?.sk ?? ""
+                : p.t?.[locale as keyof typeof p.t] ?? p.t?.sk ?? "";
 
-              <div className="phraseText">
-                <div className="phraseMain">{lang === "sk" ? p.sk : p.de}</div>
-                <div className="phraseAlt">{lang === "sk" ? p.de : p.sk}</div>
-              </div>
+            return (
+              <div key={p.id} className="phraseRow">
+                <div className="phraseMeta">
+                  <span className="badgeSmall">{p.level}</span>
+                  <span className="badgeSmall">{t.phrases[CATEGORY_LABEL_KEYS[p.category]]}</span>
+                  {p.category === "job" && p.sector && (
+                    <span className="badgeSmall">
+                      {t.phrases[JOB_SECTORS.find((s) => s.value === p.sector)!.labelKey]}
+                    </span>
+                  )}
+                </div>
 
-              <button
-                className={`favBtn ${favs[p.id] ? "favOn" : ""}`}
-                type="button"
-                onClick={() => toggleFav(p.id)}
-                aria-label={t.phrases.favorite}
-                title={t.phrases.favorite}
-              >
-                ★
-              </button>
-            </div>
-          ))}
+                <div className="phraseText">
+                  <div className="phraseMain">{p.de}</div>
+                  {translated && <div className="phraseAlt">{translated}</div>}
+                </div>
+
+                <button
+                  className={`favBtn ${favs[p.id] ? "favOn" : ""}`}
+                  type="button"
+                  onClick={() => toggleFav(p.id)}
+                  aria-label={t.phrases.favorite}
+                  title={t.phrases.favorite}
+                >
+                  ★
+                </button>
+              </div>
+            );
+          })}
 
           {filtered.length === 0 && <div className="empty">{t.phrases.empty}</div>}
         </div>
