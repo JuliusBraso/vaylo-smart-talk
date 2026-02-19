@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useT } from "../../lib/i18n/useT";
+import { supabase } from "../../lib/supabase";
+
 type Level = "ALL" | "A0" | "A1" | "A2" | "B1" | "B2" | "C1";
 type Category = "ALL" | "job" | "tax" | "wohnung";
 
@@ -23,8 +25,6 @@ type Phrase = {
   category: Exclude<Category, "ALL">;
   sector?: Exclude<JobSector, "ALL">;
   de: string;
-  // target text (user language) - pre MVP stačí sk:
-  sk: string;
   t?: Record<string, string>;
 };
 
@@ -50,97 +50,53 @@ const JOB_SECTORS: { value: JobSector; labelKey: string }[] = [
   { value: "office", labelKey: "sector_office" },
 ];
 
-// Demo seed (môžeš neskôr nahradiť supabase)
-const SEED: Phrase[] = [
-  {
-    id: "p1",
-    level: "A1",
-    category: "job",
-    sector: "warehouse",
-    sk: "Kde mám skener?",
-    de: "Wo ist der Scanner?",
-    t: {
-      sk: "Kde mám skener?",
-      hu: "Kde mám skener?",
-      cs: "Kde mám skener?",
-      pl: "Kde mám skener?",
-      ro: "Kde mám skener?",
-      bg: "Kde mám skener?",
-      uk: "Kde mám skener?",
-      tr: "Kde mám skener?",
-    },
-  },
-  {
-    id: "p2",
-    level: "A1",
-    category: "job",
-    sector: "warehouse",
-    sk: "Mám prestávku?",
-    de: "Habe ich Pause?",
-    t: {
-      sk: "Mám prestávku?",
-      hu: "Mám prestávku?",
-      cs: "Mám prestávku?",
-      pl: "Mám prestávku?",
-      ro: "Mám prestávku?",
-      bg: "Mám prestávku?",
-      uk: "Mám prestávku?",
-      tr: "Mám prestávku?",
-    },
-  },
-  {
-    id: "p3",
-    level: "A1",
-    category: "job",
-    sector: "production",
-    sk: "Stroj má chybu.",
-    de: "Die Maschine hat einen Fehler.",
-    t: {
-      sk: "Stroj má chybu.",
-      hu: "Stroj má chybu.",
-      cs: "Stroj má chybu.",
-      pl: "Stroj má chybu.",
-      ro: "Stroj má chybu.",
-      bg: "Stroj má chybu.",
-      uk: "Stroj má chybu.",
-      tr: "Stroj má chybu.",
-    },
-  },
-  {
-    id: "p4",
-    level: "A1",
-    category: "tax",
-    sk: "Potrebujem daňové číslo.",
-    de: "Ich brauche eine Steuernummer.",
-    t: {
-      sk: "Potrebujem daňové číslo.",
-      hu: "Potrebujem daňové číslo.",
-      cs: "Potrebujem daňové číslo.",
-      pl: "Potrebujem daňové číslo.",
-      ro: "Potrebujem daňové číslo.",
-      bg: "Potrebujem daňové číslo.",
-      uk: "Potrebujem daňové číslo.",
-      tr: "Potrebujem daňové číslo.",
-    },
-  },
-  {
-    id: "p5",
-    level: "A2",
-    category: "wohnung",
-    sk: "Koľko je nájom mesačne?",
-    de: "Wie hoch ist die Miete pro Monat?",
-    t: {
-      sk: "Koľko je nájom mesačne?",
-      hu: "Koľko je nájom mesačne?",
-      cs: "Koľko je nájom mesačne?",
-      pl: "Koľko je nájom mesačne?",
-      ro: "Koľko je nájom mesačne?",
-      bg: "Koľko je nájom mesačne?",
-      uk: "Koľko je nájom mesačne?",
-      tr: "Koľko je nájom mesačne?",
-    },
-  },
-];
+type PhraseRow = {
+  id: string;
+  level: Exclude<Level, "ALL">;
+  category: Exclude<Category, "ALL">;
+  sector: Exclude<JobSector, "ALL"> | null;
+  de_text: string;
+  phrase_translations?: { locale: string; text: string }[] | null;
+};
+
+async function fetchPhrases(): Promise<Phrase[]> {
+  const { data, error } = await supabase
+    .from("phrases")
+    .select(
+      `
+      id,
+      level,
+      category,
+      sector,
+      de_text,
+      phrase_translations (
+        locale,
+        text
+      )
+    `
+    );
+
+  if (error) {
+    console.error("fetchPhrases:", error);
+    return [];
+  }
+
+  const rows = (data ?? []) as PhraseRow[];
+  return rows.map((row) => {
+    const t: Record<string, string> = {};
+    for (const tr of row.phrase_translations ?? []) {
+      if (tr?.locale && tr?.text) t[tr.locale] = tr.text;
+    }
+    return {
+      id: row.id,
+      level: row.level,
+      category: row.category,
+      sector: row.sector ?? undefined,
+      de: row.de_text,
+      t: Object.keys(t).length ? t : undefined,
+    };
+  });
+}
 
 function loadFavorites(): Record<string, boolean> {
   try {
@@ -151,18 +107,6 @@ function loadFavorites(): Record<string, boolean> {
 }
 function saveFavorites(map: Record<string, boolean>) {
   localStorage.setItem("favorites", JSON.stringify(map));
-}
-
-function loadPhrases(): Phrase[] {
-  try {
-    const raw = localStorage.getItem("phrases");
-    if (!raw) return SEED;
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return SEED;
-    return parsed.filter(Boolean);
-  } catch {
-    return SEED;
-  }
 }
 
 function isCategory(x: string): x is Category {
@@ -181,21 +125,26 @@ export default function PhrasesPage() {
   const [sector, setSector] = useState<JobSector>("ALL");
   const [query, setQuery] = useState("");
   const [onlyFavs, setOnlyFavs] = useState(false);
-
+  const [loading, setLoading] = useState(true);
   const [phrases, setPhrases] = useState<Phrase[]>([]);
   const [favs, setFavs] = useState<Record<string, boolean>>({});
 
-  // načítaj dáta + query parametre len raz
   useEffect(() => {
-    setPhrases(loadPhrases());
     setFavs(loadFavorites());
 
     const cat = searchParams.get("cat");
     const sec = searchParams.get("sector");
-
     if (cat && isCategory(cat)) setCategory(cat);
     if (sec && isSector(sec)) setSector(sec);
-  }, []); // zámerne len raz
+  }, []);
+
+  useEffect(() => {
+    setLoading(true);
+    fetchPhrases().then((data) => {
+      setPhrases(data);
+      setLoading(false);
+    });
+  }, []);
 
   // keď user prepne category mimo job, reset sector
   useEffect(() => {
@@ -302,6 +251,10 @@ export default function PhrasesPage() {
         </div>
 
         <div className="list">
+          {loading ? (
+            <div className="empty">Loading…</div>
+          ) : (
+          <>
           {filtered.map((p) => {
             const translated =
               locale === "de"
@@ -338,7 +291,9 @@ export default function PhrasesPage() {
             );
           })}
 
-          {filtered.length === 0 && <div className="empty">{t.phrases.empty}</div>}
+          {filtered.length === 0 && !loading && <div className="empty">{t.phrases.empty}</div>}
+          </>
+          )}
         </div>
       </div>
     </main>
