@@ -28,6 +28,7 @@ const bg = {
     favorites: "Любими",
     results: "Резултати",
     all: "ALL",
+    empty: "Няма намерени резултати",
     placeholderSearch: "напр. работа / жилище / данъци…",
 
     lang_sk: "Словашки",

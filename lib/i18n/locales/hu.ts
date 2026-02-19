@@ -28,6 +28,7 @@ const hu = {
     favorites: "Kedvencek",
     results: "Találatok",
     all: "ALL",
+    empty: "Nincs találat",
     placeholderSearch: "pl. munka / lakás / adó…",
 
     lang_sk: "Szlovák",

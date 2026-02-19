@@ -28,6 +28,7 @@ const cs = {
     favorites: "Oblíbené",
     results: "Výsledky",
     all: "ALL",
+    empty: "Žádné výsledky",
     placeholderSearch: "např. práce / bydlení / daně…",
 
     lang_sk: "Slovensky",

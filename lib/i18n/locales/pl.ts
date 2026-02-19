@@ -28,6 +28,7 @@ const pl = {
     favorites: "Ulubione",
     results: "Wyniki",
     all: "ALL",
+    empty: "Brak wyników",
     placeholderSearch: "np. praca / mieszkanie / podatki…",
 
     lang_sk: "Słowacki",
