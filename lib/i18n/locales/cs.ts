@@ -47,6 +47,23 @@ const cs = {
     sector_delivery: "Rozvoz / Řidič",
     sector_office: "Office junior",
 
+    sector_warehouse_title: "Sklad / Logistika",
+    sector_warehouse_short: "Logistika, picking, balení, skenery",
+    sector_production_title: "Výroba / Továrna",
+    sector_production_short: "Linka, obsluha stroje, balení",
+    sector_gastro_title: "Gastro / Hotel",
+    sector_gastro_short: "Kuchyně, mytí nádobí, housekeeping",
+    sector_cleaning_title: "Úklid",
+    sector_cleaning_short: "Kanceláře, hotely, průmyslové čištění",
+    sector_construction_title: "Stavba",
+    sector_construction_short: "Pomocné práce, montáže, fyzická práce",
+    sector_care_title: "Péče",
+    sector_care_short: "Péče o seniory, domácnost, odpovědnost",
+    sector_delivery_title: "Rozvoz / Řidič",
+    sector_delivery_short: "Kurýr, dovoz, tlak na čas",
+    sector_office_title: "Office junior",
+    sector_office_short: "Administrativa, skladová kancelář (A2+)",
+
     favorite: "Oblíbené",
   },
   premium: {

@@ -47,6 +47,23 @@ const sk = {
     sector_delivery: "Delivery / Vodič",
     sector_office: "Office junior",
 
+    sector_warehouse_title: "Sklad / Logistika",
+    sector_warehouse_short: "Logistika, picking, packing, skenery",
+    sector_production_title: "Výroba / Fabrika",
+    sector_production_short: "Linka, obsluha stroja, balenie",
+    sector_gastro_title: "Gastro / Hotel",
+    sector_gastro_short: "Kuchyňa, umývanie riadu, housekeeping",
+    sector_cleaning_title: "Upratovanie",
+    sector_cleaning_short: "Office, hotely, priemyselné čistenie",
+    sector_construction_title: "Stavba",
+    sector_construction_short: "Pomocné práce, montáže, fyzická robota",
+    sector_care_title: "Opatrovanie",
+    sector_care_short: "Senior care, domácnosť, zodpovednosť",
+    sector_delivery_title: "Delivery / Vodič",
+    sector_delivery_short: "Kuriér, dodávka, tlak na čas",
+    sector_office_title: "Office junior",
+    sector_office_short: "Administratíva, skladový office (A2+)",
+
     favorite: "Obľúbené",
   },
   premium: {

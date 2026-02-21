@@ -47,6 +47,23 @@ const pl = {
     sector_delivery: "Dostawa / Kierowca",
     sector_office: "Office junior",
 
+    sector_warehouse_title: "Magazyn / Logistyka",
+    sector_warehouse_short: "Logistyka, kompletowanie, pakowanie, skanery",
+    sector_production_title: "Produkcja / Fabryka",
+    sector_production_short: "Linia, obsługa maszyn, pakowanie",
+    sector_gastro_title: "Gastro / Hotel",
+    sector_gastro_short: "Kuchnia, zmywanie, housekeeping",
+    sector_cleaning_title: "Sprzątanie",
+    sector_cleaning_short: "Biura, hotele, czyszczenie przemysłowe",
+    sector_construction_title: "Budowa",
+    sector_construction_short: "Prace pomocnicze, montaż, praca fizyczna",
+    sector_care_title: "Opieka",
+    sector_care_short: "Opieka seniorów, gospodarstwo domowe, odpowiedzialność",
+    sector_delivery_title: "Dostawa / Kierowca",
+    sector_delivery_short: "Kurier, dostawa, presja czasu",
+    sector_office_title: "Office junior",
+    sector_office_short: "Administracja, biuro magazynowe (A2+)",
+
     favorite: "Ulubione",
   },
   premium: {

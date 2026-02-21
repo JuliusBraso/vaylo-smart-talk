@@ -47,6 +47,23 @@ const bg = {
     sector_delivery: "Доставка / Шофьор",
     sector_office: "Офис junior",
 
+    sector_warehouse_title: "Склад / Логистика",
+    sector_warehouse_short: "Логистика, пикиране, опаковане, скенери",
+    sector_production_title: "Производство / Фабрика",
+    sector_production_short: "Линия, обслужване на машини, опаковане",
+    sector_gastro_title: "Гастро / Хотел",
+    sector_gastro_short: "Кухня, миене на съдове, housekeeping",
+    sector_cleaning_title: "Почистване",
+    sector_cleaning_short: "Офиси, хотели, промишлено почистване",
+    sector_construction_title: "Строителство",
+    sector_construction_short: "Помощни работи, монтаж, физически труд",
+    sector_care_title: "Грижи",
+    sector_care_short: "Грижа за възрастни, домакинство, отговорност",
+    sector_delivery_title: "Доставка / Шофьор",
+    sector_delivery_short: "Куриер, доставка, натиск за време",
+    sector_office_title: "Офис junior",
+    sector_office_short: "Администрация, складова служба (A2+)",
+
     favorite: "Любимо",
   },
   premium: {

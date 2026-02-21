@@ -47,6 +47,23 @@ const ro = {
     sector_delivery: "Livrare / Șofer",
     sector_office: "Office junior",
 
+    sector_warehouse_title: "Depozit / Logistică",
+    sector_warehouse_short: "Logistică, picking, ambalare, scanere",
+    sector_production_title: "Producție / Fabrică",
+    sector_production_short: "Linie, operare mașini, ambalare",
+    sector_gastro_title: "Gastro / Hotel",
+    sector_gastro_short: "Bucătărie, spălat vase, housekeeping",
+    sector_cleaning_title: "Curățenie",
+    sector_cleaning_short: "Birouri, hoteluri, curățenie industrială",
+    sector_construction_title: "Construcții",
+    sector_construction_short: "Lucrări auxiliare, montaj, muncă fizică",
+    sector_care_title: "Îngrijire",
+    sector_care_short: "Îngrijire seniori, gospodărie, responsabilitate",
+    sector_delivery_title: "Livrare / Șofer",
+    sector_delivery_short: "Curier, livrare, presiune de timp",
+    sector_office_title: "Office junior",
+    sector_office_short: "Administrație, office depozit (A2+)",
+
     favorite: "Favorite",
   },
   premium: {

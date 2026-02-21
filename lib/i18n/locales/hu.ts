@@ -47,6 +47,23 @@ const hu = {
     sector_delivery: "Kiszállítás / Sofőr",
     sector_office: "Office junior",
 
+    sector_warehouse_title: "Raktár / Logisztika",
+    sector_warehouse_short: "Logisztika, kommissionálás, csomagolás, szkenner",
+    sector_production_title: "Gyártás / Gyár",
+    sector_production_short: "Sorház, gépkezelés, csomagolás",
+    sector_gastro_title: "Gastro / Hotel",
+    sector_gastro_short: "Konyha, mosogatás, housekeeping",
+    sector_cleaning_title: "Takarítás",
+    sector_cleaning_short: "Iroda, szállodák, ipari tisztítás",
+    sector_construction_title: "Építkezés",
+    sector_construction_short: "Kisegítő munkák, szerelés, fizikai munka",
+    sector_care_title: "Gondozás",
+    sector_care_short: "Idősgondozás, háztartás, felelősség",
+    sector_delivery_title: "Kiszállítás / Sofőr",
+    sector_delivery_short: "Futár, szállítás, időnyomás",
+    sector_office_title: "Office junior",
+    sector_office_short: "Adminisztráció, raktári iroda (A2+)",
+
     favorite: "Kedvenc",
   },
   premium: {
