@@ -1,5 +1,6 @@
 import type { ProfileDNA } from "@/lib/dna/types";
-import { getContextualPhrases } from "@/lib/vaylo/content-engine";
+import { getContentByDNA } from "@/lib/vaylo/content-engine";
+import PhraseChips from "@/app/dashboard/_components/PhraseChips";
 
 type Props = {
   dna: ProfileDNA;
@@ -7,7 +8,8 @@ type Props = {
 
 export default function FreelancerModule({ dna }: Props) {
   const score = dna.scores?.freelancer_focus ?? dna.scores?.JP ?? 0;
-  const phrases = getContextualPhrases(dna);
+  const content = getContentByDNA(dna);
+  const phrases = [...content.freelancer, ...content.bureaucracy];
 
   return (
     <div className="relative overflow-hidden rounded-3xl border border-emerald-400/40 bg-slate-950/80 p-4 text-sm text-slate-100 shadow-[0_0_36px_rgba(16,185,129,0.45)] backdrop-blur-2xl md:col-span-1">
@@ -62,16 +64,7 @@ export default function FreelancerModule({ dna }: Props) {
             <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300/80">
               Quick phrases
             </div>
-            <div className="flex flex-wrap gap-1.5">
-              {phrases.map((p) => (
-                <span
-                  key={p}
-                  className="inline-flex items-center rounded-full border border-emerald-400/60 bg-emerald-500/10 px-3 py-1 text-[10px] font-medium text-emerald-50 shadow-[0_0_14px_rgba(16,185,129,0.7)]"
-                >
-                  {p}
-                </span>
-              ))}
-            </div>
+            <PhraseChips phrases={phrases} tone="emerald" />
           </div>
         )}
       </div>
