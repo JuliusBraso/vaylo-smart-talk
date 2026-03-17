@@ -27,7 +27,7 @@ export default async function PhrasesPage() {
 
   return (
     <main className="container">
-      <div className="card">
+      <div className="card w-full">
         <div className="cardHeader">
           <div className="cardTitle">Quick phrases</div>
           <div className="cardSub muted">
@@ -36,7 +36,7 @@ export default async function PhrasesPage() {
           </div>
         </div>
 
-        <div className="list">
+        <div className="list flex flex-col gap-3">
           {(
             Object.entries(content) as Array<
               [keyof typeof content, (typeof content)[keyof typeof content]]
@@ -44,7 +44,10 @@ export default async function PhrasesPage() {
           )
             .filter(([, phrases]) => phrases.length > 0)
             .map(([category, phrases]) => (
-              <section key={category} className="card">
+              <section
+                key={category}
+                className="card flex w-full flex-col gap-3"
+              >
                 <div className="cardHeader">
                   <div className="cardTitle">
                     {CATEGORY_LABELS[String(category)] ?? String(category)}
