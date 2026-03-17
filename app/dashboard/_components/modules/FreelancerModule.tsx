@@ -1,9 +1,8 @@
 import type { ProfileDNA } from "@/lib/dna/types";
-import type { VayloDNA } from "@/lib/vaylo/dna-engine";
 import { getContextualPhrases } from "@/lib/vaylo/content-engine";
 
 type Props = {
-  dna: ProfileDNA & VayloDNA;
+  dna: ProfileDNA;
 };
 
 export default function FreelancerModule({ dna }: Props) {
