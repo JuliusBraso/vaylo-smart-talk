@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useCallback, useEffect, useMemo, useState } from "react";
+import React, { createContext, useCallback, useMemo, useState } from "react";
 import { DEFAULT_LOCALE, Dict, getDict, Locale, LOCALES, LOCALE_LABELS } from "./index";
 
 const STORAGE_KEY = "wk_uiLang";
@@ -34,14 +34,7 @@ function writeStoredLocale(l: Locale) {
 }
 
 export default function LocaleProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE);
-
-  // init: DE-first (unless user already picked language)
-  useEffect(() => {
-    const stored = readStoredLocale();
-    if (stored) setLocaleState(stored);
-    else setLocaleState(DEFAULT_LOCALE);
-  }, []);
+  const [locale, setLocaleState] = useState<Locale>(() => readStoredLocale() ?? DEFAULT_LOCALE);
 
   const setLocale = useCallback((l: Locale) => {
     setLocaleState(l);

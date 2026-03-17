@@ -4,11 +4,12 @@ import de from "./locales/de";
 import hu from "./locales/hu";
 import pl from "./locales/pl";
 import ro from "./locales/ro";
+import ru from "./locales/ru";
 import sk from "./locales/sk";
 import tr from "./locales/tr";
 import uk from "./locales/uk";
 
-export const LOCALES = ["de", "sk", "hu", "pl", "cs", "ro", "bg", "uk", "tr"] as const;
+export const LOCALES = ["de", "sk", "hu", "pl", "cs", "ro", "bg", "uk", "tr", "ru"] as const;
 export type Locale = (typeof LOCALES)[number];
 
 export const LOCALE_LABELS: Record<Locale, string> = {
@@ -21,6 +22,7 @@ export const LOCALE_LABELS: Record<Locale, string> = {
   bg: "Български",
   uk: "Українська",
   tr: "Türkçe",
+  ru: "Русский",
 };
 
 export type Dict = {
@@ -47,6 +49,7 @@ export const DICTS: Record<Locale, Dict> = {
   bg,
   uk,
   tr,
+  ru,
 };
 
 export const DEFAULT_LOCALE: Locale = "de";
