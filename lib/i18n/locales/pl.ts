@@ -1,5 +1,5 @@
 const pl = {
-  app: { name: "Willkommen", tagline: "Twój asystent w Niemczech", languageName: "Polski" },
+  app: { name: "Vaylo", tagline: "Asystent AI do biurokracji i życia w Niemczech", languageName: "Polski" },
   nav: { dashboard: "Panel", phrases: "Zwroty", jobs: "Praca", taxes: "Podatki", settings: "Ustawienia", premium: "Premium" },
   dashboard: {
     title: "Panel",

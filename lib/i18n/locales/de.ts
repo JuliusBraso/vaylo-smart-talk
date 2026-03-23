@@ -1,7 +1,7 @@
 const de = {
   app: {
-    name: "Willkommen",
-    tagline: "Dein Assistent in Deutschland",
+    name: "Vaylo",
+    tagline: "KI-Assistent für Bürokratie und Leben in Deutschland",
     languageName: "Deutsch",
   },
   nav: {

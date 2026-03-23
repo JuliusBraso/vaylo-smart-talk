@@ -1,5 +1,5 @@
 const tr = {
-  app: { name: "Willkommen", tagline: "Almanya’daki asistanın", languageName: "Türkçe" },
+  app: { name: "Vaylo", tagline: "Almanya’da bürokrasi ve yaşam için yapay zeka asistanı", languageName: "Türkçe" },
   nav: { dashboard: "Panel", phrases: "Cümleler", jobs: "İş", taxes: "Vergi", settings: "Ayarlar", premium: "Premium" },
   dashboard: {
     title: "Panel",

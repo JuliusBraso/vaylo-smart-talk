@@ -1,5 +1,5 @@
 const cs = {
-  app: { name: "Willkommen", tagline: "Tvůj asistent v Německu", languageName: "Čeština" },
+  app: { name: "Vaylo", tagline: "AI asistent pro byrokracii a život v Německu", languageName: "Čeština" },
   nav: { dashboard: "Dashboard", phrases: "Slovník", jobs: "Práce", taxes: "Daně", settings: "Nastavení", premium: "Premium" },
   dashboard: {
     title: "Dashboard",

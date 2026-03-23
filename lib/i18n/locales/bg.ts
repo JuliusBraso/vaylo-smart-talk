@@ -1,5 +1,5 @@
 const bg = {
-  app: { name: "Willkommen", tagline: "Твоят асистент в Германия", languageName: "Български" },
+  app: { name: "Vaylo", tagline: "AI асистент за бюрокрация и живот в Германия", languageName: "Български" },
   nav: { dashboard: "Табло", phrases: "Фрази", jobs: "Работа", taxes: "Данъци", settings: "Настройки", premium: "Premium" },
   dashboard: {
     title: "Табло",

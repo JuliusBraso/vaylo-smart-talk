@@ -1,5 +1,5 @@
 const ru = {
-  app: { name: "Willkommen", tagline: "Твой помощник в Германии", languageName: "Русский" },
+  app: { name: "Vaylo", tagline: "AI-помощник для бюрократии и жизни в Германии", languageName: "Русский" },
   nav: { dashboard: "Главная", phrases: "Фразы", jobs: "Работа", taxes: "Налоги", settings: "Настройки", premium: "Premium" },
   dashboard: {
     title: "Главная",

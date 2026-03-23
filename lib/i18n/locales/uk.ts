@@ -1,5 +1,5 @@
 const uk = {
-  app: { name: "Willkommen", tagline: "Твій асистент у Німеччині", languageName: "Українська" },
+  app: { name: "Vaylo", tagline: "AI-асистент для бюрократії та життя в Німеччині", languageName: "Українська" },
   nav: { dashboard: "Головна", phrases: "Фрази", jobs: "Робота", taxes: "Податки", settings: "Налаштування", premium: "Premium" },
   dashboard: {
     title: "Головна",

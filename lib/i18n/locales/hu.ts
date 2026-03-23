@@ -1,5 +1,5 @@
 const hu = {
-  app: { name: "Willkommen", tagline: "Asszisztensed Németországban", languageName: "Magyar" },
+  app: { name: "Vaylo", tagline: "AI asszisztens a németországi bürokráciához és élethez", languageName: "Magyar" },
   nav: { dashboard: "Kezdőlap", phrases: "Kifejezések", jobs: "Munka", taxes: "Adók", settings: "Beállítások", premium: "Premium" },
   dashboard: {
     title: "Kezdőlap",
