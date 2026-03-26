@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getIntentBoostsFromProfile } from "@/lib/assistant/dna-intent-boost";
+import { getUserContextFromProfile } from "@/lib/assistant/user-context";
 import { buildBlockFromMessage } from "@/lib/assistant/match-intent";
 import { getIntentTopics } from "@/lib/assistant/intent-topics";
 import type { AssistantBlock } from "@/lib/assistant/types";
@@ -14,6 +15,7 @@ export default function Page() {
   const { t } = useT();
   const intentTopics = useMemo(() => getIntentTopics(t), [t]);
   const [intentBoosts, setIntentBoosts] = useState<Record<string, number> | null>(null);
+  const [userContext, setUserContext] = useState<ReturnType<typeof getUserContextFromProfile> | null>(null);
   const [mounted, setMounted] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<
@@ -27,7 +29,13 @@ export default function Page() {
     const text = raw.trim();
     if (!text) return;
 
-    const block = buildBlockFromMessage(text, t, intentTopics, intentBoosts);
+    const block = buildBlockFromMessage(
+      text,
+      t,
+      intentTopics,
+      intentBoosts,
+      userContext,
+    );
 
     setMessages((prev) => [
       ...prev,
@@ -35,10 +43,11 @@ export default function Page() {
       { role: "assistant", block },
     ]);
     setInput("");
-  }, [intentBoosts, intentTopics, t]);
+  }, [intentBoosts, intentTopics, t, userContext]);
 
   useEffect(() => {
-    setMounted(true);
+    const id = setTimeout(() => setMounted(true), 0);
+    return () => clearTimeout(id);
   }, []);
 
   useEffect(() => {
@@ -48,6 +57,8 @@ export default function Page() {
       const { profile } = await getMyProfile(supabase);
       if (cancelled) return;
       setIntentBoosts(getIntentBoostsFromProfile(profile));
+      const ctx = getUserContextFromProfile(profile);
+      setUserContext(Object.keys(ctx).length > 0 ? ctx : null);
     }
 
     void loadIntentBoosts();

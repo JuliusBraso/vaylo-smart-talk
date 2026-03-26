@@ -1,5 +1,7 @@
 import type { useT } from "@/lib/i18n/useT";
 import type { AssistantBlock, IntentTopic } from "./types";
+import type { UserContext } from "./user-context";
+import { applyContextOverride } from "./context-override";
 
 type IntentBoostMap = Record<string, number>;
 
@@ -13,19 +15,37 @@ export function pickIntentTopic(
 
   let best: IntentTopic | null = null;
   let bestScore = 0;
+  const KEYWORD_WEIGHT = 10;
+  const DEBUG_ENABLED = process.env.NEXT_PUBLIC_ASSISTANT_DEBUG === "1";
 
   for (const topic of topics) {
-    let score = 0;
+    let keywordScore = 0;
     for (const kw of topic.keywords) {
-      if (n.includes(kw.toLowerCase())) score += 1;
+      if (n.includes(kw.toLowerCase())) keywordScore += 1;
     }
-    if (score > 0 && boosts?.[topic.id]) {
-      score += boosts[topic.id];
+    const dnaBoost = boosts?.[topic.id] ?? 0;
+    const finalScore = keywordScore * KEYWORD_WEIGHT + dnaBoost;
+
+    if (DEBUG_ENABLED) {
+      console.debug("[AssistantMatch]", {
+        topicId: topic.id,
+        keywordScore,
+        dnaBoost,
+        finalScore,
+      });
     }
-    if (score > bestScore) {
-      bestScore = score;
+
+    if (finalScore > bestScore) {
+      bestScore = finalScore;
       best = topic;
     }
+  }
+
+  if (DEBUG_ENABLED) {
+    console.debug("[AssistantMatch]", {
+      detectedTopicId: best?.id ?? null,
+      finalScore: bestScore,
+    });
   }
 
   return bestScore > 0 ? best : null;
@@ -36,13 +56,34 @@ export function buildBlockFromMessage(
   t: ReturnType<typeof useT>["t"],
   topics: IntentTopic[],
   boosts?: IntentBoostMap | null,
+  ctx?: UserContext | null,
 ): AssistantBlock {
   const topic = pickIntentTopic(text, topics, boosts);
   if (topic) {
+    let resolvedTopic = topic;
+    const detectedTopicId = topic.id;
+    const adjustedTopicId =
+      ctx && Object.keys(ctx).length > 0
+        ? applyContextOverride(detectedTopicId, ctx)
+        : detectedTopicId;
+
+    if (process.env.NEXT_PUBLIC_ASSISTANT_DEBUG === "1" && ctx) {
+      console.debug("[AssistantContextOverride]", {
+        detectedTopicId,
+        adjustedTopicId,
+        context: ctx,
+      });
+    }
+
+    if (adjustedTopicId !== detectedTopicId) {
+      const maybe = topics.find((x) => x.id === adjustedTopicId);
+      if (maybe) resolvedTopic = maybe;
+    }
+
     return {
-      summary: topic.explanation,
+      summary: resolvedTopic.explanation,
       isFallback: false,
-      actions: topic.actions,
+      actions: resolvedTopic.actions,
     };
   }
   return {

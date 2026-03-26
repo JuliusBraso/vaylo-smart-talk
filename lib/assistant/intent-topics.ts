@@ -23,6 +23,18 @@ export function getIntentTopics(t: ReturnType<typeof useT>["t"]): IntentTopic[] 
         "address",
         "register address",
         "register my address",
+        // Slovak
+        "prihlásenie",
+        "prihlásenie adresy",
+        "registrácia adresy",
+        "registracia adresy",
+        "prihlasiť adresu",
+        "prihlasit adresu",
+        "adresa",
+        // Czech (optional)
+        "přihlášení",
+        "přihlášení adresy",
+        "registrace adresy",
       ],
       explanation: t.assistant.anmeldungExplanation,
       actions: [
@@ -40,7 +52,27 @@ export function getIntentTopics(t: ReturnType<typeof useT>["t"]): IntentTopic[] 
     },
     {
       id: "steuer-id",
-      keywords: ["steuer", "tax id", "steuernummer", "steuer-id", "steuer id"],
+      keywords: [
+        "steuer",
+        "tax id",
+        "steuernummer",
+        "steuer-id",
+        "steuer id",
+        // Slovak (daňové témy)
+        "daň",
+        "dane",
+        "daňami",
+        "daňové priznanie",
+        "priznanie",
+        "finančný úrad",
+        "danove priznanie",
+        "financny urad",
+        // Czech (daňové témy)
+        "daň",
+        "daně",
+        "daňové přiznání",
+        "finanční úřad",
+      ],
       explanation: t.assistant.steuerIdExplanation,
       actions: [
         { label: t.assistant.steuerIdGuide, href: "/guides/steuer-id" },
@@ -57,7 +89,18 @@ export function getIntentTopics(t: ReturnType<typeof useT>["t"]): IntentTopic[] 
     },
     {
       id: "kindergeld",
-      keywords: ["kindergeld", "child benefit"],
+      keywords: [
+        "kindergeld",
+        "child benefit",
+        // Slovak
+        "prídavok na dieťa",
+        "detské prídavky",
+        "pridavok na dietatko",
+        "pridavok na dieta",
+        // Czech (optional, a bit broader)
+        "přídavek na dítě",
+        "dětské přídavky",
+      ],
       explanation: t.assistant.kindergeldExplanation,
       actions: [
         { label: t.assistant.kindergeldGuide, href: "/guides/kindergeld" },
@@ -74,7 +117,20 @@ export function getIntentTopics(t: ReturnType<typeof useT>["t"]): IntentTopic[] 
     },
     {
       id: "health-insurance",
-      keywords: ["insurance", "krankenkasse", "health insurance"],
+      keywords: [
+        "insurance",
+        "krankenkasse",
+        "health insurance",
+        // Slovak
+        "zdravotné poistenie",
+        "poisťovňa",
+        "zdravotná poisťovňa",
+        "zdravotne poistenie",
+        "poistovna",
+        // Czech (optional)
+        "zdravotní pojištění",
+        "pojišťovna",
+      ],
       explanation: t.assistant.healthInsuranceExplanation,
       actions: [
         { label: t.assistant.healthInsuranceGuide, href: "/guides/health-insurance" },
@@ -96,6 +152,14 @@ export function getIntentTopics(t: ReturnType<typeof useT>["t"]): IntentTopic[] 
         "permit extension",
         "ausländerbehörde",
         "auslaenderbehoerde",
+        // Slovak
+        "pobyt",
+        "povolenie na pobyt",
+        "predĺženie pobytu",
+        "predlzenie pobytu",
+        // Czech (optional)
+        "povolení k pobytu",
+        "prodloužení pobytu",
       ],
       explanation: t.assistant.residencePermitExplanation,
       actions: [
@@ -150,6 +214,17 @@ export function getIntentTopics(t: ReturnType<typeof useT>["t"]): IntentTopic[] 
         "girokonto",
         "open account",
         "bankkonto",
+        // Slovak
+        "bankový účet",
+        "bankovy ucet",
+        "bežný účet",
+        "bezny ucet",
+        "otvoriť účet",
+        "otvorit ucet",
+        // Czech (optional)
+        "bankovní účet",
+        "běžný účet",
+        "otevřít účet",
       ],
       explanation: t.assistant.bankAccountExplanation,
       actions: [
@@ -181,6 +256,20 @@ export function getIntentTopics(t: ReturnType<typeof useT>["t"]): IntentTopic[] 
         "steuererklaerung",
         "elster",
         "tax declaration",
+        // Slovak
+        "daňové priznanie",
+        "priznanie",
+        "daň",
+        "dane",
+        "daňami",
+        "finančný úrad",
+        "danove priznanie",
+        "financny urad",
+        // Czech
+        "daňové přiznání",
+        "daně",
+        "daň",
+        "finanční úřad",
       ],
       explanation: t.assistant.taxReturnExplanation,
       actions: [
