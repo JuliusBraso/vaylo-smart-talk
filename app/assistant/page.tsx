@@ -1,186 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useState } from "react";
-
-type IntentTopic = {
-  id: string;
-  keywords: string[];
-  /** Short explanation shown after a match */
-  explanation: string;
-  /** Guide, form, and letter — 3 actions */
-  actions: { label: string; href: string }[];
-};
-
-function lettersHref(p: {
-  type: "email" | "letter";
-  authority: string;
-  context: string;
-}): string {
-  const q = new URLSearchParams({
-    type: p.type,
-    authority: p.authority,
-    context: p.context,
-  });
-  return `/letters?${q.toString()}`;
-}
-
-const INTENT_TOPICS: IntentTopic[] = [
-  {
-    id: "anmeldung",
-    keywords: [
-      "anmeldung",
-      "address",
-      "register address",
-      "register my address",
-    ],
-    explanation:
-      "That sounds like address registration (Anmeldung). Start with the guide, then the form; use Letters to contact the Bürgeramt if you need an appointment.",
-    actions: [
-      { label: "Guide: Anmeldung", href: "/guides/anmeldung" },
-      { label: "Form: Anmeldung", href: "/forms/anmeldung-form" },
-      {
-        label: "Letter: Bürgeramt (appointment)",
-        href: lettersHref({
-          type: "email",
-          authority: "Bürgeramt",
-          context: "I need an appointment for Anmeldung",
-        }),
-      },
-    ],
-  },
-  {
-    id: "steuer-id",
-    keywords: ["steuer", "tax id", "steuernummer", "steuer-id", "steuer id"],
-    explanation:
-      "That points to tax ID (Steuer-ID) topics. Follow the guide, check the Finanzamt form help, or draft a letter to the Finanzamt.",
-    actions: [
-      { label: "Guide: Steuer-ID", href: "/guides/steuer-id" },
-      { label: "Form: Steuer number", href: "/forms/steuer-number-registration" },
-      {
-        label: "Letter: Finanzamt (Steuer-ID)",
-        href: lettersHref({
-          type: "email",
-          authority: "Finanzamt",
-          context: "I need help regarding my Steuer-ID",
-        }),
-      },
-    ],
-  },
-  {
-    id: "kindergeld",
-    keywords: ["kindergeld", "child benefit"],
-    explanation:
-      "That matches Kindergeld (child benefit). Open the guide and main application form, or write to the Familienkasse.",
-    actions: [
-      { label: "Guide: Kindergeld", href: "/guides/kindergeld" },
-      { label: "Form: Kindergeld application", href: "/forms/kindergeld-main-application" },
-      {
-        label: "Letter: Familienkasse (status)",
-        href: lettersHref({
-          type: "email",
-          authority: "Familienkasse",
-          context: "I want to ask about my Kindergeld application status",
-        }),
-      },
-    ],
-  },
-  {
-    id: "health-insurance",
-    keywords: ["insurance", "krankenkasse", "health insurance"],
-    explanation:
-      "That sounds like statutory health insurance (Krankenkasse). Use the guide and membership form, or contact your insurer by letter.",
-    actions: [
-      { label: "Guide: Health insurance", href: "/guides/health-insurance" },
-      { label: "Form: Health insurance", href: "/forms/health-insurance-membership" },
-      {
-        label: "Letter: Health insurance",
-        href: lettersHref({
-          type: "email",
-          authority: "Health Insurance",
-          context: "I want to request health insurance membership information",
-        }),
-      },
-    ],
-  },
-  {
-    id: "residence-permit",
-    keywords: [
-      "residence permit",
-      "permit extension",
-      "ausländerbehörde",
-      "auslaenderbehoerde",
-    ],
-    explanation:
-      "That fits residence permit or Ausländerbehörde tasks. See the extension guide, the application form, or draft a letter to the immigration office.",
-    actions: [
-      { label: "Guide: Residence permit", href: "/guides/residence-permit" },
-      { label: "Form: Extension application", href: "/forms/residence-extension-application" },
-      {
-        label: "Letter: Ausländerbehörde (extension)",
-        href: lettersHref({
-          type: "email",
-          authority: "Ausländerbehörde",
-          context: "I want to request a residence permit extension",
-        }),
-      },
-    ],
-  },
-];
-
-function pickIntentTopic(message: string): IntentTopic | null {
-  const n = message.toLowerCase().trim();
-  if (!n) return null;
-
-  let best: IntentTopic | null = null;
-  let bestScore = 0;
-
-  for (const topic of INTENT_TOPICS) {
-    let score = 0;
-    for (const kw of topic.keywords) {
-      if (n.includes(kw.toLowerCase())) score += 1;
-    }
-    if (score > bestScore) {
-      bestScore = score;
-      best = topic;
-    }
-  }
-
-  return bestScore > 0 ? best : null;
-}
-
-const FALLBACK_EXPLANATION =
-  "The Assistant does not use an AI API yet. It matches a few core bureaucracy topics (Anmeldung, tax ID, Kindergeld, health insurance, residence permit). For anything else, browse step-by-step help in Guides.";
-
-const FALLBACK_ACTIONS: { label: string; href: string }[] = [
-  { label: "Open Guides", href: "/guides" },
-  { label: "Browse Forms", href: "/forms" },
-  { label: "Letters tool", href: "/letters" },
-];
-
-type AssistantBlock = {
-  summary: string;
-  isFallback: boolean;
-  actions: { label: string; href: string }[];
-};
-
-function buildBlockFromMessage(text: string): AssistantBlock {
-  const topic = pickIntentTopic(text);
-  if (topic) {
-    return {
-      summary: topic.explanation,
-      isFallback: false,
-      actions: topic.actions,
-    };
-  }
-  return {
-    summary: FALLBACK_EXPLANATION,
-    isFallback: true,
-    actions: FALLBACK_ACTIONS,
-  };
-}
+import { useCallback, useMemo, useState } from "react";
+import { buildBlockFromMessage } from "@/lib/assistant/match-intent";
+import { getIntentTopics } from "@/lib/assistant/intent-topics";
+import type { AssistantBlock } from "@/lib/assistant/types";
+import { useT } from "@/lib/i18n/useT";
 
 export default function Page() {
+  const { t } = useT();
+  const intentTopics = useMemo(() => getIntentTopics(t), [t]);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<
     Array<
@@ -193,7 +22,7 @@ export default function Page() {
     const text = raw.trim();
     if (!text) return;
 
-    const block = buildBlockFromMessage(text);
+    const block = buildBlockFromMessage(text, t, intentTopics);
 
     setMessages((prev) => [
       ...prev,
@@ -201,16 +30,15 @@ export default function Page() {
       { role: "assistant", block },
     ]);
     setInput("");
-  }, []);
+  }, [intentTopics, t]);
 
   return (
     <main className="container">
       <div className="card" style={{ display: "grid", gap: 14 }}>
         <div className="cardHeader">
-          <div className="cardTitle">Assistant</div>
+          <div className="cardTitle">{t.assistant.title}</div>
           <div className="cardSub muted">
-            Describe your bureaucracy question. We match keywords and suggest
-            Guides, Forms, and Letters — no AI API yet.
+            {t.assistant.subtitle}
           </div>
         </div>
 
@@ -231,8 +59,7 @@ export default function Page() {
               className="muted"
               style={{ fontSize: 13, textAlign: "center", padding: 24 }}
             >
-              Try: “I need to register my address” (Anmeldung) or “Kindergeld
-              status”.
+              {t.assistant.emptyHint}
             </div>
           ) : (
             messages.map((m, i) =>
@@ -270,7 +97,7 @@ export default function Page() {
                   </div>
                   {m.block.isFallback ? (
                     <div className="badgeSmall" style={{ width: "fit-content" }}>
-                      No keyword match
+                      {t.assistant.noKeywordMatch}
                     </div>
                   ) : null}
                   <div
@@ -311,7 +138,7 @@ export default function Page() {
         >
           <input
             type="text"
-            placeholder="Type your message…"
+            placeholder={t.assistant.inputPlaceholder}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
@@ -344,7 +171,7 @@ export default function Page() {
               cursor: "pointer",
             }}
           >
-            Send
+            {t.assistant.send}
           </button>
         </div>
       </div>

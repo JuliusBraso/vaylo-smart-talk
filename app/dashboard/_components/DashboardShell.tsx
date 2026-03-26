@@ -1,5 +1,8 @@
+"use client";
+
 import type { ReactNode } from "react";
 import type { ProfileDNA } from "@/lib/dna/types";
+import { useT } from "@/lib/i18n/useT";
 
 type Props = {
   dna: ProfileDNA;
@@ -7,6 +10,7 @@ type Props = {
 };
 
 export default function DashboardShell({ dna, children }: Props) {
+  const { t } = useT();
   const primaryGoal = dna.priority?.[0] ?? "orientation";
 
   return (
@@ -15,27 +19,27 @@ export default function DashboardShell({ dna, children }: Props) {
         <header className="flex items-center justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400/80">
-              Vaylo Control Center
+              {t.dashboard.controlCenter}
             </p>
             <h1 className="mt-2 bg-gradient-to-r from-emerald-300 via-cyan-300 to-indigo-400 bg-clip-text text-3xl font-semibold text-transparent md:text-4xl">
-              Your Germany operations cockpit
+              {t.dashboard.operationsCockpit}
             </h1>
             <p className="mt-2 max-w-xl text-sm text-slate-400">
-              We tuned this workspace to your onboarding DNA so you can focus on what matters most right now.
+              {t.dashboard.intro}
             </p>
           </div>
           <div className="rounded-2xl border border-emerald-400/30 bg-slate-950/60 px-4 py-3 text-right shadow-[0_0_40px_rgba(16,185,129,0.35)] backdrop-blur-2xl">
             <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400">
-              Active Priority
+              {t.dashboard.activePriority}
             </div>
             <div className="mt-1 text-sm font-semibold text-emerald-300">
               {primaryGoal === "job"
-                ? "Job & Bewerbung"
+                ? t.dashboard.priorityJob
                 : primaryGoal === "bureaucracy"
-                  ? "Paperwork & Behörden"
+                  ? t.dashboard.priorityBureaucracy
                   : primaryGoal === "family_admin"
-                    ? "Family & Kindergeld"
-                    : "Orientation & Integration"}
+                    ? t.dashboard.priorityFamilyAdmin
+                    : t.dashboard.priorityOrientation}
             </div>
             <div className="mt-1 text-[10px] text-slate-500">
               DNA v{dna.version} • {dna.inputs.language_level}
@@ -48,39 +52,39 @@ export default function DashboardShell({ dna, children }: Props) {
             <div className="pointer-events-none absolute inset-px rounded-[22px] bg-gradient-to-br from-emerald-500/15 via-transparent to-indigo-500/20" />
             <div className="relative flex flex-col gap-2">
               <h2 className="text-sm font-semibold tracking-wide text-slate-100">
-                Vaylo DNA snapshot
+                {t.dashboard.dnaSnapshotTitle}
               </h2>
               <p className="text-xs text-slate-400">
-                We continuously adapt this dashboard as your situation, paperwork and job status evolve.
+                {t.dashboard.dnaSnapshotDesc}
               </p>
               <div className="mt-4 grid gap-3 text-xs text-slate-300 sm:grid-cols-4">
                 <div className="rounded-2xl border border-emerald-400/30 bg-emerald-900/20 px-3 py-2">
                   <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-emerald-300/80">
-                    Family
+                    {t.dashboard.familyLabel}
                   </div>
                   <div className="mt-1 text-xs font-semibold">
                     {dna.inputs.family_status === "children"
-                      ? "Children in household"
+                      ? t.dashboard.familyChildren
                       : dna.inputs.family_status === "family"
-                        ? "Partner / dependants"
-                        : "Single"}
+                        ? t.dashboard.familyPartner
+                        : t.dashboard.familySingle}
                   </div>
                 </div>
                 <div className="rounded-2xl border border-cyan-400/30 bg-cyan-900/20 px-3 py-2">
                   <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-cyan-300/80">
-                    Work mode
+                    {t.dashboard.workModeLabel}
                   </div>
                   <div className="mt-1 text-xs font-semibold">
                     {dna.inputs.employment_type === "freelancer"
-                      ? "Freelancer / Selbstständig"
+                      ? t.dashboard.workFreelancer
                       : dna.inputs.employment_type === "job_seeker"
-                        ? "Job seeker"
-                        : "Employee"}
+                        ? t.dashboard.workJobSeeker
+                        : t.dashboard.workEmployee}
                   </div>
                 </div>
                 <div className="rounded-2xl border border-indigo-400/30 bg-indigo-900/30 px-3 py-2">
                   <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-indigo-300/80">
-                    Language
+                    {t.dashboard.languageLabel}
                   </div>
                   <div className="mt-1 text-xs font-semibold">
                     Deutsch {dna.inputs.language_level}
@@ -88,7 +92,7 @@ export default function DashboardShell({ dna, children }: Props) {
                 </div>
                 <div className="rounded-2xl border border-fuchsia-400/30 bg-fuchsia-900/20 px-3 py-2">
                   <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-fuchsia-300/80">
-                    Focus
+                    {t.dashboard.focusLabel}
                   </div>
                   <div className="mt-1 flex flex-wrap gap-1 text-[11px]">
                     {dna.inputs.goals.map((g) => (
@@ -97,10 +101,10 @@ export default function DashboardShell({ dna, children }: Props) {
                         className="rounded-full bg-fuchsia-500/15 px-2 py-0.5 text-fuchsia-100/90 ring-1 ring-fuchsia-400/40"
                       >
                         {g === "bureaucracy"
-                          ? "Paperwork"
+                          ? t.dashboard.focusPaperwork
                           : g === "job"
-                            ? "Job"
-                            : "Orientation"}
+                            ? t.dashboard.focusJob
+                            : t.dashboard.focusOrientation}
                       </span>
                     ))}
                   </div>
@@ -112,13 +116,13 @@ export default function DashboardShell({ dna, children }: Props) {
           <aside className="flex flex-col gap-3">
             <div className="rounded-3xl border border-white/10 bg-slate-950/80 p-4 shadow-[0_0_30px_rgba(129,140,248,0.35)] backdrop-blur-2xl">
               <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-slate-400">
-                Status
+                {t.dashboard.statusLabel}
               </div>
               <div className="mt-1 text-xs font-semibold text-indigo-200">
-                DNA profile locked in
+                {t.dashboard.statusLocked}
               </div>
               <div className="mt-2 text-[11px] text-slate-400">
-                This is your first version of the Vaylo dashboard. We will unlock more automation modules as you progress.
+                {t.dashboard.statusDesc}
               </div>
             </div>
           </aside>

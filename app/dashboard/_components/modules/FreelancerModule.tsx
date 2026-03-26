@@ -1,12 +1,16 @@
+"use client";
+
 import type { ProfileDNA } from "@/lib/dna/types";
 import { getContentByDNA } from "@/lib/vaylo/content-engine";
 import PhraseChips from "@/app/dashboard/_components/PhraseChips";
+import { useT } from "@/lib/i18n/useT";
 
 type Props = {
   dna: ProfileDNA;
 };
 
 export default function FreelancerModule({ dna }: Props) {
+  const { t } = useT();
   const score = dna.scores?.freelancer_focus ?? dna.scores?.JP ?? 0;
   const content = getContentByDNA(dna);
   const phrases = [...content.freelancer, ...content.bureaucracy];
@@ -17,20 +21,19 @@ export default function FreelancerModule({ dna }: Props) {
       <div className="relative flex flex-col gap-3">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">
-            Freelancer cockpit
+            {t.dashboard.freelancerTitle}
           </h2>
           <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-100 ring-1 ring-emerald-400/60">
-            Tax & Invoices
+            {t.dashboard.freelancerBadge}
           </span>
         </div>
         <p className="text-[11px] text-emerald-100/80">
-          Track your invoices, Umsatzsteuer and Einkommensteuer obligations in one place. We surface deadlines
-          and paperwork pressure based on your DNA.
+          {t.dashboard.freelancerIntro}
         </p>
 
         <div className="mt-1 rounded-2xl border border-emerald-400/40 bg-emerald-900/30 px-3 py-2 text-[11px] text-emerald-50">
           <div className="flex items-center justify-between">
-            <span className="uppercase tracking-[0.16em] text-emerald-300/80">Load</span>
+            <span className="uppercase tracking-[0.16em] text-emerald-300/80">{t.dashboard.freelancerLoad}</span>
             <span className="text-xs font-semibold">{Math.round(score)}%</span>
           </div>
           <div className="mt-1 h-1.5 rounded-full bg-emerald-950/60">
@@ -40,29 +43,29 @@ export default function FreelancerModule({ dna }: Props) {
             />
           </div>
           <p className="mt-2 text-[10px] text-emerald-100/80">
-            We use your answers to pre-rank which tax topics to stabilise first (Finanzamt, invoices, health insurance, etc.).
+            {t.dashboard.freelancerLoadHint}
           </p>
         </div>
 
         <ul className="mt-1 space-y-1.5 text-[11px] text-emerald-100/90">
           <li className="flex items-start gap-1.5">
             <span className="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(74,222,128,0.9)]" />
-            Umsatzsteuer, Einkommensteuer and social contributions pre-mapped for freelancers.
+            {t.dashboard.freelancerPoint1}
           </li>
           <li className="flex items-start gap-1.5">
             <span className="mt-1 h-1.5 w-1.5 rounded-full bg-cyan-300 shadow-[0_0_10px_rgba(34,211,238,0.9)]" />
-            Invoice templates optimised for German clients & Finanzamt.
+            {t.dashboard.freelancerPoint2}
           </li>
           <li className="flex items-start gap-1.5">
             <span className="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-200 shadow-[0_0_10px_rgba(190,242,100,0.9)]" />
-            Upcoming: automatic reminders before quarterly and yearly tax events.
+            {t.dashboard.freelancerPoint3}
           </li>
         </ul>
 
         {phrases.length > 0 && (
           <div className="mt-3 rounded-2xl border border-emerald-400/40 bg-slate-950/70 px-3 py-2">
             <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300/80">
-              Quick phrases
+              {t.dashboard.quickPhrases}
             </div>
             <PhraseChips phrases={phrases} tone="emerald" />
           </div>

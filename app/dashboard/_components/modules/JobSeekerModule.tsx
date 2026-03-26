@@ -1,12 +1,16 @@
+"use client";
+
 import type { ProfileDNA } from "@/lib/dna/types";
 import { getContentByDNA } from "@/lib/vaylo/content-engine";
 import PhraseChips from "@/app/dashboard/_components/PhraseChips";
+import { useT } from "@/lib/i18n/useT";
 
 type Props = {
   dna: ProfileDNA;
 };
 
 export default function JobSeekerModule({ dna }: Props) {
+  const { t } = useT();
   const score = dna.scores?.job_focus ?? dna.scores?.JP ?? 0;
   const content = getContentByDNA(dna);
   const phrases = [...content.job, ...content.bureaucracy];
@@ -17,21 +21,21 @@ export default function JobSeekerModule({ dna }: Props) {
       <div className="relative flex flex-col gap-3">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">
-            Job seeker lane
+            {t.dashboard.jobSeekerTitle}
           </h2>
           <span className="rounded-full bg-cyan-500/20 px-2 py-0.5 text-[10px] font-medium text-cyan-50 ring-1 ring-cyan-400/60">
-            Job & Bewerbung
+            {t.dashboard.jobSeekerBadge}
           </span>
         </div>
 
         <p className="text-[11px] text-cyan-50/85">
-          We compress the German job search maze into a compact pipeline tailored to your DNA profile.
+          {t.dashboard.jobSeekerIntro}
         </p>
 
         <div className="mt-1 rounded-2xl border border-cyan-400/50 bg-cyan-900/40 px-3 py-2 text-[11px] text-cyan-50">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-cyan-200/80">
-              Job focus signal
+              {t.dashboard.jobFocusSignal}
             </span>
             <span className="text-xs font-semibold">{Math.round(score)}%</span>
           </div>
@@ -42,29 +46,29 @@ export default function JobSeekerModule({ dna }: Props) {
             />
           </div>
           <p className="mt-2 text-[10px] text-cyan-50/85">
-            This reflects how strongly your onboarding pointed towards job urgency versus bureaucracy or orientation.
+            {t.dashboard.jobFocusHint}
           </p>
         </div>
 
         <ul className="mt-1 space-y-1.5 text-[11px] text-cyan-50/90">
           <li className="flex items-start gap-1.5">
             <span className="mt-1 h-1.5 w-1.5 rounded-full bg-cyan-300 shadow-[0_0_10px_rgba(56,189,248,0.9)]" />
-            German CV and LinkedIn checklist aligned with local expectations.
+            {t.dashboard.jobSeekerPoint1}
           </li>
           <li className="flex items-start gap-1.5">
             <span className="mt-1 h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(125,211,252,0.9)]" />
-            Weekly micro-goals for applications, networking and recruiter outreach.
+            {t.dashboard.jobSeekerPoint2}
           </li>
           <li className="flex items-start gap-1.5">
             <span className="mt-1 h-1.5 w-1.5 rounded-full bg-indigo-300 shadow-[0_0_10px_rgba(129,140,248,0.9)]" />
-            Upcoming: integration with Arbeitsagentur, Jobcenter and visa constraints.
+            {t.dashboard.jobSeekerPoint3}
           </li>
         </ul>
 
         {phrases.length > 0 && (
           <div className="mt-3 rounded-2xl border border-cyan-400/40 bg-slate-950/70 px-3 py-2">
             <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-200/85">
-              Quick phrases
+              {t.dashboard.quickPhrases}
             </div>
             <PhraseChips phrases={phrases} tone="cyan" />
           </div>

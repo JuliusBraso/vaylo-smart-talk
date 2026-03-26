@@ -32,7 +32,10 @@ export type Dict = {
     languageName?: string;
   };
   nav: Record<string, string>;
+  assistant: Record<string, string>;
   dashboard: Record<string, string>;
+  documents: Record<string, string>;
+  documentDetail: Record<string, string>;
   settings: Record<string, string>;
   phrases: Record<string, string>;
   premium: Record<string, string>;
