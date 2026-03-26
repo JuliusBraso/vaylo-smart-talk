@@ -2,14 +2,18 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { getIntentBoostsFromProfile } from "@/lib/assistant/dna-intent-boost";
 import { buildBlockFromMessage } from "@/lib/assistant/match-intent";
 import { getIntentTopics } from "@/lib/assistant/intent-topics";
 import type { AssistantBlock } from "@/lib/assistant/types";
 import { useT } from "@/lib/i18n/useT";
+import { getMyProfile } from "@/lib/profile";
+import { supabase } from "@/lib/supabase";
 
 export default function Page() {
   const { t } = useT();
   const intentTopics = useMemo(() => getIntentTopics(t), [t]);
+  const [intentBoosts, setIntentBoosts] = useState<Record<string, number> | null>(null);
   const [mounted, setMounted] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<
@@ -23,7 +27,7 @@ export default function Page() {
     const text = raw.trim();
     if (!text) return;
 
-    const block = buildBlockFromMessage(text, t, intentTopics);
+    const block = buildBlockFromMessage(text, t, intentTopics, intentBoosts);
 
     setMessages((prev) => [
       ...prev,
@@ -31,10 +35,26 @@ export default function Page() {
       { role: "assistant", block },
     ]);
     setInput("");
-  }, [intentTopics, t]);
+  }, [intentBoosts, intentTopics, t]);
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadIntentBoosts() {
+      const { profile } = await getMyProfile(supabase);
+      if (cancelled) return;
+      setIntentBoosts(getIntentBoostsFromProfile(profile));
+    }
+
+    void loadIntentBoosts();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (!mounted) return null;
