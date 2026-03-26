@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { buildBlockFromMessage } from "@/lib/assistant/match-intent";
 import { getIntentTopics } from "@/lib/assistant/intent-topics";
 import type { AssistantBlock } from "@/lib/assistant/types";
@@ -10,6 +10,7 @@ import { useT } from "@/lib/i18n/useT";
 export default function Page() {
   const { t } = useT();
   const intentTopics = useMemo(() => getIntentTopics(t), [t]);
+  const [mounted, setMounted] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<
     Array<
@@ -31,6 +32,12 @@ export default function Page() {
     ]);
     setInput("");
   }, [intentTopics, t]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
 
   return (
     <main className="container">
