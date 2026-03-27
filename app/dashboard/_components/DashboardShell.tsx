@@ -5,19 +5,27 @@ import type { ReactNode } from "react";
 import type { ProfileDNA } from "@/lib/dna/types";
 import type { Locale } from "@/lib/i18n";
 import { useT } from "@/lib/i18n/useT";
+import type { LiveSituation } from "@/lib/vaylo/live-situation";
 
 type Props = {
   dna: ProfileDNA;
   locale: Locale;
+  liveSituation: LiveSituation;
   children: ReactNode;
 };
 
-export default function DashboardShell({ dna, locale, children }: Props) {
+export default function DashboardShell({ dna, locale, liveSituation, children }: Props) {
   const { t } = useT();
   const primaryGoal = dna.priority?.[0] ?? "orientation";
   const primaryRoute = getPrimaryRoute(dna);
   const secondaryRoute = getSecondaryRoute(dna);
-  const nextActions = buildNextActions(dna, t, primaryRoute, secondaryRoute);
+  const nextActions = buildNextActions(
+    dna,
+    liveSituation,
+    t,
+    primaryRoute,
+    secondaryRoute
+  );
 
   return (
     <main
@@ -205,6 +213,7 @@ type NextAction = {
 
 function buildNextActions(
   dna: ProfileDNA,
+  liveSituation: LiveSituation,
   t: ReturnType<typeof useT>["t"],
   primaryRoute: string,
   secondaryRoute: string
@@ -237,6 +246,14 @@ function buildNextActions(
       cta: t.dashboard.actionCtaOpen,
     });
   }
+  if (liveSituation.hasChildren === true) {
+    actions.push({
+      id: "family-benefits",
+      title: t.dashboard.actionFamilyChecklistTitle,
+      desc: t.dashboard.actionFamilyChecklistDesc,
+      cta: t.dashboard.actionCtaOpen,
+    });
+  }
 
   actions.push({
     id: "health-insurance",
@@ -253,19 +270,240 @@ function buildNextActions(
       cta: t.dashboard.actionCtaStart,
     });
   }
+  if (
+    dna.inputs.employment_type === "freelancer" &&
+    liveSituation.hasSteuerId === false &&
+    !actions.some((a) => a.id === "bureaucracy-priority")
+  ) {
+    actions.unshift({
+      id: "bureaucracy-priority",
+      title: t.dashboard.actionAdminPriorityTitle,
+      desc: t.dashboard.actionAdminPriorityDesc,
+      cta: t.dashboard.actionCtaStart,
+    });
+  }
+  if (
+    liveSituation.hasCv === false &&
+    !actions.some((a) => a.id === "cv")
+  ) {
+    actions.push({
+      id: "cv",
+      title: t.dashboard.actionCvTitle,
+      desc: t.dashboard.actionCvDesc,
+      cta: t.dashboard.actionCtaOpen,
+    });
+  }
+  if (
+    liveSituation.registeredArbeitsagentur === false &&
+    !actions.some((a) => a.id === "arbeitsagentur")
+  ) {
+    actions.push({
+      id: "arbeitsagentur",
+      title: t.dashboard.actionArbeitsagenturTitle,
+      desc: t.dashboard.actionArbeitsagenturDesc,
+      cta: t.dashboard.actionCtaStart,
+    });
+  }
 
-  const ordered = pickOrderedActions(actions, dna, primaryRoute, secondaryRoute).slice(
-    0,
-    3
-  );
+  const deduped = dedupeById(actions);
+  const ordered = pickOrderedActions(
+    deduped,
+    dna,
+    liveSituation,
+    primaryRoute,
+    secondaryRoute
+  ).slice(0, 3);
+
+  if (process.env.NEXT_PUBLIC_VAYLO_DEBUG === "1") {
+    const debugRows = ordered.map((a, idx) => {
+      const href = idx === 0 ? primaryRoute : getActionRoute(a.id, dna, secondaryRoute);
+      const breakdown = scoreNextAction(a.id, href, dna, liveSituation, idx);
+      return { actionId: a.id, href, ...breakdown };
+    });
+    // Internal debug only.
+    console.log("[Vaylo][dashboard_scoring]", debugRows);
+  }
 
   // Ensure copy matches the final destination routes for the chosen order.
   return ordered.map((a, idx) => {
-    const href =
-      idx === 0 ? primaryRoute : getActionRoute(a.id, dna, secondaryRoute);
+    const href = idx === 0 ? primaryRoute : getActionRoute(a.id, dna, secondaryRoute);
     const copy = getActionCopy(a.id, href, t);
     return { ...a, ...copy };
   });
+}
+
+function dedupeById(actions: NextAction[]): NextAction[] {
+  const seen = new Set<string>();
+  const out: NextAction[] = [];
+  for (const action of actions) {
+    if (seen.has(action.id)) continue;
+    seen.add(action.id);
+    out.push(action);
+  }
+  return out;
+}
+
+function pickOrderedActions(
+  actions: NextAction[],
+  dna: ProfileDNA,
+  liveSituation: LiveSituation,
+  primaryRoute: string,
+  secondaryRoute: string
+): NextAction[] {
+  // Greedy, position-aware ordering:
+  // - card 0 always uses primaryRoute
+  // - cards 1..N use action-specific route (fallbacks to secondaryRoute)
+  // This keeps ordering consistent with actual CTA destinations.
+  const remaining = [...actions];
+  const result: NextAction[] = [];
+
+  for (let idx = 0; idx < 3 && remaining.length > 0; idx++) {
+    const best = pickBestForPosition(
+      remaining,
+      dna,
+      liveSituation,
+      idx,
+      primaryRoute,
+      secondaryRoute
+    );
+    result.push(best);
+    const rmIdx = remaining.findIndex((x) => x.id === best.id);
+    if (rmIdx >= 0) remaining.splice(rmIdx, 1);
+  }
+
+  return result;
+}
+
+function pickBestForPosition(
+  candidates: NextAction[],
+  dna: ProfileDNA,
+  liveSituation: LiveSituation,
+  idx: number,
+  primaryRoute: string,
+  secondaryRoute: string
+): NextAction {
+  let best = candidates[0]!;
+  let bestScore = Number.NEGATIVE_INFINITY;
+
+  for (const c of candidates) {
+    const href = idx === 0 ? primaryRoute : getActionRoute(c.id, dna, secondaryRoute);
+    const breakdown = scoreNextAction(c.id, href, dna, liveSituation, idx);
+    const score = breakdown.finalScore;
+
+    if (score > bestScore || (score === bestScore && c.id < best.id)) {
+      best = c;
+      bestScore = score;
+    }
+  }
+
+  return best;
+}
+
+type ScoreBreakdown = {
+  baseScore: number;
+  dnaBoost: number;
+  liveBoost: number;
+  finalScore: number;
+  reasons: string[];
+};
+
+function scoreNextAction(
+  actionId: string,
+  href: string,
+  dna: ProfileDNA,
+  liveSituation: LiveSituation,
+  idx: number
+): ScoreBreakdown {
+  const inputs = dna.inputs;
+  const goals = inputs.goals ?? [];
+  let baseScore = 0;
+  let dnaBoost = 0;
+  let liveBoost = 0;
+  const reasons: string[] = [];
+
+  // Position bias: strongest action should naturally win slot 0.
+  baseScore += idx === 0 ? 2 : 0;
+
+  // Global boosts based on goal focus and destination.
+  if (goals.includes("bureaucracy")) {
+    if (href.startsWith("/forms")) dnaBoost += 20;
+    if (href.startsWith("/taxes")) dnaBoost += 20;
+  }
+
+  // DNA segment preferences.
+  if (inputs.employment_type === "job_seeker") {
+    if (actionId === "arbeitsagentur") dnaBoost += 60;
+    if (actionId === "cv") dnaBoost += 50;
+    if (actionId === "bureaucracy-priority") dnaBoost += 10;
+    if (actionId === "health-insurance") dnaBoost += 5;
+  }
+
+  if (inputs.family_status === "children") {
+    if (actionId === "family-benefits") dnaBoost += 65;
+    if (actionId === "health-insurance") dnaBoost += 25;
+    if (actionId === "bureaucracy-priority") dnaBoost += 15;
+  }
+
+  if (inputs.employment_type === "freelancer") {
+    if (href.startsWith("/taxes")) dnaBoost += 60;
+    if (actionId === "health-insurance") dnaBoost += 25;
+    if (actionId === "bureaucracy-priority") dnaBoost += 20;
+  }
+
+  // Live situation boosts.
+  if (liveSituation.hasHealthInsurance === false && actionId === "health-insurance") {
+    liveBoost += 120;
+    reasons.push("missing_health_insurance");
+  }
+  if (liveSituation.hasBankAccount === false && actionId === "bureaucracy-priority") {
+    liveBoost += 45;
+    reasons.push("missing_bank_account");
+  }
+  if (
+    inputs.employment_type === "freelancer" &&
+    liveSituation.hasSteuerId === false &&
+    (href.startsWith("/taxes") || actionId === "bureaucracy-priority")
+  ) {
+    liveBoost += 110;
+    reasons.push("freelancer_without_steuer_id");
+  }
+  if (liveSituation.hasCv === false && actionId === "cv") {
+    liveBoost += 100;
+    reasons.push("missing_cv");
+  }
+  if (
+    liveSituation.registeredArbeitsagentur === false &&
+    actionId === "arbeitsagentur"
+  ) {
+    liveBoost += 95;
+    reasons.push("not_registered_arbeitsagentur");
+  }
+  if (
+    liveSituation.jobSearchUrgency === "urgent" &&
+    (actionId === "cv" || actionId === "arbeitsagentur")
+  ) {
+    liveBoost += 60;
+    reasons.push("urgent_job_search");
+  }
+  if (liveSituation.hasChildren === true && actionId === "family-benefits") {
+    liveBoost += 90;
+    reasons.push("has_children");
+  }
+  if (liveSituation.childrenSchoolAge === true && actionId === "family-benefits") {
+    liveBoost += 70;
+    reasons.push("school_age_children");
+  }
+
+  // Small, deterministic tie-break nudges.
+  baseScore += actionId === "health-insurance" ? 1 : 0;
+
+  return {
+    baseScore,
+    dnaBoost,
+    liveBoost,
+    finalScore: baseScore + dnaBoost + liveBoost,
+    reasons,
+  };
 }
 
 function getPrimaryRoute(dna: ProfileDNA): string {
@@ -303,96 +541,6 @@ function getActionRoute(actionId: string, dna: ProfileDNA, fallback: string): st
   return fallback;
 }
 
-function pickOrderedActions(
-  actions: NextAction[],
-  dna: ProfileDNA,
-  primaryRoute: string,
-  secondaryRoute: string
-): NextAction[] {
-  // Greedy, position-aware ordering:
-  // - card 0 always uses primaryRoute
-  // - cards 1..N use action-specific route (fallbacks to secondaryRoute)
-  // This keeps ordering consistent with actual CTA destinations.
-  const remaining = [...actions];
-  const result: NextAction[] = [];
-
-  for (let idx = 0; idx < 3 && remaining.length > 0; idx++) {
-    const best = pickBestForPosition(remaining, dna, idx, primaryRoute, secondaryRoute);
-    result.push(best);
-    const rmIdx = remaining.findIndex((x) => x.id === best.id);
-    if (rmIdx >= 0) remaining.splice(rmIdx, 1);
-  }
-
-  return result;
-}
-
-function pickBestForPosition(
-  candidates: NextAction[],
-  dna: ProfileDNA,
-  idx: number,
-  primaryRoute: string,
-  secondaryRoute: string
-): NextAction {
-  let best = candidates[0]!;
-  let bestScore = Number.NEGATIVE_INFINITY;
-
-  for (const c of candidates) {
-    const href = idx === 0 ? primaryRoute : getActionRoute(c.id, dna, secondaryRoute);
-    const score = scoreNextAction(c.id, href, dna, idx);
-
-    if (score > bestScore || (score === bestScore && c.id < best.id)) {
-      best = c;
-      bestScore = score;
-    }
-  }
-
-  return best;
-}
-
-function scoreNextAction(
-  actionId: string,
-  href: string,
-  dna: ProfileDNA,
-  idx: number
-): number {
-  const inputs = dna.inputs;
-  const goals = inputs.goals ?? [];
-  let score = 0;
-
-  // Position bias: strongest action should naturally win slot 0.
-  score += idx === 0 ? 2 : 0;
-
-  // Global boosts based on goal focus and destination.
-  if (goals.includes("bureaucracy")) {
-    if (href.startsWith("/forms")) score += 20;
-    if (href.startsWith("/taxes")) score += 20;
-  }
-
-  // DNA segment preferences.
-  if (inputs.employment_type === "job_seeker") {
-    if (actionId === "arbeitsagentur") score += 60;
-    if (actionId === "cv") score += 50;
-    if (actionId === "bureaucracy-priority") score += 10;
-    if (actionId === "health-insurance") score += 5;
-  }
-
-  if (inputs.family_status === "children") {
-    if (actionId === "family-benefits") score += 65;
-    if (actionId === "health-insurance") score += 25;
-    if (actionId === "bureaucracy-priority") score += 15;
-  }
-
-  if (inputs.employment_type === "freelancer") {
-    if (href.startsWith("/taxes")) score += 60;
-    if (actionId === "health-insurance") score += 25;
-    if (actionId === "bureaucracy-priority") score += 20;
-  }
-
-  // Small, deterministic tie-break nudges.
-  if (actionId === "health-insurance") score += 1;
-
-  return score;
-}
 
 function getActionCopy(
   actionId: string,

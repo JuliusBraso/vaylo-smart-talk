@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { getUser } from "@/lib/auth/get-user";
 import { getProfileDNA } from "@/lib/dna/get-profile-dna";
 import { DEFAULT_LOCALE, LOCALES, type Locale } from "@/lib/i18n";
+import { getLiveSituationFromProfile } from "@/lib/vaylo/live-situation";
 import DashboardClientWrapper from "./_components/DashboardClientWrapper";
 import FreelancerModule from "./_components/modules/FreelancerModule";
 import FamilyModule from "./_components/modules/FamilyModule";
@@ -29,6 +30,15 @@ export default async function DashboardPage() {
     redirect("/");
   }
 
+  const { data: profileRow } = await supabase
+    .from("profiles")
+    .select(
+      "has_steuer_id, has_health_insurance, has_bank_account, registered_arbeitsagentur, has_children, children_school_age, has_cv, job_search_urgency"
+    )
+    .eq("id", user.id)
+    .maybeSingle();
+  const liveSituation = getLiveSituationFromProfile(profileRow);
+
   const modules: ReactNode[] = [];
 
   const inputs = dna.inputs;
@@ -46,7 +56,7 @@ export default async function DashboardPage() {
   }
 
   return (
-    <DashboardClientWrapper dna={dna} locale={locale}>
+    <DashboardClientWrapper dna={dna} locale={locale} liveSituation={liveSituation}>
       {modules}
     </DashboardClientWrapper>
   );
