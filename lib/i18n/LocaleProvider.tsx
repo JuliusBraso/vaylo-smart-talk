@@ -15,30 +15,31 @@ type Ctx = {
 
 export const LocaleContext = createContext<Ctx | null>(null);
 
-function isLocale(x: string): x is Locale {
-  return (LOCALES as readonly string[]).includes(x);
-}
-
-function readStoredLocale(): Locale | null {
-  try {
-    const v = localStorage.getItem(STORAGE_KEY);
-    if (v && isLocale(v)) return v;
-  } catch {}
-  return null;
-}
-
 function writeStoredLocale(l: Locale) {
   try {
     localStorage.setItem(STORAGE_KEY, l);
   } catch {}
 }
 
-export default function LocaleProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(() => readStoredLocale() ?? DEFAULT_LOCALE);
+function writeLocaleCookie(l: Locale) {
+  try {
+    document.cookie = `wk_uiLang=${l}; path=/; max-age=31536000; samesite=lax`;
+  } catch {}
+}
+
+export default function LocaleProvider({
+  children,
+  initialLocale,
+}: {
+  children: React.ReactNode;
+  initialLocale?: Locale;
+}) {
+  const [locale, setLocaleState] = useState<Locale>(initialLocale ?? DEFAULT_LOCALE);
 
   const setLocale = useCallback((l: Locale) => {
     setLocaleState(l);
     writeStoredLocale(l);
+    writeLocaleCookie(l);
   }, []);
 
   const t = useMemo(() => getDict(locale), [locale]);

@@ -2,19 +2,25 @@
 
 import type { ReactNode } from "react";
 import type { ProfileDNA } from "@/lib/dna/types";
+import type { Locale } from "@/lib/i18n";
 import { useT } from "@/lib/i18n/useT";
 
 type Props = {
   dna: ProfileDNA;
+  locale: Locale;
   children: ReactNode;
 };
 
-export default function DashboardShell({ dna, children }: Props) {
+export default function DashboardShell({ dna, locale, children }: Props) {
   const { t } = useT();
   const primaryGoal = dna.priority?.[0] ?? "orientation";
+  const nextActions = buildNextActions(dna);
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900 text-slate-100">
+    <main
+      className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900 text-slate-100"
+      data-locale={locale}
+    >
       <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-10 sm:px-6 lg:px-8">
         <header className="flex items-center justify-between gap-4">
           <div>
@@ -46,6 +52,47 @@ export default function DashboardShell({ dna, children }: Props) {
             </div>
           </div>
         </header>
+
+        <section className="rounded-3xl border border-white/10 bg-slate-950/70 p-5 shadow-[0_0_55px_rgba(56,189,248,0.28)] backdrop-blur-2xl">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold tracking-wide text-slate-100">
+                {t.dashboard.nextActionsTitle}
+              </h2>
+              <p className="mt-1 text-xs text-slate-400">
+                {t.dashboard.nextActionsDesc}
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {nextActions.map((action, idx) => (
+              <article
+                key={action.id}
+                className={
+                  idx === 0
+                    ? "rounded-2xl border border-cyan-400/45 bg-cyan-900/20 p-4 shadow-[0_0_38px_rgba(34,211,238,0.3)] md:col-span-2"
+                    : "rounded-2xl border border-white/15 bg-white/5 p-4"
+                }
+              >
+                <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400">
+                  {idx === 0
+                    ? t.dashboard.highestPriorityLabel
+                    : t.dashboard.nextLabel}
+                </div>
+                <h3 className="mt-2 text-sm font-semibold text-slate-100">
+                  {action.title}
+                </h3>
+                <p className="mt-1 text-xs text-slate-300">{action.desc}</p>
+                <a
+                  href={action.href}
+                  className="mt-3 inline-flex rounded-lg border border-cyan-400/45 bg-cyan-500/20 px-3 py-1.5 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-500/30"
+                >
+                  {action.cta}
+                </a>
+              </article>
+            ))}
+          </div>
+        </section>
 
         <section className="grid gap-6 md:grid-cols-3">
           <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-950/70 p-5 shadow-[0_0_40px_rgba(56,189,248,0.25)] backdrop-blur-2xl md:col-span-2">
@@ -132,5 +179,67 @@ export default function DashboardShell({ dna, children }: Props) {
       </div>
     </main>
   );
+}
+
+type NextAction = {
+  id: string;
+  title: string;
+  desc: string;
+  cta: string;
+  href: string;
+};
+
+function buildNextActions(dna: ProfileDNA): NextAction[] {
+  const actions: NextAction[] = [];
+  const goals = dna.inputs.goals ?? [];
+
+  if (dna.inputs.employment_type === "job_seeker") {
+    actions.push(
+      {
+        id: "arbeitsagentur",
+        title: "Register at Arbeitsagentur",
+        desc: "Complete your registration so job search support and benefits can start.",
+        cta: "Start",
+        href: "/jobs",
+      },
+      {
+        id: "cv",
+        title: "Prepare German CV (Lebenslauf)",
+        desc: "Adjust format, keywords, and role fit before your next applications.",
+        cta: "Open",
+        href: "/jobs",
+      }
+    );
+  }
+
+  if (dna.inputs.family_status === "children") {
+    actions.push({
+      id: "family-benefits",
+      title: "Review family benefit checklist",
+      desc: "Prioritize Kindergeld and school-related paperwork for this month.",
+      cta: "Open",
+      href: "/guides",
+    });
+  }
+
+  actions.push({
+    id: "health-insurance",
+    title: "Check health insurance status",
+    desc: "Verify coverage and missing paperwork to avoid delays.",
+    cta: "Check",
+    href: "/guides",
+  });
+
+  if (goals.includes("bureaucracy")) {
+    actions.unshift({
+      id: "bureaucracy-priority",
+      title: "Handle your highest-impact admin task",
+      desc: "Finish one government form today to unlock faster progress in other modules.",
+      cta: "Start",
+      href: "/forms",
+    });
+  }
+
+  return actions.slice(0, 3);
 }
 

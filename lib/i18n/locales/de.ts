@@ -28,6 +28,40 @@ const de = {
     continue: "Weiter",
     privacyNote:
       "Deine Antworten helfen dabei, Vaylo zu personalisieren. Sie werden nur genutzt, um dein Erlebnis anzupassen.",
+    step: "Schritt {step} von {total}",
+    questionFamily: "Für wen ist Vaylo?",
+    back: "Zurück",
+    finish: "Onboarding abschließen",
+    kidsSchoolingTitle: "Kinder und Schule",
+    kidsSchoolingDesc:
+      "Damit priorisieren wir Kindergeld-, Kita- und Schulthemen besser.",
+    yesSchoolAge: "Ja, mindestens ein Kind ist schulpflichtig",
+    notYetSmallKids: "Noch nicht / nur kleinere Kinder",
+    employmentTitle: "Wie arbeitest du aktuell in Deutschland?",
+    employmentDesc:
+      "Das hilft Vaylo, Arbeit, Steuern und Bürokratie richtig zu priorisieren.",
+    employmentEmployee: "Angestellt",
+    employmentFreelancer: "Freelancer / selbstständig",
+    employmentJobSeeker: "Auf Jobsuche",
+    freelanceSetupTitle: "Freelance-Setup",
+    freelanceSetupDesc:
+      "Stellst du bereits regelmäßig deutsche Rechnungen aus?",
+    yesRegularly: "Ja, regelmäßig",
+    notYetStarting: "Noch nicht / ich starte gerade",
+    jobUrgencyTitle: "Dringlichkeit der Jobsuche",
+    jobUrgencyDesc:
+      "Das steuert, wie aktiv Vaylo Job-Module und Erinnerungen priorisiert.",
+    jobUrgencyRelaxed: "Ich schaue mich um (entspannt)",
+    jobUrgencyUrgent: "Ich brauche dringend einen Job",
+    languageTitle: "Dein Deutschniveau (realistisch)?",
+    languageDesc:
+      "Vaylo passt Sprache und Hilfestufen an dein aktuelles Niveau an.",
+    goalsTitle: "Wobei brauchst du gerade am meisten Hilfe?",
+    goalsDesc:
+      "Damit bestimmen wir, was auf deinem Dashboard oben angezeigt wird.",
+    goalBureaucracy: "Bürokratie & Behörden",
+    goalJob: "Arbeit, Verträge & Rechnungen",
+    goalOrientation: "Orientierung & Alltag",
   },
   assistant: {
     title: "Assistant",
@@ -167,6 +201,10 @@ const de = {
     statusLabel: "Status",
     statusLocked: "DNA-Profil festgelegt",
     statusDesc: "Das ist deine erste Version des Vaylo Dashboards. Mit deinem Fortschritt schalten wir weitere Automatisierungs-Module frei.",
+    nextActionsTitle: "Nächste Aktionen",
+    nextActionsDesc: "Dein Assistant priorisiert, was du als Nächstes tun solltest.",
+    highestPriorityLabel: "Höchste Priorität",
+    nextLabel: "Nächster Schritt",
     quickPhrases: "Schnelle Phrasen",
     freelancerTitle: "Freelancer-Cockpit",
     freelancerBadge: "Steuern & Rechnungen",
