@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 import { getUser } from "@/lib/auth/get-user";
 import { getProfileDNA } from "@/lib/dna/get-profile-dna";
-import { DEFAULT_LOCALE, LOCALES, type Locale } from "@/lib/i18n";
+import { DEFAULT_LOCALE, getDict, LOCALES, type Locale } from "@/lib/i18n";
 import { getLiveSituationFromProfile } from "@/lib/vaylo/live-situation";
 import { getCompletedActionIds } from "@/lib/vaylo/user-progress";
 import DashboardClientWrapper from "./_components/DashboardClientWrapper";
@@ -43,20 +43,22 @@ export default async function DashboardPage() {
   const completedIds = await getCompletedActionIds(supabase, user.id);
   const completedActionIds = [...completedIds];
 
+  const t = getDict(locale);
+
   const modules: ReactNode[] = [];
 
   const inputs = dna.inputs;
 
   if (inputs.employment_type === "freelancer") {
-    modules.push(<FreelancerModule key="freelancer" dna={dna} />);
+    modules.push(<FreelancerModule key="freelancer" dna={dna} t={t} />);
   }
 
   if (inputs.family_status === "family" || inputs.family_status === "children") {
-    modules.push(<FamilyModule key="family" dna={dna} />);
+    modules.push(<FamilyModule key="family" dna={dna} t={t} />);
   }
 
   if (inputs.employment_type === "job_seeker") {
-    modules.push(<JobSeekerModule key="job" dna={dna} />);
+    modules.push(<JobSeekerModule key="job" dna={dna} t={t} />);
   }
 
   return (
@@ -65,6 +67,7 @@ export default async function DashboardPage() {
       locale={locale}
       liveSituation={liveSituation}
       completedActionIds={completedActionIds}
+      t={t}
     >
       {modules}
     </DashboardClientWrapper>

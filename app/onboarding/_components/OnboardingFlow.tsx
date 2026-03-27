@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
+import type { Dict } from "@/lib/i18n";
 import { getLanguageLabel } from "@/lib/i18n/labels";
-import { useT } from "@/lib/i18n/useT";
 import type {
   FamilyStatus,
   EmploymentType,
@@ -23,9 +23,13 @@ type StepId =
   | "language"
   | "goals";
 
-export default function OnboardingFlow() {
+type Props = {
+  /** Server-resolved dictionary (`getDict(locale)` on onboarding page). */
+  t: Dict;
+};
+
+export default function OnboardingFlow({ t }: Props) {
   const router = useRouter();
-  const { t } = useT();
   const [mounted, setMounted] = useState(false);
 
   const [stepIndex, setStepIndex] = useState(0);

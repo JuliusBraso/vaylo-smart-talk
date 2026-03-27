@@ -1,16 +1,17 @@
 "use client";
 
 import type { ProfileDNA } from "@/lib/dna/types";
+import type { Dict } from "@/lib/i18n";
 import { getContentByDNA } from "@/lib/vaylo/content-engine";
 import PhraseChips from "@/app/dashboard/_components/PhraseChips";
-import { useT } from "@/lib/i18n/useT";
 
 type Props = {
   dna: ProfileDNA;
+  /** Server-resolved dictionary (same `getDict(locale)` as dashboard page). */
+  t: Dict;
 };
 
-export default function FamilyModule({ dna }: Props) {
-  const { t } = useT();
+export default function FamilyModule({ dna, t }: Props) {
   const hasChildren = dna.inputs.family_status === "children";
   const content = getContentByDNA(dna);
   const phrases = [...content.family, ...content.bureaucracy];

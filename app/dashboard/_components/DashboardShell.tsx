@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import type { ProfileDNA } from "@/lib/dna/types";
-import type { Locale } from "@/lib/i18n";
+import type { Dict, Locale } from "@/lib/i18n";
 import { formatMessage } from "@/lib/i18n/format";
 import {
   getEmploymentLabel,
@@ -13,7 +13,6 @@ import {
   getGoalLabel,
   getLanguageLabel,
 } from "@/lib/i18n/labels";
-import { useT } from "@/lib/i18n/useT";
 import type { LiveSituation } from "@/lib/vaylo/live-situation";
 
 type Props = {
@@ -22,6 +21,8 @@ type Props = {
   liveSituation: LiveSituation;
   /** Dashboard action_ids marked completed in `user_progress` (excluded from next actions). */
   completedActionIds: string[];
+  /** Server-resolved dictionary (passed from dashboard page; do not use client-only context here). */
+  t: Dict;
   children: ReactNode;
 };
 
@@ -30,9 +31,9 @@ export default function DashboardShell({
   locale,
   liveSituation,
   completedActionIds,
+  t,
   children,
 }: Props) {
-  const { t } = useT();
   const completedIds = new Set(completedActionIds);
   const primaryGoal = dna.priority?.[0] ?? "orientation";
   const primaryRoute = getPrimaryRoute(dna);
@@ -325,7 +326,7 @@ function collectCriticalBlockers(
 
 function criticalBlockerToAction(
   kind: CriticalBlockerKind,
-  t: ReturnType<typeof useT>["t"],
+  t: Dict,
   dna: ProfileDNA,
   liveSituation: LiveSituation
 ): NextAction {
@@ -333,45 +334,40 @@ function criticalBlockerToAction(
     case "health":
       return {
         id: "critical-health",
-        title: t.dashboard.criticalHealthTitle,
-        desc: t.dashboard.criticalHealthDesc,
+        title: formatActionCopy(t.dashboard.criticalHealthTitle, t, dna, liveSituation),
+        desc: formatActionCopy(t.dashboard.criticalHealthDesc, t, dna, liveSituation),
         cta: t.dashboard.actionCtaCheck,
         href: getHealthInsuranceHref(dna),
       };
     case "steuer":
       return {
         id: "critical-steuer",
-        title: t.dashboard.criticalSteuerTitle,
-        desc: formatDashboardActionDesc(
-          t.dashboard.criticalSteuerDesc,
-          t,
-          dna,
-          liveSituation
-        ),
+        title: formatActionCopy(t.dashboard.criticalSteuerTitle, t, dna, liveSituation),
+        desc: formatActionCopy(t.dashboard.criticalSteuerDesc, t, dna, liveSituation),
         cta: t.dashboard.actionCtaStart,
         href: "/taxes",
       };
     case "bank":
       return {
         id: "critical-bank",
-        title: t.dashboard.criticalBankTitle,
-        desc: t.dashboard.criticalBankDesc,
+        title: formatActionCopy(t.dashboard.criticalBankTitle, t, dna, liveSituation),
+        desc: formatActionCopy(t.dashboard.criticalBankDesc, t, dna, liveSituation),
         cta: t.dashboard.actionCtaStart,
         href: "/forms",
       };
     case "arbeitsagentur":
       return {
         id: "critical-arbeitsagentur",
-        title: t.dashboard.criticalArbeitsagenturTitle,
-        desc: t.dashboard.criticalArbeitsagenturDesc,
+        title: formatActionCopy(t.dashboard.criticalArbeitsagenturTitle, t, dna, liveSituation),
+        desc: formatActionCopy(t.dashboard.criticalArbeitsagenturDesc, t, dna, liveSituation),
         cta: t.dashboard.actionCtaStart,
         href: "/jobs",
       };
     case "cv":
       return {
         id: "critical-cv",
-        title: t.dashboard.criticalCvTitle,
-        desc: t.dashboard.criticalCvDesc,
+        title: formatActionCopy(t.dashboard.criticalCvTitle, t, dna, liveSituation),
+        desc: formatActionCopy(t.dashboard.criticalCvDesc, t, dna, liveSituation),
         cta: t.dashboard.actionCtaOpen,
         href: "/jobs/cv",
       };
@@ -481,7 +477,7 @@ function buildNextActions(
   dna: ProfileDNA,
   liveSituation: LiveSituation,
   completedIds: Set<string>,
-  t: ReturnType<typeof useT>["t"],
+  t: Dict,
   primaryRoute: string,
   secondaryRoute: string
 ): NextAction[] {
@@ -589,7 +585,7 @@ function buildNextActions(
 function buildDnaCandidateActions(
   dna: ProfileDNA,
   liveSituation: LiveSituation,
-  t: ReturnType<typeof useT>["t"]
+  t: Dict
 ): NextAction[] {
   const actions: NextAction[] = [];
   const goals = dna.inputs.goals ?? [];
@@ -885,17 +881,40 @@ function getSecondaryRoute(dna: ProfileDNA): string {
   return "/assistant";
 }
 
-/** Interpolate dashboard action strings with label resolvers (no hardcoded role names in components). */
-function formatDashboardActionDesc(
+/** Values for `{employment}`, `{family}`, `{language}`, `{goal}` in dashboard action copy. */
+type ActionCopyPlaceholders = {
+  employment: string;
+  family: string;
+  language: string;
+  goal: string;
+};
+
+function buildActionCopyPlaceholders(
+  t: Dict,
+  dna: ProfileDNA,
+  liveSituation: LiveSituation
+): ActionCopyPlaceholders {
+  const emp = employmentTypeForScoring(liveSituation, dna);
+  const inputs = dna.inputs;
+  return {
+    employment: getEmploymentLabel(emp, t),
+    family: getFamilyLabel(inputs.family_status, t),
+    language: getLanguageLabel(inputs.language_level, t),
+    goal: getGoalLabel(inputs.goals[0] ?? "orientation", t),
+  };
+}
+
+/**
+ * Interpolate any dashboard action title/desc template with label resolvers.
+ * Strings without `{…}` pass through unchanged. Missing profile fields → empty segments, never raw enums.
+ */
+function formatActionCopy(
   template: string,
-  t: ReturnType<typeof useT>["t"],
+  t: Dict,
   dna: ProfileDNA,
   liveSituation: LiveSituation
 ): string {
-  const emp = employmentTypeForScoring(liveSituation, dna);
-  return formatMessage(template, {
-    employment: getEmploymentLabel(emp, t),
-  });
+  return formatMessage(template, buildActionCopyPlaceholders(t, dna, liveSituation));
 }
 
 function getActionRoute(actionId: string, dna: ProfileDNA, fallback: string): string {
@@ -924,11 +943,13 @@ function getActionRoute(actionId: string, dna: ProfileDNA, fallback: string): st
 function getActionCopy(
   actionId: string,
   href: string,
-  t: ReturnType<typeof useT>["t"],
+  t: Dict,
   liveSituation: LiveSituation,
   dna: ProfileDNA
 ): Pick<NextAction, "title" | "desc"> {
+  const fmt = (s: string) => formatActionCopy(s, t, dna, liveSituation);
   const emp = employmentTypeForScoring(liveSituation, dna);
+
   if (
     actionId === "bureaucracy-priority" &&
     href.startsWith("/taxes") &&
@@ -936,73 +957,67 @@ function getActionCopy(
     liveSituation.hasSteuerId === false
   ) {
     return {
-      title: t.dashboard.criticalSteuerTitle,
-      desc: formatDashboardActionDesc(
-        t.dashboard.criticalSteuerDesc,
-        t,
-        dna,
-        liveSituation
-      ),
+      title: fmt(t.dashboard.criticalSteuerTitle),
+      desc: fmt(t.dashboard.criticalSteuerDesc),
     };
   }
 
   if (actionId === "bureaucracy-priority") {
     if (href === "/taxes") {
       return {
-        title: t.dashboard.actionTaxesPriorityTitle,
-        desc: t.dashboard.actionTaxesPriorityDesc,
+        title: fmt(t.dashboard.actionTaxesPriorityTitle),
+        desc: fmt(t.dashboard.actionTaxesPriorityDesc),
       };
     }
     if (href === "/forms/kindergeld-main-application") {
       return {
-        title: t.dashboard.actionKindergeldPriorityTitle,
-        desc: t.dashboard.actionKindergeldPriorityDesc,
+        title: fmt(t.dashboard.actionKindergeldPriorityTitle),
+        desc: fmt(t.dashboard.actionKindergeldPriorityDesc),
       };
     }
     return {
-      title: t.dashboard.actionAdminPriorityTitle,
-      desc: t.dashboard.actionAdminPriorityDesc,
+      title: fmt(t.dashboard.actionAdminPriorityTitle),
+      desc: fmt(t.dashboard.actionAdminPriorityDesc),
     };
   }
 
   if (actionId === "health-insurance") {
     if (href === "/forms/health-insurance-membership") {
       return {
-        title: t.dashboard.actionHealthMembershipTitle,
-        desc: t.dashboard.actionHealthMembershipDesc,
+        title: fmt(t.dashboard.actionHealthMembershipTitle),
+        desc: fmt(t.dashboard.actionHealthMembershipDesc),
       };
     }
     return {
-      title: t.dashboard.actionHealthStatusTitle,
-      desc: t.dashboard.actionHealthStatusDesc,
+      title: fmt(t.dashboard.actionHealthStatusTitle),
+      desc: fmt(t.dashboard.actionHealthStatusDesc),
     };
   }
 
   if (actionId === "family-benefits") {
     return {
-      title: t.dashboard.actionFamilyChecklistTitle,
-      desc: t.dashboard.actionFamilyChecklistDesc,
+      title: fmt(t.dashboard.actionFamilyChecklistTitle),
+      desc: fmt(t.dashboard.actionFamilyChecklistDesc),
     };
   }
 
   if (actionId === "cv") {
     return {
-      title: t.dashboard.actionCvTitle,
-      desc: t.dashboard.actionCvDesc,
+      title: fmt(t.dashboard.actionCvTitle),
+      desc: fmt(t.dashboard.actionCvDesc),
     };
   }
 
   if (actionId === "arbeitsagentur") {
     return {
-      title: t.dashboard.actionArbeitsagenturTitle,
-      desc: t.dashboard.actionArbeitsagenturDesc,
+      title: fmt(t.dashboard.actionArbeitsagenturTitle),
+      desc: fmt(t.dashboard.actionArbeitsagenturDesc),
     };
   }
 
-  // Fallback (deterministic).
   return {
-    title: t.dashboard.nextActionsTitle,
-    desc: t.dashboard.nextActionsDesc,
+    title: fmt(t.dashboard.nextActionsTitle),
+    desc: fmt(t.dashboard.nextActionsDesc),
   };
 }
 
