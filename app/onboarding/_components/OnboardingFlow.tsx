@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
+import { getLanguageLabel } from "@/lib/i18n/labels";
 import { useT } from "@/lib/i18n/useT";
 import type {
   FamilyStatus,
@@ -525,7 +526,9 @@ export default function OnboardingFlow() {
                         }`}
                       >
                         <div className="pr-8">
-                          <div className="text-base font-semibold text-white">{L}</div>
+                          <div className="text-base font-semibold text-white">
+                            {getLanguageLabel(L, t)}
+                          </div>
                         </div>
                         {languageLevel === L ? (
                           <div className="absolute right-4 top-4 text-blue-400 text-lg font-bold">

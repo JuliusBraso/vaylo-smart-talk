@@ -10,12 +10,15 @@ import type {
   Goal,
 } from "@/lib/dna/types";
 import { calculateVayloDNA } from "@/lib/vaylo/dna-engine";
+import { getLanguageLabel } from "@/lib/i18n/labels";
+import { useT } from "@/lib/i18n/useT";
 import { upsertMyProfile } from "@/lib/profile";
 
 type Step = 0 | 1 | 2 | 3;
 
 export default function OnboardingFlow() {
   const router = useRouter();
+  const { t } = useT();
 
   const [step, setStep] = useState<Step>(0);
   const [familyStatus, setFamilyStatus] = useState<FamilyStatus | null>(null);
@@ -391,7 +394,7 @@ export default function OnboardingFlow() {
                         onClick={() => setLanguageLevel(L)}
                         style={pill(languageLevel === L)}
                       >
-                        {L}
+                        {getLanguageLabel(L, t)}
                       </button>
                     ))}
                   </div>

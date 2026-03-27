@@ -31,6 +31,8 @@ export type Dict = {
     tagline: string;
     languageName?: string;
   };
+  /** Normalized enum → user-facing labels (see lib/i18n/labels.ts). */
+  common: Record<string, string>;
   nav: Record<string, string>;
   onboarding: Record<string, string>;
   assistant: Record<string, string>;

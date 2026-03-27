@@ -6,6 +6,13 @@ import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import type { ProfileDNA } from "@/lib/dna/types";
 import type { Locale } from "@/lib/i18n";
+import { formatMessage } from "@/lib/i18n/format";
+import {
+  getEmploymentLabel,
+  getFamilyLabel,
+  getGoalLabel,
+  getLanguageLabel,
+} from "@/lib/i18n/labels";
 import { useT } from "@/lib/i18n/useT";
 import type { LiveSituation } from "@/lib/vaylo/live-situation";
 
@@ -27,8 +34,6 @@ export default function DashboardShell({
 }: Props) {
   const { t } = useT();
   const completedIds = new Set(completedActionIds);
-  // Temporary debug log for profile -> live situation mapping validation.
-  console.log("[Vaylo][FINAL LIVE STATE]", liveSituation);
   const primaryGoal = dna.priority?.[0] ?? "orientation";
   const primaryRoute = getPrimaryRoute(dna);
   const secondaryRoute = getSecondaryRoute(dna);
@@ -85,7 +90,8 @@ export default function DashboardShell({
                     : t.dashboard.priorityOrientation}
             </div>
             <div className="mt-1 text-[10px] text-slate-500">
-              {t.dashboard.level} {dna.inputs.language_level}
+              {t.dashboard.level}{" "}
+              {getLanguageLabel(dna.inputs.language_level, t)}
             </div>
           </div>
         </header>
@@ -98,6 +104,22 @@ export default function DashboardShell({
               </h2>
               <p className="mt-1 text-xs text-slate-400">
                 {t.dashboard.nextActionsDesc}
+              </p>
+              <p className="mt-1 text-[11px] text-slate-500">
+                {formatMessage(t.dashboard.actionSituationSummary, {
+                  employment: getEmploymentLabel(
+                    dna.inputs.employment_type,
+                    t
+                  ),
+                  goal: getGoalLabel(
+                    dna.inputs.goals[0] ?? "orientation",
+                    t
+                  ),
+                  language: getLanguageLabel(
+                    dna.inputs.language_level,
+                    t
+                  ),
+                })}
               </p>
             </div>
           </div>
@@ -155,11 +177,7 @@ export default function DashboardShell({
                     {t.dashboard.familyLabel}
                   </div>
                   <div className="mt-1 text-xs font-semibold">
-                    {dna.inputs.family_status === "children"
-                      ? t.dashboard.familyChildren
-                      : dna.inputs.family_status === "family"
-                        ? t.dashboard.familyPartner
-                        : t.dashboard.familySingle}
+                    {getFamilyLabel(dna.inputs.family_status, t)}
                   </div>
                 </div>
                 <div className="rounded-2xl border border-cyan-400/30 bg-cyan-900/20 px-3 py-2">
@@ -167,11 +185,7 @@ export default function DashboardShell({
                     {t.dashboard.workModeLabel}
                   </div>
                   <div className="mt-1 text-xs font-semibold">
-                    {dna.inputs.employment_type === "freelancer"
-                      ? t.dashboard.workFreelancer
-                      : dna.inputs.employment_type === "job_seeker"
-                        ? t.dashboard.workJobSeeker
-                        : t.dashboard.workEmployee}
+                    {getEmploymentLabel(dna.inputs.employment_type, t)}
                   </div>
                 </div>
                 <div className="rounded-2xl border border-indigo-400/30 bg-indigo-900/30 px-3 py-2">
@@ -179,7 +193,9 @@ export default function DashboardShell({
                     {t.dashboard.languageLabel}
                   </div>
                   <div className="mt-1 text-xs font-semibold">
-                    Deutsch {dna.inputs.language_level}
+                    {formatMessage(t.dashboard.dnaLanguageCourseLine, {
+                      level: getLanguageLabel(dna.inputs.language_level, t),
+                    })}
                   </div>
                 </div>
                 <div className="rounded-2xl border border-fuchsia-400/30 bg-fuchsia-900/20 px-3 py-2">
@@ -192,11 +208,7 @@ export default function DashboardShell({
                         key={g}
                         className="rounded-full bg-fuchsia-500/15 px-2 py-0.5 text-fuchsia-100/90 ring-1 ring-fuchsia-400/40"
                       >
-                        {g === "bureaucracy"
-                          ? t.dashboard.focusPaperwork
-                          : g === "job"
-                            ? t.dashboard.focusJob
-                            : t.dashboard.focusOrientation}
+                        {getGoalLabel(g, t)}
                       </span>
                     ))}
                   </div>
