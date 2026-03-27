@@ -21,6 +21,7 @@ import {
   getLanguageLabel,
 } from "@/lib/i18n/labels";
 import type { LiveSituation } from "@/lib/vaylo/live-situation";
+import { getActionExplanations } from "@/lib/dashboard/get-action-explanations";
 
 type Props = {
   dna: ProfileDNA;
@@ -143,7 +144,14 @@ export default function DashboardShell({
             </div>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-3">
-            {nextActions.map((action, idx) => (
+            {nextActions.map((action, idx) => {
+              const whyLines = getActionExplanations(
+                action.id,
+                dna,
+                liveSituation,
+                t
+              );
+              return (
               <article
                 key={action.id}
                 className={
@@ -161,6 +169,13 @@ export default function DashboardShell({
                   {action.title}
                 </h3>
                 <p className="mt-1 text-xs text-slate-300">{action.desc}</p>
+                {whyLines.length > 0 ? (
+                  <ul className="mt-2 list-disc space-y-1 pl-4 text-[11px] leading-snug text-slate-500">
+                    {whyLines.map((line, li) => (
+                      <li key={`${action.id}-why-${li}`}>{line}</li>
+                    ))}
+                  </ul>
+                ) : null}
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <Link
                     href={
@@ -176,7 +191,8 @@ export default function DashboardShell({
                   <MarkTaskDoneButton actionId={action.id} markDoneLabel={t.dashboard.actionMarkDone} />
                 </div>
               </article>
-            ))}
+              );
+            })}
           </div>
         </section>
 

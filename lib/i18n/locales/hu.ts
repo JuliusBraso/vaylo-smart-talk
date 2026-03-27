@@ -275,6 +275,36 @@ const hu = {
     criticalCvDesc:
       "Erős önéletrajz kell a sikeres jelentkezésekhez Németországban.",
     actionMarkDone: "Kész",
+    actionExplainBureaucracyGoal:
+      "A fókusz célod: „{goal}” — az űrlapok és hatóságok ehhez illeszkednek.",
+    actionExplainBureaucracyFreelancerSteuer:
+      "{employment} státuszban Steuer-ID nélkül a jogi és adós lépések gyakran elakadnak.",
+    actionExplainBureaucracyBank:
+      "Megerősített bankszámla nélkül a fizetések és sok kérelem nehezebb.",
+    actionExplainBureaucracyFamily:
+      "{family} mellett a családi és hatósági ügyek gyakran időérzékenyek.",
+    actionExplainHealthMissing:
+      "A profilod szerint a biztosítás még nincs egyértelműen rendezve.",
+    actionExplainHealthGoalBureaucracy:
+      "A „{goal}” célhoz gyakran tagság és igazolások tartoznak.",
+    actionExplainHealthFamily:
+      "{family} mellett a biztosítás és az igazolások különösen fontosak.",
+    actionExplainBankMissing:
+      "Helyi bankszámla kell a fizetéshez, adókhoz és a mindennaphoz.",
+    actionExplainBankFreelancer:
+      "{employment} státuszban a kifizetések és adók számlán keresztül mennek.",
+    actionExplainArbeitsagenturJobSeeker:
+      "{employment} státuszban az ügynökség a központi álláskeresési kapcsoló.",
+    actionExplainArbeitsagenturNotRegistered:
+      "A profil szerint hiányzik a regisztráció — ez nyitja a támogatást.",
+    actionExplainArbeitsagenturUrgent:
+      "Az álláskeresés sürgősnek van jelölve — ügynökség és jelentkezések először.",
+    actionExplainCvJobSeeker:
+      "{employment} státuszban az önéletrajz a fő eszköz.",
+    actionExplainCvMissing:
+      "A profil szerint még nincs megerősített önéletrajz.",
+    actionExplainCvUrgent:
+      "Sürgős álláskeresésnél érdemes gyorsan a CV-vel foglalkozni.",
     quickPhrases: "Gyors kifejezések",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Adók & számlák",

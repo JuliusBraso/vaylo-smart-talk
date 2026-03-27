@@ -276,6 +276,36 @@ const bg = {
     criticalCvDesc:
       "Силно CV е необходимо преди успешни кандидатури в Германия.",
     actionMarkDone: "Готово",
+    actionExplainBureaucracyGoal:
+      "Фокусът ти е „{goal}“ — формулярите и властите съответстват на този приоритет.",
+    actionExplainBureaucracyFreelancerSteuer:
+      "Като {employment} без Steuer-ID данъчните стъпки блокират следващите действия.",
+    actionExplainBureaucracyBank:
+      "Без потвърдена сметка изплащанията и много заявки са по-трудни.",
+    actionExplainBureaucracyFamily:
+      "С {family} семейните и административните процеси често са спешни.",
+    actionExplainHealthMissing:
+      "В профила здравното осигуряване все още не е отбелязано като изяснено.",
+    actionExplainHealthGoalBureaucracy:
+      "Към целта „{goal}“ често спадат членство и документи.",
+    actionExplainHealthFamily:
+      "С {family} осигуровката и документите са особено важни.",
+    actionExplainBankMissing:
+      "Локална сметка е нужна за заплата, данъци и ежедневие.",
+    actionExplainBankFreelancer:
+      "Като {employment} плащанията и данъците минават през налична сметка.",
+    actionExplainArbeitsagenturJobSeeker:
+      "Като {employment} агенцията е централният хъб за подкрепа.",
+    actionExplainArbeitsagenturNotRegistered:
+      "Профилът показва липса на регистрация — отключва подкрепа и помощи.",
+    actionExplainArbeitsagenturUrgent:
+      "Търсенето на работа е маркирано като спешно — агенцията и кандидатурите първо.",
+    actionExplainCvJobSeeker:
+      "Като {employment} CV е основният инструмент.",
+    actionExplainCvMissing:
+      "Профилът показва липса на потвърдено CV.",
+    actionExplainCvUrgent:
+      "При спешно търсене си струва бърза стъпка с CV.",
     quickPhrases: "Бързи фрази",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Данъци & фактури",

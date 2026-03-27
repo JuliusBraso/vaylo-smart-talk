@@ -276,6 +276,36 @@ const ro = {
     criticalCvDesc:
       "Un CV solid este necesar înainte de a aplica eficient în Germania.",
     actionMarkDone: "Gata",
+    actionExplainBureaucracyGoal:
+      "Obiectivul tău este „{goal}” — formularele și autoritățile se potrivesc acestei priorități.",
+    actionExplainBureaucracyFreelancerSteuer:
+      "Ca {employment} fără Steuer-ID, pașii fiscali blochează următorii pași.",
+    actionExplainBureaucracyBank:
+      "Fără cont confirmat, salariile și multe cereri sunt mai grele.",
+    actionExplainBureaucracyFamily:
+      "Cu {family}, procesele familiale și administrative sunt adesea urgente.",
+    actionExplainHealthMissing:
+      "În profil, asigurarea de sănătate nu este încă clarificată.",
+    actionExplainHealthGoalBureaucracy:
+      "Pentru obiectivul „{goal}” aparțin adesea membru și documente.",
+    actionExplainHealthFamily:
+      "Cu {family}, asigurarea și documentele sunt deosebit de relevante.",
+    actionExplainBankMissing:
+      "Ai nevoie de un cont local pentru salariu, taxe și viața de zi cu zi.",
+    actionExplainBankFreelancer:
+      "Ca {employment}, plățile și taxele trec printr-un cont disponibil.",
+    actionExplainArbeitsagenturJobSeeker:
+      "Ca {employment}, agenția este hub-ul central pentru căutarea unui loc de muncă.",
+    actionExplainArbeitsagenturNotRegistered:
+      "Profilul indică lipsa înregistrării — deblochează sprijinul și beneficiile.",
+    actionExplainArbeitsagenturUrgent:
+      "Căutarea unui loc de muncă este marcată ca urgentă — agenția și aplicațiile mai întâi.",
+    actionExplainCvJobSeeker:
+      "Ca {employment}, CV-ul este instrumentul principal.",
+    actionExplainCvMissing:
+      "Profilul indică lipsa unui CV confirmat.",
+    actionExplainCvUrgent:
+      "La căutare urgentă merită un pas rapid cu CV-ul.",
     quickPhrases: "Fraze rapide",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Taxe & facturi",

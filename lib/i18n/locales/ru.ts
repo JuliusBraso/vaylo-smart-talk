@@ -276,6 +276,36 @@ const ru = {
     criticalCvDesc:
       "Сильное резюме нужно до эффективных откликов в Германии.",
     actionMarkDone: "Готово",
+    actionExplainBureaucracyGoal:
+      "Твой фокус — «{goal}»: формы и ведомства соответствуют этому приоритету.",
+    actionExplainBureaucracyFreelancerSteuer:
+      "Как {employment} без Steuer-ID налоговые шаги блокируют дальнейшие действия.",
+    actionExplainBureaucracyBank:
+      "Без подтверждённого счёта выплаты и многие заявки сложнее.",
+    actionExplainBureaucracyFamily:
+      "С {family} семейные и административные процессы часто срочные.",
+    actionExplainHealthMissing:
+      "В профиле страховка ещё не отмечена как решённая.",
+    actionExplainHealthGoalBureaucracy:
+      "К цели «{goal}» часто относятся членство и документы.",
+    actionExplainHealthFamily:
+      "С {family} страховка и документы особенно важны.",
+    actionExplainBankMissing:
+      "Нужен локальный счёт для зарплаты, налогов и быта.",
+    actionExplainBankFreelancer:
+      "Как {employment} платежи и налоги идут через доступный счёт.",
+    actionExplainArbeitsagenturJobSeeker:
+      "Как {employment} агентство — центр поддержки по поиску работы.",
+    actionExplainArbeitsagenturNotRegistered:
+      "В профиле нет регистрации — открывает поддержку и выплаты.",
+    actionExplainArbeitsagenturUrgent:
+      "Поиск работы помечен как срочный — сначала агентство и заявки.",
+    actionExplainCvJobSeeker:
+      "Как {employment} резюме — основной инструмент.",
+    actionExplainCvMissing:
+      "В профиле нет подтверждённого резюме.",
+    actionExplainCvUrgent:
+      "При срочном поиске стоит быстро обновить CV.",
     quickPhrases: "Быстрые фразы",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Налоги & счета",

@@ -276,6 +276,36 @@ const uk = {
     criticalCvDesc:
       "Сильне CV потрібне перед ефективними відгуками в Німеччині.",
     actionMarkDone: "Готово",
+    actionExplainBureaucracyGoal:
+      "Твій фокус — „{goal}“: форми та органи відповідають цьому пріоритету.",
+    actionExplainBureaucracyFreelancerSteuer:
+      "Як {employment} без Steuer-ID податкові кроки блокують наступні дії.",
+    actionExplainBureaucracyBank:
+      "Без підтвердженого рахунку виплати та багато заявок складніші.",
+    actionExplainBureaucracyFamily:
+      "З {family} сімейні та адміністративні процеси часто термінові.",
+    actionExplainHealthMissing:
+      "У профілі страхування ще не позначене як вирішене.",
+    actionExplainHealthGoalBureaucracy:
+      "До цілі „{goal}“ часто належать членство та документи.",
+    actionExplainHealthFamily:
+      "З {family} страхування та документи особливо важливі.",
+    actionExplainBankMissing:
+      "Локальний рахунок потрібен для зарплати, податків і побуту.",
+    actionExplainBankFreelancer:
+      "Як {employment} виплати та податки йдуть через доступний рахунок.",
+    actionExplainArbeitsagenturJobSeeker:
+      "Як {employment} агентство — центр підтримки з пошуку роботи.",
+    actionExplainArbeitsagenturNotRegistered:
+      "Профіль вказує на відсутність реєстрації — відкриває підтримку та виплати.",
+    actionExplainArbeitsagenturUrgent:
+      "Пошук роботи позначено як терміновий — спочатку агентство та заявки.",
+    actionExplainCvJobSeeker:
+      "Як {employment} резюме — головний інструмент.",
+    actionExplainCvMissing:
+      "У профілі немає підтвердженого резюме.",
+    actionExplainCvUrgent:
+      "При терміновому пошуку варто швидко оновити CV.",
     quickPhrases: "Швидкі фрази",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Податки & рахунки",

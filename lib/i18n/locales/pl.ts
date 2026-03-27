@@ -275,6 +275,36 @@ const pl = {
     criticalCvDesc:
       "Silne CV jest potrzebne przed skutecznymi aplikacjami w Niemczech.",
     actionMarkDone: "Gotowe",
+    actionExplainBureaucracyGoal:
+      "Twój cel to „{goal}” — formularze i urzędy pasują do tego priorytetu.",
+    actionExplainBureaucracyFreelancerSteuer:
+      "Jako {employment} bez Steuer-ID tematy podatkowe blokują kolejne kroki.",
+    actionExplainBureaucracyBank:
+      "Bez potwierdzonego konta wypłaty i wiele wniosków są trudniejsze.",
+    actionExplainBureaucracyFamily:
+      "Przy {family} sprawy rodzinne i urzędowe są często pilne.",
+    actionExplainHealthMissing:
+      "W profilu ubezpieczenie zdrowotne nie jest jeszcze potwierdzone.",
+    actionExplainHealthGoalBureaucracy:
+      "Do celu „{goal}” często należą członkostwo i dokumenty.",
+    actionExplainHealthFamily:
+      "Przy {family} ubezpieczenie i dokumenty są szczególnie ważne.",
+    actionExplainBankMissing:
+      "Lokalne konto jest potrzebne do wypłat, podatków i codzienności.",
+    actionExplainBankFreelancer:
+      "Jako {employment} płatności i podatki idą przez dostępne konto.",
+    actionExplainArbeitsagenturJobSeeker:
+      "Jako {employment} agencja jest głównym punktem wsparcia.",
+    actionExplainArbeitsagenturNotRegistered:
+      "W profilu brak rejestracji — odblokowuje wsparcie i świadczenia.",
+    actionExplainArbeitsagenturUrgent:
+      "Poszukiwanie pracy jest oznaczone jako pilne — agencja i aplikacje najpierw.",
+    actionExplainCvJobSeeker:
+      "Jako {employment} CV to główne narzędzie aplikacji.",
+    actionExplainCvMissing:
+      "W profilu brak potwierdzonego CV.",
+    actionExplainCvUrgent:
+      "Przy pilnym poszukiwaniu pracy szybki krok z CV się opłaca.",
     quickPhrases: "Szybkie frazy",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Podatki & faktury",

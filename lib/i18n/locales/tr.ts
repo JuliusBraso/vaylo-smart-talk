@@ -276,6 +276,36 @@ const tr = {
     criticalCvDesc:
       "Güçlü bir CV, Almanya'da başvurulardan önce gereklidir.",
     actionMarkDone: "Tamam",
+    actionExplainBureaucracyGoal:
+      "Odak hedefin „{goal}“ — formlar ve kurumlar bu önceliğe uyar.",
+    actionExplainBureaucracyFreelancerSteuer:
+      "{employment} olarak Steuer-ID olmadan vergi adımları ilerlemeyi zorlaştırır.",
+    actionExplainBureaucracyBank:
+      "Onaylı hesap olmadan ödemeler ve birçok başvuru daha zor.",
+    actionExplainBureaucracyFamily:
+      "{family} ile aile ve idari süreçler sık sık zamana duyarlıdır.",
+    actionExplainHealthMissing:
+      "Profilde sağlık sigortası henüz net değil.",
+    actionExplainHealthGoalBureaucracy:
+      "„{goal}“ hedefine üyelik ve belgeler sık sık eşlik eder.",
+    actionExplainHealthFamily:
+      "{family} ile sigorta ve belgeler özellikle önemlidir.",
+    actionExplainBankMissing:
+      "Maaş, vergi ve günlük hayat için yerel hesap gerekir.",
+    actionExplainBankFreelancer:
+      "{employment} olarak ödemeler ve vergiler erişilebilir hesaptan geçer.",
+    actionExplainArbeitsagenturJobSeeker:
+      "{employment} olarak ajans merkezi destek noktasıdır.",
+    actionExplainArbeitsagenturNotRegistered:
+      "Profilde kayıt eksik — destek ve hakları açar.",
+    actionExplainArbeitsagenturUrgent:
+      "İş arama acil olarak işaretlendi — önce ajans ve başvurular.",
+    actionExplainCvJobSeeker:
+      "{employment} olarak CV ana araçtır.",
+    actionExplainCvMissing:
+      "Profilde onaylı CV eksik.",
+    actionExplainCvUrgent:
+      "Acil iş aramada hızlı bir CV adımı mantıklıdır.",
     quickPhrases: "Hızlı cümleler",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Vergi & faturalar",

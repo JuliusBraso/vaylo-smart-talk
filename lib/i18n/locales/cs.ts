@@ -274,6 +274,36 @@ const cs = {
     criticalCvDesc:
       "Silný životopis potřebuješ před úspěšnými žádostmi v Německu.",
     actionMarkDone: "Hotovo",
+    actionExplainBureaucracyGoal:
+      "Tvůj cíl je „{goal}“ — formuláře a úřady tomu odpovídají.",
+    actionExplainBureaucracyFreelancerSteuer:
+      "Jako {employment} bez Steuer-ID blokují daňové kroky další postup.",
+    actionExplainBureaucracyBank:
+      "Bez potvrzeného účtu jsou výplaty a žádosti složitější.",
+    actionExplainBureaucracyFamily:
+      "U {family} jsou rodinné a úřední procesy často časově citlivé.",
+    actionExplainHealthMissing:
+      "V profilu není zdravotní pojištění označeno jako vyřešené.",
+    actionExplainHealthGoalBureaucracy:
+      "K cíli „{goal}“ často patří členství a doklady.",
+    actionExplainHealthFamily:
+      "U {family} jsou pojištění a doklady obzvlášť důležité.",
+    actionExplainBankMissing:
+      "Místní účet potřebuješ na plat, daně a běžný život.",
+    actionExplainBankFreelancer:
+      "Jako {employment} probíhají platby a daně přes dostupný účet.",
+    actionExplainArbeitsagenturJobSeeker:
+      "Jako {employment} je agentura hlavním místem podpory.",
+    actionExplainArbeitsagenturNotRegistered:
+      "V profilu chybí registrace — odemyká podporu a dávky.",
+    actionExplainArbeitsagenturUrgent:
+      "Hledání práce je označeno jako naléhavé — agentura a žádosti první.",
+    actionExplainCvJobSeeker:
+      "Jako {employment} je životopis hlavní nástroj.",
+    actionExplainCvMissing:
+      "V profilu chybí potvrzený životopis.",
+    actionExplainCvUrgent:
+      "Při naléhavém hledání práce se vyplatí rychlý krok s CV.",
     quickPhrases: "Rychlé fráze",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Daně & faktury",

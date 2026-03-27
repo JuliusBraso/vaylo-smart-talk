@@ -257,6 +257,36 @@ const sk = {
     criticalCvDesc:
       "Silný životopis potrebuješ pred efektívnymi žiadosťami v Nemecku.",
     actionMarkDone: "Hotovo",
+    actionExplainBureaucracyGoal:
+      "Tvoj cieľ je „{goal}“ — formuláre a úrady zodpovedajú tejto priorite.",
+    actionExplainBureaucracyFreelancerSteuer:
+      "Ako {employment} bez Steuer-ID blokujú daňové témy ďalšie kroky.",
+    actionExplainBureaucracyBank:
+      "Bez potvrdeného účtu sú platby a mnohé žiadosti ťažšie.",
+    actionExplainBureaucracyFamily:
+      "S {family} sú rodinné a úradné procesy často časovo citlivé.",
+    actionExplainHealthMissing:
+      "V profile ešte nie je potvrdené zdravotné poistenie.",
+    actionExplainHealthGoalBureaucracy:
+      "K cieľu „{goal}“ často patrí členstvo a doklady.",
+    actionExplainHealthFamily:
+      "S {family} sú poistenie a doklady obzvlášť dôležité.",
+    actionExplainBankMissing:
+      "Lokálny účet potrebuješ na plat, dane a bežný život.",
+    actionExplainBankFreelancer:
+      "Ako {employment} prebiehajú platby a dane cez dostupný účet.",
+    actionExplainArbeitsagenturJobSeeker:
+      "Ako {employment} je agentúra centrom podpory pri hľadaní práce.",
+    actionExplainArbeitsagenturNotRegistered:
+      "V profile chýba registrácia — odomyká podporu a dávky.",
+    actionExplainArbeitsagenturUrgent:
+      "Hľadanie práce je označené ako naliehavé — agentúra a žiadosti prvé.",
+    actionExplainCvJobSeeker:
+      "Ako {employment} je životopis tvoj hlavný nástroj.",
+    actionExplainCvMissing:
+      "V profile chýba potvrdený životopis.",
+    actionExplainCvUrgent:
+      "Pri naliehavom hľadaní práce sa oplatí rýchly krok s CV.",
     editProfile: "Upraviť profil",
     editProfileTitle: "Upraviť profil",
     editProfileDesc: "Aktualizuj svoju aktuálnu situáciu. Vaylo sa podľa toho prispôsobí.",

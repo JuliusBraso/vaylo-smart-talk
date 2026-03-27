@@ -275,6 +275,36 @@ const de = {
     criticalCvDesc:
       "Ein starker Lebenslauf ist Voraussetzung für erfolgreiche Bewerbungen in Deutschland.",
     actionMarkDone: "Erledigt",
+    actionExplainBureaucracyGoal:
+      "Dein Fokusziel ist „{goal}“ — Formulare und Behörden passen zu dieser Priorität.",
+    actionExplainBureaucracyFreelancerSteuer:
+      "Als {employment} ohne Steuer-ID blockieren Steuer- und Abrechnungsthemen viele nächste Schritte.",
+    actionExplainBureaucracyBank:
+      "Ohne bestätigtes Bankkonto sind Gehaltszahlungen und viele Anträge schwieriger.",
+    actionExplainBureaucracyFamily:
+      "Mit {family} sind Behörden- und Familienprozesse oft zeitkritisch.",
+    actionExplainHealthMissing:
+      "In deinem Profil ist die Krankenversicherung noch nicht als geklärt markiert.",
+    actionExplainHealthGoalBureaucracy:
+      "Zu deinem Ziel „{goal}“ gehören oft Mitgliedschaft und Nachweise.",
+    actionExplainHealthFamily:
+      "Mit {family} sind Versicherung und Nachweise besonders relevant.",
+    actionExplainBankMissing:
+      "Ein lokales Bankkonto brauchst du für Gehalt, Steuern und den Alltag.",
+    actionExplainBankFreelancer:
+      "Als {employment} laufen Zahlungen und Steuern über ein erreichbares Konto.",
+    actionExplainArbeitsagenturJobSeeker:
+      "Als {employment} ist die Agentur der zentrale Anlaufpunkt für Jobsuche und Leistungen.",
+    actionExplainArbeitsagenturNotRegistered:
+      "Laut Profil fehlt noch die Registrierung — sie schaltet Betreuung und Leistungen frei.",
+    actionExplainArbeitsagenturUrgent:
+      "Deine Jobsuche ist als dringend markiert — die Agentur und Bewerbungen zuerst.",
+    actionExplainCvJobSeeker:
+      "Als {employment} ist der Lebenslauf dein wichtigstes Bewerbungswerkzeug.",
+    actionExplainCvMissing:
+      "Laut Profil fehlt noch ein bestätigter Lebenslauf.",
+    actionExplainCvUrgent:
+      "Bei dringender Jobsuche lohnt sich ein schneller CV-Schritt.",
     editProfile: "Profil bearbeiten",
     editProfileTitle: "Profil bearbeiten",
     editProfileDesc: "Aktualisiere deine aktuelle Situation. Wir passen Vaylo danach an.",
