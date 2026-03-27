@@ -1,10 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { formatMessage } from "@/lib/i18n/format";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import type { Dict } from "@/lib/i18n";
-import { getLanguageLabel } from "@/lib/i18n/labels";
+import {
+  getEmploymentLabel,
+  getFamilyLabel,
+  getGoalLabel,
+  getLanguageLabel,
+} from "@/lib/i18n/labels";
 import type {
   FamilyStatus,
   EmploymentType,
@@ -81,6 +87,24 @@ export default function OnboardingFlow({ t }: Props) {
   const totalSteps = steps.length;
   const progress = ((safeIndex + 1) / totalSteps) * 100;
 
+  const stepText = useMemo(
+    () =>
+      formatMessage(t.onboarding.step, {
+        step: String(safeIndex + 1),
+        total: String(totalSteps),
+      }),
+    [t, safeIndex, totalSteps]
+  );
+
+  const familyOptions = useMemo(
+    () =>
+      (["single", "family", "children"] as const).map((value) => ({
+        value,
+        label: getFamilyLabel(value, t),
+      })),
+    [t]
+  );
+
   const canSubmit =
     familyStatus && employmentType && languageLevel && goals.length > 0 && !saving;
 
@@ -154,15 +178,6 @@ export default function OnboardingFlow({ t }: Props) {
   }, []);
 
   if (!mounted) return null;
-
-  const stepText = t.onboarding.step
-    .replace("{step}", String(safeIndex + 1))
-    .replace("{total}", String(totalSteps));
-  const familyOptions: { value: FamilyStatus; label: string }[] = [
-    { value: "single", label: t.onboarding.optionSingle },
-    { value: "family", label: t.onboarding.optionCouple },
-    { value: "children", label: t.onboarding.optionFamilyKids },
-  ];
 
   return (
     <main className="min-h-screen bg-slate-950/95 text-slate-50">
@@ -316,7 +331,7 @@ export default function OnboardingFlow({ t }: Props) {
                     >
                       <div className="pr-8">
                         <div className="text-base font-semibold text-white">
-                          {t.onboarding.employmentEmployee}
+                          {getEmploymentLabel("employee", t)}
                         </div>
                       </div>
                       {employmentType === "employee" ? (
@@ -336,7 +351,7 @@ export default function OnboardingFlow({ t }: Props) {
                     >
                       <div className="pr-8">
                         <div className="text-base font-semibold text-white">
-                          {t.onboarding.employmentFreelancer}
+                          {getEmploymentLabel("freelancer", t)}
                         </div>
                       </div>
                       {employmentType === "freelancer" ? (
@@ -356,7 +371,7 @@ export default function OnboardingFlow({ t }: Props) {
                     >
                       <div className="pr-8">
                         <div className="text-base font-semibold text-white">
-                          {t.onboarding.employmentJobSeeker}
+                          {getEmploymentLabel("job_seeker", t)}
                         </div>
                       </div>
                       {employmentType === "job_seeker" ? (
@@ -585,7 +600,7 @@ export default function OnboardingFlow({ t }: Props) {
                     >
                       <div className="pr-8">
                         <div className="text-base font-semibold text-white">
-                          {t.onboarding.goalBureaucracy}
+                          {getGoalLabel("bureaucracy", t)}
                         </div>
                       </div>
                       {goals.includes("bureaucracy") ? (
@@ -605,7 +620,7 @@ export default function OnboardingFlow({ t }: Props) {
                     >
                       <div className="pr-8">
                         <div className="text-base font-semibold text-white">
-                          {t.onboarding.goalJob}
+                          {getGoalLabel("job", t)}
                         </div>
                       </div>
                       {goals.includes("job") ? (
@@ -625,7 +640,7 @@ export default function OnboardingFlow({ t }: Props) {
                     >
                       <div className="pr-8">
                         <div className="text-base font-semibold text-white">
-                          {t.onboarding.goalOrientation}
+                          {getGoalLabel("orientation", t)}
                         </div>
                       </div>
                       {goals.includes("orientation") ? (

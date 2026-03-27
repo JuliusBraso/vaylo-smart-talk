@@ -4,7 +4,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
-import { getLanguageLabel } from "@/lib/i18n/labels";
+import { formatMessage } from "@/lib/i18n/format";
+import {
+  getEmploymentLabel,
+  getFamilyLabel,
+  getGoalLabel,
+  getLanguageLabel,
+} from "@/lib/i18n/labels";
 import { useT } from "@/lib/i18n/useT";
 import type {
   EmploymentType,
@@ -98,16 +104,21 @@ export default function ProfileEditor() {
   const totalSteps = steps.length;
   const progress = ((safeIndex + 1) / totalSteps) * 100;
 
+  const stepText = useMemo(
+    () =>
+      formatMessage(t.onboarding.step, {
+        step: String(safeIndex + 1),
+        total: String(totalSteps),
+      }),
+    [t, safeIndex, totalSteps]
+  );
+
   const canSave =
     !!familyStatus &&
     !!employmentType &&
     !!languageLevel &&
     goals.length > 0 &&
     !saving;
-
-  const stepText = t.onboarding.step
-    .replace("{step}", String(safeIndex + 1))
-    .replace("{total}", String(totalSteps));
 
   const toggleGoal = (g: Goal) => {
     setGoals((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]));
@@ -188,12 +199,11 @@ export default function ProfileEditor() {
                     </h2>
                     <div className="mt-4 grid gap-4 max-w-xl">
                       {(
-                        [
-                          { value: "single", label: t.onboarding.optionSingle },
-                          { value: "family", label: t.onboarding.optionCouple },
-                          { value: "children", label: t.onboarding.optionFamilyKids },
-                        ] as const
-                      ).map((o) => {
+                        ["single", "family", "children"] as const
+                      ).map((value) => ({
+                        value,
+                        label: getFamilyLabel(value, t),
+                      })).map((o) => {
                         const active = familyStatus === o.value;
                         return (
                           <button
@@ -248,12 +258,11 @@ export default function ProfileEditor() {
                     </div>
                     <div className="mt-4 grid gap-4 max-w-xl">
                       {(
-                        [
-                          { value: "employee", label: t.onboarding.employmentEmployee },
-                          { value: "freelancer", label: t.onboarding.employmentFreelancer },
-                          { value: "job_seeker", label: t.onboarding.employmentJobSeeker },
-                        ] as const
-                      ).map((o) => {
+                        ["employee", "freelancer", "job_seeker"] as const
+                      ).map((value) => ({
+                        value,
+                        label: getEmploymentLabel(value, t),
+                      })).map((o) => {
                         const active = employmentType === o.value;
                         return (
                           <button
@@ -484,12 +493,11 @@ export default function ProfileEditor() {
                     </div>
                     <div className="mt-4 grid gap-4 max-w-xl">
                       {(
-                        [
-                          { value: "bureaucracy", label: t.onboarding.goalBureaucracy },
-                          { value: "job", label: t.onboarding.goalJob },
-                          { value: "orientation", label: t.onboarding.goalOrientation },
-                        ] as const
-                      ).map((o) => {
+                        ["bureaucracy", "job", "orientation"] as const
+                      ).map((value) => ({
+                        value,
+                        label: getGoalLabel(value, t),
+                      })).map((o) => {
                         const active = goals.includes(o.value);
                         return (
                           <button

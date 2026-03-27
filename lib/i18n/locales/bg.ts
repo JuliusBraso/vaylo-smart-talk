@@ -1,6 +1,7 @@
 const bg = {
   app: { name: "Vaylo", tagline: "AI асистент за бюрокрация и живот в Германия", languageName: "Български" },
   common: {
+    unknown: "Неизвестно",
     employment: {
       freelancer: "Фрийлансер / самонает",
       employee: "На трудов договор",

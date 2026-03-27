@@ -1,6 +1,7 @@
 const tr = {
   app: { name: "Vaylo", tagline: "Almanya’da bürokrasi ve yaşam için yapay zeka asistanı", languageName: "Türkçe" },
   common: {
+    unknown: "Bilinmiyor",
     employment: {
       freelancer: "Serbest meslek / kendi işi",
       employee: "Çalışan",

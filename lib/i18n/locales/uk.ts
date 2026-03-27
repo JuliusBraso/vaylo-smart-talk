@@ -1,6 +1,7 @@
 const uk = {
   app: { name: "Vaylo", tagline: "AI-асистент для бюрократії та життя в Німеччині", languageName: "Українська" },
   common: {
+    unknown: "Невідомо",
     employment: {
       freelancer: "Фрілансер / самозайнятий",
       employee: "Працівник за наймом",

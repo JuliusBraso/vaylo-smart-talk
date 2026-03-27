@@ -1,6 +1,7 @@
 const hu = {
   app: { name: "Vaylo", tagline: "AI asszisztens a németországi bürokráciához és élethez", languageName: "Magyar" },
   common: {
+    unknown: "Ismeretlen",
     employment: {
       freelancer: "Freelancer / egyéni vállalkozó",
       employee: "Alkalmazott",

@@ -22,6 +22,23 @@ type Props = {
  * Renderer-only dashboard boundary: forwards DNA, live state, locale, and SSR dictionary to the shell.
  * Enum labels and `formatMessage` interpolation live in `DashboardShell` + `@/lib/i18n/labels` / `format`.
  */
-export default function DashboardClientWrapper(props: Props) {
-  return <DashboardShell {...props} />;
+export default function DashboardClientWrapper({
+  dna,
+  locale,
+  liveSituation,
+  completedActionIds,
+  t,
+  children,
+}: Props) {
+  return (
+    <DashboardShell
+      dna={dna}
+      locale={locale}
+      liveSituation={liveSituation}
+      completedActionIds={completedActionIds}
+      t={t}
+    >
+      {children}
+    </DashboardShell>
+  );
 }

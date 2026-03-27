@@ -1,9 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
+import {
+  Children,
+  cloneElement,
+  isValidElement,
+  useCallback,
+  useState,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
 import type { ProfileDNA } from "@/lib/dna/types";
 import type { Dict, Locale } from "@/lib/i18n";
 import { formatMessage } from "@/lib/i18n/format";
@@ -25,6 +32,17 @@ type Props = {
   t: Dict;
   children: ReactNode;
 };
+
+/**
+ * Re-applies `t` to each dashboard module child so the dict is always present after the
+ * dynamic client boundary (avoids undefined `t` on FreelancerModule / FamilyModule / JobSeekerModule).
+ */
+function injectModuleDict(children: ReactNode, dict: Dict): ReactNode {
+  return Children.map(children, (child) => {
+    if (!isValidElement(child)) return child;
+    return cloneElement(child as ReactElement<{ t: Dict }>, { t: dict });
+  });
+}
 
 export default function DashboardShell({
   dna,
@@ -233,7 +251,9 @@ export default function DashboardShell({
           </aside>
         </section>
 
-        <section className="grid gap-6 md:grid-cols-3">{children}</section>
+        <section className="grid gap-6 md:grid-cols-3">
+          {injectModuleDict(children, t)}
+        </section>
       </div>
     </main>
   );

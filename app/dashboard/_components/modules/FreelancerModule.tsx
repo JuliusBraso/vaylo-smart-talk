@@ -5,13 +5,13 @@ import type { Dict } from "@/lib/i18n";
 import { getContentByDNA } from "@/lib/vaylo/content-engine";
 import PhraseChips from "@/app/dashboard/_components/PhraseChips";
 
-type Props = {
+export type FreelancerModuleProps = {
   dna: ProfileDNA;
-  /** Server-resolved dictionary (same `getDict(locale)` as dashboard page). */
+  /** Server-resolved dictionary from `DashboardPage` / `DashboardShell` — never created on the client. */
   t: Dict;
 };
 
-export default function FreelancerModule({ dna, t }: Props) {
+export default function FreelancerModule({ dna, t }: FreelancerModuleProps) {
   const score = dna.scores?.freelancer_focus ?? dna.scores?.JP ?? 0;
   const content = getContentByDNA(dna);
   const phrases = [...content.freelancer, ...content.bureaucracy];

@@ -1,6 +1,7 @@
 const cs = {
   app: { name: "Vaylo", tagline: "AI asistent pro byrokracii a život v Německu", languageName: "Čeština" },
   common: {
+    unknown: "Neznámé",
     employment: {
       freelancer: "Freelancer / OSVČ",
       employee: "Zaměstnanec",

@@ -5,6 +5,7 @@ const de = {
     languageName: "Deutsch",
   },
   common: {
+    unknown: "Unbekannt",
     employment: {
       freelancer: "Freelancer / Selbstständig",
       employee: "Angestellt",

@@ -27,6 +27,8 @@ export const LOCALE_LABELS: Record<Locale, string> = {
 
 /** Centralized labels for DB-backed enums (see lib/i18n/labels.ts). */
 export type CommonLabels = {
+  /** Shown when a stored enum value has no mapping (never raw DB strings). */
+  unknown: string;
   employment: {
     freelancer: string;
     employee: string;

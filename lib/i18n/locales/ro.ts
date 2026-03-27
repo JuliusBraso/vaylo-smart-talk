@@ -1,6 +1,7 @@
 const ro = {
   app: { name: "Vaylo", tagline: "Asistent AI pentru birocrație și viața în Germania", languageName: "Română" },
   common: {
+    unknown: "Necunoscut",
     employment: {
       freelancer: "Freelancer / PFA",
       employee: "Angajat",

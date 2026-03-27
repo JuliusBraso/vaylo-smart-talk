@@ -1,6 +1,7 @@
 const sk = {
   app: { name: "Vaylo", tagline: "AI asistent pre byrokraciu a život v Nemecku", languageName: "Slovenčina" },
   common: {
+    unknown: "Neznáme",
     employment: {
       freelancer: "Freelancer / živnosť",
       employee: "Zamestnanec",

@@ -1,6 +1,7 @@
 const en = {
   app: { name: "Vaylo", tagline: "AI assistant for bureaucracy and life in Germany", languageName: "English" },
   common: {
+    unknown: "Unknown",
     employment: {
       freelancer: "Freelancer / self-employed",
       employee: "Employee",
