@@ -183,6 +183,24 @@ const ro = {
     nextActionsDesc: "Asistentul tău prioritizează ce ar trebui să faci în continuare.",
     highestPriorityLabel: "Prioritate maximă",
     nextLabel: "Următorul pas",
+    actionArbeitsagenturTitle: "Înregistrează-te la Arbeitsagentur",
+    actionArbeitsagenturDesc:
+      "Finalizează înregistrarea ca să pornească suportul pentru job și beneficiile.",
+    actionCvTitle: "Pregătește CV-ul german (Lebenslauf)",
+    actionCvDesc:
+      "Ajustează structura, cuvintele-cheie și potrivirea pe rol înainte de următoarele aplicări.",
+    actionFamilyChecklistTitle: "Verifică lista de familie",
+    actionFamilyChecklistDesc:
+      "Prioritizează Kindergeld și documentele legate de școală pentru luna aceasta.",
+    actionHealthStatusTitle: "Verifică statusul asigurării de sănătate",
+    actionHealthStatusDesc:
+      "Verifică acoperirea și documentele lipsă pentru a evita întârzierile.",
+    actionAdminPriorityTitle: "Rezolvă cea mai importantă sarcină administrativă",
+    actionAdminPriorityDesc:
+      "Finalizează azi un formular esențial ca să avansezi mai rapid în celelalte module.",
+    actionCtaStart: "Start",
+    actionCtaOpen: "Deschide",
+    actionCtaCheck: "Verifică",
     quickPhrases: "Fraze rapide",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Taxe & facturi",

@@ -187,6 +187,24 @@ const sk = {
     nextActionsDesc: "Tvoj asistent priorizuje, čo máš spraviť ako ďalšie.",
     highestPriorityLabel: "Najvyššia priorita",
     nextLabel: "Ďalší krok",
+    actionArbeitsagenturTitle: "Zaregistruj sa na Arbeitsagentur",
+    actionArbeitsagenturDesc:
+      "Dokonči registráciu, aby sa mohli spustiť podpora pri hľadaní práce a dávky.",
+    actionCvTitle: "Priprav nemecký životopis",
+    actionCvDesc:
+      "Uprav štruktúru, kľúčové slová a fit na rolu pred ďalšími žiadosťami.",
+    actionFamilyChecklistTitle: "Skontroluj rodinný checklist",
+    actionFamilyChecklistDesc:
+      "Uprednostni Kindergeld a školské dokumenty pre tento mesiac.",
+    actionHealthStatusTitle: "Skontroluj stav zdravotného poistenia",
+    actionHealthStatusDesc:
+      "Over krytie a chýbajúce dokumenty, aby si predišiel zdržaniam.",
+    actionAdminPriorityTitle: "Vybav najdôležitejšiu úradnú úlohu",
+    actionAdminPriorityDesc:
+      "Dokonči dnes jeden kľúčový formulár a zrýchli postup v ďalších moduloch.",
+    actionCtaStart: "Začať",
+    actionCtaOpen: "Otvoriť",
+    actionCtaCheck: "Skontrolovať",
     quickPhrases: "Rýchle frázy",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Dane & faktúry",

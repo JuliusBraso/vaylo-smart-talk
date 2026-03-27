@@ -205,6 +205,24 @@ const de = {
     nextActionsDesc: "Dein Assistant priorisiert, was du als Nächstes tun solltest.",
     highestPriorityLabel: "Höchste Priorität",
     nextLabel: "Nächster Schritt",
+    actionArbeitsagenturTitle: "Bei der Arbeitsagentur registrieren",
+    actionArbeitsagenturDesc:
+      "Schließe die Registrierung ab, damit Jobsuche und Leistungen starten können.",
+    actionCvTitle: "Deutschen Lebenslauf vorbereiten",
+    actionCvDesc:
+      "Optimiere Struktur, Keywords und Rollenfit vor den nächsten Bewerbungen.",
+    actionFamilyChecklistTitle: "Familien-Checkliste prüfen",
+    actionFamilyChecklistDesc:
+      "Priorisiere Kindergeld- und schulbezogene Unterlagen für diesen Monat.",
+    actionHealthStatusTitle: "Krankenversicherungsstatus prüfen",
+    actionHealthStatusDesc:
+      "Prüfe Versicherungsschutz und fehlende Unterlagen, um Verzögerungen zu vermeiden.",
+    actionAdminPriorityTitle: "Wichtigste Behördenaufgabe erledigen",
+    actionAdminPriorityDesc:
+      "Erledige heute ein zentrales Formular, um schneller in anderen Modulen voranzukommen.",
+    actionCtaStart: "Starten",
+    actionCtaOpen: "Öffnen",
+    actionCtaCheck: "Prüfen",
     quickPhrases: "Schnelle Phrasen",
     freelancerTitle: "Freelancer-Cockpit",
     freelancerBadge: "Steuern & Rechnungen",

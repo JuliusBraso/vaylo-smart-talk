@@ -183,6 +183,24 @@ const bg = {
     nextActionsDesc: "Твоят асистент приоритизира какво да направиш следващо.",
     highestPriorityLabel: "Най-висок приоритет",
     nextLabel: "Следваща стъпка",
+    actionArbeitsagenturTitle: "Регистрирай се в Arbeitsagentur",
+    actionArbeitsagenturDesc:
+      "Завърши регистрацията, за да започнат подкрепата за работа и ползите.",
+    actionCvTitle: "Подготви немско CV (Lebenslauf)",
+    actionCvDesc:
+      "Оптимизирай структурата, ключовите думи и съответствието с ролята преди следващите кандидатури.",
+    actionFamilyChecklistTitle: "Прегледай семейния checklist",
+    actionFamilyChecklistDesc:
+      "Приоритизирай Kindergeld и документите за училище за този месец.",
+    actionHealthStatusTitle: "Провери статуса на здравната осигуровка",
+    actionHealthStatusDesc:
+      "Провери покритието и липсващите документи, за да избегнеш забавяния.",
+    actionAdminPriorityTitle: "Реши най-важната административна задача",
+    actionAdminPriorityDesc:
+      "Попълни днес един ключов формуляр, за да ускориш напредъка в останалите модули.",
+    actionCtaStart: "Старт",
+    actionCtaOpen: "Отвори",
+    actionCtaCheck: "Провери",
     quickPhrases: "Бързи фрази",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Данъци & фактури",

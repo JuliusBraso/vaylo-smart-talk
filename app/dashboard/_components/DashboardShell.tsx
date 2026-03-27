@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { ReactNode } from "react";
 import type { ProfileDNA } from "@/lib/dna/types";
 import type { Locale } from "@/lib/i18n";
@@ -14,7 +15,9 @@ type Props = {
 export default function DashboardShell({ dna, locale, children }: Props) {
   const { t } = useT();
   const primaryGoal = dna.priority?.[0] ?? "orientation";
-  const nextActions = buildNextActions(dna);
+  const nextActions = buildNextActions(dna, t);
+  const primaryRoute = getPrimaryRoute(dna);
+  const secondaryRoute = getSecondaryRoute(dna);
 
   return (
     <main
@@ -83,12 +86,12 @@ export default function DashboardShell({ dna, locale, children }: Props) {
                   {action.title}
                 </h3>
                 <p className="mt-1 text-xs text-slate-300">{action.desc}</p>
-                <a
-                  href={action.href}
+                <Link
+                  href={idx === 0 ? primaryRoute : secondaryRoute}
                   className="mt-3 inline-flex rounded-lg border border-cyan-400/45 bg-cyan-500/20 px-3 py-1.5 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-500/30"
                 >
                   {action.cta}
-                </a>
+                </Link>
               </article>
             ))}
           </div>
@@ -186,10 +189,12 @@ type NextAction = {
   title: string;
   desc: string;
   cta: string;
-  href: string;
 };
 
-function buildNextActions(dna: ProfileDNA): NextAction[] {
+function buildNextActions(
+  dna: ProfileDNA,
+  t: ReturnType<typeof useT>["t"]
+): NextAction[] {
   const actions: NextAction[] = [];
   const goals = dna.inputs.goals ?? [];
 
@@ -197,17 +202,15 @@ function buildNextActions(dna: ProfileDNA): NextAction[] {
     actions.push(
       {
         id: "arbeitsagentur",
-        title: "Register at Arbeitsagentur",
-        desc: "Complete your registration so job search support and benefits can start.",
-        cta: "Start",
-        href: "/jobs",
+        title: t.dashboard.actionArbeitsagenturTitle,
+        desc: t.dashboard.actionArbeitsagenturDesc,
+        cta: t.dashboard.actionCtaStart,
       },
       {
         id: "cv",
-        title: "Prepare German CV (Lebenslauf)",
-        desc: "Adjust format, keywords, and role fit before your next applications.",
-        cta: "Open",
-        href: "/jobs",
+        title: t.dashboard.actionCvTitle,
+        desc: t.dashboard.actionCvDesc,
+        cta: t.dashboard.actionCtaOpen,
       }
     );
   }
@@ -215,31 +218,47 @@ function buildNextActions(dna: ProfileDNA): NextAction[] {
   if (dna.inputs.family_status === "children") {
     actions.push({
       id: "family-benefits",
-      title: "Review family benefit checklist",
-      desc: "Prioritize Kindergeld and school-related paperwork for this month.",
-      cta: "Open",
-      href: "/guides",
+      title: t.dashboard.actionFamilyChecklistTitle,
+      desc: t.dashboard.actionFamilyChecklistDesc,
+      cta: t.dashboard.actionCtaOpen,
     });
   }
 
   actions.push({
     id: "health-insurance",
-    title: "Check health insurance status",
-    desc: "Verify coverage and missing paperwork to avoid delays.",
-    cta: "Check",
-    href: "/guides",
+    title: t.dashboard.actionHealthStatusTitle,
+    desc: t.dashboard.actionHealthStatusDesc,
+    cta: t.dashboard.actionCtaCheck,
   });
 
   if (goals.includes("bureaucracy")) {
     actions.unshift({
       id: "bureaucracy-priority",
-      title: "Handle your highest-impact admin task",
-      desc: "Finish one government form today to unlock faster progress in other modules.",
-      cta: "Start",
-      href: "/forms",
+      title: t.dashboard.actionAdminPriorityTitle,
+      desc: t.dashboard.actionAdminPriorityDesc,
+      cta: t.dashboard.actionCtaStart,
     });
   }
 
   return actions.slice(0, 3);
+}
+
+function getPrimaryRoute(dna: ProfileDNA): string {
+  const inputs = dna?.inputs;
+  if (!inputs) return "/dashboard";
+  if (inputs.goals?.includes("bureaucracy")) return "/forms";
+  if (inputs.employment_type === "job_seeker") return "/jobs";
+  if (inputs.employment_type === "freelancer") return "/taxes";
+  if (inputs.family_status === "children") return "/guides/kindergeld";
+  return "/dashboard";
+}
+
+function getSecondaryRoute(dna: ProfileDNA): string {
+  const inputs = dna?.inputs;
+  if (!inputs) return "/assistant";
+  // No dedicated /documents/cv route exists; fall back safely to documents list.
+  if (inputs.employment_type === "job_seeker") return "/documents";
+  if (inputs.goals?.includes("bureaucracy")) return "/forms";
+  return "/assistant";
 }
 

@@ -182,6 +182,24 @@ const pl = {
     nextActionsDesc: "Twój asystent priorytetyzuje, co zrobić jako następne.",
     highestPriorityLabel: "Najwyższy priorytet",
     nextLabel: "Następny krok",
+    actionArbeitsagenturTitle: "Zarejestruj się w Arbeitsagentur",
+    actionArbeitsagenturDesc:
+      "Dokończ rejestrację, aby uruchomić wsparcie w szukaniu pracy i świadczenia.",
+    actionCvTitle: "Przygotuj niemieckie CV (Lebenslauf)",
+    actionCvDesc:
+      "Dopasuj strukturę, słowa kluczowe i profil roli przed kolejnymi aplikacjami.",
+    actionFamilyChecklistTitle: "Sprawdź checklistę rodzinną",
+    actionFamilyChecklistDesc:
+      "Nadaj priorytet Kindergeld i dokumentom szkolnym na ten miesiąc.",
+    actionHealthStatusTitle: "Sprawdź status ubezpieczenia zdrowotnego",
+    actionHealthStatusDesc:
+      "Zweryfikuj zakres i brakujące dokumenty, aby uniknąć opóźnień.",
+    actionAdminPriorityTitle: "Załatw najważniejsze zadanie urzędowe",
+    actionAdminPriorityDesc:
+      "Dokończ dziś jeden kluczowy formularz, aby przyspieszyć postęp w innych modułach.",
+    actionCtaStart: "Start",
+    actionCtaOpen: "Otwórz",
+    actionCtaCheck: "Sprawdź",
     quickPhrases: "Szybkie frazy",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Podatki & faktury",

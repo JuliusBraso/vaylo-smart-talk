@@ -183,6 +183,24 @@ const uk = {
     nextActionsDesc: "Твій асистент пріоритизує, що зробити далі.",
     highestPriorityLabel: "Найвищий пріоритет",
     nextLabel: "Наступний крок",
+    actionArbeitsagenturTitle: "Зареєструйся в Arbeitsagentur",
+    actionArbeitsagenturDesc:
+      "Заверши реєстрацію, щоб запустити підтримку з пошуку роботи та виплати.",
+    actionCvTitle: "Підготуй німецьке CV (Lebenslauf)",
+    actionCvDesc:
+      "Онови структуру, ключові слова та відповідність ролі перед наступними відгуками.",
+    actionFamilyChecklistTitle: "Перевір сімейний checklist",
+    actionFamilyChecklistDesc:
+      "Пріоритезуй Kindergeld і шкільні документи на цей місяць.",
+    actionHealthStatusTitle: "Перевір статус медичного страхування",
+    actionHealthStatusDesc:
+      "Перевір покриття та відсутні документи, щоб уникнути затримок.",
+    actionAdminPriorityTitle: "Закрий найважливіше адміністративне завдання",
+    actionAdminPriorityDesc:
+      "Заверши сьогодні одну ключову форму, щоб швидше рухатися в інших модулях.",
+    actionCtaStart: "Почати",
+    actionCtaOpen: "Відкрити",
+    actionCtaCheck: "Перевірити",
     quickPhrases: "Швидкі фрази",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Податки & рахунки",

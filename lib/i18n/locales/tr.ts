@@ -183,6 +183,24 @@ const tr = {
     nextActionsDesc: "Asistanın sıradaki yapman gerekenleri önceliklendirir.",
     highestPriorityLabel: "En yüksek öncelik",
     nextLabel: "Sonraki adım",
+    actionArbeitsagenturTitle: "Arbeitsagentur'a kayıt ol",
+    actionArbeitsagenturDesc:
+      "Kayıt işlemini tamamla, böylece iş arama desteği ve haklar başlayabilsin.",
+    actionCvTitle: "Almanca CV (Lebenslauf) hazırla",
+    actionCvDesc:
+      "Sonraki başvurulardan önce yapıyı, anahtar kelimeleri ve rol uyumunu iyileştir.",
+    actionFamilyChecklistTitle: "Aile checklist'ini kontrol et",
+    actionFamilyChecklistDesc:
+      "Bu ay için Kindergeld ve okul belgelerini önceliklendir.",
+    actionHealthStatusTitle: "Sağlık sigortası durumunu kontrol et",
+    actionHealthStatusDesc:
+      "Gecikmeleri önlemek için kapsamı ve eksik belgeleri doğrula.",
+    actionAdminPriorityTitle: "En etkili idari görevi tamamla",
+    actionAdminPriorityDesc:
+      "Diğer modüllerde daha hızlı ilerlemek için bugün kritik bir formu bitir.",
+    actionCtaStart: "Başlat",
+    actionCtaOpen: "Aç",
+    actionCtaCheck: "Kontrol et",
     quickPhrases: "Hızlı cümleler",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Vergi & faturalar",

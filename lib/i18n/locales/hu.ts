@@ -182,6 +182,24 @@ const hu = {
     nextActionsDesc: "Az asszisztensed priorizálja, mit érdemes most elintézned.",
     highestPriorityLabel: "Legmagasabb prioritás",
     nextLabel: "Következő lépés",
+    actionArbeitsagenturTitle: "Regisztrálj az Arbeitsagentur-nál",
+    actionArbeitsagenturDesc:
+      "Fejezd be a regisztrációt, hogy elindulhasson az álláskeresési támogatás és az ellátások.",
+    actionCvTitle: "Készíts német önéletrajzot",
+    actionCvDesc:
+      "Finomítsd a struktúrát, kulcsszavakat és szerepilleszkedést a következő jelentkezések előtt.",
+    actionFamilyChecklistTitle: "Nézd át a családi ellenőrzőlistát",
+    actionFamilyChecklistDesc:
+      "Prioritásba tedd a Kindergeld és iskolai ügyintézési feladatokat erre a hónapra.",
+    actionHealthStatusTitle: "Ellenőrizd az egészségbiztosítás állapotát",
+    actionHealthStatusDesc:
+      "Ellenőrizd a fedezetet és a hiányzó dokumentumokat a késések elkerüléséhez.",
+    actionAdminPriorityTitle: "Intézd el a legfontosabb hivatali feladatot",
+    actionAdminPriorityDesc:
+      "Tölts ki ma egy kulcsfontosságú űrlapot, hogy gyorsabban haladj a többi modulban.",
+    actionCtaStart: "Indítás",
+    actionCtaOpen: "Megnyitás",
+    actionCtaCheck: "Ellenőrzés",
     quickPhrases: "Gyors kifejezések",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Adók & számlák",

@@ -181,6 +181,24 @@ const cs = {
     nextActionsDesc: "Tvůj asistent prioritizuje, co máš udělat dál.",
     highestPriorityLabel: "Nejvyšší priorita",
     nextLabel: "Další krok",
+    actionArbeitsagenturTitle: "Zaregistruj se na Arbeitsagentur",
+    actionArbeitsagenturDesc:
+      "Dokonči registraci, aby mohla začít podpora při hledání práce a dávky.",
+    actionCvTitle: "Připrav německý životopis",
+    actionCvDesc:
+      "Uprav strukturu, klíčová slova a fit na roli před dalšími žádostmi.",
+    actionFamilyChecklistTitle: "Zkontroluj rodinný checklist",
+    actionFamilyChecklistDesc:
+      "Upřednostni Kindergeld a školní dokumenty pro tento měsíc.",
+    actionHealthStatusTitle: "Zkontroluj stav zdravotního pojištění",
+    actionHealthStatusDesc:
+      "Ověř krytí a chybějící dokumenty, aby ses vyhnul zpožděním.",
+    actionAdminPriorityTitle: "Vyřeš nejdůležitější úřední úkol",
+    actionAdminPriorityDesc:
+      "Dokonči dnes jeden klíčový formulář a zrychli postup v dalších modulech.",
+    actionCtaStart: "Začít",
+    actionCtaOpen: "Otevřít",
+    actionCtaCheck: "Zkontrolovat",
     quickPhrases: "Rychlé fráze",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Daně & faktury",
