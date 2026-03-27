@@ -1,6 +1,18 @@
 const sk = {
   app: { name: "Vaylo", tagline: "AI asistent pre byrokraciu a život v Nemecku", languageName: "Slovenčina" },
   nav: { dashboard: "Prehľad", assistant: "Asistent", letters: "Listy", forms: "Formuláre", guides: "Návody", documents: "Dokumenty", phrases: "Slovník", jobs: "Práca", taxes: "Dane", settings: "Nastavenia", premium: "Premium" },
+  onboarding: {
+    title: "Vitaj vo Vaylo",
+    subtitle: "Tvoj osobný asistent pre život v Nemecku.",
+    description: "Pomôžeme ti s byrokraciou, prácou a každodenným životom.",
+    question: "Pre koho je Vaylo?",
+    optionSingle: "Som tu sám/sama",
+    optionCouple: "Pár / rodina (bez detí)",
+    optionFamilyKids: "Rodina s deťmi",
+    continue: "Pokračovať",
+    privacyNote:
+      "Tvoje odpovede pomáhajú prispôsobiť Vaylo. Používajú sa iba na personalizáciu tvojej skúsenosti.",
+  },
   assistant: {
     title: "Asistent",
     subtitle: "Opíš svoju byrokratickú otázku. Matchujeme kľúčové slová a navrhujeme návody, formuláre a listy - zatiaľ bez AI API.",

@@ -1,6 +1,18 @@
 const uk = {
   app: { name: "Vaylo", tagline: "AI-асистент для бюрократії та життя в Німеччині", languageName: "Українська" },
   nav: { dashboard: "Головна", assistant: "Асистент", letters: "Листи", forms: "Форми", guides: "Гайди", documents: "Документи", phrases: "Фрази", jobs: "Робота", taxes: "Податки", settings: "Налаштування", premium: "Premium" },
+  onboarding: {
+    title: "Ласкаво просимо до Vaylo",
+    subtitle: "Твій персональний асистент для життя в Німеччині.",
+    description: "Ми допомагаємо з бюрократією, роботою та повсякденними справами.",
+    question: "Для кого Vaylo?",
+    optionSingle: "Я тут сам/сама",
+    optionCouple: "Пара / сім'я (без дітей)",
+    optionFamilyKids: "Сім'я з дітьми",
+    continue: "Продовжити",
+    privacyNote:
+      "Твої відповіді допомагають персоналізувати Vaylo. Вони використовуються лише для налаштування твого досвіду.",
+  },
   assistant: {
     title: "Асистент",
     subtitle: "Describe your bureaucracy question. We match keywords and suggest Guides, Forms, and Letters - no AI API yet.",

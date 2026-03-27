@@ -1,6 +1,18 @@
 const hu = {
   app: { name: "Vaylo", tagline: "AI asszisztens a németországi bürokráciához és élethez", languageName: "Magyar" },
   nav: { dashboard: "Kezdőlap", assistant: "Asszisztens", letters: "Levelek", forms: "Űrlapok", guides: "Útmutatók", documents: "Dokumentumok", phrases: "Kifejezések", jobs: "Munka", taxes: "Adók", settings: "Beállítások", premium: "Premium" },
+  onboarding: {
+    title: "Üdvözlünk a Vaylo-ban",
+    subtitle: "A személyes asszisztensed a németországi élethez.",
+    description: "Segítünk a bürokráciában, a munkában és a mindennapokban.",
+    question: "Kinek szól a Vaylo?",
+    optionSingle: "Egyedül vagyok itt",
+    optionCouple: "Pár / család (gyerek nélkül)",
+    optionFamilyKids: "Család gyerekekkel",
+    continue: "Folytatás",
+    privacyNote:
+      "A válaszaid segítenek személyre szabni a Vaylo-t. Kizárólag a jobb felhasználói élményhez használjuk őket.",
+  },
   assistant: {
     title: "Asszisztens",
     subtitle: "Describe your bureaucracy question. We match keywords and suggest Guides, Forms, and Letters - no AI API yet.",

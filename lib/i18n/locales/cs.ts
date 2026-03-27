@@ -1,6 +1,18 @@
 const cs = {
   app: { name: "Vaylo", tagline: "AI asistent pro byrokracii a život v Německu", languageName: "Čeština" },
   nav: { dashboard: "Přehled", assistant: "Asistent", letters: "Dopisy", forms: "Formuláře", guides: "Návody", documents: "Dokumenty", phrases: "Slovník", jobs: "Práce", taxes: "Daně", settings: "Nastavení", premium: "Premium" },
+  onboarding: {
+    title: "Vítej ve Vaylo",
+    subtitle: "Tvůj osobní asistent pro život v Německu.",
+    description: "Pomůžeme ti s byrokracií, prací a každodenním životem.",
+    question: "Pro koho je Vaylo?",
+    optionSingle: "Jsem tu sám/sama",
+    optionCouple: "Pár / rodina (bez dětí)",
+    optionFamilyKids: "Rodina s dětmi",
+    continue: "Pokračovat",
+    privacyNote:
+      "Tvé odpovědi pomáhají Vaylo přizpůsobit. Používají se jen k personalizaci tvého prostředí.",
+  },
   assistant: {
     title: "Asistent",
     subtitle: "Describe your bureaucracy question. We match keywords and suggest Guides, Forms, and Letters - no AI API yet.",

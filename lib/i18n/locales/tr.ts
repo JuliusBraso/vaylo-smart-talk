@@ -1,6 +1,18 @@
 const tr = {
   app: { name: "Vaylo", tagline: "Almanya’da bürokrasi ve yaşam için yapay zeka asistanı", languageName: "Türkçe" },
   nav: { dashboard: "Panel", assistant: "Asistan", letters: "Yazışmalar", forms: "Formlar", guides: "Rehberler", documents: "Belgeler", phrases: "Cümleler", jobs: "İş", taxes: "Vergi", settings: "Ayarlar", premium: "Premium" },
+  onboarding: {
+    title: "Vaylo'ya hoş geldin",
+    subtitle: "Almanya'daki yaşamın için kişisel asistanın.",
+    description: "Bürokrasi, iş ve günlük yaşam konularında sana yardımcı oluyoruz.",
+    question: "Vaylo kim için?",
+    optionSingle: "Burada tek başımayım",
+    optionCouple: "Çift / aile (çocuksuz)",
+    optionFamilyKids: "Çocuklu aile",
+    continue: "Devam et",
+    privacyNote:
+      "Yanıtların Vaylo'yu kişiselleştirmemize yardımcı olur. Sadece deneyimini uyarlamak için kullanılır.",
+  },
   assistant: {
     title: "Asistan",
     subtitle: "Describe your bureaucracy question. We match keywords and suggest Guides, Forms, and Letters - no AI API yet.",

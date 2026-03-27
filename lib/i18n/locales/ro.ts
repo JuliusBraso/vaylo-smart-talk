@@ -1,6 +1,18 @@
 const ro = {
   app: { name: "Vaylo", tagline: "Asistent AI pentru birocrație și viața în Germania", languageName: "Română" },
   nav: { dashboard: "Dashboard", assistant: "Assistant", letters: "Scrisori", forms: "Formulare", guides: "Ghiduri", documents: "Documente", phrases: "Fraze", jobs: "Joburi", taxes: "Taxe", settings: "Setări", premium: "Premium" },
+  onboarding: {
+    title: "Bine ai venit la Vaylo",
+    subtitle: "Asistentul tău personal pentru viața în Germania.",
+    description: "Te ajutăm cu birocrația, munca și viața de zi cu zi.",
+    question: "Pentru cine este Vaylo?",
+    optionSingle: "Sunt aici singur/singură",
+    optionCouple: "Cuplu / familie (fără copii)",
+    optionFamilyKids: "Familie cu copii",
+    continue: "Continuă",
+    privacyNote:
+      "Răspunsurile tale ne ajută să personalizăm Vaylo. Sunt folosite doar pentru a-ți adapta experiența.",
+  },
   assistant: {
     title: "Assistant",
     subtitle: "Describe your bureaucracy question. We match keywords and suggest Guides, Forms, and Letters - no AI API yet.",

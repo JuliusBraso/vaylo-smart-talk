@@ -17,6 +17,18 @@ const de = {
     settings: "Einstellungen",
     premium: "Premium",
   },
+  onboarding: {
+    title: "Willkommen bei Vaylo",
+    subtitle: "Dein persönlicher Assistent für das Leben in Deutschland.",
+    description: "Wir helfen dir bei Bürokratie, Arbeit und Alltag.",
+    question: "Für wen ist Vaylo?",
+    optionSingle: "Ich bin alleine hier",
+    optionCouple: "Paar / Familie (ohne Kinder)",
+    optionFamilyKids: "Familie mit Kindern",
+    continue: "Weiter",
+    privacyNote:
+      "Deine Antworten helfen dabei, Vaylo zu personalisieren. Sie werden nur genutzt, um dein Erlebnis anzupassen.",
+  },
   assistant: {
     title: "Assistant",
     subtitle: "Beschreibe deine Bürokratie-Frage. Wir matchen Keywords und schlagen Guides, Formulare und Briefe vor - noch ohne KI API.",

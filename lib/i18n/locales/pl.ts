@@ -1,6 +1,18 @@
 const pl = {
   app: { name: "Vaylo", tagline: "Asystent AI do biurokracji i życia w Niemczech", languageName: "Polski" },
   nav: { dashboard: "Panel", assistant: "Asystent", letters: "Listy", forms: "Formularze", guides: "Przewodniki", documents: "Dokumenty", phrases: "Zwroty", jobs: "Praca", taxes: "Podatki", settings: "Ustawienia", premium: "Premium" },
+  onboarding: {
+    title: "Witamy w Vaylo",
+    subtitle: "Twój osobisty asystent do życia w Niemczech.",
+    description: "Pomagamy w biurokracji, pracy i codziennym życiu.",
+    question: "Dla kogo jest Vaylo?",
+    optionSingle: "Jestem tu sam/sama",
+    optionCouple: "Para / rodzina (bez dzieci)",
+    optionFamilyKids: "Rodzina z dziećmi",
+    continue: "Dalej",
+    privacyNote:
+      "Twoje odpowiedzi pomagają spersonalizować Vaylo. Używamy ich wyłącznie do dopasowania Twojego doświadczenia.",
+  },
   assistant: {
     title: "Asystent",
     subtitle: "Describe your bureaucracy question. We match keywords and suggest Guides, Forms, and Letters - no AI API yet.",
