@@ -1,20 +1,28 @@
 const ru = {
   app: { name: "Vaylo", tagline: "AI-помощник для бюрократии и жизни в Германии", languageName: "Русский" },
   common: {
-    employment_freelancer: "Фрилансер / самозанятый",
-    employment_employee: "Наёмный работник",
-    employment_job_seeker: "Ищу работу",
-    family_single: "Один / одна",
-    family_family: "Пара / семья (без детей)",
-    family_children: "Семья с детьми",
-    language_A1: "A1",
-    language_A2: "A2",
-    language_B1: "B1",
-    language_B2: "B2",
-    language_C1: "C1",
-    goal_bureaucracy: "Бюрократия и органы",
-    goal_job: "Работа и заявки",
-    goal_orientation: "Ориентация и быт",
+    employment: {
+      freelancer: "Фрилансер / самозанятый",
+      employee: "Наёмный работник",
+      job_seeker: "Ищу работу",
+    },
+    family: {
+      single: "Один / одна",
+      family: "Пара / семья (без детей)",
+      children: "Семья с детьми",
+    },
+    language: {
+      A1: "A1",
+      A2: "A2",
+      B1: "B1",
+      B2: "B2",
+      C1: "C1",
+    },
+    goals: {
+      bureaucracy: "Бюрократия и органы",
+      job: "Работа и заявки",
+      orientation: "Ориентация и быт",
+    },
   },
   nav: { dashboard: "Главная", assistant: "Ассистент", letters: "Письма", forms: "Формы", guides: "Гайды", documents: "Документы", phrases: "Фразы", jobs: "Работа", taxes: "Налоги", settings: "Настройки", premium: "Premium" },
   onboarding: {
@@ -256,7 +264,7 @@ const ru = {
       "Нужна действующая страховка для легальной работы и медпомощи в Германии.",
     criticalSteuerTitle: "Получи Steuer-ID",
     criticalSteuerDesc:
-      "Без Steuer-ID нельзя выставлять счета и легально работать как фрилансер.",
+      "Без Steuer-ID нельзя выставлять счета и легально работать как {employment}.",
     criticalBankTitle: "Открой или подтверди немецкий банковский счёт",
     criticalBankDesc:
       "Нужен локальный счёт для зарплаты, налогов и повседневных платежей.",

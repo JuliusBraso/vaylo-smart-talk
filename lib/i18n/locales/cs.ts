@@ -1,20 +1,28 @@
 const cs = {
   app: { name: "Vaylo", tagline: "AI asistent pro byrokracii a život v Německu", languageName: "Čeština" },
   common: {
-    employment_freelancer: "Freelancer / OSVČ",
-    employment_employee: "Zaměstnanec",
-    employment_job_seeker: "Hledám práci",
-    family_single: "Sám / sama",
-    family_family: "Pár / rodina (bez dětí)",
-    family_children: "Rodina s dětmi",
-    language_A1: "A1",
-    language_A2: "A2",
-    language_B1: "B1",
-    language_B2: "B2",
-    language_C1: "C1",
-    goal_bureaucracy: "Byrokracie a úřady",
-    goal_job: "Práce a žádosti",
-    goal_orientation: "Orientace a každodenní život",
+    employment: {
+      freelancer: "Freelancer / OSVČ",
+      employee: "Zaměstnanec",
+      job_seeker: "Hledám práci",
+    },
+    family: {
+      single: "Sám / sama",
+      family: "Pár / rodina (bez dětí)",
+      children: "Rodina s dětmi",
+    },
+    language: {
+      A1: "A1",
+      A2: "A2",
+      B1: "B1",
+      B2: "B2",
+      C1: "C1",
+    },
+    goals: {
+      bureaucracy: "Byrokracie a úřady",
+      job: "Práce a žádosti",
+      orientation: "Orientace a každodenní život",
+    },
   },
   nav: { dashboard: "Přehled", assistant: "Asistent", letters: "Dopisy", forms: "Formuláře", guides: "Návody", documents: "Dokumenty", phrases: "Slovník", jobs: "Práce", taxes: "Daně", settings: "Nastavení", premium: "Premium" },
   onboarding: {
@@ -254,7 +262,7 @@ const cs = {
       "Platné zdravotní pojištění potřebuješ k legální práci a péči v Německu.",
     criticalSteuerTitle: "Získej Steuer-ID",
     criticalSteuerDesc:
-      "Bez Steuer-ID nemůžeš fakturovat ani legálně podnikat jako freelancer.",
+      "Bez Steuer-ID nemůžeš fakturovat ani legálně podnikat jako {employment}.",
     criticalBankTitle: "Otevři nebo potvrď německý bankovní účet",
     criticalBankDesc:
       "Lokální účet potřebuješ na plat, daně a běžné platby.",

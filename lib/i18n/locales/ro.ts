@@ -1,20 +1,28 @@
 const ro = {
   app: { name: "Vaylo", tagline: "Asistent AI pentru birocrație și viața în Germania", languageName: "Română" },
   common: {
-    employment_freelancer: "Freelancer / PFA",
-    employment_employee: "Angajat",
-    employment_job_seeker: "În căutare de loc de muncă",
-    family_single: "Singur / singură",
-    family_family: "Cuplu / familie (fără copii)",
-    family_children: "Familie cu copii",
-    language_A1: "A1",
-    language_A2: "A2",
-    language_B1: "B1",
-    language_B2: "B2",
-    language_C1: "C1",
-    goal_bureaucracy: "Birocrație și autorități",
-    goal_job: "Muncă și candidaturi",
-    goal_orientation: "Orientare și viața de zi cu zi",
+    employment: {
+      freelancer: "Freelancer / PFA",
+      employee: "Angajat",
+      job_seeker: "În căutare de loc de muncă",
+    },
+    family: {
+      single: "Singur / singură",
+      family: "Cuplu / familie (fără copii)",
+      children: "Familie cu copii",
+    },
+    language: {
+      A1: "A1",
+      A2: "A2",
+      B1: "B1",
+      B2: "B2",
+      C1: "C1",
+    },
+    goals: {
+      bureaucracy: "Birocrație și autorități",
+      job: "Muncă și candidaturi",
+      orientation: "Orientare și viața de zi cu zi",
+    },
   },
   nav: { dashboard: "Dashboard", assistant: "Assistant", letters: "Scrisori", forms: "Formulare", guides: "Ghiduri", documents: "Documente", phrases: "Fraze", jobs: "Joburi", taxes: "Taxe", settings: "Setări", premium: "Premium" },
   onboarding: {
@@ -256,7 +264,7 @@ const ro = {
       "Ai nevoie de asigurare valabilă pentru muncă legală și îngrijire în Germania.",
     criticalSteuerTitle: "Obține Steuer-ID",
     criticalSteuerDesc:
-      "Fără Steuer-ID nu poți factura sau lucra legal ca freelancer.",
+      "Fără Steuer-ID nu poți factura sau lucra legal ca {employment}.",
     criticalBankTitle: "Deschide sau confirmă un cont bancar german",
     criticalBankDesc:
       "Ai nevoie de un cont local pentru salariu, taxe și plăți zilnice.",

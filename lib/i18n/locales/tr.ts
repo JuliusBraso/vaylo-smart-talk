@@ -1,20 +1,28 @@
 const tr = {
   app: { name: "Vaylo", tagline: "Almanya’da bürokrasi ve yaşam için yapay zeka asistanı", languageName: "Türkçe" },
   common: {
-    employment_freelancer: "Serbest meslek / kendi işi",
-    employment_employee: "Çalışan",
-    employment_job_seeker: "İş arıyorum",
-    family_single: "Yalnız",
-    family_family: "Çift / aile (çocuksuz)",
-    family_children: "Çocuklu aile",
-    language_A1: "A1",
-    language_A2: "A2",
-    language_B1: "B1",
-    language_B2: "B2",
-    language_C1: "C1",
-    goal_bureaucracy: "Bürokrasi ve kurumlar",
-    goal_job: "İş ve başvurular",
-    goal_orientation: "Oryantasyon ve günlük yaşam",
+    employment: {
+      freelancer: "Serbest meslek / kendi işi",
+      employee: "Çalışan",
+      job_seeker: "İş arıyorum",
+    },
+    family: {
+      single: "Yalnız",
+      family: "Çift / aile (çocuksuz)",
+      children: "Çocuklu aile",
+    },
+    language: {
+      A1: "A1",
+      A2: "A2",
+      B1: "B1",
+      B2: "B2",
+      C1: "C1",
+    },
+    goals: {
+      bureaucracy: "Bürokrasi ve kurumlar",
+      job: "İş ve başvurular",
+      orientation: "Oryantasyon ve günlük yaşam",
+    },
   },
   nav: { dashboard: "Panel", assistant: "Asistan", letters: "Yazışmalar", forms: "Formlar", guides: "Rehberler", documents: "Belgeler", phrases: "Cümleler", jobs: "İş", taxes: "Vergi", settings: "Ayarlar", premium: "Premium" },
   onboarding: {
@@ -256,7 +264,7 @@ const tr = {
       "Almanya'da yasal çalışma ve bakım için geçerli sigorta gerekir.",
     criticalSteuerTitle: "Steuer-ID al",
     criticalSteuerDesc:
-      "Steuer-ID olmadan freelancer olarak fatura kesemez veya yasal çalışamazsın.",
+      "Steuer-ID olmadan {employment} olarak fatura kesemez veya yasal çalışamazsın.",
     criticalBankTitle: "Almanca banka hesabı aç veya doğrula",
     criticalBankDesc:
       "Maaş, vergiler ve günlük ödemeler için yerel hesap gerekir.",

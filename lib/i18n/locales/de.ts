@@ -5,20 +5,28 @@ const de = {
     languageName: "Deutsch",
   },
   common: {
-    employment_freelancer: "Freelancer / Selbstständig",
-    employment_employee: "Angestellt",
-    employment_job_seeker: "Jobsuchend",
-    family_single: "Allein / ohne Partner",
-    family_family: "Paar / Familie (ohne Kinder)",
-    family_children: "Familie mit Kindern",
-    language_A1: "A1",
-    language_A2: "A2",
-    language_B1: "B1",
-    language_B2: "B2",
-    language_C1: "C1",
-    goal_bureaucracy: "Bürokratie & Behörden",
-    goal_job: "Job & Bewerbung",
-    goal_orientation: "Orientierung & Alltag",
+    employment: {
+      freelancer: "Freelancer / Selbstständig",
+      employee: "Angestellt",
+      job_seeker: "Jobsuchend",
+    },
+    family: {
+      single: "Allein / ohne Partner",
+      family: "Paar / Familie (ohne Kinder)",
+      children: "Familie mit Kindern",
+    },
+    language: {
+      A1: "A1",
+      A2: "A2",
+      B1: "B1",
+      B2: "B2",
+      C1: "C1",
+    },
+    goals: {
+      bureaucracy: "Bürokratie & Behörden",
+      job: "Job & Bewerbung",
+      orientation: "Orientierung & Alltag",
+    },
   },
   nav: {
     dashboard: "Dashboard",
@@ -255,7 +263,7 @@ const de = {
       "Gültige Krankenversicherung brauchst du für legale Arbeit und medizinische Versorgung in Deutschland.",
     criticalSteuerTitle: "Steuer-ID besorgen",
     criticalSteuerDesc:
-      "Ohne Steuer-ID kannst du als Freelancer nicht rechtmäßig abrechnen oder arbeiten.",
+      "Ohne Steuer-ID kannst du als {employment} nicht rechtmäßig abrechnen oder arbeiten.",
     criticalBankTitle: "Deutsches Bankkonto eröffnen oder bestätigen",
     criticalBankDesc:
       "Ein lokales Konto brauchst du für Gehalt, Steuern und den Alltag.",

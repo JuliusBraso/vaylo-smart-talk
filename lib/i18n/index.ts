@@ -25,14 +25,39 @@ export const LOCALE_LABELS: Record<Locale, string> = {
   ru: "Русский",
 };
 
+/** Centralized labels for DB-backed enums (see lib/i18n/labels.ts). */
+export type CommonLabels = {
+  employment: {
+    freelancer: string;
+    employee: string;
+    job_seeker: string;
+  };
+  family: {
+    single: string;
+    family: string;
+    children: string;
+  };
+  language: {
+    A1: string;
+    A2: string;
+    B1: string;
+    B2: string;
+    C1: string;
+  };
+  goals: {
+    bureaucracy: string;
+    job: string;
+    orientation: string;
+  };
+};
+
 export type Dict = {
   app: {
     name: string;
     tagline: string;
     languageName?: string;
   };
-  /** Normalized enum → user-facing labels (see lib/i18n/labels.ts). */
-  common: Record<string, string>;
+  common: CommonLabels;
   nav: Record<string, string>;
   onboarding: Record<string, string>;
   assistant: Record<string, string>;

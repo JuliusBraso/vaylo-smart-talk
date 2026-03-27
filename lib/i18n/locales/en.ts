@@ -1,20 +1,28 @@
 const en = {
   app: { name: "Vaylo", tagline: "AI assistant for bureaucracy and life in Germany", languageName: "English" },
   common: {
-    employment_freelancer: "Freelancer / self-employed",
-    employment_employee: "Employee",
-    employment_job_seeker: "Job seeker",
-    family_single: "Single / alone",
-    family_family: "Couple / family (no children)",
-    family_children: "Family with children",
-    language_A1: "A1",
-    language_A2: "A2",
-    language_B1: "B1",
-    language_B2: "B2",
-    language_C1: "C1",
-    goal_bureaucracy: "Bureaucracy & authorities",
-    goal_job: "Job & applications",
-    goal_orientation: "Orientation & daily life",
+    employment: {
+      freelancer: "Freelancer / self-employed",
+      employee: "Employee",
+      job_seeker: "Job seeker",
+    },
+    family: {
+      single: "Single / alone",
+      family: "Couple / family (no children)",
+      children: "Family with children",
+    },
+    language: {
+      A1: "A1",
+      A2: "A2",
+      B1: "B1",
+      B2: "B2",
+      C1: "C1",
+    },
+    goals: {
+      bureaucracy: "Bureaucracy & authorities",
+      job: "Job & applications",
+      orientation: "Orientation & daily life",
+    },
   },
   nav: { dashboard: "Dashboard", assistant: "Assistant", letters: "Letters", forms: "Forms", guides: "Guides", documents: "Documents", phrases: "Phrases", jobs: "Jobs", taxes: "Taxes", settings: "Settings", premium: "Premium" },
   documents: {

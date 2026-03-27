@@ -1,20 +1,28 @@
 const hu = {
   app: { name: "Vaylo", tagline: "AI asszisztens a németországi bürokráciához és élethez", languageName: "Magyar" },
   common: {
-    employment_freelancer: "Freelancer / egyéni vállalkozó",
-    employment_employee: "Alkalmazott",
-    employment_job_seeker: "Munkát keresek",
-    family_single: "Egyedül",
-    family_family: "Pár / család (gyermek nélkül)",
-    family_children: "Család gyerekekkel",
-    language_A1: "A1",
-    language_A2: "A2",
-    language_B1: "B1",
-    language_B2: "B2",
-    language_C1: "C1",
-    goal_bureaucracy: "Bürokrácia és hatóságok",
-    goal_job: "Munka és jelentkezés",
-    goal_orientation: "Tájékozódás és mindennapok",
+    employment: {
+      freelancer: "Freelancer / egyéni vállalkozó",
+      employee: "Alkalmazott",
+      job_seeker: "Munkát keresek",
+    },
+    family: {
+      single: "Egyedül",
+      family: "Pár / család (gyermek nélkül)",
+      children: "Család gyerekekkel",
+    },
+    language: {
+      A1: "A1",
+      A2: "A2",
+      B1: "B1",
+      B2: "B2",
+      C1: "C1",
+    },
+    goals: {
+      bureaucracy: "Bürokrácia és hatóságok",
+      job: "Munka és jelentkezés",
+      orientation: "Tájékozódás és mindennapok",
+    },
   },
   nav: { dashboard: "Kezdőlap", assistant: "Asszisztens", letters: "Levelek", forms: "Űrlapok", guides: "Útmutatók", documents: "Dokumentumok", phrases: "Kifejezések", jobs: "Munka", taxes: "Adók", settings: "Beállítások", premium: "Premium" },
   onboarding: {
@@ -255,7 +263,7 @@ const hu = {
       "Érvényes biztosítás kell a törvényes munkához és ellátáshoz Németországban.",
     criticalSteuerTitle: "Szerezd meg a Steuer-ID-t",
     criticalSteuerDesc:
-      "Steuer-ID nélkül nem számlázhatsz és nem dolgozhatsz legálisan szabadúszóként.",
+      "Steuer-ID nélkül nem számlázhatsz és nem dolgozhatsz legálisan mint {employment}.",
     criticalBankTitle: "Nyiss vagy erősíts meg német bankszámlát",
     criticalBankDesc:
       "Helyi számla kell a fizetéshez, adókhoz és mindennapi kiadásokhoz.",

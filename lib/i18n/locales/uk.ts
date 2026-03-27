@@ -1,20 +1,28 @@
 const uk = {
   app: { name: "Vaylo", tagline: "AI-асистент для бюрократії та життя в Німеччині", languageName: "Українська" },
   common: {
-    employment_freelancer: "Фрілансер / самозайнятий",
-    employment_employee: "Працівник за наймом",
-    employment_job_seeker: "Шукаю роботу",
-    family_single: "Сам / сама",
-    family_family: "Пара / сім’я (без дітей)",
-    family_children: "Сім’я з дітьми",
-    language_A1: "A1",
-    language_A2: "A2",
-    language_B1: "B1",
-    language_B2: "B2",
-    language_C1: "C1",
-    goal_bureaucracy: "Бюрократія та органи",
-    goal_job: "Робота та заявки",
-    goal_orientation: "Орієнтація та повсякденне життя",
+    employment: {
+      freelancer: "Фрілансер / самозайнятий",
+      employee: "Працівник за наймом",
+      job_seeker: "Шукаю роботу",
+    },
+    family: {
+      single: "Сам / сама",
+      family: "Пара / сім’я (без дітей)",
+      children: "Сім’я з дітьми",
+    },
+    language: {
+      A1: "A1",
+      A2: "A2",
+      B1: "B1",
+      B2: "B2",
+      C1: "C1",
+    },
+    goals: {
+      bureaucracy: "Бюрократія та органи",
+      job: "Робота та заявки",
+      orientation: "Орієнтація та повсякденне життя",
+    },
   },
   nav: { dashboard: "Головна", assistant: "Асистент", letters: "Листи", forms: "Форми", guides: "Гайди", documents: "Документи", phrases: "Фрази", jobs: "Робота", taxes: "Податки", settings: "Налаштування", premium: "Premium" },
   onboarding: {
@@ -256,7 +264,7 @@ const uk = {
       "Потрібне дійсне страхування для легальної роботи та допомоги в Німеччині.",
     criticalSteuerTitle: "Отримай Steuer-ID",
     criticalSteuerDesc:
-      "Без Steuer-ID не можна виставляти рахунки чи легально працювати як фрілансер.",
+      "Без Steuer-ID не можна виставляти рахунки чи легально працювати як {employment}.",
     criticalBankTitle: "Відкрий або підтверди німецький банківський рахунок",
     criticalBankDesc:
       "Потрібен локальний рахунок для зарплати, податків і щоденних платежів.",

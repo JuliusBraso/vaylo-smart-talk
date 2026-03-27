@@ -1,20 +1,28 @@
 const bg = {
   app: { name: "Vaylo", tagline: "AI асистент за бюрокрация и живот в Германия", languageName: "Български" },
   common: {
-    employment_freelancer: "Фрийлансер / самонает",
-    employment_employee: "На трудов договор",
-    employment_job_seeker: "Търся работа",
-    family_single: "Сам / сама",
-    family_family: "Двойка / семейство (без деца)",
-    family_children: "Семейство с деца",
-    language_A1: "A1",
-    language_A2: "A2",
-    language_B1: "B1",
-    language_B2: "B2",
-    language_C1: "C1",
-    goal_bureaucracy: "Бюрокрация и институции",
-    goal_job: "Работа и кандидатстване",
-    goal_orientation: "Ориентация и ежедневие",
+    employment: {
+      freelancer: "Фрийлансер / самонает",
+      employee: "На трудов договор",
+      job_seeker: "Търся работа",
+    },
+    family: {
+      single: "Сам / сама",
+      family: "Двойка / семейство (без деца)",
+      children: "Семейство с деца",
+    },
+    language: {
+      A1: "A1",
+      A2: "A2",
+      B1: "B1",
+      B2: "B2",
+      C1: "C1",
+    },
+    goals: {
+      bureaucracy: "Бюрокрация и институции",
+      job: "Работа и кандидатстване",
+      orientation: "Ориентация и ежедневие",
+    },
   },
   nav: { dashboard: "Табло", assistant: "Асистент", letters: "Писма", forms: "Формуляри", guides: "Ръководства", documents: "Документи", phrases: "Фрази", jobs: "Работа", taxes: "Данъци", settings: "Настройки", premium: "Premium" },
   onboarding: {
@@ -256,7 +264,7 @@ const bg = {
       "Нужна е валидна застраховка за легална работа и грижа в Германия.",
     criticalSteuerTitle: "Вземи Steuer-ID",
     criticalSteuerDesc:
-      "Без Steuer-ID не можеш да фактурираш или легално да работиш като фрийлансър.",
+      "Без Steuer-ID не можеш да фактурираш или легално да работиш като {employment}.",
     criticalBankTitle: "Отвори или потвърди германска банкова сметка",
     criticalBankDesc:
       "Нужна е местна сметка за заплата, данъци и ежедневни плащания.",

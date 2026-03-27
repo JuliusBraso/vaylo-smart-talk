@@ -326,7 +326,8 @@ function collectCriticalBlockers(
 function criticalBlockerToAction(
   kind: CriticalBlockerKind,
   t: ReturnType<typeof useT>["t"],
-  dna: ProfileDNA
+  dna: ProfileDNA,
+  liveSituation: LiveSituation
 ): NextAction {
   switch (kind) {
     case "health":
@@ -341,7 +342,12 @@ function criticalBlockerToAction(
       return {
         id: "critical-steuer",
         title: t.dashboard.criticalSteuerTitle,
-        desc: t.dashboard.criticalSteuerDesc,
+        desc: formatDashboardActionDesc(
+          t.dashboard.criticalSteuerDesc,
+          t,
+          dna,
+          liveSituation
+        ),
         cta: t.dashboard.actionCtaStart,
         href: "/taxes",
       };
@@ -485,7 +491,7 @@ function buildNextActions(
 
   if (blockers.length > 0) {
     const criticalCards: NextAction[] = activeBlockers.map((kind) =>
-      criticalBlockerToAction(kind, t, dna)
+      criticalBlockerToAction(kind, t, dna, liveSituation)
     );
 
     if (process.env.NEXT_PUBLIC_VAYLO_DEBUG === "1") {
@@ -879,6 +885,19 @@ function getSecondaryRoute(dna: ProfileDNA): string {
   return "/assistant";
 }
 
+/** Interpolate dashboard action strings with label resolvers (no hardcoded role names in components). */
+function formatDashboardActionDesc(
+  template: string,
+  t: ReturnType<typeof useT>["t"],
+  dna: ProfileDNA,
+  liveSituation: LiveSituation
+): string {
+  const emp = employmentTypeForScoring(liveSituation, dna);
+  return formatMessage(template, {
+    employment: getEmploymentLabel(emp, t),
+  });
+}
+
 function getActionRoute(actionId: string, dna: ProfileDNA, fallback: string): string {
   const inputs = dna?.inputs;
   if (!inputs) return fallback;
@@ -918,7 +937,12 @@ function getActionCopy(
   ) {
     return {
       title: t.dashboard.criticalSteuerTitle,
-      desc: t.dashboard.criticalSteuerDesc,
+      desc: formatDashboardActionDesc(
+        t.dashboard.criticalSteuerDesc,
+        t,
+        dna,
+        liveSituation
+      ),
     };
   }
 
