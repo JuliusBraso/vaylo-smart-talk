@@ -233,6 +233,22 @@ const tr = {
     actionCtaStart: "Başlat",
     actionCtaOpen: "Aç",
     actionCtaCheck: "Kontrol et",
+    criticalHealthTitle: "Sağlık sigortasını hallet",
+    criticalHealthDesc:
+      "Almanya'da yasal çalışma ve bakım için geçerli sigorta gerekir.",
+    criticalSteuerTitle: "Steuer-ID al",
+    criticalSteuerDesc:
+      "Steuer-ID olmadan freelancer olarak fatura kesemez veya yasal çalışamazsın.",
+    criticalBankTitle: "Almanca banka hesabı aç veya doğrula",
+    criticalBankDesc:
+      "Maaş, vergiler ve günlük ödemeler için yerel hesap gerekir.",
+    criticalArbeitsagenturTitle: "Arbeitsagentur'a kayıt ol",
+    criticalArbeitsagenturDesc:
+      "Kayıt iş arama desteğini ve hakları açar.",
+    criticalCvTitle: "Almanca CV (Lebenslauf) hazırla",
+    criticalCvDesc:
+      "Güçlü bir CV, Almanya'da başvurulardan önce gereklidir.",
+    actionMarkDone: "Tamam",
     quickPhrases: "Hızlı cümleler",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Vergi & faturalar",

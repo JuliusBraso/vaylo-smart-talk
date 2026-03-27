@@ -232,6 +232,22 @@ const de = {
     actionCtaStart: "Starten",
     actionCtaOpen: "Öffnen",
     actionCtaCheck: "Prüfen",
+    criticalHealthTitle: "Krankenversicherung klären",
+    criticalHealthDesc:
+      "Gültige Krankenversicherung brauchst du für legale Arbeit und medizinische Versorgung in Deutschland.",
+    criticalSteuerTitle: "Steuer-ID besorgen",
+    criticalSteuerDesc:
+      "Ohne Steuer-ID kannst du als Freelancer nicht rechtmäßig abrechnen oder arbeiten.",
+    criticalBankTitle: "Deutsches Bankkonto eröffnen oder bestätigen",
+    criticalBankDesc:
+      "Ein lokales Konto brauchst du für Gehalt, Steuern und den Alltag.",
+    criticalArbeitsagenturTitle: "Bei der Arbeitsagentur registrieren",
+    criticalArbeitsagenturDesc:
+      "Die Registrierung schaltet Unterstützung bei der Jobsuche und Leistungen frei.",
+    criticalCvTitle: "Deutschen Lebenslauf vorbereiten",
+    criticalCvDesc:
+      "Ein starker Lebenslauf ist Voraussetzung für erfolgreiche Bewerbungen in Deutschland.",
+    actionMarkDone: "Erledigt",
     editProfile: "Profil bearbeiten",
     editProfileTitle: "Profil bearbeiten",
     editProfileDesc: "Aktualisiere deine aktuelle Situation. Wir passen Vaylo danach an.",

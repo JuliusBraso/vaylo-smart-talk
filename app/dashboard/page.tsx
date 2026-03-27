@@ -5,6 +5,7 @@ import { getUser } from "@/lib/auth/get-user";
 import { getProfileDNA } from "@/lib/dna/get-profile-dna";
 import { DEFAULT_LOCALE, LOCALES, type Locale } from "@/lib/i18n";
 import { getLiveSituationFromProfile } from "@/lib/vaylo/live-situation";
+import { getCompletedActionIds } from "@/lib/vaylo/user-progress";
 import DashboardClientWrapper from "./_components/DashboardClientWrapper";
 import FreelancerModule from "./_components/modules/FreelancerModule";
 import FamilyModule from "./_components/modules/FamilyModule";
@@ -33,11 +34,14 @@ export default async function DashboardPage() {
   const { data: profileRow } = await supabase
     .from("profiles")
     .select(
-      "has_steuer_id, has_health_insurance, has_bank_account, registered_arbeitsagentur, has_children, children_school_age, has_cv, job_search_urgency"
+      "has_steuer_id, has_health_insurance, has_bank_account, registered_arbeitsagentur, has_children, children_school_age, has_cv, job_search_urgency, employment_type"
     )
     .eq("id", user.id)
     .maybeSingle();
   const liveSituation = getLiveSituationFromProfile(profileRow);
+
+  const completedIds = await getCompletedActionIds(supabase, user.id);
+  const completedActionIds = [...completedIds];
 
   const modules: ReactNode[] = [];
 
@@ -56,7 +60,12 @@ export default async function DashboardPage() {
   }
 
   return (
-    <DashboardClientWrapper dna={dna} locale={locale} liveSituation={liveSituation}>
+    <DashboardClientWrapper
+      dna={dna}
+      locale={locale}
+      liveSituation={liveSituation}
+      completedActionIds={completedActionIds}
+    >
       {modules}
     </DashboardClientWrapper>
   );

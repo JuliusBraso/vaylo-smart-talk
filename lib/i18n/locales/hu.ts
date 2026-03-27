@@ -232,6 +232,22 @@ const hu = {
     actionCtaStart: "Indítás",
     actionCtaOpen: "Megnyitás",
     actionCtaCheck: "Ellenőrzés",
+    criticalHealthTitle: "Egészségbiztosítás rendezése",
+    criticalHealthDesc:
+      "Érvényes biztosítás kell a törvényes munkához és ellátáshoz Németországban.",
+    criticalSteuerTitle: "Szerezd meg a Steuer-ID-t",
+    criticalSteuerDesc:
+      "Steuer-ID nélkül nem számlázhatsz és nem dolgozhatsz legálisan szabadúszóként.",
+    criticalBankTitle: "Nyiss vagy erősíts meg német bankszámlát",
+    criticalBankDesc:
+      "Helyi számla kell a fizetéshez, adókhoz és mindennapi kiadásokhoz.",
+    criticalArbeitsagenturTitle: "Regisztrálj az Arbeitsagentur-nál",
+    criticalArbeitsagenturDesc:
+      "A regisztráció feloldja az álláskeresési támogatást és juttatásokat.",
+    criticalCvTitle: "Készíts német önéletrajzot (Lebenslauf)",
+    criticalCvDesc:
+      "Erős önéletrajz kell a sikeres jelentkezésekhez Németországban.",
+    actionMarkDone: "Kész",
     quickPhrases: "Gyors kifejezések",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Adók & számlák",

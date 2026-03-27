@@ -233,6 +233,22 @@ const ro = {
     actionCtaStart: "Start",
     actionCtaOpen: "Deschide",
     actionCtaCheck: "Verifică",
+    criticalHealthTitle: "Rezolvă asigurarea de sănătate",
+    criticalHealthDesc:
+      "Ai nevoie de asigurare valabilă pentru muncă legală și îngrijire în Germania.",
+    criticalSteuerTitle: "Obține Steuer-ID",
+    criticalSteuerDesc:
+      "Fără Steuer-ID nu poți factura sau lucra legal ca freelancer.",
+    criticalBankTitle: "Deschide sau confirmă un cont bancar german",
+    criticalBankDesc:
+      "Ai nevoie de un cont local pentru salariu, taxe și plăți zilnice.",
+    criticalArbeitsagenturTitle: "Înregistrează-te la Arbeitsagentur",
+    criticalArbeitsagenturDesc:
+      "Înregistrarea deblochează sprijin la căutarea jobului și beneficii.",
+    criticalCvTitle: "Pregătește CV-ul german (Lebenslauf)",
+    criticalCvDesc:
+      "Un CV solid este necesar înainte de a aplica eficient în Germania.",
+    actionMarkDone: "Gata",
     quickPhrases: "Fraze rapide",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Taxe & facturi",

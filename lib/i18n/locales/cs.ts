@@ -231,6 +231,22 @@ const cs = {
     actionCtaStart: "Začít",
     actionCtaOpen: "Otevřít",
     actionCtaCheck: "Zkontrolovat",
+    criticalHealthTitle: "Vyřeš zdravotní pojištění",
+    criticalHealthDesc:
+      "Platné zdravotní pojištění potřebuješ k legální práci a péči v Německu.",
+    criticalSteuerTitle: "Získej Steuer-ID",
+    criticalSteuerDesc:
+      "Bez Steuer-ID nemůžeš fakturovat ani legálně podnikat jako freelancer.",
+    criticalBankTitle: "Otevři nebo potvrď německý bankovní účet",
+    criticalBankDesc:
+      "Lokální účet potřebuješ na plat, daně a běžné platby.",
+    criticalArbeitsagenturTitle: "Zaregistruj se u Arbeitsagentur",
+    criticalArbeitsagenturDesc:
+      "Registrace odemkne podporu při hledání práce a dávky.",
+    criticalCvTitle: "Připrav si německý životopis (Lebenslauf)",
+    criticalCvDesc:
+      "Silný životopis potřebuješ před úspěšnými žádostmi v Německu.",
+    actionMarkDone: "Hotovo",
     quickPhrases: "Rychlé fráze",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Daně & faktury",

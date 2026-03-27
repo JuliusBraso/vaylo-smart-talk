@@ -233,6 +233,22 @@ const bg = {
     actionCtaStart: "Старт",
     actionCtaOpen: "Отвори",
     actionCtaCheck: "Провери",
+    criticalHealthTitle: "Подреди здравното осигуряване",
+    criticalHealthDesc:
+      "Нужна е валидна застраховка за легална работа и грижа в Германия.",
+    criticalSteuerTitle: "Вземи Steuer-ID",
+    criticalSteuerDesc:
+      "Без Steuer-ID не можеш да фактурираш или легално да работиш като фрийлансър.",
+    criticalBankTitle: "Отвори или потвърди германска банкова сметка",
+    criticalBankDesc:
+      "Нужна е местна сметка за заплата, данъци и ежедневни плащания.",
+    criticalArbeitsagenturTitle: "Регистрирай се в Arbeitsagentur",
+    criticalArbeitsagenturDesc:
+      "Регистрацията отключва подкрепа при търсене на работа и помощи.",
+    criticalCvTitle: "Подготви немско CV (Lebenslauf)",
+    criticalCvDesc:
+      "Силно CV е необходимо преди успешни кандидатури в Германия.",
+    actionMarkDone: "Готово",
     quickPhrases: "Бързи фрази",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Данъци & фактури",

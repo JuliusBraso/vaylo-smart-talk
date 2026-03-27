@@ -233,6 +233,22 @@ const uk = {
     actionCtaStart: "Почати",
     actionCtaOpen: "Відкрити",
     actionCtaCheck: "Перевірити",
+    criticalHealthTitle: "Упорядкуй медичне страхування",
+    criticalHealthDesc:
+      "Потрібне дійсне страхування для легальної роботи та допомоги в Німеччині.",
+    criticalSteuerTitle: "Отримай Steuer-ID",
+    criticalSteuerDesc:
+      "Без Steuer-ID не можна виставляти рахунки чи легально працювати як фрілансер.",
+    criticalBankTitle: "Відкрий або підтверди німецький банківський рахунок",
+    criticalBankDesc:
+      "Потрібен локальний рахунок для зарплати, податків і щоденних платежів.",
+    criticalArbeitsagenturTitle: "Зареєструйся в Arbeitsagentur",
+    criticalArbeitsagenturDesc:
+      "Реєстрація відкриває підтримку у пошуку роботи та виплати.",
+    criticalCvTitle: "Підготуй німецьке CV (Lebenslauf)",
+    criticalCvDesc:
+      "Сильне CV потрібне перед ефективними відгуками в Німеччині.",
+    actionMarkDone: "Готово",
     quickPhrases: "Швидкі фрази",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Податки & рахунки",

@@ -232,6 +232,22 @@ const pl = {
     actionCtaStart: "Start",
     actionCtaOpen: "Otwórz",
     actionCtaCheck: "Sprawdź",
+    criticalHealthTitle: "Załatw ubezpieczenie zdrowotne",
+    criticalHealthDesc:
+      "Ważne ubezpieczenie jest potrzebne do legalnej pracy i opieki w Niemczech.",
+    criticalSteuerTitle: "Uzyskaj Steuer-ID",
+    criticalSteuerDesc:
+      "Bez Steuer-ID nie możesz fakturować ani legalnie działać jako freelancer.",
+    criticalBankTitle: "Otwórz lub potwierdź niemieckie konto bankowe",
+    criticalBankDesc:
+      "Potrzebujesz lokalnego konta do wypłat, podatków i codziennych płatności.",
+    criticalArbeitsagenturTitle: "Zarejestruj się w Arbeitsagentur",
+    criticalArbeitsagenturDesc:
+      "Rejestracja odblokuje wsparcie w szukaniu pracy i świadczenia.",
+    criticalCvTitle: "Przygotuj niemieckie CV (Lebenslauf)",
+    criticalCvDesc:
+      "Silne CV jest potrzebne przed skutecznymi aplikacjami w Niemczech.",
+    actionMarkDone: "Gotowe",
     quickPhrases: "Szybkie frazy",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Podatki & faktury",

@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useState } from "react";
 import type { ProfileDNA } from "@/lib/dna/types";
 import type { Locale } from "@/lib/i18n";
 import { useT } from "@/lib/i18n/useT";
@@ -11,17 +13,29 @@ type Props = {
   dna: ProfileDNA;
   locale: Locale;
   liveSituation: LiveSituation;
+  /** Dashboard action_ids marked completed in `user_progress` (excluded from next actions). */
+  completedActionIds: string[];
   children: ReactNode;
 };
 
-export default function DashboardShell({ dna, locale, liveSituation, children }: Props) {
+export default function DashboardShell({
+  dna,
+  locale,
+  liveSituation,
+  completedActionIds,
+  children,
+}: Props) {
   const { t } = useT();
+  const completedIds = new Set(completedActionIds);
+  // Temporary debug log for profile -> live situation mapping validation.
+  console.log("[Vaylo][FINAL LIVE STATE]", liveSituation);
   const primaryGoal = dna.priority?.[0] ?? "orientation";
   const primaryRoute = getPrimaryRoute(dna);
   const secondaryRoute = getSecondaryRoute(dna);
   const nextActions = buildNextActions(
     dna,
     liveSituation,
+    completedIds,
     t,
     primaryRoute,
     secondaryRoute
@@ -106,12 +120,20 @@ export default function DashboardShell({ dna, locale, liveSituation, children }:
                   {action.title}
                 </h3>
                 <p className="mt-1 text-xs text-slate-300">{action.desc}</p>
-                <Link
-                  href={idx === 0 ? primaryRoute : getActionRoute(action.id, dna, secondaryRoute)}
-                  className="mt-3 inline-flex rounded-lg border border-cyan-400/45 bg-cyan-500/20 px-3 py-1.5 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-500/30"
-                >
-                  {action.cta}
-                </Link>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <Link
+                    href={
+                      action.href ??
+                      (idx === 0
+                        ? primaryRoute
+                        : getActionRoute(action.id, dna, secondaryRoute))
+                    }
+                    className="inline-flex rounded-lg border border-cyan-400/45 bg-cyan-500/20 px-3 py-1.5 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-500/30"
+                  >
+                    {action.cta}
+                  </Link>
+                  <MarkTaskDoneButton actionId={action.id} markDoneLabel={t.dashboard.actionMarkDone} />
+                </div>
               </article>
             ))}
           </div>
@@ -204,19 +226,352 @@ export default function DashboardShell({ dna, locale, liveSituation, children }:
   );
 }
 
+function MarkTaskDoneButton({
+  actionId,
+  markDoneLabel,
+}: {
+  actionId: string;
+  markDoneLabel: string;
+}) {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const onDone = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/user-progress", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ actionId }),
+      });
+      if (res.ok) {
+        if (process.env.NEXT_PUBLIC_VAYLO_DEBUG === "1") {
+          console.log("[Vaylo][progress]", { event: "action_completed", actionId });
+        }
+        router.refresh();
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [actionId, router]);
+
+  return (
+    <button
+      type="button"
+      onClick={onDone}
+      disabled={loading}
+      className="inline-flex rounded-lg border border-white/20 bg-white/5 px-2.5 py-1.5 text-[11px] font-semibold text-slate-300 transition hover:border-white/35 hover:bg-white/10 disabled:opacity-50"
+    >
+      {loading ? "…" : markDoneLabel}
+    </button>
+  );
+}
+
 type NextAction = {
   id: string;
   title: string;
   desc: string;
   cta: string;
+  /** Resolved CTA destination; when set, overrides primaryRoute / getActionRoute in the shell. */
+  href?: string;
 };
+
+/** Emergency priority order: P1 → P5. Only evaluated when refine flags are explicitly false. */
+type CriticalBlockerKind =
+  | "health"
+  | "steuer"
+  | "bank"
+  | "arbeitsagentur"
+  | "cv";
+
+function collectCriticalBlockers(
+  liveSituation: LiveSituation,
+  dna: ProfileDNA
+): CriticalBlockerKind[] {
+  const emp = employmentTypeForScoring(liveSituation, dna);
+  const out: CriticalBlockerKind[] = [];
+
+  if (liveSituation.hasHealthInsurance === false) {
+    out.push("health");
+  }
+  if (emp === "freelancer" && liveSituation.hasSteuerId === false) {
+    out.push("steuer");
+  }
+  if (liveSituation.hasBankAccount === false) {
+    out.push("bank");
+  }
+  if (emp === "job_seeker" && liveSituation.registeredArbeitsagentur === false) {
+    out.push("arbeitsagentur");
+  }
+  const missingCv =
+    liveSituation.hasCv === false || liveSituation.hasCV === false;
+  if (emp === "job_seeker" && missingCv) {
+    out.push("cv");
+  }
+
+  return out;
+}
+
+function criticalBlockerToAction(
+  kind: CriticalBlockerKind,
+  t: ReturnType<typeof useT>["t"],
+  dna: ProfileDNA
+): NextAction {
+  switch (kind) {
+    case "health":
+      return {
+        id: "critical-health",
+        title: t.dashboard.criticalHealthTitle,
+        desc: t.dashboard.criticalHealthDesc,
+        cta: t.dashboard.actionCtaCheck,
+        href: getHealthInsuranceHref(dna),
+      };
+    case "steuer":
+      return {
+        id: "critical-steuer",
+        title: t.dashboard.criticalSteuerTitle,
+        desc: t.dashboard.criticalSteuerDesc,
+        cta: t.dashboard.actionCtaStart,
+        href: "/taxes",
+      };
+    case "bank":
+      return {
+        id: "critical-bank",
+        title: t.dashboard.criticalBankTitle,
+        desc: t.dashboard.criticalBankDesc,
+        cta: t.dashboard.actionCtaStart,
+        href: "/forms",
+      };
+    case "arbeitsagentur":
+      return {
+        id: "critical-arbeitsagentur",
+        title: t.dashboard.criticalArbeitsagenturTitle,
+        desc: t.dashboard.criticalArbeitsagenturDesc,
+        cta: t.dashboard.actionCtaStart,
+        href: "/jobs",
+      };
+    case "cv":
+      return {
+        id: "critical-cv",
+        title: t.dashboard.criticalCvTitle,
+        desc: t.dashboard.criticalCvDesc,
+        cta: t.dashboard.actionCtaOpen,
+        href: "/jobs/cv",
+      };
+  }
+}
+
+function criticalReasonForKind(kind: CriticalBlockerKind): string {
+  switch (kind) {
+    case "health":
+      return "CRITICAL_missing_health_insurance";
+    case "steuer":
+      return "CRITICAL_missing_steuer_id";
+    case "bank":
+      return "CRITICAL_missing_bank_account";
+    case "arbeitsagentur":
+      return "CRITICAL_missing_arbeitsagentur";
+    case "cv":
+      return "CRITICAL_missing_cv";
+  }
+}
+
+function blockerKindToCriticalActionId(kind: CriticalBlockerKind): string {
+  switch (kind) {
+    case "health":
+      return "critical-health";
+    case "steuer":
+      return "critical-steuer";
+    case "bank":
+      return "critical-bank";
+    case "arbeitsagentur":
+      return "critical-arbeitsagentur";
+    case "cv":
+      return "critical-cv";
+  }
+}
+
+/** Remove critical blocker steps the user already marked completed in `user_progress`. */
+function filterCompletedCriticalBlockers(
+  kinds: CriticalBlockerKind[],
+  completedIds: Set<string>
+): CriticalBlockerKind[] {
+  const skipped: string[] = [];
+  const kept: CriticalBlockerKind[] = [];
+  for (const k of kinds) {
+    const aid = blockerKindToCriticalActionId(k);
+    if (completedIds.has(aid)) {
+      skipped.push(aid);
+    } else {
+      kept.push(k);
+    }
+  }
+  if (process.env.NEXT_PUBLIC_VAYLO_DEBUG === "1" && skipped.length > 0) {
+    console.log("[Vaylo][progress]", {
+      event: "skipped_because_completed",
+      actionIds: skipped,
+    });
+  }
+  return kept;
+}
+
+function filterCompletedCandidates(
+  actions: NextAction[],
+  completedIds: Set<string>
+): NextAction[] {
+  const skipped: string[] = [];
+  const kept = actions.filter((a) => {
+    if (completedIds.has(a.id)) {
+      skipped.push(a.id);
+      return false;
+    }
+    return true;
+  });
+  if (process.env.NEXT_PUBLIC_VAYLO_DEBUG === "1" && skipped.length > 0) {
+    console.log("[Vaylo][progress]", {
+      event: "skipped_because_completed",
+      actionIds: skipped,
+    });
+  }
+  return kept;
+}
+
+function dnaActionConflictsWithBlockers(
+  actionId: string,
+  active: CriticalBlockerKind[]
+): boolean {
+  const set = new Set(active);
+  if (set.has("health") && actionId === "health-insurance") return true;
+  if (
+    (set.has("steuer") || set.has("bank")) &&
+    actionId === "bureaucracy-priority"
+  ) {
+    return true;
+  }
+  if (set.has("arbeitsagentur") && actionId === "arbeitsagentur") return true;
+  if (set.has("cv") && actionId === "cv") return true;
+  return false;
+}
+
+function getHealthInsuranceHref(dna: ProfileDNA): string {
+  const inputs = dna.inputs;
+  return inputs.goals?.includes("bureaucracy")
+    ? "/forms/health-insurance-membership"
+    : "/guides";
+}
 
 function buildNextActions(
   dna: ProfileDNA,
   liveSituation: LiveSituation,
+  completedIds: Set<string>,
   t: ReturnType<typeof useT>["t"],
   primaryRoute: string,
   secondaryRoute: string
+): NextAction[] {
+  const rawBlockers = collectCriticalBlockers(liveSituation, dna);
+  const blockers = filterCompletedCriticalBlockers(rawBlockers, completedIds);
+  const activeBlockers = blockers.slice(0, 3);
+
+  if (blockers.length > 0) {
+    const criticalCards: NextAction[] = activeBlockers.map((kind) =>
+      criticalBlockerToAction(kind, t, dna)
+    );
+
+    if (process.env.NEXT_PUBLIC_VAYLO_DEBUG === "1") {
+      activeBlockers.forEach((kind, idx) => {
+        const a = criticalCards[idx]!;
+        console.log("[Vaylo][dashboard_scoring_row]", {
+          mode: "critical_blocker_layer",
+          slot: idx,
+          actionId: a.id,
+          href: a.href,
+          baseScore: 0,
+          dnaBoost: 0,
+          liveBoost: 0,
+          finalScore: 10000 - idx,
+          reasons: [criticalReasonForKind(kind)],
+        });
+      });
+    }
+
+    if (criticalCards.length >= 3) {
+      return criticalCards;
+    }
+
+    const dnaPool = filterCompletedCandidates(
+      buildDnaCandidateActions(dna, liveSituation, t),
+      completedIds
+    );
+    const filtered = dnaPool.filter(
+      (a) => !dnaActionConflictsWithBlockers(a.id, activeBlockers)
+    );
+    const deduped = dedupeById(filtered);
+    const need = 3 - criticalCards.length;
+    const filler = pickOrderedActions(
+      deduped,
+      dna,
+      liveSituation,
+      primaryRoute,
+      secondaryRoute
+    ).slice(0, need);
+
+    const combined = [...criticalCards, ...filler];
+    return combined.map((a, idx) => {
+      const href =
+        a.href ??
+        (idx === 0 ? primaryRoute : getActionRoute(a.id, dna, secondaryRoute));
+      if (a.id.startsWith("critical-")) {
+        return { ...a, href };
+      }
+      const copy = getActionCopy(a.id, href, t, liveSituation, dna);
+      return { ...a, ...copy, href };
+    });
+  }
+
+  const dnaPool = filterCompletedCandidates(
+    buildDnaCandidateActions(dna, liveSituation, t),
+    completedIds
+  );
+  const deduped = dedupeById(dnaPool);
+  const ordered = pickOrderedActions(
+    deduped,
+    dna,
+    liveSituation,
+    primaryRoute,
+    secondaryRoute
+  ).slice(0, 3);
+
+  if (process.env.NEXT_PUBLIC_VAYLO_DEBUG === "1") {
+    deduped.forEach((a) => {
+      for (let idx = 0; idx < 3; idx++) {
+        const href = idx === 0 ? primaryRoute : getActionRoute(a.id, dna, secondaryRoute);
+        const breakdown = scoreNextAction(a.id, href, dna, liveSituation, idx);
+        console.log("[Vaylo][dashboard_scoring_row]", {
+          mode: "dna_fallback",
+          slot: idx,
+          actionId: a.id,
+          href,
+          baseScore: breakdown.baseScore,
+          dnaBoost: breakdown.dnaBoost,
+          liveBoost: breakdown.liveBoost,
+          finalScore: breakdown.finalScore,
+          reasons: breakdown.reasons,
+        });
+      }
+    });
+  }
+
+  return ordered.map((a, idx) => {
+    const href =
+      idx === 0 ? primaryRoute : getActionRoute(a.id, dna, secondaryRoute);
+    const copy = getActionCopy(a.id, href, t, liveSituation, dna);
+    return { ...a, ...copy, href };
+  });
+}
+
+function buildDnaCandidateActions(
+  dna: ProfileDNA,
+  liveSituation: LiveSituation,
+  t: ReturnType<typeof useT>["t"]
 ): NextAction[] {
   const actions: NextAction[] = [];
   const goals = dna.inputs.goals ?? [];
@@ -305,31 +660,7 @@ function buildNextActions(
     });
   }
 
-  const deduped = dedupeById(actions);
-  const ordered = pickOrderedActions(
-    deduped,
-    dna,
-    liveSituation,
-    primaryRoute,
-    secondaryRoute
-  ).slice(0, 3);
-
-  if (process.env.NEXT_PUBLIC_VAYLO_DEBUG === "1") {
-    const debugRows = ordered.map((a, idx) => {
-      const href = idx === 0 ? primaryRoute : getActionRoute(a.id, dna, secondaryRoute);
-      const breakdown = scoreNextAction(a.id, href, dna, liveSituation, idx);
-      return { actionId: a.id, href, ...breakdown };
-    });
-    // Internal debug only.
-    console.log("[Vaylo][dashboard_scoring]", debugRows);
-  }
-
-  // Ensure copy matches the final destination routes for the chosen order.
-  return ordered.map((a, idx) => {
-    const href = idx === 0 ? primaryRoute : getActionRoute(a.id, dna, secondaryRoute);
-    const copy = getActionCopy(a.id, href, t);
-    return { ...a, ...copy };
-  });
+  return actions;
 }
 
 function dedupeById(actions: NextAction[]): NextAction[] {
@@ -407,6 +738,15 @@ type ScoreBreakdown = {
   reasons: string[];
 };
 
+function employmentTypeForScoring(
+  liveSituation: LiveSituation,
+  dna: ProfileDNA
+): "employee" | "freelancer" | "job_seeker" {
+  return (
+    liveSituation.employmentType ?? dna.inputs.employment_type
+  ) as "employee" | "freelancer" | "job_seeker";
+}
+
 function scoreNextAction(
   actionId: string,
   href: string,
@@ -415,6 +755,7 @@ function scoreNextAction(
   idx: number
 ): ScoreBreakdown {
   const inputs = dna.inputs;
+  const emp = employmentTypeForScoring(liveSituation, dna);
   const goals = inputs.goals ?? [];
   let baseScore = 0;
   let dnaBoost = 0;
@@ -431,7 +772,7 @@ function scoreNextAction(
   }
 
   // DNA segment preferences.
-  if (inputs.employment_type === "job_seeker") {
+  if (emp === "job_seeker") {
     if (actionId === "arbeitsagentur") dnaBoost += 60;
     if (actionId === "cv") dnaBoost += 50;
     if (actionId === "bureaucracy-priority") dnaBoost += 10;
@@ -444,39 +785,40 @@ function scoreNextAction(
     if (actionId === "bureaucracy-priority") dnaBoost += 15;
   }
 
-  if (inputs.employment_type === "freelancer") {
+  if (emp === "freelancer") {
     if (href.startsWith("/taxes")) dnaBoost += 60;
     if (actionId === "health-insurance") dnaBoost += 25;
     if (actionId === "bureaucracy-priority") dnaBoost += 20;
   }
 
-  // Live situation boosts.
+  // Live situation boosts (DNA fallback path only — explicit false blockers use critical_blocker_layer).
   if (liveSituation.hasHealthInsurance === false && actionId === "health-insurance") {
-    liveBoost += 120;
-    reasons.push("missing_health_insurance");
+    liveBoost += 80;
+    reasons.push("CRITICAL_missing_health_insurance");
   }
   if (liveSituation.hasBankAccount === false && actionId === "bureaucracy-priority") {
     liveBoost += 45;
-    reasons.push("missing_bank_account");
+    reasons.push("CRITICAL_missing_bank_account");
   }
   if (
-    inputs.employment_type === "freelancer" &&
+    emp === "freelancer" &&
     liveSituation.hasSteuerId === false &&
-    (href.startsWith("/taxes") || actionId === "bureaucracy-priority")
+    actionId === "bureaucracy-priority" &&
+    href.startsWith("/taxes")
   ) {
-    liveBoost += 110;
-    reasons.push("freelancer_without_steuer_id");
+    liveBoost += 70;
+    reasons.push("CRITICAL_missing_steuer_id");
   }
   if (liveSituation.hasCv === false && actionId === "cv") {
     liveBoost += 100;
-    reasons.push("missing_cv");
+    reasons.push("CRITICAL_missing_cv");
   }
   if (
     liveSituation.registeredArbeitsagentur === false &&
     actionId === "arbeitsagentur"
   ) {
     liveBoost += 95;
-    reasons.push("not_registered_arbeitsagentur");
+    reasons.push("CRITICAL_missing_arbeitsagentur");
   }
   if (
     liveSituation.jobSearchUrgency === "urgent" &&
@@ -529,6 +871,12 @@ function getActionRoute(actionId: string, dna: ProfileDNA, fallback: string): st
   const inputs = dna?.inputs;
   if (!inputs) return fallback;
 
+  if (actionId === "critical-health") return getHealthInsuranceHref(dna);
+  if (actionId === "critical-steuer") return "/taxes";
+  if (actionId === "critical-bank") return "/forms";
+  if (actionId === "critical-arbeitsagentur") return "/jobs";
+  if (actionId === "critical-cv") return "/jobs/cv";
+
   if (actionId === "cv") return "/jobs/cv";
   if (actionId === "arbeitsagentur") return "/jobs";
   if (actionId === "health-insurance") {
@@ -545,8 +893,23 @@ function getActionRoute(actionId: string, dna: ProfileDNA, fallback: string): st
 function getActionCopy(
   actionId: string,
   href: string,
-  t: ReturnType<typeof useT>["t"]
+  t: ReturnType<typeof useT>["t"],
+  liveSituation: LiveSituation,
+  dna: ProfileDNA
 ): Pick<NextAction, "title" | "desc"> {
+  const emp = employmentTypeForScoring(liveSituation, dna);
+  if (
+    actionId === "bureaucracy-priority" &&
+    href.startsWith("/taxes") &&
+    emp === "freelancer" &&
+    liveSituation.hasSteuerId === false
+  ) {
+    return {
+      title: t.dashboard.criticalSteuerTitle,
+      desc: t.dashboard.criticalSteuerDesc,
+    };
+  }
+
   if (actionId === "bureaucracy-priority") {
     if (href === "/taxes") {
       return {

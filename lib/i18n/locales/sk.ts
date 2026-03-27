@@ -214,6 +214,22 @@ const sk = {
     actionCtaStart: "Začať",
     actionCtaOpen: "Otvoriť",
     actionCtaCheck: "Skontrolovať",
+    criticalHealthTitle: "Vyrieš zdravotné poistenie",
+    criticalHealthDesc:
+      "Platné zdravotné poistenie potrebuješ na legálnu prácu a prístup k starostlivosti v Nemecku.",
+    criticalSteuerTitle: "Získaj Steuer-ID",
+    criticalSteuerDesc:
+      "Bez Steuer-ID nemôžeš fakturovať ani legálne fungovať ako freelancer.",
+    criticalBankTitle: "Otvor alebo potvrď nemecký bankový účet",
+    criticalBankDesc:
+      "Potrebuješ lokálny účet na plat, dane a bežné platby.",
+    criticalArbeitsagenturTitle: "Zaregistruj sa na Arbeitsagentur",
+    criticalArbeitsagenturDesc:
+      "Registrácia odomkne podporu pri hľadaní práce a dávky.",
+    criticalCvTitle: "Priprav si nemecký životopis (Lebenslauf)",
+    criticalCvDesc:
+      "Silný životopis potrebuješ pred efektívnymi žiadosťami v Nemecku.",
+    actionMarkDone: "Hotovo",
     editProfile: "Upraviť profil",
     editProfileTitle: "Upraviť profil",
     editProfileDesc: "Aktualizuj svoju aktuálnu situáciu. Vaylo sa podľa toho prispôsobí.",

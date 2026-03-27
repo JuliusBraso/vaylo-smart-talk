@@ -12,6 +12,7 @@ type Props = {
   dna: ProfileDNA;
   locale: Locale;
   liveSituation: LiveSituation;
+  completedActionIds: string[];
   children: ReactNode;
 };
 
