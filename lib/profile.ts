@@ -59,7 +59,7 @@ export async function getMyProfile(
 
 export async function upsertMyProfile(
   supabase: SupabaseClient,
-  payload: ProfilePayload
+  payload: ProfilePayload & Record<string, unknown>
 ): Promise<{ error: Error | null }> {
   const {
     data: { user },

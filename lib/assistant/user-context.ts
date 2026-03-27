@@ -3,6 +3,12 @@ import type { Profile } from "@/lib/profile";
 export type UserContext = {
   hasSteuerId?: boolean;
   hasChildren?: boolean;
+  hasHealthInsurance?: boolean;
+  hasBankAccount?: boolean;
+  registeredArbeitsagentur?: boolean;
+  hasCv?: boolean;
+  jobSearchUrgency?: "relaxed" | "urgent";
+  childrenSchoolAge?: boolean;
   employmentType?: "employee" | "freelancer" | "job_seeker";
   completedSteps?: string[];
 };
@@ -28,8 +34,17 @@ export function getUserContextFromProfile(profile: unknown): UserContext {
   const ctx: UserContext = {};
 
   // Explicit flags (if you add them to `profiles` later).
-  if (isBoolean(p.hasSteuerId)) ctx.hasSteuerId = p.hasSteuerId;
-  if (isBoolean(p.hasChildren)) ctx.hasChildren = p.hasChildren;
+  if (isBoolean(p.has_steuer_id)) ctx.hasSteuerId = p.has_steuer_id;
+  if (isBoolean(p.has_children)) ctx.hasChildren = p.has_children;
+  if (isBoolean(p.has_health_insurance)) ctx.hasHealthInsurance = p.has_health_insurance;
+  if (isBoolean(p.has_bank_account)) ctx.hasBankAccount = p.has_bank_account;
+  if (isBoolean(p.registered_arbeitsagentur))
+    ctx.registeredArbeitsagentur = p.registered_arbeitsagentur;
+  if (isBoolean(p.has_cv)) ctx.hasCv = p.has_cv;
+  if (isBoolean(p.children_school_age)) ctx.childrenSchoolAge = p.children_school_age;
+  if (p.job_search_urgency === "relaxed" || p.job_search_urgency === "urgent") {
+    ctx.jobSearchUrgency = p.job_search_urgency;
+  }
   if (isStringArray(p.completedSteps)) ctx.completedSteps = p.completedSteps;
 
   // Derive employment type from existing profile fields.
