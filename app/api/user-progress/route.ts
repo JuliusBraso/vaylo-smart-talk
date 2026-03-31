@@ -2,33 +2,45 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { markActionCompleted } from "@/lib/vaylo/user-progress";
 
-async function getAuthedUserId(): Promise<string | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user?.id ?? null;
-}
-
 /**
  * POST body: { actionId: string }
  * Marks the given dashboard action_id as completed for the current user.
  */
 export async function POST(req: NextRequest) {
-  const userId = await getAuthedUserId();
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+  const userId = user?.id ?? null;
   if (!userId) {
+    console.error("[Vaylo][progress] Unauthorized", { userError });
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = (await req.json()) as { actionId?: unknown };
+  let body: { actionId?: unknown } = {};
+  try {
+    body = (await req.json()) as { actionId?: unknown };
+  } catch (e) {
+    console.error("[Vaylo][progress] Invalid JSON body", e);
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
   const actionId = typeof body.actionId === "string" ? body.actionId.trim() : "";
   if (!actionId) {
+    console.error("[Vaylo][progress] Missing/invalid actionId", {
+      userId,
+      actionId: body.actionId,
+    });
     return NextResponse.json({ error: "Invalid actionId" }, { status: 400 });
   }
 
-  const supabase = await createClient();
   const { error } = await markActionCompleted(supabase, userId, actionId);
   if (error) {
+    console.error("[Vaylo][progress] markActionCompleted failed", {
+      userId,
+      actionId,
+      error,
+    });
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 

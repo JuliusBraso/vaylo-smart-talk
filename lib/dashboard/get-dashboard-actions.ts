@@ -9,6 +9,8 @@ import {
 } from "@/lib/i18n/labels";
 import type { LiveSituation } from "@/lib/vaylo/live-situation";
 import { getActionExplanations } from "@/lib/dashboard/get-action-explanations";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { getUserBehaviorSignals } from "@/lib/dashboard/get-user-behavior-signals";
 
 export type DashboardAction = {
   id: string;
@@ -48,6 +50,19 @@ function employmentTypeForScoring(
   return (
     liveSituation.employmentType ?? dna.inputs.employment_type
   ) as "employee" | "freelancer" | "job_seeker";
+}
+
+function normalizeBehaviorActionId(actionId: string): string {
+  switch (actionId) {
+    case "critical-health":
+      return "health-insurance";
+    case "critical-arbeitsagentur":
+      return "arbeitsagentur";
+    case "critical-cv":
+      return "cv";
+    default:
+      return actionId;
+  }
 }
 
 function collectCriticalBlockers(
@@ -97,14 +112,14 @@ function filterCompletedCriticalBlockers(
   kinds: CriticalBlockerKind[],
   completedIds: Set<string>
 ): CriticalBlockerKind[] {
-  return kinds.filter((k) => !completedIds.has(blockerKindToCriticalActionId(k)));
+  return kinds.filter((k) => !completedIds.has(normalizeBehaviorActionId(blockerKindToCriticalActionId(k))));
 }
 
 function filterCompletedCandidates(
   actions: NextAction[],
   completedIds: Set<string>
 ): NextAction[] {
-  return actions.filter((a) => !completedIds.has(a.id));
+  return actions.filter((a) => !completedIds.has(normalizeBehaviorActionId(a.id)));
 }
 
 function dnaActionConflictsWithBlockers(
@@ -402,7 +417,8 @@ function scoreNextAction(
   href: string,
   dna: ProfileDNA,
   liveSituation: LiveSituation,
-  idx: number
+  idx: number,
+  behavior: { repeatedClickActionIds: Set<string> }
 ): ScoreBreakdown {
   const inputs = dna.inputs;
   const emp = employmentTypeForScoring(liveSituation, dna);
@@ -486,11 +502,14 @@ function scoreNextAction(
   // Small, deterministic tie-break nudges.
   baseScore += actionId === "health-insurance" ? 1 : 0;
 
+  const norm = normalizeBehaviorActionId(actionId);
+  const clickBoost = behavior.repeatedClickActionIds.has(norm) ? 20 : 0;
+
   return {
     baseScore,
     dnaBoost,
     liveBoost,
-    finalScore: baseScore + dnaBoost + liveBoost,
+    finalScore: baseScore + dnaBoost + liveBoost + clickBoost,
     reasons,
   };
 }
@@ -501,14 +520,15 @@ function pickBestForPosition(
   liveSituation: LiveSituation,
   primaryRoute: string,
   secondaryRoute: string,
-  idx: number
+  idx: number,
+  behavior: { repeatedClickActionIds: Set<string> }
 ): NextAction {
   let best = candidates[0]!;
   let bestScore = Number.NEGATIVE_INFINITY;
 
   for (const c of candidates) {
     const href = idx === 0 ? primaryRoute : getActionRoute(c.id, dna, secondaryRoute);
-    const breakdown = scoreNextAction(c.id, href, dna, liveSituation, idx);
+    const breakdown = scoreNextAction(c.id, href, dna, liveSituation, idx, behavior);
     const score = breakdown.finalScore;
 
     if (score > bestScore || (score === bestScore && c.id < best.id)) {
@@ -536,7 +556,8 @@ function pickOrderedActions(
   dna: ProfileDNA,
   liveSituation: LiveSituation,
   primaryRoute: string,
-  secondaryRoute: string
+  secondaryRoute: string,
+  behavior: { repeatedClickActionIds: Set<string> }
 ): NextAction[] {
   // Greedy, position-aware ordering:
   // - card 0 always uses primaryRoute
@@ -551,7 +572,8 @@ function pickOrderedActions(
       liveSituation,
       primaryRoute,
       secondaryRoute,
-      idx
+      idx,
+      behavior
     );
     result.push(best);
     const removeIdx = remaining.findIndex((x) => x.id === best.id);
@@ -617,7 +639,8 @@ function buildNextActions(
   completedIds: Set<string>,
   t: Dict,
   primaryRoute: string,
-  secondaryRoute: string
+  secondaryRoute: string,
+  behavior: { repeatedClickActionIds: Set<string> }
 ): NextAction[] {
   const rawBlockers = collectCriticalBlockers(liveSituation, dna);
   const blockers = filterCompletedCriticalBlockers(rawBlockers, completedIds);
@@ -639,12 +662,16 @@ function buildNextActions(
     const filtered = dnaPool.filter((a) => !dnaActionConflictsWithBlockers(a.id, activeBlockers));
     const deduped = dedupeById(filtered);
     const need = 3 - criticalCards.length;
-    const filler = pickOrderedActions(deduped, dna, liveSituation, primaryRoute, secondaryRoute).slice(
-      0,
-      need
-    );
+    const fillerWithBoost = pickOrderedActions(
+      deduped,
+      dna,
+      liveSituation,
+      primaryRoute,
+      secondaryRoute,
+      behavior
+    ).slice(0, need);
 
-    const combined = [...criticalCards, ...filler];
+    const combined = [...criticalCards, ...fillerWithBoost];
     return combined.map((a, idx) => {
       const href =
         a.href ??
@@ -662,33 +689,49 @@ function buildNextActions(
     completedIds
   );
   const deduped = dedupeById(dnaPool);
-  const ordered = pickOrderedActions(deduped, dna, liveSituation, primaryRoute, secondaryRoute).slice(
-    0,
-    3
-  );
+  const orderedWithBoost = pickOrderedActions(
+    deduped,
+    dna,
+    liveSituation,
+    primaryRoute,
+    secondaryRoute,
+    behavior
+  ).slice(0, 3);
 
-  return ordered.map((a, idx) => {
+  return orderedWithBoost.map((a, idx) => {
     const href = idx === 0 ? primaryRoute : getActionRoute(a.id, dna, secondaryRoute);
     const copy = getActionCopy(a.id, href, t, liveSituation, dna);
     return { ...a, ...copy, href };
   });
 }
 
-export function getDashboardActions(params: {
+export async function getDashboardActions(params: {
+  supabase: SupabaseClient;
+  userId: string;
   dna: ProfileDNA;
   liveSituation: LiveSituation;
   t: Dict;
-  completedActionIds?: string[];
-}): DashboardAction[] {
-  const { dna, liveSituation, t } = params;
-  const completedIds = new Set(params.completedActionIds ?? []);
+}): Promise<DashboardAction[]> {
+  const { supabase, userId, dna, liveSituation, t } = params;
+  const behavior = await getUserBehaviorSignals(supabase, userId);
+  const completedIds = new Set(Array.from(behavior.completedActionIds));
 
   const primaryRoute = getPrimaryRoute(dna);
   const secondaryRoute = getSecondaryRoute(dna);
-  const nextActions = buildNextActions(dna, liveSituation, completedIds, t, primaryRoute, secondaryRoute);
+  const nextActions = buildNextActions(
+    dna,
+    liveSituation,
+    completedIds,
+    t,
+    primaryRoute,
+    secondaryRoute,
+    behavior
+  );
 
   // Keep deterministic ordering from the existing picker/critical layer.
-  return nextActions.map((a, idx) => {
+  return nextActions
+    .filter((a) => !completedIds.has(normalizeBehaviorActionId(a.id)))
+    .map((a, idx) => {
     const href =
       a.href ?? (idx === 0 ? primaryRoute : getActionRoute(a.id, dna, secondaryRoute));
     const copy = getActionCopy(a.id, href, t, liveSituation, dna);

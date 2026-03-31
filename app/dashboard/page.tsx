@@ -5,8 +5,7 @@ import { getUser } from "@/lib/auth/get-user";
 import { getProfileDNA } from "@/lib/dna/get-profile-dna";
 import { DEFAULT_LOCALE, getDict, LOCALES, type Locale } from "@/lib/i18n";
 import { getLiveSituationFromProfile } from "@/lib/vaylo/live-situation";
-import { getCompletedActionIds } from "@/lib/vaylo/user-progress";
-import DashboardClientWrapper from "./_components/DashboardClientWrapper";
+import DashboardDataProvider from "./_components/DashboardDataProvider";
 import FreelancerModule from "./_components/modules/FreelancerModule";
 import FamilyModule from "./_components/modules/FamilyModule";
 import JobSeekerModule from "./_components/modules/JobSeekerModule";
@@ -40,9 +39,6 @@ export default async function DashboardPage() {
     .maybeSingle();
   const liveSituation = getLiveSituationFromProfile(profileRow);
 
-  const completedIds = await getCompletedActionIds(supabase, user.id);
-  const completedActionIds = [...completedIds];
-
   const t = getDict(locale);
 
   const modules: ReactNode[] = [];
@@ -62,16 +58,16 @@ export default async function DashboardPage() {
   }
 
   return (
-    <DashboardClientWrapper
+    <DashboardDataProvider
+      supabase={supabase}
+      userId={user.id}
       dna={dna}
       locale={locale}
       liveSituation={liveSituation}
-      completedActionIds={completedActionIds}
-      userId={user.id}
       t={t}
     >
       {modules}
-    </DashboardClientWrapper>
+    </DashboardDataProvider>
   );
 }
 

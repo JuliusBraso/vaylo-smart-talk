@@ -21,16 +21,15 @@ import {
   getLanguageLabel,
 } from "@/lib/i18n/labels";
 import type { LiveSituation } from "@/lib/vaylo/live-situation";
-import { getDashboardActions } from "@/lib/dashboard/get-dashboard-actions";
+import type { DashboardAction } from "@/lib/dashboard/get-dashboard-actions";
 import { trackActionEvent } from "@/lib/vaylo/action-tracking";
 
 type Props = {
   dna: ProfileDNA;
   locale: Locale;
   liveSituation: LiveSituation;
-  /** Dashboard action_ids marked completed in `user_progress` (excluded from next actions). */
-  completedActionIds: string[];
   userId: string;
+  actions: DashboardAction[];
   /** Server-resolved dictionary (passed from dashboard page; do not use client-only context here). */
   t: Dict;
   children: ReactNode;
@@ -51,13 +50,12 @@ export default function DashboardShell({
   dna,
   locale,
   liveSituation,
-  completedActionIds,
   userId,
+  actions,
   t,
   children,
 }: Props) {
   const primaryGoal = dna.priority?.[0] ?? "orientation";
-  const actions = getDashboardActions({ dna, liveSituation, t, completedActionIds });
 
   return (
     <main
