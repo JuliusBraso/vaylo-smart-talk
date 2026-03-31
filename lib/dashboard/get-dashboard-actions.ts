@@ -19,6 +19,7 @@ export type DashboardAction = {
   reasons: string[];
   href: string;
   priority: "critical" | "high" | "medium";
+  nudges?: string[];
   /**
    * CTA label for the action button.
    * Not part of the original minimal type request, but required to keep existing dashboard behavior.
@@ -418,7 +419,10 @@ function scoreNextAction(
   dna: ProfileDNA,
   liveSituation: LiveSituation,
   idx: number,
-  behavior: { repeatedClickActionIds: Set<string> }
+  behavior: {
+    repeatedClickActionIds: Set<string>;
+    timeDecayBoost: Map<string, number>;
+  }
 ): ScoreBreakdown {
   const inputs = dna.inputs;
   const emp = employmentTypeForScoring(liveSituation, dna);
@@ -504,12 +508,13 @@ function scoreNextAction(
 
   const norm = normalizeBehaviorActionId(actionId);
   const clickBoost = behavior.repeatedClickActionIds.has(norm) ? 20 : 0;
+  const decayBoost = behavior.timeDecayBoost.get(norm) ?? 0;
 
   return {
     baseScore,
     dnaBoost,
     liveBoost,
-    finalScore: baseScore + dnaBoost + liveBoost + clickBoost,
+    finalScore: baseScore + dnaBoost + liveBoost + clickBoost + decayBoost,
     reasons,
   };
 }
@@ -521,7 +526,10 @@ function pickBestForPosition(
   primaryRoute: string,
   secondaryRoute: string,
   idx: number,
-  behavior: { repeatedClickActionIds: Set<string> }
+  behavior: {
+    repeatedClickActionIds: Set<string>;
+    timeDecayBoost: Map<string, number>;
+  }
 ): NextAction {
   let best = candidates[0]!;
   let bestScore = Number.NEGATIVE_INFINITY;
@@ -557,7 +565,10 @@ function pickOrderedActions(
   liveSituation: LiveSituation,
   primaryRoute: string,
   secondaryRoute: string,
-  behavior: { repeatedClickActionIds: Set<string> }
+  behavior: {
+    repeatedClickActionIds: Set<string>;
+    timeDecayBoost: Map<string, number>;
+  }
 ): NextAction[] {
   // Greedy, position-aware ordering:
   // - card 0 always uses primaryRoute
@@ -640,7 +651,10 @@ function buildNextActions(
   t: Dict,
   primaryRoute: string,
   secondaryRoute: string,
-  behavior: { repeatedClickActionIds: Set<string> }
+  behavior: {
+    repeatedClickActionIds: Set<string>;
+    timeDecayBoost: Map<string, number>;
+  }
 ): NextAction[] {
   const rawBlockers = collectCriticalBlockers(liveSituation, dna);
   const blockers = filterCompletedCriticalBlockers(rawBlockers, completedIds);
@@ -739,6 +753,24 @@ export async function getDashboardActions(params: {
     const priority: DashboardAction["priority"] =
       a.id.startsWith("critical-") ? "critical" : idx === 0 ? "high" : "medium";
 
+      const nudges: string[] = [];
+      const norm = normalizeBehaviorActionId(a.id);
+
+      // 1) Long ignore (>=72h) — represented by the max decay boost (30).
+      if ((behavior.timeDecayBoost.get(norm) ?? 0) >= 30) {
+        nudges.push("Odkladáš to už niekoľko dní");
+      }
+      // 2) Critical + not completed (critical cards are only shown when not completed).
+      if (priority === "critical") {
+        nudges.push("Toto je dôležité vyriešiť čo najskôr");
+      }
+      // 3) Repeated clicks (proxy from existing behavior signal).
+      if (behavior.repeatedClickActionIds.has(norm)) {
+        nudges.push("Skús to dokončiť — už si s tým začal");
+      }
+
+      const nudgesLimited = nudges.slice(0, 2);
+
     return {
       id: a.id,
       title: copy.title,
@@ -746,6 +778,7 @@ export async function getDashboardActions(params: {
       reasons,
       href,
       priority,
+        nudges: nudgesLimited.length > 0 ? nudgesLimited : undefined,
       cta: copy.cta,
     };
   });

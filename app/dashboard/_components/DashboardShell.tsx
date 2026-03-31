@@ -162,6 +162,13 @@ export default function DashboardShell({
                     ))}
                   </ul>
                 ) : null}
+                {action.nudges?.length ? (
+                  <div className="mt-2 grid gap-1 text-[11px] leading-snug text-slate-400/90">
+                    {action.nudges.slice(0, 2).map((n, ni) => (
+                      <div key={`${action.id}-nudge-${ni}`}>{n}</div>
+                    ))}
+                  </div>
+                ) : null}
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <Link
                     href={action.href}
