@@ -258,35 +258,35 @@ const sk = {
       "Silný životopis potrebuješ pred efektívnymi žiadosťami v Nemecku.",
     actionMarkDone: "Hotovo",
     actionExplainBureaucracyGoal:
-      "Tvoj cieľ je „{goal}“ — formuláre a úrady zodpovedajú tejto priorite.",
+      "Chceš „{goal}“ — bez úradných krokov sa pri formulároch zasekneš.",
     actionExplainBureaucracyFreelancerSteuer:
-      "Ako {employment} bez Steuer-ID blokujú daňové témy ďalšie kroky.",
+      "Nemáš Steuer-ID — bez nej pri statuse {employment} nevieš legálne pracovať ani fakturovať.",
     actionExplainBureaucracyBank:
-      "Bez potvrdeného účtu sú platby a mnohé žiadosti ťažšie.",
+      "Nemáš potvrdený účet — bez neho sú platby a žiadosti problém.",
     actionExplainBureaucracyFamily:
-      "S {family} sú rodinné a úradné procesy často časovo citlivé.",
+      "S {family} bez týchto krokov ľahko prídeš o peniaze alebo termíny.",
     actionExplainHealthMissing:
-      "V profile ešte nie je potvrdené zdravotné poistenie.",
+      "Nemáš potvrdené zdravotné poistenie — bez neho nemôžeš legálne pracovať a riskuješ vysoké náklady.",
     actionExplainHealthGoalBureaucracy:
-      "K cieľu „{goal}“ často patrí členstvo a doklady.",
+      "Nemáš členstvo alebo doklady — úrad ti bez nich zastaví ďalšie kroky.",
     actionExplainHealthFamily:
-      "S {family} sú poistenie a doklady obzvlášť dôležité.",
+      "Máš {family} — bez poistenia a dokladov sa ti vybavovanie spomalí.",
     actionExplainBankMissing:
-      "Lokálny účet potrebuješ na plat, dane a bežný život.",
+      "Bez účtu sa zasekne plat, dane a veľa žiadostí.",
     actionExplainBankFreelancer:
-      "Ako {employment} prebiehajú platby a dane cez dostupný účet.",
+      "Pracuješ ako {employment} — bez účtu ti neprejdú platby ani dane.",
     actionExplainArbeitsagenturJobSeeker:
-      "Ako {employment} je agentúra centrom podpory pri hľadaní práce.",
+      "Hľadáš prácu — bez registrácie na Arbeitsagentur prídeš o podporu a dávky.",
     actionExplainArbeitsagenturNotRegistered:
-      "V profile chýba registrácia — odomyká podporu a dávky.",
+      "Nie si registrovaný — bez toho nedostaneš podporu a často ani dávky.",
     actionExplainArbeitsagenturUrgent:
-      "Hľadanie práce je označené ako naliehavé — agentúra a žiadosti prvé.",
+      "Hľadanie práce je naliehavé — bez agentúry strácaš čas a šance.",
     actionExplainCvJobSeeker:
-      "Ako {employment} je životopis tvoj hlavný nástroj.",
+      "Hľadáš prácu — bez dobrého životopisu sa ťažko dostaneš na pohovor.",
     actionExplainCvMissing:
-      "V profile chýba potvrdený životopis.",
+      "Nemáš potvrdený životopis — bez neho sa žiadosti spomalia.",
     actionExplainCvUrgent:
-      "Pri naliehavom hľadaní práce sa oplatí rýchly krok s CV.",
+      "Hľadanie práce je naliehavé — bez životopisu nevieš rýchlo reagovať na ponuky.",
     editProfile: "Upraviť profil",
     editProfileTitle: "Upraviť profil",
     editProfileDesc: "Aktualizuj svoju aktuálnu situáciu. Vaylo sa podľa toho prispôsobí.",

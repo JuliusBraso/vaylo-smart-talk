@@ -21,7 +21,8 @@ import {
   getLanguageLabel,
 } from "@/lib/i18n/labels";
 import type { LiveSituation } from "@/lib/vaylo/live-situation";
-import { getActionExplanations } from "@/lib/dashboard/get-action-explanations";
+import { getDashboardActions } from "@/lib/dashboard/get-dashboard-actions";
+import { trackActionEvent } from "@/lib/vaylo/action-tracking";
 
 type Props = {
   dna: ProfileDNA;
@@ -29,6 +30,7 @@ type Props = {
   liveSituation: LiveSituation;
   /** Dashboard action_ids marked completed in `user_progress` (excluded from next actions). */
   completedActionIds: string[];
+  userId: string;
   /** Server-resolved dictionary (passed from dashboard page; do not use client-only context here). */
   t: Dict;
   children: ReactNode;
@@ -50,21 +52,12 @@ export default function DashboardShell({
   locale,
   liveSituation,
   completedActionIds,
+  userId,
   t,
   children,
 }: Props) {
-  const completedIds = new Set(completedActionIds);
   const primaryGoal = dna.priority?.[0] ?? "orientation";
-  const primaryRoute = getPrimaryRoute(dna);
-  const secondaryRoute = getSecondaryRoute(dna);
-  const nextActions = buildNextActions(
-    dna,
-    liveSituation,
-    completedIds,
-    t,
-    primaryRoute,
-    secondaryRoute
-  );
+  const actions = getDashboardActions({ dna, liveSituation, t, completedActionIds });
 
   return (
     <main
@@ -144,13 +137,8 @@ export default function DashboardShell({
             </div>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-3">
-            {nextActions.map((action, idx) => {
-              const whyLines = getActionExplanations(
-                action.id,
-                dna,
-                liveSituation,
-                t
-              );
+            {actions.map((action, idx) => {
+              const whyLines = action.reasons;
               return (
               <article
                 key={action.id}
@@ -168,7 +156,7 @@ export default function DashboardShell({
                 <h3 className="mt-2 text-sm font-semibold text-slate-100">
                   {action.title}
                 </h3>
-                <p className="mt-1 text-xs text-slate-300">{action.desc}</p>
+                <p className="mt-1 text-xs text-slate-300">{action.description}</p>
                 {whyLines.length > 0 ? (
                   <ul className="mt-2 list-disc space-y-1 pl-4 text-[11px] leading-snug text-slate-500">
                     {whyLines.map((line, li) => (
@@ -178,17 +166,23 @@ export default function DashboardShell({
                 ) : null}
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <Link
-                    href={
-                      action.href ??
-                      (idx === 0
-                        ? primaryRoute
-                        : getActionRoute(action.id, dna, secondaryRoute))
-                    }
+                    href={action.href}
+                    onClick={() => {
+                      void trackActionEvent({
+                        userId,
+                        actionId: action.id,
+                        eventType: "click",
+                      });
+                    }}
                     className="inline-flex rounded-lg border border-cyan-400/45 bg-cyan-500/20 px-3 py-1.5 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-500/30"
                   >
                     {action.cta}
                   </Link>
-                  <MarkTaskDoneButton actionId={action.id} markDoneLabel={t.dashboard.actionMarkDone} />
+                  <MarkTaskDoneButton
+                    userId={userId}
+                    actionId={action.id}
+                    markDoneLabel={t.dashboard.actionMarkDone}
+                  />
                 </div>
               </article>
               );
@@ -276,9 +270,11 @@ export default function DashboardShell({
 }
 
 function MarkTaskDoneButton({
+  userId,
   actionId,
   markDoneLabel,
 }: {
+  userId: string;
   actionId: string;
   markDoneLabel: string;
 }) {
@@ -293,6 +289,7 @@ function MarkTaskDoneButton({
         body: JSON.stringify({ actionId }),
       });
       if (res.ok) {
+        await trackActionEvent({ userId, actionId, eventType: "complete" });
         if (process.env.NEXT_PUBLIC_VAYLO_DEBUG === "1") {
           console.log("[Vaylo][progress]", { event: "action_completed", actionId });
         }
@@ -301,7 +298,7 @@ function MarkTaskDoneButton({
     } finally {
       setLoading(false);
     }
-  }, [actionId, router]);
+  }, [actionId, router, userId]);
 
   return (
     <button

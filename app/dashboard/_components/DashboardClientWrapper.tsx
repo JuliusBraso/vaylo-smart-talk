@@ -13,6 +13,7 @@ type Props = {
   locale: Locale;
   liveSituation: LiveSituation;
   completedActionIds: string[];
+  userId: string;
   /** Server-resolved dictionary (see `getDict(locale)` on the dashboard page). Not loaded here. */
   t: Dict;
   children: ReactNode;
@@ -27,6 +28,7 @@ export default function DashboardClientWrapper({
   locale,
   liveSituation,
   completedActionIds,
+  userId,
   t,
   children,
 }: Props) {
@@ -36,6 +38,7 @@ export default function DashboardClientWrapper({
       locale={locale}
       liveSituation={liveSituation}
       completedActionIds={completedActionIds}
+      userId={userId}
       t={t}
     >
       {children}

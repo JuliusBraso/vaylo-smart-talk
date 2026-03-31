@@ -67,6 +67,7 @@ export default async function DashboardPage() {
       locale={locale}
       liveSituation={liveSituation}
       completedActionIds={completedActionIds}
+      userId={user.id}
       t={t}
     >
       {modules}

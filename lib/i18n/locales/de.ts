@@ -276,35 +276,51 @@ const de = {
       "Ein starker Lebenslauf ist Voraussetzung für erfolgreiche Bewerbungen in Deutschland.",
     actionMarkDone: "Erledigt",
     actionExplainBureaucracyGoal:
-      "Dein Fokusziel ist „{goal}“ — Formulare und Behörden passen zu dieser Priorität.",
+      "Du willst „{goal}“ — ohne Behörden-Tasks kommst du bei Formularen nicht weiter.",
     actionExplainBureaucracyFreelancerSteuer:
-      "Als {employment} ohne Steuer-ID blockieren Steuer- und Abrechnungsthemen viele nächste Schritte.",
+      "Ohne Steuer-ID kannst du als {employment} nicht korrekt arbeiten oder abrechnen.",
     actionExplainBureaucracyBank:
-      "Ohne bestätigtes Bankkonto sind Gehaltszahlungen und viele Anträge schwieriger.",
+      "Ohne Bankkonto bekommst du oft kein Gehalt und viele Anträge gehen nicht.",
     actionExplainBureaucracyFamily:
-      "Mit {family} sind Behörden- und Familienprozesse oft zeitkritisch.",
+      "Mit {family} verpasst du ohne diese Schritte schnell Geld oder Fristen.",
     actionExplainHealthMissing:
-      "In deinem Profil ist die Krankenversicherung noch nicht als geklärt markiert.",
+      "Ohne geklärte Krankenversicherung kannst du nicht legal arbeiten und riskierst hohe Kosten.",
     actionExplainHealthGoalBureaucracy:
-      "Zu deinem Ziel „{goal}“ gehören oft Mitgliedschaft und Nachweise.",
+      "Ohne Mitgliedschaft und Nachweise blockieren viele Behörden-Schritte.",
     actionExplainHealthFamily:
-      "Mit {family} sind Versicherung und Nachweise besonders relevant.",
+      "Für {family} brauchst du Versicherungsschutz und Nachweise.",
     actionExplainBankMissing:
-      "Ein lokales Bankkonto brauchst du für Gehalt, Steuern und den Alltag.",
+      "Ohne Bankkonto hängen Gehalt, Steuern und viele Anträge fest.",
     actionExplainBankFreelancer:
-      "Als {employment} laufen Zahlungen und Steuern über ein erreichbares Konto.",
+      "Als {employment} brauchst du ein Konto, sonst kommen Zahlungen und Steuern nicht durch.",
     actionExplainArbeitsagenturJobSeeker:
-      "Als {employment} ist die Agentur der zentrale Anlaufpunkt für Jobsuche und Leistungen.",
+      "Als {employment} brauchst du die Arbeitsagentur, sonst fehlt dir Zugang zu Hilfe und Leistungen.",
     actionExplainArbeitsagenturNotRegistered:
-      "Laut Profil fehlt noch die Registrierung — sie schaltet Betreuung und Leistungen frei.",
+      "Du bist nicht registriert — ohne das bekommst du keine Betreuung und oft keine Leistungen.",
     actionExplainArbeitsagenturUrgent:
-      "Deine Jobsuche ist als dringend markiert — die Agentur und Bewerbungen zuerst.",
+      "Deine Jobsuche ist dringend — ohne Agentur-Schritte verlierst du Zeit und Chancen.",
     actionExplainCvJobSeeker:
-      "Als {employment} ist der Lebenslauf dein wichtigstes Bewerbungswerkzeug.",
+      "Als {employment} bringt dich ein guter Lebenslauf schneller zu Interviews.",
     actionExplainCvMissing:
-      "Laut Profil fehlt noch ein bestätigter Lebenslauf.",
+      "Du hast keinen bestätigten Lebenslauf — ohne ihn stocken Bewerbungen.",
     actionExplainCvUrgent:
-      "Bei dringender Jobsuche lohnt sich ein schneller CV-Schritt.",
+      "Bei dringender Jobsuche entscheidet der CV über schnelle Bewerbungen.",
+    actionExplainSteuerMissing:
+      "Du hast keine Steuer-ID — ohne sie kannst du oft nicht arbeiten oder abrechnen.",
+    actionExplainSteuerFreelancer:
+      "Als {employment} brauchst du sie fürs Rechnungen schreiben und fürs Finanzamt.",
+    actionExplainSteuerGoalBureaucracy:
+      "Du willst „{goal}“ — ohne Steuer-ID hängen viele Behörden-Schritte fest.",
+    actionExplainFamilyBenefitsProfileChildren:
+      "Du hast „{family}“ — ohne Antrag verpasst du Leistungen und Fristen.",
+    actionExplainFamilyBenefitsRefineChildren:
+      "Du hast Kinder markiert — ohne Anträge verpasst du Geld und Fristen.",
+    actionExplainFamilyBenefitsSchoolAge:
+      "Schulpflicht bringt Zusatznachweise — ohne die verzögert sich die Leistung.",
+    actionExplainFamilyBenefitsBureaucracyGoal:
+      "Du willst „{goal}“ — Kindergeld ist ein klarer Behörden-Schritt.",
+    actionExplainFamilyBenefitsDefault:
+      "Ohne Checkliste übersiehst du leicht Kindergeld-Fristen und Unterlagen.",
     editProfile: "Profil bearbeiten",
     editProfileTitle: "Profil bearbeiten",
     editProfileDesc: "Aktualisiere deine aktuelle Situation. Wir passen Vaylo danach an.",
