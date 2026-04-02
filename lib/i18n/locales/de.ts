@@ -616,6 +616,42 @@ const de = {
 
     favorite: "Favorit",
   },
+  chat: {
+    title: "Chat",
+    subtitle: "Frag: „Was soll ich tun?“ oder „Wie mache ich das?“",
+    emptyHint: "Frag zum Beispiel: „Was soll ich tun?“",
+    inputPlaceholder: "Nachricht eingeben…",
+    send: "Senden",
+    noActions: "Ich kann gerade nichts empfehlen – keine Aktionen verfügbar.",
+    recommendIntro: "Ich empfehle:",
+    howToPrefix: "So gehst du vor:",
+    noGuidePrefix: "Dafür habe ich noch keinen einfachen Leitfaden:",
+  },
+  nudges: {
+    longIgnore: "Du schiebst das seit ein paar Tagen auf",
+    criticalSoon: "Das solltest du möglichst bald erledigen",
+    repeatedClicks: "Du hast schon angefangen — bring es zu Ende",
+  },
+  guides: {
+    healthInsuranceStep1:
+      "Prüfe, ob du bereits krankenversichert bist und ob gesetzlich oder privat.",
+    healthInsuranceStep2:
+      "Wenn dir die Versicherung fehlt: bereite Unterlagen vor (Ausweis, Adresse, Arbeitsvertrag oder Status).",
+    healthInsuranceStep3:
+      "Wähle eine Krankenkasse, stelle den Antrag und sichere dir die Bestätigung (Versicherungsnachweis).",
+    cvStep1:
+      "Nimm deinen aktuellen Lebenslauf und vereinheitliche das Format (1–2 Seiten, klare Struktur).",
+    cvStep2:
+      "Ergänze die letzten Erfahrungen mit konkreten Ergebnissen (Zahlen, Projekte, Tools).",
+    cvStep3:
+      "Passe den Lebenslauf an die Stelle an: Keywords aus der Anzeige, Relevantes nach oben.",
+    arbeitsagenturStep1:
+      "Erstelle ein Konto beim Portal der Arbeitsagentur und halte deine Daten bereit (Adresse, Status, Verlauf).",
+    arbeitsagenturStep2:
+      "Melde dich als arbeitssuchend und vereinbare ggf. einen Termin oder Beratung.",
+    arbeitsagenturStep3:
+      "Speichere die Bestätigung und folge den nächsten Schritten (Dokumente, Leistungen, Hinweise).",
+  },
   premium: {
     title: "Premium freischalten",
     oneTime: "Einmalzahlung • Lebenslanger Zugriff",

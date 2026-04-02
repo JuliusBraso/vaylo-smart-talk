@@ -554,6 +554,42 @@ const pl = {
 
     favorite: "Ulubione",
   },
+  chat: {
+    title: "Czat",
+    subtitle: "Zapytaj: „Co mam zrobić?“ albo „Jak to zrobić?“",
+    emptyHint: "Np.: „Co mam zrobić?“",
+    inputPlaceholder: "Wpisz wiadomość…",
+    send: "Wyślij",
+    noActions: "Nie mogę teraz nic polecić — brak dostępnych działań.",
+    recommendIntro: "Polecam:",
+    howToPrefix: "Jak to zrobić:",
+    noGuidePrefix: "Nie mam jeszcze prostego poradnika dla:",
+  },
+  nudges: {
+    longIgnore: "Odkładasz to już od kilku dni",
+    criticalSoon: "Warto to załatwić jak najszybciej",
+    repeatedClicks: "Już zacząłeś — dokończ",
+  },
+  guides: {
+    healthInsuranceStep1:
+      "Sprawdź, czy masz ubezpieczenie zdrowotne i czy jest publiczne czy prywatne.",
+    healthInsuranceStep2:
+      "Jeśli go brakuje: przygotuj dokumenty (paszport, adres, umowa o pracę lub status).",
+    healthInsuranceStep3:
+      "Wybierz kasę chorych, złóż wniosek i zachowaj potwierdzenie (Versicherungsnachweis).",
+    cvStep1:
+      "Weź najnowsze CV i ujednolić format (1–2 strony, czytelna struktura).",
+    cvStep2:
+      "Dopisz ostatnie doświadczenia z konkretnymi efektami (liczby, projekty, narzędzia).",
+    cvStep3:
+      "Dopasuj CV do oferty: słowa kluczowe z ogłoszenia, najważniejsze na górę.",
+    arbeitsagenturStep1:
+      "Załóż konto w portalu Arbeitsagentur i przygotuj dane (adres, status, historia pracy).",
+    arbeitsagenturStep2:
+      "Zarejestruj się jako osoba szukająca pracy i umów termin/poradę, jeśli to możliwe.",
+    arbeitsagenturStep3:
+      "Zachowaj potwierdzenie i śledź kolejne kroki (dokumenty, świadczenia, wskazówki).",
+  },
   premium: {
     title: "Odblokuj Premium",
     oneTime: "Jednorazowo • Dostęp na zawsze",

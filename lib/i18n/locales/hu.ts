@@ -554,6 +554,42 @@ const hu = {
 
     favorite: "Kedvenc",
   },
+  chat: {
+    title: "Chat",
+    subtitle: "Kérdezd: „Mit tegyek?“ vagy „Hogyan csináljam?“",
+    emptyHint: "Példa: „Mit tegyek?“",
+    inputPlaceholder: "Írj egy üzenetet…",
+    send: "Küldés",
+    noActions: "Most nem tudok ajánlani lépést — nincs elérhető feladat.",
+    recommendIntro: "Ezt javaslom:",
+    howToPrefix: "Így csináld:",
+    noGuidePrefix: "Ehhez még nincs egyszerű útmutatóm:",
+  },
+  nudges: {
+    longIgnore: "Már pár napja halogatod",
+    criticalSoon: "Ezt érdemes minél hamarabb elintézni",
+    repeatedClicks: "Már elkezdted — fejezd be",
+  },
+  guides: {
+    healthInsuranceStep1:
+      "Ellenőrizd, van-e egészségbiztosításod, és hogy állami vagy magán.",
+    healthInsuranceStep2:
+      "Ha nincs: készítsd elő a papírokat (útlevél, cím, munkaszerződés vagy státusz).",
+    healthInsuranceStep3:
+      "Válassz biztosítót, add be a kérelmet, és tedd el az igazolást (Versicherungsnachweis).",
+    cvStep1:
+      "Vedd elő a legfrissebb CV-t, és egységesítsd a formátumot (1–2 oldal, tiszta szerkezet).",
+    cvStep2:
+      "Írd hozzá a legutóbbi tapasztalatokat konkrét eredményekkel (számok, projektek, eszközök).",
+    cvStep3:
+      "Igazítsd az álláshoz: kulcsszavak a hirdetésből, releváns részek felülre.",
+    arbeitsagenturStep1:
+      "Hozz létre fiókot az Arbeitsagentur portálon, és készítsd elő az adataidat (cím, státusz, előzmények).",
+    arbeitsagenturStep2:
+      "Regisztrálj álláskeresőként, és ha lehet, kérj időpontot vagy tanácsadást.",
+    arbeitsagenturStep3:
+      "Mentsd el a visszaigazolást, és kövesd a következő lépéseket (dokumentumok, ellátások, ajánlások).",
+  },
   premium: {
     title: "Premium feloldása",
     oneTime: "Egyszeri vásárlás • Élethosszig",

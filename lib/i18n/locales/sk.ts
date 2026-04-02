@@ -574,6 +574,42 @@ const sk = {
 
     favorite: "Obľúbené",
   },
+  chat: {
+    title: "Chat",
+    subtitle: "Spýtaj sa: „Čo mám robiť?“ alebo „Ako to spravím?“",
+    emptyHint: "Skús napríklad: „Čo mám robiť?“",
+    inputPlaceholder: "Napíš správu…",
+    send: "Odoslať",
+    noActions: "Teraz ti neviem odporučiť ďalší krok — nemám žiadne akcie.",
+    recommendIntro: "Odporúčam:",
+    howToPrefix: "Ako na to:",
+    noGuidePrefix: "K tejto akcii ešte nemám jednoduchý návod:",
+  },
+  nudges: {
+    longIgnore: "Odkladáš to už niekoľko dní",
+    criticalSoon: "Toto je dôležité vyriešiť čo najskôr",
+    repeatedClicks: "Skús to dokončiť — už si s tým začal",
+  },
+  guides: {
+    healthInsuranceStep1:
+      "Skontroluj, či už máš zdravotné poistenie a aký typ (verejné/súkromné).",
+    healthInsuranceStep2:
+      "Ak ti chýba poistenie, priprav si doklady (pas, adresa, pracovná zmluva alebo status).",
+    healthInsuranceStep3:
+      "Vyber si poisťovňu, odošli prihlášku a ulož si potvrdenie (Versicherungsnachweis).",
+    cvStep1:
+      "Zober si najnovší životopis a zjednoť formát (1–2 strany, jasná štruktúra).",
+    cvStep2:
+      "Dopíš posledné skúsenosti s konkrétnymi výsledkami (čísla, projekty, nástroje).",
+    cvStep3:
+      "Prispôsob životopis pozícii: kľúčové slová z ponuky, relevantné skúsenosti navrch.",
+    arbeitsagenturStep1:
+      "Založ si konto na portáli Arbeitsagentur a priprav si svoje údaje (adresa, status, pracovná história).",
+    arbeitsagenturStep2:
+      "Registruj sa ako uchádzač o prácu a dohodni si termín/poradenstvo, ak je dostupné.",
+    arbeitsagenturStep3:
+      "Ulož si potvrdenie registrácie a sleduj ďalšie kroky (dokumenty, dávky, odporúčania).",
+  },
   premium: {
     title: "Odomknúť Premium",
     oneTime: "Jednorazová platba • Doživotný prístup",

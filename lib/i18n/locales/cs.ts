@@ -553,6 +553,42 @@ const cs = {
 
     favorite: "Oblíbené",
   },
+  chat: {
+    title: "Chat",
+    subtitle: "Zeptej se: „Co mám dělat?“ nebo „Jak to udělat?“",
+    emptyHint: "Např.: „Co mám dělat?“",
+    inputPlaceholder: "Napiš zprávu…",
+    send: "Odeslat",
+    noActions: "Teď nemám co doporučit — nejsou dostupné akce.",
+    recommendIntro: "Doporučuji:",
+    howToPrefix: "Jak na to:",
+    noGuidePrefix: "K tomu ještě nemám jednoduchý návod:",
+  },
+  nudges: {
+    longIgnore: "Odkládáš to už několik dní",
+    criticalSoon: "Tohle je dobré vyřešit co nejdřív",
+    repeatedClicks: "Už jsi začal — dokonči to",
+  },
+  guides: {
+    healthInsuranceStep1:
+      "Zkontroluj, jestli už máš zdravotní pojištění a zda je veřejné nebo soukromé.",
+    healthInsuranceStep2:
+      "Pokud chybí: připrav si doklady (pas, adresa, pracovní smlouva nebo status).",
+    healthInsuranceStep3:
+      "Vyber pojišťovnu, odešli přihlášku a ulož si potvrzení (Versicherungsnachweis).",
+    cvStep1:
+      "Vezmi svůj nejnovější životopis a sjednoť formát (1–2 strany, jasná struktura).",
+    cvStep2:
+      "Doplň poslední zkušenosti s konkrétními výsledky (čísla, projekty, nástroje).",
+    cvStep3:
+      "Přizpůsob životopis pozici: klíčová slova z nabídky, relevantní věci nahoru.",
+    arbeitsagenturStep1:
+      "Založ si účet na portálu Arbeitsagentur a připrav si údaje (adresa, status, pracovní historie).",
+    arbeitsagenturStep2:
+      "Zaregistruj se jako uchazeč o práci a domluv si termín/poradenství, pokud je k dispozici.",
+    arbeitsagenturStep3:
+      "Ulož si potvrzení registrace a sleduj další kroky (dokumenty, dávky, doporučení).",
+  },
   premium: {
     title: "Odemknout Premium",
     oneTime: "Jednorázová platba • Doživotní přístup",

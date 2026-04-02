@@ -555,6 +555,42 @@ const tr = {
 
     favorite: "Favori",
   },
+  chat: {
+    title: "Sohbet",
+    subtitle: "Sor: “Ne yapmalıyım?” veya “Bunu nasıl yaparım?”",
+    emptyHint: "Örn.: “Ne yapmalıyım?”",
+    inputPlaceholder: "Mesaj yaz…",
+    send: "Gönder",
+    noActions: "Şu an öneri veremiyorum — uygun aksiyon yok.",
+    recommendIntro: "Önerim:",
+    howToPrefix: "Nasıl yapılır:",
+    noGuidePrefix: "Bunun için henüz basit bir rehberim yok:",
+  },
+  nudges: {
+    longIgnore: "Bunu birkaç gündür erteliyorsun",
+    criticalSoon: "Bunu mümkün olan en kısa sürede halletmek önemli",
+    repeatedClicks: "Zaten başladın — tamamla",
+  },
+  guides: {
+    healthInsuranceStep1:
+      "Sağlık sigortan var mı kontrol et; kamu mu özel mi bak.",
+    healthInsuranceStep2:
+      "Yoksa: belgeleri hazırla (pasaport, adres, iş sözleşmesi veya statü).",
+    healthInsuranceStep3:
+      "Bir Krankenkasse seç, başvur ve onayı sakla (Versicherungsnachweis).",
+    cvStep1:
+      "En güncel CV’ni al ve formatı standardize et (1–2 sayfa, net yapı).",
+    cvStep2:
+      "Son deneyimleri somut sonuçlarla ekle (rakamlar, projeler, araçlar).",
+    cvStep3:
+      "CV’yi ilana göre uyarl: ilandaki anahtar kelimeler, ilgili kısımlar en üste.",
+    arbeitsagenturStep1:
+      "Arbeitsagentur portalında hesap aç ve bilgilerini hazırla (adres, statü, iş geçmişi).",
+    arbeitsagenturStep2:
+      "İş arayan olarak kayıt ol ve mümkünse randevu/danışmanlık ayarla.",
+    arbeitsagenturStep3:
+      "Onayı kaydet ve sonraki adımları takip et (belgeler, yardımlar, öneriler).",
+  },
   premium: {
     title: "Premium’u aç",
     oneTime: "Tek sefer • Ömür boyu",

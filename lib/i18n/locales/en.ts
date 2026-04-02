@@ -118,6 +118,42 @@ const en = {
 
     favorite: "Favorite",
   },
+  chat: {
+    title: "Chat",
+    subtitle: 'Ask: "What should I do?" or "How do I do it?"',
+    emptyHint: 'Try: "What should I do?"',
+    inputPlaceholder: "Type a message…",
+    send: "Send",
+    noActions: "I can’t recommend anything right now — no actions available.",
+    recommendIntro: "I recommend:",
+    howToPrefix: "How to:",
+    noGuidePrefix: "I don’t have a simple guide for:",
+  },
+  nudges: {
+    longIgnore: "You’ve been putting this off for a few days",
+    criticalSoon: "This is important to do as soon as possible",
+    repeatedClicks: "You already started — finish it",
+  },
+  guides: {
+    healthInsuranceStep1:
+      "Check whether you already have health insurance and whether it’s public or private.",
+    healthInsuranceStep2:
+      "If you don’t: prepare documents (passport, address, work contract or status).",
+    healthInsuranceStep3:
+      "Choose a provider, submit the application, and save the confirmation (Versicherungsnachweis).",
+    cvStep1:
+      "Take your latest CV and standardize the format (1–2 pages, clear structure).",
+    cvStep2:
+      "Add recent experience with concrete outcomes (numbers, projects, tools).",
+    cvStep3:
+      "Tailor your CV to the role: keywords from the job ad, relevant items on top.",
+    arbeitsagenturStep1:
+      "Create an account on the Arbeitsagentur portal and prepare your details (address, status, work history).",
+    arbeitsagenturStep2:
+      "Register as a job seeker and book an appointment/advice if available.",
+    arbeitsagenturStep3:
+      "Save the confirmation and follow next steps (documents, benefits, guidance).",
+  },
   premium: {
     title: "Unlock Premium",
     oneTime: "One-time purchase • Lifetime access",

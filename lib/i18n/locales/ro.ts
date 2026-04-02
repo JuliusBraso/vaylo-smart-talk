@@ -555,6 +555,42 @@ const ro = {
 
     favorite: "Favorite",
   },
+  chat: {
+    title: "Chat",
+    subtitle: "Întreabă: „Ce ar trebui să fac?“ sau „Cum fac asta?“",
+    emptyHint: "Ex.: „Ce ar trebui să fac?“",
+    inputPlaceholder: "Scrie un mesaj…",
+    send: "Trimite",
+    noActions: "Nu pot recomanda nimic acum — nu există acțiuni disponibile.",
+    recommendIntro: "Recomand:",
+    howToPrefix: "Cum să faci:",
+    noGuidePrefix: "Nu am încă un ghid simplu pentru:",
+  },
+  nudges: {
+    longIgnore: "Amâni asta de câteva zile",
+    criticalSoon: "E important să rezolvi asta cât mai repede",
+    repeatedClicks: "Ai început deja — du-l până la capăt",
+  },
+  guides: {
+    healthInsuranceStep1:
+      "Verifică dacă ai asigurare de sănătate și dacă este publică sau privată.",
+    healthInsuranceStep2:
+      "Dacă lipsește: pregătește documentele (pașaport, adresă, contract de muncă sau status).",
+    healthInsuranceStep3:
+      "Alege o casă de asigurări, trimite cererea și păstrează confirmarea (Versicherungsnachweis).",
+    cvStep1:
+      "Ia cel mai recent CV și uniformizează formatul (1–2 pagini, structură clară).",
+    cvStep2:
+      "Adaugă experiențe recente cu rezultate concrete (cifre, proiecte, tool-uri).",
+    cvStep3:
+      "Adaptează CV-ul la job: cuvinte-cheie din anunț, ce e relevant sus.",
+    arbeitsagenturStep1:
+      "Creează un cont pe portalul Arbeitsagentur și pregătește-ți datele (adresă, status, istoricul de muncă).",
+    arbeitsagenturStep2:
+      "Înregistrează-te ca persoană în căutarea unui job și programează o întâlnire/consiliere dacă este disponibilă.",
+    arbeitsagenturStep3:
+      "Păstrează confirmarea și urmează pașii următori (documente, beneficii, recomandări).",
+  },
   premium: {
     title: "Deblochează Premium",
     oneTime: "O singură plată • Acces pe viață",

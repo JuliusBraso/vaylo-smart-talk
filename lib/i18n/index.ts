@@ -63,6 +63,9 @@ export type Dict = {
   nav: Record<string, string>;
   onboarding: Record<string, string>;
   assistant: Record<string, string>;
+  chat: Record<string, string>;
+  nudges: Record<string, string>;
+  guides: Record<string, string>;
   dashboard: Record<string, string>;
   documents: Record<string, string>;
   documentDetail: Record<string, string>;

@@ -758,15 +758,15 @@ export async function getDashboardActions(params: {
 
       // 1) Long ignore (>=72h) — represented by the max decay boost (30).
       if ((behavior.timeDecayBoost.get(norm) ?? 0) >= 30) {
-        nudges.push("Odkladáš to už niekoľko dní");
+        nudges.push(t.nudges.longIgnore);
       }
       // 2) Critical + not completed (critical cards are only shown when not completed).
       if (priority === "critical") {
-        nudges.push("Toto je dôležité vyriešiť čo najskôr");
+        nudges.push(t.nudges.criticalSoon);
       }
       // 3) Repeated clicks (proxy from existing behavior signal).
       if (behavior.repeatedClickActionIds.has(norm)) {
-        nudges.push("Skús to dokončiť — už si s tým začal");
+        nudges.push(t.nudges.repeatedClicks);
       }
 
       const nudgesLimited = nudges.slice(0, 2);
