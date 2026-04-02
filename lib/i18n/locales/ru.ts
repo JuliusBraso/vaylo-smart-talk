@@ -565,6 +565,11 @@ const ru = {
     recommendIntro: "Рекомендую:",
     howToPrefix: "Как сделать:",
     noGuidePrefix: "Пока нет простого гайда для:",
+    whatLineWithReason: "- {title} — {reason}",
+    whatLineTitleOnly: "- {title}",
+    howToLine: "{prefix} {title}",
+    noGuideLine: "{prefix} {title}",
+    guideStepLine: "{n}. {step}",
   },
   nudges: {
     longIgnore: "Ты откладываешь это уже несколько дней",

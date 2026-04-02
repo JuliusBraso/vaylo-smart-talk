@@ -564,6 +564,11 @@ const pl = {
     recommendIntro: "Polecam:",
     howToPrefix: "Jak to zrobić:",
     noGuidePrefix: "Nie mam jeszcze prostego poradnika dla:",
+    whatLineWithReason: "- {title} — {reason}",
+    whatLineTitleOnly: "- {title}",
+    howToLine: "{prefix} {title}",
+    noGuideLine: "{prefix} {title}",
+    guideStepLine: "{n}. {step}",
   },
   nudges: {
     longIgnore: "Odkładasz to już od kilku dni",

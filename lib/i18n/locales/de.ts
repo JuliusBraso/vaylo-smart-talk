@@ -626,6 +626,11 @@ const de = {
     recommendIntro: "Ich empfehle:",
     howToPrefix: "So gehst du vor:",
     noGuidePrefix: "Dafür habe ich noch keinen einfachen Leitfaden:",
+    whatLineWithReason: "- {title} — {reason}",
+    whatLineTitleOnly: "- {title}",
+    howToLine: "{prefix} {title}",
+    noGuideLine: "{prefix} {title}",
+    guideStepLine: "{n}. {step}",
   },
   nudges: {
     longIgnore: "Du schiebst das seit ein paar Tagen auf",

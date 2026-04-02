@@ -563,6 +563,11 @@ const cs = {
     recommendIntro: "Doporučuji:",
     howToPrefix: "Jak na to:",
     noGuidePrefix: "K tomu ještě nemám jednoduchý návod:",
+    whatLineWithReason: "- {title} — {reason}",
+    whatLineTitleOnly: "- {title}",
+    howToLine: "{prefix} {title}",
+    noGuideLine: "{prefix} {title}",
+    guideStepLine: "{n}. {step}",
   },
   nudges: {
     longIgnore: "Odkládáš to už několik dní",

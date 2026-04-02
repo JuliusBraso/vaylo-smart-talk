@@ -565,6 +565,11 @@ const uk = {
     recommendIntro: "Рекомендую:",
     howToPrefix: "Як зробити:",
     noGuidePrefix: "Поки що не маю простого гайда для:",
+    whatLineWithReason: "- {title} — {reason}",
+    whatLineTitleOnly: "- {title}",
+    howToLine: "{prefix} {title}",
+    noGuideLine: "{prefix} {title}",
+    guideStepLine: "{n}. {step}",
   },
   nudges: {
     longIgnore: "Ти відкладаєш це вже кілька днів",

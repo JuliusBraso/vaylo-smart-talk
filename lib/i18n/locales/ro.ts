@@ -565,6 +565,11 @@ const ro = {
     recommendIntro: "Recomand:",
     howToPrefix: "Cum să faci:",
     noGuidePrefix: "Nu am încă un ghid simplu pentru:",
+    whatLineWithReason: "- {title} — {reason}",
+    whatLineTitleOnly: "- {title}",
+    howToLine: "{prefix} {title}",
+    noGuideLine: "{prefix} {title}",
+    guideStepLine: "{n}. {step}",
   },
   nudges: {
     longIgnore: "Amâni asta de câteva zile",

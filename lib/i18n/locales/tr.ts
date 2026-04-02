@@ -565,6 +565,11 @@ const tr = {
     recommendIntro: "Önerim:",
     howToPrefix: "Nasıl yapılır:",
     noGuidePrefix: "Bunun için henüz basit bir rehberim yok:",
+    whatLineWithReason: "- {title} — {reason}",
+    whatLineTitleOnly: "- {title}",
+    howToLine: "{prefix} {title}",
+    noGuideLine: "{prefix} {title}",
+    guideStepLine: "{n}. {step}",
   },
   nudges: {
     longIgnore: "Bunu birkaç gündür erteliyorsun",

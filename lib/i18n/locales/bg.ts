@@ -565,6 +565,11 @@ const bg = {
     recommendIntro: "Препоръчвам:",
     howToPrefix: "Как да го направиш:",
     noGuidePrefix: "Все още нямам прост наръчник за:",
+    whatLineWithReason: "- {title} — {reason}",
+    whatLineTitleOnly: "- {title}",
+    howToLine: "{prefix} {title}",
+    noGuideLine: "{prefix} {title}",
+    guideStepLine: "{n}. {step}",
   },
   nudges: {
     longIgnore: "Отлагаш го вече няколко дни",

@@ -584,6 +584,11 @@ const sk = {
     recommendIntro: "Odporúčam:",
     howToPrefix: "Ako na to:",
     noGuidePrefix: "K tejto akcii ešte nemám jednoduchý návod:",
+    whatLineWithReason: "- {title} — {reason}",
+    whatLineTitleOnly: "- {title}",
+    howToLine: "{prefix} {title}",
+    noGuideLine: "{prefix} {title}",
+    guideStepLine: "{n}. {step}",
   },
   nudges: {
     longIgnore: "Odkladáš to už niekoľko dní",

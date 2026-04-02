@@ -564,6 +564,11 @@ const hu = {
     recommendIntro: "Ezt javaslom:",
     howToPrefix: "Így csináld:",
     noGuidePrefix: "Ehhez még nincs egyszerű útmutatóm:",
+    whatLineWithReason: "- {title} — {reason}",
+    whatLineTitleOnly: "- {title}",
+    howToLine: "{prefix} {title}",
+    noGuideLine: "{prefix} {title}",
+    guideStepLine: "{n}. {step}",
   },
   nudges: {
     longIgnore: "Már pár napja halogatod",

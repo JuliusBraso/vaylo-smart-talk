@@ -128,6 +128,11 @@ const en = {
     recommendIntro: "I recommend:",
     howToPrefix: "How to:",
     noGuidePrefix: "I don’t have a simple guide for:",
+    whatLineWithReason: "- {title} — {reason}",
+    whatLineTitleOnly: "- {title}",
+    howToLine: "{prefix} {title}",
+    noGuideLine: "{prefix} {title}",
+    guideStepLine: "{n}. {step}",
   },
   nudges: {
     longIgnore: "You’ve been putting this off for a few days",
