@@ -152,6 +152,10 @@ const cs = {
     uploadFailed: "Nahrávání se nezdařilo",
     deleteFailed: "Smazání se nezdařilo",
     deleteConfirm: "Smazat „{name}“? Tuto akci nelze vrátit.",
+    previewTitle: "Náhled textu",
+    previewSubtitle: "Rychlý náhled extrahovaného textu",
+    previewNotSupported: "Náhled pro tento typ souboru není k dispozici",
+    previewEmpty: "Pro tento dokument zatím není k dispozici text",
     explainTitle: "Vysvětlit dokument",
     explainSubtitle: "Mock náhled — jen keyword routing. Skutečné AI zatím není připojené.",
     previewBadge: "Náhled",
@@ -240,6 +244,13 @@ const cs = {
     refineNoHealthInsurance: "Nemám / řeším",
     refineYesBankAccount: "Mám bankovní účet",
     refineNoBankAccount: "Nemám / řeším",
+    cvWorkflowTitle: "Připrav německý životopis",
+    cvWorkflowDesc: "Tento modul ti pomůže přizpůsobit životopis německým standardům.",
+    cvWorkflowPremiumNote:
+      "Tato funkce je v Premium. Odemkni Premium pro použití pracovního postupu s CV.",
+    cvWorkflowActionUpload: "Nahrát stávající životopis",
+    cvWorkflowActionCreate: "Vytvořit životopis od nuly",
+    cvWorkflowActionCheck: "Zkontrolovat strukturu pro Německo",
     actionArbeitsagenturTitle: "Zaregistruj se na Arbeitsagentur",
     actionArbeitsagenturDesc:
       "Dokonči registraci, aby mohla začít podpora při hledání práce a dávky.",
@@ -255,6 +266,15 @@ const cs = {
     actionAdminPriorityTitle: "Vyřeš nejdůležitější úřední úkol",
     actionAdminPriorityDesc:
       "Dokonči dnes jeden klíčový formulář a zrychli postup v dalších modulech.",
+    actionTaxesPriorityTitle: "Prioritně daně a faktury",
+    actionTaxesPriorityDesc:
+      "Udělej dnes konkrétní krok v daních, ať máš v dalších týdnech klid.",
+    actionKindergeldPriorityTitle: "Začni s Kindergeld (hlavní žádost)",
+    actionKindergeldPriorityDesc:
+      "Hlavní žádost je nejrychlejší cesta ke spuštění rodinných procesů.",
+    actionHealthMembershipTitle: "Vyplň formulář zdravotního pojištění",
+    actionHealthMembershipDesc:
+      "Vyplň přihlášku ke členství, aby byl zajištěn přístup k pojištění a nedocházelo ke zpožděním.",
     actionCtaStart: "Začít",
     actionCtaOpen: "Otevřít",
     actionCtaCheck: "Zkontrolovat",
@@ -304,6 +324,22 @@ const cs = {
       "V profilu chybí potvrzený životopis.",
     actionExplainCvUrgent:
       "Při naléhavém hledání práce se vyplatí rychlý krok s CV.",
+    actionExplainSteuerMissing:
+      "Nemáš daňové identifikační číslo — bez něj často nemůžeš pracovat ani fakturovat.",
+    actionExplainSteuerFreelancer:
+      "Jako {employment} ho potřebuješ k fakturám a Finanzamt.",
+    actionExplainSteuerGoalBureaucracy:
+      "Chceš „{goal}“ — bez Steuer-ID mnoho úředních kroků uvízne.",
+    actionExplainFamilyBenefitsProfileChildren:
+      "Máš „{family}“ — bez žádosti propásneš dávky a termíny.",
+    actionExplainFamilyBenefitsRefineChildren:
+      "Označils děti — bez žádostí propásneš peníze a termíny.",
+    actionExplainFamilyBenefitsSchoolAge:
+      "Školní povinnost přináší další doklady — bez nich se výplata zpozdí.",
+    actionExplainFamilyBenefitsBureaucracyGoal:
+      "Chceš „{goal}“ — Kindergeld je jasný úřední krok.",
+    actionExplainFamilyBenefitsDefault:
+      "Bez kontrolního seznamu snadno přehlédneš termíny Kindergeld a dokumenty.",
     quickPhrases: "Rychlé fráze",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Daně & faktury",

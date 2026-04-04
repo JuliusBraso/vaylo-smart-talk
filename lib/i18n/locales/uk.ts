@@ -154,6 +154,10 @@ const uk = {
     uploadFailed: "Не вдалося завантажити",
     deleteFailed: "Не вдалося видалити",
     deleteConfirm: "Видалити «{name}»? Це не можна скасувати.",
+    previewTitle: "Перегляд тексту",
+    previewSubtitle: "Швидкий перегляд витягнутого тексту",
+    previewNotSupported: "Перегляд недоступний для цього типу файлу",
+    previewEmpty: "Для цього документа ще немає доступного тексту",
     explainTitle: "Пояснити документ",
     explainSubtitle: "Mock-перегляд — лише маршрутизація за ключовими словами. Справжній AI ще не підключено.",
     previewBadge: "Перегляд",
@@ -242,6 +246,13 @@ const uk = {
     refineNoHealthInsurance: "Немає / вирішую",
     refineYesBankAccount: "У мене є банківський рахунок",
     refineNoBankAccount: "Немає / вирішую",
+    cvWorkflowTitle: "Підготуй німецьке CV (Lebenslauf)",
+    cvWorkflowDesc: "Цей модуль допомагає адаптувати резюме до німецьких стандартів.",
+    cvWorkflowPremiumNote:
+      "Ця функція в Premium. Розблокуй Premium, щоб користуватися робочим процесом CV.",
+    cvWorkflowActionUpload: "Завантажити наявне CV",
+    cvWorkflowActionCreate: "Створити CV з нуля",
+    cvWorkflowActionCheck: "Перевірити структуру для Німеччини",
     actionArbeitsagenturTitle: "Зареєструйся в Arbeitsagentur",
     actionArbeitsagenturDesc:
       "Заверши реєстрацію, щоб запустити підтримку з пошуку роботи та виплати.",
@@ -257,6 +268,15 @@ const uk = {
     actionAdminPriorityTitle: "Закрий найважливіше адміністративне завдання",
     actionAdminPriorityDesc:
       "Заверши сьогодні одну ключову форму, щоб швидше рухатися в інших модулях.",
+    actionTaxesPriorityTitle: "Пріоритизуй податки та рахунки",
+    actionTaxesPriorityDesc:
+      "Зроби сьогодні конкретний крок щодо податків, щоб наступні тижні були спокійнішими.",
+    actionKindergeldPriorityTitle: "Почни з Kindergeld (основна заява)",
+    actionKindergeldPriorityDesc:
+      "Основна заява — найшвидший шлях запустити сімейні справи.",
+    actionHealthMembershipTitle: "Заповни формуляр медичного страхування",
+    actionHealthMembershipDesc:
+      "Заповни заяву на членство, щоб отримати покриття та уникнути затримок.",
     actionCtaStart: "Почати",
     actionCtaOpen: "Відкрити",
     actionCtaCheck: "Перевірити",
@@ -306,6 +326,22 @@ const uk = {
       "У профілі немає підтвердженого резюме.",
     actionExplainCvUrgent:
       "При терміновому пошуку варто швидко оновити CV.",
+    actionExplainSteuerMissing:
+      "У тебе немає Steuer-ID — без неї часто не можна працювати або виставляти рахунки.",
+    actionExplainSteuerFreelancer:
+      "Як {employment}, вона потрібна для рахунків і Finanzamt.",
+    actionExplainSteuerGoalBureaucracy:
+      "Ти хочеш „{goal}“ — без Steuer-ID багато кроків у органах гальмуються.",
+    actionExplainFamilyBenefitsProfileChildren:
+      "У тебе „{family}“ — без заяви можна пропустити виплати та строки.",
+    actionExplainFamilyBenefitsRefineChildren:
+      "Ти позначив дітей — без заяв втрачаються гроші та строки.",
+    actionExplainFamilyBenefitsSchoolAge:
+      "Шкільний вік потребує додаткових документів — без них виплата затримується.",
+    actionExplainFamilyBenefitsBureaucracyGoal:
+      "Ти хочеш „{goal}“ — Kindergeld — чіткий адміністративний крок.",
+    actionExplainFamilyBenefitsDefault:
+      "Без чеклиста легко пропустити строки Kindergeld і документи.",
     quickPhrases: "Швидкі фрази",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Податки & рахунки",

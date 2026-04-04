@@ -153,6 +153,10 @@ const hu = {
     uploadFailed: "A feltöltés nem sikerült",
     deleteFailed: "A törlés nem sikerült",
     deleteConfirm: "Törlöd: „{name}“? Ez nem vonható vissza.",
+    previewTitle: "Szövegelőnézet",
+    previewSubtitle: "Gyors előnézet a kinyert szövegről",
+    previewNotSupported: "Előnézet ehhez a fájltípushoz nem elérhető",
+    previewEmpty: "Ehhez a dokumentumhoz még nincs elérhető szöveg",
     explainTitle: "Dokumentum magyarázata",
     explainSubtitle: "Mock előnézet — csak kulcsszavas routing. A valódi AI még nincs bekötve.",
     previewBadge: "Előnézet",
@@ -241,6 +245,13 @@ const hu = {
     refineNoHealthInsurance: "Nincs / intézem",
     refineYesBankAccount: "Van bankszámlám",
     refineNoBankAccount: "Nincs / intézem",
+    cvWorkflowTitle: "Német önéletrajz előkészítése",
+    cvWorkflowDesc: "Ez a modul segít az önéletrajzod német szabványokhoz igazításában.",
+    cvWorkflowPremiumNote:
+      "Ez a funkció a Premium része. Oldd fel a Premiumot a CV-munkafolyamat használatához.",
+    cvWorkflowActionUpload: "Meglévő önéletrajz feltöltése",
+    cvWorkflowActionCreate: "Önéletrajz létrehozása nulláról",
+    cvWorkflowActionCheck: "Német struktúra ellenőrzése",
     actionArbeitsagenturTitle: "Regisztrálj az Arbeitsagentur-nál",
     actionArbeitsagenturDesc:
       "Fejezd be a regisztrációt, hogy elindulhasson az álláskeresési támogatás és az ellátások.",
@@ -256,6 +267,15 @@ const hu = {
     actionAdminPriorityTitle: "Intézd el a legfontosabb hivatali feladatot",
     actionAdminPriorityDesc:
       "Tölts ki ma egy kulcsfontosságú űrlapot, hogy gyorsabban haladj a többi modulban.",
+    actionTaxesPriorityTitle: "Adók és számlák prioritása",
+    actionTaxesPriorityDesc:
+      "Tegyél ma egy konkrét lépést az adókkal, hogy a következő hetek nyugodtabbak legyenek.",
+    actionKindergeldPriorityTitle: "Kindergeld: kezdés a fő kérelemmel",
+    actionKindergeldPriorityDesc:
+      "A fő kérelem a leggyorsabb út a családi ügyek elindításához.",
+    actionHealthMembershipTitle: "Egészségbiztosítási űrlap kitöltése",
+    actionHealthMembershipDesc:
+      "Töltsd ki a tagsági kérelmet a biztosítás megszerzéséhez és a késések elkerüléséhez.",
     actionCtaStart: "Indítás",
     actionCtaOpen: "Megnyitás",
     actionCtaCheck: "Ellenőrzés",
@@ -305,6 +325,22 @@ const hu = {
       "A profil szerint még nincs megerősített önéletrajz.",
     actionExplainCvUrgent:
       "Sürgős álláskeresésnél érdemes gyorsan a CV-vel foglalkozni.",
+    actionExplainSteuerMissing:
+      "Nincs Steuer-ID-d — nélküle gyakran nem tudsz dolgozni vagy számlázni.",
+    actionExplainSteuerFreelancer:
+      "Mint {employment}, számlázáshoz és a Finanzamthoz kell.",
+    actionExplainSteuerGoalBureaucracy:
+      "A célod: „{goal}” — Steuer-ID nélkül sok hivatali lépés elakad.",
+    actionExplainFamilyBenefitsProfileChildren:
+      "„{family}” van megjelölve — kérelem nélkül lemaradhatsz ellátásokról és határidőkről.",
+    actionExplainFamilyBenefitsRefineChildren:
+      "Gyerekeket jelöltél meg — kérelmek nélkül pénzt és határidőket veszíthetsz.",
+    actionExplainFamilyBenefitsSchoolAge:
+      "Az iskolakötelezettség további igazolásokat jelent — ezek nélkül csúszik az ellátás.",
+    actionExplainFamilyBenefitsBureaucracyGoal:
+      "A célod: „{goal}” — a Kindergeld egy egyértelmű hivatali lépés.",
+    actionExplainFamilyBenefitsDefault:
+      "Ellenőrzőlista nélkül könnyen átnézed a Kindergeld határidőit és iratait.",
     quickPhrases: "Gyors kifejezések",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Adók & számlák",

@@ -154,6 +154,10 @@ const bg = {
     uploadFailed: "Качването не успя",
     deleteFailed: "Изтриването не успя",
     deleteConfirm: "Да изтрия „{name}“? Това не може да се върне.",
+    previewTitle: "Преглед на текст",
+    previewSubtitle: "Бърз преглед на извлечения текст",
+    previewNotSupported: "Прегледът не е наличен за този тип файл",
+    previewEmpty: "За този документ все още няма наличен текст",
     explainTitle: "Обясни документа",
     explainSubtitle: "Mock преглед — само keyword routing. Реалният AI все още не е свързан.",
     previewBadge: "Преглед",
@@ -242,6 +246,13 @@ const bg = {
     refineNoHealthInsurance: "Нямам / уреждам",
     refineYesBankAccount: "Имам банкова сметка",
     refineNoBankAccount: "Нямам / уреждам",
+    cvWorkflowTitle: "Подготви немско CV (Lebenslauf)",
+    cvWorkflowDesc: "Този модул ти помага да адаптираш CV към германските стандарти.",
+    cvWorkflowPremiumNote:
+      "Тази функция е в Premium. Отключи Premium, за да ползваш работния поток за CV.",
+    cvWorkflowActionUpload: "Качи съществуващо CV",
+    cvWorkflowActionCreate: "Създай CV от нулата",
+    cvWorkflowActionCheck: "Провери структурата за Германия",
     actionArbeitsagenturTitle: "Регистрирай се в Arbeitsagentur",
     actionArbeitsagenturDesc:
       "Завърши регистрацията, за да започнат подкрепата за работа и ползите.",
@@ -257,6 +268,15 @@ const bg = {
     actionAdminPriorityTitle: "Реши най-важната административна задача",
     actionAdminPriorityDesc:
       "Попълни днес един ключов формуляр, за да ускориш напредъка в останалите модули.",
+    actionTaxesPriorityTitle: "Приоритет на данъци и фактури",
+    actionTaxesPriorityDesc:
+      "Направи днес конкретна стъпка по данъците, за да са по-спокойни следващите седмици.",
+    actionKindergeldPriorityTitle: "Започни с Kindergeld (основно заявление)",
+    actionKindergeldPriorityDesc:
+      "Основното заявление е най-бързият път да задвижиш семейните процеси.",
+    actionHealthMembershipTitle: "Попълни формуляра за здравно осигуряване",
+    actionHealthMembershipDesc:
+      "Попълни заявлението за членство, за да си осигуриш покритие и да избегнеш забавяния.",
     actionCtaStart: "Старт",
     actionCtaOpen: "Отвори",
     actionCtaCheck: "Провери",
@@ -306,6 +326,22 @@ const bg = {
       "Профилът показва липса на потвърдено CV.",
     actionExplainCvUrgent:
       "При спешно търсене си струва бърза стъпка с CV.",
+    actionExplainSteuerMissing:
+      "Нямаш Steuer-ID — без него често не можеш да работиш или да фактурираш.",
+    actionExplainSteuerFreelancer:
+      "Като {employment} ти е нужна за фактури и Finanzamt.",
+    actionExplainSteuerGoalBureaucracy:
+      "Искаш „{goal}“ — без Steuer-ID много административни стъпки застъпват.",
+    actionExplainFamilyBenefitsProfileChildren:
+      "Имаш „{family}“ — без заявление може да пропуснеш помощи и срокове.",
+    actionExplainFamilyBenefitsRefineChildren:
+      "Отбелязал си деца — без заявления губиш пари и срокове.",
+    actionExplainFamilyBenefitsSchoolAge:
+      "Училищната задълженост изисква допълнителни документи — без тях помощта се забавя.",
+    actionExplainFamilyBenefitsBureaucracyGoal:
+      "Искаш „{goal}“ — Kindergeld е ясна административна стъпка.",
+    actionExplainFamilyBenefitsDefault:
+      "Без контролен списък лесно пропускаш срокове и документи за Kindergeld.",
     quickPhrases: "Бързи фрази",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Данъци & фактури",

@@ -154,6 +154,10 @@ const ro = {
     uploadFailed: "Încărcarea a eșuat",
     deleteFailed: "Ștergerea a eșuat",
     deleteConfirm: "Ștergi „{name}“? Acțiunea nu poate fi anulată.",
+    previewTitle: "Previzualizare text",
+    previewSubtitle: "Previzualizare rapidă a textului extras",
+    previewNotSupported: "Previzualizarea nu este disponibilă pentru acest tip de fișier",
+    previewEmpty: "Pentru acest document nu există încă text disponibil",
     explainTitle: "Explică documentul",
     explainSubtitle: "Previzualizare mock — doar rutare pe cuvinte-cheie. AI-ul real nu este conectat încă.",
     previewBadge: "Previzualizare",
@@ -242,6 +246,13 @@ const ro = {
     refineNoHealthInsurance: "Nu / rezolv",
     refineYesBankAccount: "Am cont bancar",
     refineNoBankAccount: "Nu / rezolv",
+    cvWorkflowTitle: "Pregătește CV-ul german (Lebenslauf)",
+    cvWorkflowDesc: "Acest modul te ajută să adaptezi CV-ul la standardele germane.",
+    cvWorkflowPremiumNote:
+      "Această funcție este inclusă în Premium. Deblochează Premium pentru fluxul de lucru al CV-ului.",
+    cvWorkflowActionUpload: "Încarcă un CV existent",
+    cvWorkflowActionCreate: "Creează CV de la zero",
+    cvWorkflowActionCheck: "Verifică structura pentru Germania",
     actionArbeitsagenturTitle: "Înregistrează-te la Arbeitsagentur",
     actionArbeitsagenturDesc:
       "Finalizează înregistrarea ca să pornească suportul pentru job și beneficiile.",
@@ -257,6 +268,15 @@ const ro = {
     actionAdminPriorityTitle: "Rezolvă cea mai importantă sarcină administrativă",
     actionAdminPriorityDesc:
       "Finalizează azi un formular esențial ca să avansezi mai rapid în celelalte module.",
+    actionTaxesPriorityTitle: "Prioritizează taxele și facturile",
+    actionTaxesPriorityDesc:
+      "Fă astăzi un pas concret la taxe ca să ai liniște în săptămânile următoare.",
+    actionKindergeldPriorityTitle: "Începe cu Kindergeld (cererea principală)",
+    actionKindergeldPriorityDesc:
+      "Cererea principală este cea mai rapidă cale de a pune în mișcare procesele familiale.",
+    actionHealthMembershipTitle: "Completează formularul de asigurare medicală",
+    actionHealthMembershipDesc:
+      "Completează cererea de înscriere pentru a avea acoperire și a evita întârzieri.",
     actionCtaStart: "Start",
     actionCtaOpen: "Deschide",
     actionCtaCheck: "Verifică",
@@ -306,6 +326,22 @@ const ro = {
       "Profilul indică lipsa unui CV confirmat.",
     actionExplainCvUrgent:
       "La căutare urgentă merită un pas rapid cu CV-ul.",
+    actionExplainSteuerMissing:
+      "Nu ai Steuer-ID — fără ea adesea nu poți munci sau emite facturi.",
+    actionExplainSteuerFreelancer:
+      "Ca {employment}, ai nevoie de ea pentru facturi și Finanzamt.",
+    actionExplainSteuerGoalBureaucracy:
+      "Vrei „{goal}” — fără Steuer-ID multe pași la instituții se blochează.",
+    actionExplainFamilyBenefitsProfileChildren:
+      "Ai „{family}” — fără cerere poți rata beneficiile și termenele.",
+    actionExplainFamilyBenefitsRefineChildren:
+      "Ai marcat copii — fără cereri pierzi bani și termene.",
+    actionExplainFamilyBenefitsSchoolAge:
+      "Școlarizarea aduce documente suplimentare — fără ele beneficiul se amână.",
+    actionExplainFamilyBenefitsBureaucracyGoal:
+      "Vrei „{goal}” — Kindergeld este un pas clar administrativ.",
+    actionExplainFamilyBenefitsDefault:
+      "Fără o listă de verificare poți uita ușor termenele Kindergeld și documentele.",
     quickPhrases: "Fraze rapide",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Taxe & facturi",

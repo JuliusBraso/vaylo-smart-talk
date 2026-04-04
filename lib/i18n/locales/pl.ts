@@ -153,6 +153,10 @@ const pl = {
     uploadFailed: "Wgrywanie nie powiodło się",
     deleteFailed: "Usuwanie nie powiodło się",
     deleteConfirm: "Usunąć „{name}“? Tego nie da się cofnąć.",
+    previewTitle: "Podgląd tekstu",
+    previewSubtitle: "Szybki podgląd wyodrębnionego tekstu",
+    previewNotSupported: "Podgląd niedostępny dla tego typu pliku",
+    previewEmpty: "Dla tego dokumentu nie ma jeszcze dostępnego tekstu",
     explainTitle: "Wyjaśnij dokument",
     explainSubtitle: "Podgląd mock — tylko routing po słowach kluczowych. Prawdziwe AI nie jest jeszcze podłączone.",
     previewBadge: "Podgląd",
@@ -241,6 +245,13 @@ const pl = {
     refineNoHealthInsurance: "Nie mam / załatwiam",
     refineYesBankAccount: "Mam konto bankowe",
     refineNoBankAccount: "Nie mam / załatwiam",
+    cvWorkflowTitle: "Przygotuj niemieckie CV (Lebenslauf)",
+    cvWorkflowDesc: "Ten moduł pomaga dostosować CV do niemieckich standardów.",
+    cvWorkflowPremiumNote:
+      "Ta funkcja jest w Premium. Odblokuj Premium, aby korzystać z przepływu pracy nad CV.",
+    cvWorkflowActionUpload: "Prześlij istniejące CV",
+    cvWorkflowActionCreate: "Utwórz CV od zera",
+    cvWorkflowActionCheck: "Sprawdź strukturę pod Niemcy",
     actionArbeitsagenturTitle: "Zarejestruj się w Arbeitsagentur",
     actionArbeitsagenturDesc:
       "Dokończ rejestrację, aby uruchomić wsparcie w szukaniu pracy i świadczenia.",
@@ -256,6 +267,15 @@ const pl = {
     actionAdminPriorityTitle: "Załatw najważniejsze zadanie urzędowe",
     actionAdminPriorityDesc:
       "Dokończ dziś jeden kluczowy formularz, aby przyspieszyć postęp w innych modułach.",
+    actionTaxesPriorityTitle: "Priorytet: podatki i faktury",
+    actionTaxesPriorityDesc:
+      "Zrób dziś konkretny krok w sprawie podatków, aby następne tygodnie były spokojniejsze.",
+    actionKindergeldPriorityTitle: "Zacznij od Kindergeld (główny wniosek)",
+    actionKindergeldPriorityDesc:
+      "Główny wniosek to najszybsza droga do uruchomienia spraw rodzinnych.",
+    actionHealthMembershipTitle: "Wypełnij formularz ubezpieczenia zdrowotnego",
+    actionHealthMembershipDesc:
+      "Wypełnij wniosek członkowski, aby zapewnić sobie ochronę i uniknąć opóźnień.",
     actionCtaStart: "Start",
     actionCtaOpen: "Otwórz",
     actionCtaCheck: "Sprawdź",
@@ -305,6 +325,22 @@ const pl = {
       "W profilu brak potwierdzonego CV.",
     actionExplainCvUrgent:
       "Przy pilnym poszukiwaniu pracy szybki krok z CV się opłaca.",
+    actionExplainSteuerMissing:
+      "Nie masz numeru podatkowego (Steuer-ID) — bez niego często nie możesz pracować ani wystawiać faktur.",
+    actionExplainSteuerFreelancer:
+      "Jako {employment} potrzebujesz go do faktur i urzędu skarbowego (Finanzamt).",
+    actionExplainSteuerGoalBureaucracy:
+      "Twój cel: „{goal}” — bez Steuer-ID wiele kroków urzędowych się blokuje.",
+    actionExplainFamilyBenefitsProfileChildren:
+      "Masz „{family}” — bez wniosku możesz przegapić świadczenia i terminy.",
+    actionExplainFamilyBenefitsRefineChildren:
+      "Zaznaczyłeś dzieci — bez wniosków tracisz pieniądze i terminy.",
+    actionExplainFamilyBenefitsSchoolAge:
+      "Obowiązek szkolny wymaga dodatkowych dokumentów — bez nich świadczenie się opóźnia.",
+    actionExplainFamilyBenefitsBureaucracyGoal:
+      "Twój cel: „{goal}” — Kindergeld to wyraźny krok urzędowy.",
+    actionExplainFamilyBenefitsDefault:
+      "Bez listy kontrolnej łatwo przegapisz terminy Kindergeld i dokumenty.",
     quickPhrases: "Szybkie frazy",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Podatki & faktury",

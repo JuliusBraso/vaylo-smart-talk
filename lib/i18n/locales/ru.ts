@@ -154,6 +154,10 @@ const ru = {
     uploadFailed: "Загрузка не удалась",
     deleteFailed: "Удаление не удалось",
     deleteConfirm: "Удалить «{name}»? Это действие нельзя отменить.",
+    previewTitle: "Просмотр текста",
+    previewSubtitle: "Быстрый просмотр извлечённого текста",
+    previewNotSupported: "Предпросмотр для этого типа файла недоступен",
+    previewEmpty: "Для этого документа пока нет доступного текста",
     explainTitle: "Объяснить документ",
     explainSubtitle: "Mock-превью — только маршрутизация по ключевым словам. Реальный AI пока не подключен.",
     previewBadge: "Превью",
@@ -242,6 +246,13 @@ const ru = {
     refineNoHealthInsurance: "Нет / решаю",
     refineYesBankAccount: "У меня есть банковский счёт",
     refineNoBankAccount: "Нет / решаю",
+    cvWorkflowTitle: "Подготовь немецкое резюме (Lebenslauf)",
+    cvWorkflowDesc: "Этот модуль помогает адаптировать резюме под немецкие стандарты.",
+    cvWorkflowPremiumNote:
+      "Эта функция в Premium. Разблокируй Premium, чтобы пользоваться процессом работы с CV.",
+    cvWorkflowActionUpload: "Загрузить существующее CV",
+    cvWorkflowActionCreate: "Создать CV с нуля",
+    cvWorkflowActionCheck: "Проверить структуру под Германию",
     actionArbeitsagenturTitle: "Зарегистрируйся в Arbeitsagentur",
     actionArbeitsagenturDesc:
       "Заверши регистрацию, чтобы запустить поддержку по поиску работы и выплаты.",
@@ -257,6 +268,15 @@ const ru = {
     actionAdminPriorityTitle: "Закрой самую важную админ-задачу",
     actionAdminPriorityDesc:
       "Заверши сегодня одну ключевую форму, чтобы ускорить прогресс в других модулях.",
+    actionTaxesPriorityTitle: "Расставь приоритеты: налоги и счета",
+    actionTaxesPriorityDesc:
+      "Сделай сегодня конкретный шаг по налогам, чтобы следующие недели были спокойнее.",
+    actionKindergeldPriorityTitle: "Начни с Kindergeld (основное заявление)",
+    actionKindergeldPriorityDesc:
+      "Основное заявление — самый быстрый путь запустить семейные дела.",
+    actionHealthMembershipTitle: "Заполни форму медицинского страхования",
+    actionHealthMembershipDesc:
+      "Заполни заявление о членстве, чтобы оформить страховку и избежать задержек.",
     actionCtaStart: "Начать",
     actionCtaOpen: "Открыть",
     actionCtaCheck: "Проверить",
@@ -306,6 +326,22 @@ const ru = {
       "В профиле нет подтверждённого резюме.",
     actionExplainCvUrgent:
       "При срочном поиске стоит быстро обновить CV.",
+    actionExplainSteuerMissing:
+      "У тебя нет Steuer-ID — без неё часто нельзя работать или выставлять счета.",
+    actionExplainSteuerFreelancer:
+      "Как {employment}, она нужна для счетов и Finanzamt.",
+    actionExplainSteuerGoalBureaucracy:
+      "Ты хочешь „{goal}” — без Steuer-ID многие шаги в ведомствах стопорятся.",
+    actionExplainFamilyBenefitsProfileChildren:
+      "У тебя „{family}” — без заявления можно пропустить выплаты и сроки.",
+    actionExplainFamilyBenefitsRefineChildren:
+      "Ты отметил детей — без заявлений теряются деньги и сроки.",
+    actionExplainFamilyBenefitsSchoolAge:
+      "Школьный возраст требует дополнительных документов — без них выплата задерживается.",
+    actionExplainFamilyBenefitsBureaucracyGoal:
+      "Ты хочешь „{goal}” — Kindergeld — чёткий официальный шаг.",
+    actionExplainFamilyBenefitsDefault:
+      "Без чеклиста легко пропустить сроки Kindergeld и документы.",
     quickPhrases: "Быстрые фразы",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Налоги & счета",

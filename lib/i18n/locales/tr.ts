@@ -154,6 +154,10 @@ const tr = {
     uploadFailed: "Yükleme başarısız",
     deleteFailed: "Silme başarısız",
     deleteConfirm: "“{name}” silinsin mi? Bu işlem geri alınamaz.",
+    previewTitle: "Metin önizlemesi",
+    previewSubtitle: "Çıkarılan metnin hızlı önizlemesi",
+    previewNotSupported: "Bu dosya türü için önizleme yok",
+    previewEmpty: "Bu belge için henüz metin yok",
     explainTitle: "Belgeyi açıkla",
     explainSubtitle: "Mock önizleme — yalnızca anahtar kelime yönlendirmesi. Gerçek AI henüz bağlı değil.",
     previewBadge: "Önizleme",
@@ -242,6 +246,13 @@ const tr = {
     refineNoHealthInsurance: "Yok / hallediyorum",
     refineYesBankAccount: "Banka hesabım var",
     refineNoBankAccount: "Yok / hallediyorum",
+    cvWorkflowTitle: "Almanca CV (Lebenslauf) hazırla",
+    cvWorkflowDesc: "Bu modül, CV'ni Alman standartlarına uyarlamana yardımcı olur.",
+    cvWorkflowPremiumNote:
+      "Bu özellik Premium'da. CV iş akışını kullanmak için Premium'u aç.",
+    cvWorkflowActionUpload: "Mevcut CV'yi yükle",
+    cvWorkflowActionCreate: "Sıfırdan CV oluştur",
+    cvWorkflowActionCheck: "Almanya yapısını kontrol et",
     actionArbeitsagenturTitle: "Arbeitsagentur'a kayıt ol",
     actionArbeitsagenturDesc:
       "Kayıt işlemini tamamla, böylece iş arama desteği ve haklar başlayabilsin.",
@@ -257,6 +268,15 @@ const tr = {
     actionAdminPriorityTitle: "En etkili idari görevi tamamla",
     actionAdminPriorityDesc:
       "Diğer modüllerde daha hızlı ilerlemek için bugün kritik bir formu bitir.",
+    actionTaxesPriorityTitle: "Vergileri ve faturaları önceliklendir",
+    actionTaxesPriorityDesc:
+      "Önümüzdeki haftalar için sakin olmak adına bugün vergi konusunda somut bir adım at.",
+    actionKindergeldPriorityTitle: "Kindergeld ile başla (ana başvuru)",
+    actionKindergeldPriorityDesc:
+      "Ana başvuru, aile süreçlerini hızlandırmanın en hızlı yoludur.",
+    actionHealthMembershipTitle: "Sağlık sigortası formunu doldur",
+    actionHealthMembershipDesc:
+      "Kapsamı güvenceye almak ve gecikmeleri önlemek için üyelik başvurusunu doldur.",
     actionCtaStart: "Başlat",
     actionCtaOpen: "Aç",
     actionCtaCheck: "Kontrol et",
@@ -306,6 +326,22 @@ const tr = {
       "Profilde onaylı CV eksik.",
     actionExplainCvUrgent:
       "Acil iş aramada hızlı bir CV adımı mantıklıdır.",
+    actionExplainSteuerMissing:
+      "Steuer-ID'n yok — olmadan çoğu zaman çalışamaz veya fatura kesemezsin.",
+    actionExplainSteuerFreelancer:
+      "{employment} olarak fatura ve vergi dairesi (Finanzamt) için gerekir.",
+    actionExplainSteuerGoalBureaucracy:
+      "Hedefin „{goal}” — Steuer-ID olmadan birçok resmi adım takılır.",
+    actionExplainFamilyBenefitsProfileChildren:
+      "„{family}” işaretli — başvuru olmadan yardımları ve süreleri kaçırırsın.",
+    actionExplainFamilyBenefitsRefineChildren:
+      "Çocukları işaretledin — başvurusuz para ve süreler kaçar.",
+    actionExplainFamilyBenefitsSchoolAge:
+      "Okul çağı ek belgeler gerektirir — olmadan ödeme gecikir.",
+    actionExplainFamilyBenefitsBureaucracyGoal:
+      "Hedefin „{goal}” — Kindergeld net bir resmi adımdır.",
+    actionExplainFamilyBenefitsDefault:
+      "Kontrol listesi olmadan Kindergeld sürelerini ve evrakları kolayca gözden kaçırırsın.",
     quickPhrases: "Hızlı cümleler",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Vergi & faturalar",

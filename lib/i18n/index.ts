@@ -92,7 +92,30 @@ export const DICTS: Record<Locale, Dict> = {
 
 export const DEFAULT_LOCALE: Locale = "de";
 
-/** Safe getter with DE fallback for missing keys */
+function deepMerge<T extends Record<string, unknown>>(base: T, patch: T): T {
+  const out = { ...base };
+  for (const k of Object.keys(patch) as (keyof T)[]) {
+    const bv = base[k];
+    const pv = patch[k];
+    if (
+      bv !== null &&
+      typeof bv === "object" &&
+      !Array.isArray(bv) &&
+      pv !== null &&
+      typeof pv === "object" &&
+      !Array.isArray(pv)
+    ) {
+      out[k] = deepMerge(bv as Record<string, unknown>, pv as Record<string, unknown>) as T[keyof T];
+    } else if (pv !== undefined) {
+      out[k] = pv;
+    }
+  }
+  return out;
+}
+
+/** Merges selected locale over German so missing nested keys fall back to `de`. */
 export function getDict(locale: Locale): Dict {
-  return DICTS[locale] ?? DICTS[DEFAULT_LOCALE];
+  const sel = DICTS[locale] ?? DICTS[DEFAULT_LOCALE];
+  if (locale === DEFAULT_LOCALE) return sel;
+  return deepMerge(DICTS[DEFAULT_LOCALE] as unknown as Record<string, unknown>, sel as unknown as Record<string, unknown>) as Dict;
 }
