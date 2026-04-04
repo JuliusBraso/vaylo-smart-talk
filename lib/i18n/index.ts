@@ -55,6 +55,23 @@ export type CommonLabels = {
   };
 };
 
+/** Forms / guides catalog cards and shared category badges (Phase A). */
+export type ContentCategory =
+  | "residence"
+  | "family"
+  | "work"
+  | "tax"
+  | "health"
+  | "documents"
+  | "school"
+  | "benefits"
+  | "other";
+
+export type CatalogCardCopy = {
+  title: string;
+  shortDescription: string;
+};
+
 export type Dict = {
   app: {
     name: string;
@@ -73,6 +90,9 @@ export type Dict = {
   documentDetail: Record<string, string>;
   forms: Record<string, string>;
   letters: Record<string, string>;
+  formsCatalog: Record<string, CatalogCardCopy>;
+  guidesCatalog: Record<string, CatalogCardCopy>;
+  categoryLabels: Record<ContentCategory, string>;
   settings: Record<string, string>;
   phrases: Record<string, string>;
   premium: Record<string, string>;

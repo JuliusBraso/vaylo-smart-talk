@@ -741,6 +741,71 @@ const de = {
     preview: "Vorschau",
     previewEmpty: "(noch leer)",
   },
+  formsCatalog: {
+    form_anmeldung: {
+      title: "Anmeldung (Meldeschein)",
+      shortDescription:
+        "Meldeformular nach dem Einzug in eine neue Wohnung in Deutschland.",
+    },
+    form_steuer_number_registration: {
+      title: "Steuernummer-Anmeldung",
+      shortDescription:
+        "Steuerliche Erfassung für Selbstständige/Freiberufler zur Vergabe einer Steuernummer.",
+    },
+    form_kindergeld_main_application: {
+      title: "Kindergeld-Hauptantrag",
+      shortDescription:
+        "Hauptantrag bei der Familienkasse zur Beantragung von Kindergeld.",
+    },
+    form_health_insurance_membership: {
+      title: "Mitgliedschaft Krankenversicherung",
+      shortDescription:
+        "Antrag auf Aufnahme in die gesetzliche Krankenversicherung.",
+    },
+    form_residence_extension: {
+      title: "Verlängerung Aufenthaltstitel",
+      shortDescription:
+        "Antrag auf Verlängerung des Aufenthaltstitels vor Ablauf.",
+    },
+  },
+  guidesCatalog: {
+    guide_anmeldung: {
+      title: "Anmeldung (Wohnungsanmeldung)",
+      shortDescription:
+        "Wohnung nach dem Umzug anmelden und Zugang zu wichtigen Services ermöglichen.",
+    },
+    guide_steuer_id: {
+      title: "Steuer-ID erhalten",
+      shortDescription:
+        "So erhältst oder findest du deine Steuer-Identifikationsnummer in Deutschland.",
+    },
+    guide_kindergeld: {
+      title: "Kindergeld beantragen",
+      shortDescription:
+        "Ablauf für den Kindergeld-Antrag bei der Familienkasse.",
+    },
+    guide_health_insurance: {
+      title: "Krankenversicherung einrichten",
+      shortDescription:
+        "Gesetzliche oder private Krankenversicherung wählen und aktivieren.",
+    },
+    guide_residence_permit: {
+      title: "Aufenthaltstitel verlängern",
+      shortDescription:
+        "Verlängerung bei der Ausländerbehörde rechtzeitig und vollständig vorbereiten.",
+    },
+  },
+  categoryLabels: {
+    residence: "Aufenthalt",
+    family: "Familie",
+    work: "Arbeit",
+    tax: "Steuern",
+    health: "Gesundheit",
+    documents: "Dokumente",
+    school: "Schule",
+    benefits: "Leistungen",
+    other: "Sonstiges",
+  },
   premium: {
     title: "Premium freischalten",
     oneTime: "Einmalzahlung • Lebenslanger Zugriff",

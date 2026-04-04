@@ -716,6 +716,71 @@ const ro = {
     preview: "Previzualizare",
     previewEmpty: "(încă gol)",
   },
+  formsCatalog: {
+    form_anmeldung: {
+      title: "Anmeldung form",
+      shortDescription:
+        "Address registration form required after moving into a new home in Germany.",
+    },
+    form_steuer_number_registration: {
+      title: "Steuer number registration",
+      shortDescription:
+        "Tax registration for self-employed/freelancers to receive a Steuernummer.",
+    },
+    form_kindergeld_main_application: {
+      title: "Kindergeld main application",
+      shortDescription:
+        "Core Familienkasse application to request child benefit payments.",
+    },
+    form_health_insurance_membership: {
+      title: "Health insurance membership",
+      shortDescription:
+        "Membership form used to activate statutory/public health insurance.",
+    },
+    form_residence_extension: {
+      title: "Residence extension application",
+      shortDescription:
+        "Application form for extending your residence permit before expiry.",
+    },
+  },
+  guidesCatalog: {
+    guide_anmeldung: {
+      title: "Anmeldung (address registration)",
+      shortDescription:
+        "Register your address after moving to Germany and unlock key services.",
+    },
+    guide_steuer_id: {
+      title: "Get your Steuer-ID",
+      shortDescription:
+        "How to receive or recover your tax identification number in Germany.",
+    },
+    guide_kindergeld: {
+      title: "Apply for Kindergeld",
+      shortDescription:
+        "Step-by-step process for child benefit application through Familienkasse.",
+    },
+    guide_health_insurance: {
+      title: "Health insurance setup",
+      shortDescription:
+        "Choose and activate health insurance coverage required for work and residence.",
+    },
+    guide_residence_permit: {
+      title: "Residence permit extension",
+      shortDescription:
+        "Prepare your extension process at Ausländerbehörde without missing deadlines.",
+    },
+  },
+  categoryLabels: {
+    residence: "Residence",
+    family: "Family",
+    work: "Work",
+    tax: "Tax",
+    health: "Health",
+    documents: "Documents",
+    school: "School",
+    benefits: "Benefits",
+    other: "Other",
+  },
   premium: {
     title: "Deblochează Premium",
     oneTime: "O singură plată • Acces pe viață",

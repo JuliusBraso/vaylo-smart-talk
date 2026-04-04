@@ -699,6 +699,71 @@ const sk = {
     preview: "Náhľad",
     previewEmpty: "(zatiaľ prázdne)",
   },
+  formsCatalog: {
+    form_anmeldung: {
+      title: "Anmeldung (hlásenie pobytu)",
+      shortDescription:
+        "Formulár na prihlásenie adresy po sťahovaní do nového bývania v Nemecku.",
+    },
+    form_steuer_number_registration: {
+      title: "Registrácia daňového čísla (Steuernummer)",
+      shortDescription:
+        "Daňová registrácia pre živnostníkov/SZČO na pridelenie Steuernummer.",
+    },
+    form_kindergeld_main_application: {
+      title: "Hlavná žiadosť Kindergeld",
+      shortDescription:
+        "Hlavná žiadosť u Familienkasse o prídavky na deti (Kindergeld).",
+    },
+    form_health_insurance_membership: {
+      title: "Členstvo v zdravotnom poistení",
+      shortDescription:
+        "Formulár na aktiváciu účasti v povinnom verejnom zdravotnom poistení.",
+    },
+    form_residence_extension: {
+      title: "Žiadosť o predĺženie povolenia na pobyt",
+      shortDescription:
+        "Formulár na predĺženie povolenia na pobyt pred jeho vypršaním.",
+    },
+  },
+  guidesCatalog: {
+    guide_anmeldung: {
+      title: "Anmeldung (prihlásenie adresy)",
+      shortDescription:
+        "Prihlásiť adresu po sťahovaní a otvoriť si prístup k kľúčovým službám.",
+    },
+    guide_steuer_id: {
+      title: "Získanie Steuer-ID",
+      shortDescription:
+        "Ako získať alebo dohľadať daňové identifikačné číslo v Nemecku.",
+    },
+    guide_kindergeld: {
+      title: "Požiadať o Kindergeld",
+      shortDescription:
+        "Postup žiadosti o prídavky na deti cez Familienkasse.",
+    },
+    guide_health_insurance: {
+      title: "Nastavenie zdravotného poistenia",
+      shortDescription:
+        "Výber a aktivácia zdravotného poistenia potrebného pre prácu a pobyt.",
+    },
+    guide_residence_permit: {
+      title: "Predĺženie povolenia na pobyt",
+      shortDescription:
+        "Pripraviť predĺženie u Ausländerbehörde včas a bez chýbajúcich lehôt.",
+    },
+  },
+  categoryLabels: {
+    residence: "Pobyt",
+    family: "Rodina",
+    work: "Práca",
+    tax: "Dane",
+    health: "Zdravie",
+    documents: "Dokumenty",
+    school: "Škola",
+    benefits: "Dávky",
+    other: "Iné",
+  },
   premium: {
     title: "Odomknúť Premium",
     oneTime: "Jednorazová platba • Doživotný prístup",
