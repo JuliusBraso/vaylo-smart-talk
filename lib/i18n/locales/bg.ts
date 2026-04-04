@@ -784,245 +784,245 @@ const bg = {
   formsDetail: {
     form_anmeldung: {
       full_name: {
-        label: "Full name",
-        explanation: "Enter your legal name exactly as shown in your passport.",
+        label: "Пълно име",
+        explanation: "Въведете официалното си име точно както в паспорта.",
       },
       date_of_birth: {
-        label: "Date of birth",
-        explanation: "Use the official format shown on the form (usually DD.MM.YYYY).",
+        label: "Дата на раждане",
+        explanation: "Форматът от формуляра (обикновено ДД.ММ.ГГГГ).",
       },
       new_address: {
-        label: "New address",
+        label: "Нов адрес",
         explanation:
-          "Write the exact street, house number, postal code, and city of your current home.",
+          "Точна улица, номер, пощенски код и град на текущото жилище.",
       },
       move_in_date: {
-        label: "Move-in date",
+        label: "Дата на настаняване",
         explanation:
-          "Provide the date you actually moved into the apartment, not the contract start if different.",
+          "Фактическата дата на преместване — не непременно началото на договора, ако се различава.",
       },
       previous_address: {
-        label: "Previous address",
+        label: "Предишен адрес",
         explanation:
-          "State your last address in Germany or abroad so the office can update records correctly.",
+          "Последният адрес в Германия или чужбина за коректно актуализиране от институцията.",
       },
     },
     form_steuer_number_registration: {
       personal_details: {
-        label: "Personal details",
+        label: "Лични данни",
         explanation:
-          "Name, address, and tax ID must match your official registration documents.",
+          "Име, адрес и данъчен ID трябва да съвпадат с официалните регистрационни документи.",
       },
       business_activity: {
-        label: "Business activity description",
-        explanation: "Describe what services/products you provide in clear, practical words.",
+        label: "Описание на дейността",
+        explanation: "Опишете услугите или продуктите ясно и конкретно.",
       },
       start_date: {
-        label: "Business start date",
+        label: "Начало на дейността",
         explanation:
-          "Enter when you started or plan to start generating freelance income.",
+          "Кога сте започнали или планирате да започнете доход като freelancer.",
       },
       revenue_estimate: {
-        label: "Estimated annual revenue",
+        label: "Оценен годишен оборот",
         explanation:
-          "Give your best realistic estimate; this helps set prepayments and tax expectations.",
+          "Реалистична оценка помага за авансови плащания и данъчни очаквания.",
       },
       vat_preference: {
-        label: "VAT / Kleinunternehmer choice",
+        label: "ДДС / избор Kleinunternehmer",
         explanation:
-          "Choose whether you use small-business VAT exemption or regular VAT handling.",
+          "Избор между освобождаване за малки предприятия и стандартно облагане с ДДС.",
       },
     },
     form_kindergeld_main_application: {
       applicant_info: {
-        label: "Applicant information",
-        explanation: "Parent/legal guardian details who is applying for benefit payments.",
+        label: "Данни на заявителя",
+        explanation: "Родител или законен представител, подаващ молба за обезщетение.",
       },
       child_info: {
-        label: "Child information",
+        label: "Данни за детето",
         explanation:
-          "Name, date of birth, and household relation for each child in the application.",
+          "Име, дата на раждане и връзка в домакинството за всяко дете в молбата.",
       },
       tax_ids: {
-        label: "Tax IDs (parent + child)",
-        explanation: "Both parent and child tax IDs are typically mandatory for processing.",
+        label: "Данъчни ID (родител + дете)",
+        explanation: "Обикновено са нужни и двете ID за обработка.",
       },
       bank_account: {
-        label: "Bank account (IBAN)",
+        label: "Банкова сметка (IBAN)",
         explanation:
-          "Use an account where you can reliably receive monthly Kindergeld payments.",
+          "Сметка, по която надеждно пристигат месечните плащания Kindergeld.",
       },
       residence_status: {
-        label: "Residence / permit status",
+        label: "Престой / статус на разрешение",
         explanation:
-          "Provide your current residence information if requested in your form package.",
+          "Актуална информация за престой, ако пакетът от формуляри го изисква.",
       },
     },
     form_health_insurance_membership: {
       insured_person: {
-        label: "Insured person details",
+        label: "Данни на осигуреното лице",
         explanation:
-          "Your legal identity information must be consistent with passport and Anmeldung.",
+          "Юридическата самоличност трябва да съвпада с паспорта и Anmeldung.",
       },
       employment_status: {
-        label: "Employment status",
+        label: "Трудов статус",
         explanation:
-          "Specify if you are employed, self-employed, student, or currently unemployed.",
+          "Нает, самонает, студент или безработен.",
       },
       start_of_coverage: {
-        label: "Coverage start date",
+        label: "Начало на покритието",
         explanation:
-          "Choose the date from which insurance should begin based on your contract/residency timeline.",
+          "Дата според договора, началото на работа или вашия график на престой.",
       },
       family_members: {
-        label: "Family co-insurance details",
-        explanation: "Add spouse/children if they should be included in family insurance.",
+        label: "Съвместно семейно осигуряване",
+        explanation: "Добавете съпруг/а или деца при семейно осигуряване.",
       },
       contact_preferences: {
-        label: "Contact and communication preferences",
+        label: "Контакт и комуникация",
         explanation:
-          "Set your email/phone and preferred communication language if available.",
+          "Имейл, телефон и предпочитан език, ако е възможно.",
       },
     },
     form_residence_extension: {
       passport_permit_data: {
-        label: "Passport and current permit data",
-        explanation: "Enter passport and residence card details exactly as printed.",
+        label: "Паспорт и данни за текущото разрешение",
+        explanation: "Въведете данните точно както в документите.",
       },
       reason_for_extension: {
-        label: "Reason for extension",
+        label: "Причина за удължаване",
         explanation:
-          "Explain if extension is for work, family, study, or another legal basis.",
+          "Работа, семейство, обучение или друго правно основание.",
       },
       income_proof: {
-        label: "Income / financing details",
+        label: "Доход / финансиране",
         explanation:
-          "Provide salary, contract, or sponsor details proving you can support yourself.",
+          "Заплата, договор или данни за спонсор, доказващи издръжка.",
       },
       housing_proof: {
-        label: "Housing details",
-        explanation: "Include rental address and documents showing stable accommodation.",
+        label: "Жилище",
+        explanation: "Адрес под наем и документи за стабилно настаняване.",
       },
       insurance_status: {
-        label: "Health insurance status",
+        label: "Здравно осигуряване",
         explanation:
-          "Confirm active health insurance coverage for the requested extension period.",
+          "Потвърдете активно осигуряване за искания период на удължаване.",
       },
     },
   },
   guidesDetail: {
     guide_anmeldung: {
       anmeldung_1: {
-        title: "Book a Bürgeramt appointment",
-        text: "Search your city’s Bürgeramt website and book the earliest available Anmeldung appointment.",
+        title: "Запишете час в Bürgeramt",
+        text: "Намерете сайта на Bürgeramt във вашия град и резервирайте най-ранния час за Anmeldung.",
       },
       anmeldung_2: {
-        title: "Collect required documents",
-        text: "Prepare passport/ID, rental contract, and Wohnungsgeberbestätigung from your landlord.",
+        title: "Съберете документите",
+        text: "Паспорт/лична карта, договор за наем и Wohnungsgeberbestätigung от наемодателя.",
       },
       anmeldung_3: {
-        title: "Fill the registration form",
-        text: "Complete the Anmeldung form before the appointment to avoid delays at the office.",
+        title: "Попълнете регистрационния формуляр",
+        text: "Попълнете формуляра Anmeldung преди срещата, за да няма забавяне в институцията.",
       },
       anmeldung_4: {
-        title: "Attend appointment and submit documents",
-        text: "Arrive early, submit your documents, and verify your address details are correct.",
+        title: "Отидете на час и подайте документите",
+        text: "Пристигнете навреме, подайте документите и проверете адресните данни.",
       },
       anmeldung_5: {
-        title: "Keep your Meldebescheinigung safe",
-        text: "Store the confirmation document securely; banks, employers, and other offices may request it.",
+        title: "Пазете Meldebescheinigung",
+        text: "Съхранявайте потвърждението на сигурно място — банки, работодатели и институции често го изискват.",
       },
     },
     guide_steuer_id: {
       steuer_1: {
-        title: "Complete Anmeldung first",
-        text: "Your Steuer-ID is generated after address registration, so finalize Anmeldung as your first step.",
+        title: "Първо завършете Anmeldung",
+        text: "Steuer-ID се генерира след регистрация на адрес — първата стъпка е да завършите Anmeldung.",
       },
       steuer_2: {
-        title: "Wait for the official letter",
-        text: "The Bundeszentralamt usually sends your Steuer-ID by post within a few weeks.",
+        title: "Изчакайте официалното писмо",
+        text: "Bundeszentralamt обикновено изпраща Steuer-ID по пощата в рамките на няколко седмици.",
       },
       steuer_3: {
-        title: "Check your mailbox name label",
-        text: "Ensure your surname is visible on the mailbox so official letters can be delivered correctly.",
+        title: "Проверете фамилията на пощенската кутия",
+        text: "Фамилията трябва да е четима, за да се доставят официални писма.",
       },
       steuer_4: {
-        title: "Request it again if missing",
-        text: "If it does not arrive, request a re-send through the official tax office process.",
+        title: "Ако не пристигне — поискайте отново",
+        text: "Ако писмото липсва, поискайте повторно изпращане по официалната процедура на данъчната служба.",
       },
       steuer_5: {
-        title: "Share with employer or tax advisor",
-        text: "Provide your Steuer-ID to your employer or advisor to avoid emergency tax class deductions.",
+        title: "Предайте на работодател или данъчен съветник",
+        text: "Предоставете Steuer-ID, за да избегнете аварийни данъчни класове и удръжки.",
       },
     },
     guide_kindergeld: {
       kindergeld_1: {
-        title: "Check eligibility basics",
-        text: "Confirm residence status, child age, and household details meet Kindergeld requirements.",
+        title: "Проверете основните условия",
+        text: "Потвърдете престой, възраст на детето и домакинство според изискванията за Kindergeld.",
       },
       kindergeld_2: {
-        title: "Prepare personal and child documents",
-        text: "Collect IDs, birth certificate, Anmeldung proof, and tax IDs for parent and child.",
+        title: "Документи за вас и детето",
+        text: "Лични карти, акт за раждане, доказателство за Anmeldung и данъчни ID на родител и дете.",
       },
       kindergeld_3: {
-        title: "Complete KG1 and child annex forms",
-        text: "Fill the main application and child annex carefully; signatures and correct IBAN are important.",
+        title: "Попълнете KG1 и приложенията за деца",
+        text: "Внимателно попълнете основната молба и приложенията; подписите и правилният IBAN са важни.",
       },
       kindergeld_4: {
-        title: "Submit to Familienkasse",
-        text: "Send forms online or by post to the correct Familienkasse office for your region.",
+        title: "Подайте в Familienkasse",
+        text: "Изпратете онлайн или по пощата до правилния офис Familienkasse за вашия регион.",
       },
       kindergeld_5: {
-        title: "Track status and reply quickly",
-        text: "Respond fast to additional document requests to avoid delays in first payment.",
+        title: "Следвайте статуса и отговаряйте бързо",
+        text: "Отговаряйте бързо на искания за допълнителни документи, за да не се забави първото плащане.",
       },
     },
     guide_health_insurance: {
       health_1: {
-        title: "Decide public vs private route",
-        text: "Most newcomers start with public insurance; check your employment type and salary threshold.",
+        title: "Публично или частно осигуряване",
+        text: "Повечето новодошли започват с публично; проверете типа заетост и праг на дохода.",
       },
       health_2: {
-        title: "Compare providers and service language",
-        text: "Review contribution rates, digital tools, and whether customer support is available in your language.",
+        title: "Сравнете каси и език на поддръжка",
+        text: "Вноски, дигитални инструменти и наличност на поддръжка на вашия език.",
       },
       health_3: {
-        title: "Submit membership application",
-        text: "Apply with your personal details, address, and employment information.",
+        title: "Подайте молба за членство",
+        text: "Кандидатствайте с лични данни, адрес и информация за заетост.",
       },
       health_4: {
-        title: "Send confirmation to employer/office",
-        text: "Share your insurance confirmation with employer, immigration office, or university when required.",
+        title: "Изпратете потвърждение на работодател/институция",
+        text: "Предайте потвърждението за осигуровка на работодател, миграционна служба или университет, когато се изисква.",
       },
       health_5: {
-        title: "Register family members if needed",
-        text: "If eligible, add spouse/children to family insurance and keep records of all confirmations.",
+        title: "Регистрирайте членове на семейството",
+        text: "При право добавете съпруг/а или деца към семейното осигуряване и пазете потвържденията.",
       },
     },
     guide_residence_permit: {
       residence_1: {
-        title: "Check permit expiry early",
-        text: "Start 8-12 weeks before expiry; many cities have long waiting times for appointments.",
+        title: "Проверете валидността навреме",
+        text: "Започнете 8–12 седмици преди изтичане; в много градове има дълги опашки за часове.",
       },
       residence_2: {
-        title: "Collect mandatory documents",
-        text: "Prepare passport, current permit, biometric photo, proof of income, insurance, and housing.",
+        title: "Задължителни документи",
+        text: "Паспорт, текущо разрешение, биометрична снимка, доказателство за доход, осигуровка и жилище.",
       },
       residence_3: {
-        title: "Book appointment or submit online",
-        text: "Use your city’s online portal where available, and keep confirmation emails/screenshots.",
+        title: "Час или онлайн подаване",
+        text: "Използвайте общинския портал, ако има; запазвайте имейли и екранни снимки.",
       },
       residence_4: {
-        title: "Submit complete application",
-        text: "Double-check all files before submission; incomplete applications are commonly delayed.",
+        title: "Пълна молба",
+        text: "Проверете всички файлове преди изпращане; непълните молби често се забавят.",
       },
       residence_5: {
-        title: "Request Fiktionsbescheinigung if needed",
-        text: "If your permit expires before decision, ask for temporary legal stay confirmation.",
+        title: "Fiktionsbescheinigung при нужда",
+        text: "Ако разрешението изтече преди решение, поискайте временно потвърждение за законен престой.",
       },
       residence_6: {
-        title: "Track processing and collect card",
-        text: "Follow office instructions, then collect the new residence card once notified.",
+        title: "Следвайте делото и вземете картата",
+        text: "Следвайте указанията на институцията и след уведомление вземете новата карта за престой.",
       },
     },
   },

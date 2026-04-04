@@ -718,311 +718,311 @@ const uk = {
   },
   formsCatalog: {
     form_anmeldung: {
-      title: "Anmeldung form",
+      title: "Форма Anmeldung",
       shortDescription:
-        "Address registration form required after moving into a new home in Germany.",
+        "Форма реєстрації адреси, необхідна після переїзду в нове житло в Німеччині.",
     },
     form_steuer_number_registration: {
-      title: "Steuer number registration",
+      title: "Реєстрація податкового номера (Steuernummer)",
       shortDescription:
-        "Tax registration for self-employed/freelancers to receive a Steuernummer.",
+        "Податкова реєстрація для самозайнятих/фрілансерів для отримання Steuernummer.",
     },
     form_kindergeld_main_application: {
-      title: "Kindergeld main application",
+      title: "Основна заявка Kindergeld",
       shortDescription:
-        "Core Familienkasse application to request child benefit payments.",
+        "Основна заявка до Familienkasse на виплату Kindergeld.",
     },
     form_health_insurance_membership: {
-      title: "Health insurance membership",
+      title: "Членство в медичному страхуванні",
       shortDescription:
-        "Membership form used to activate statutory/public health insurance.",
+        "Форма для активації обов'язкового державного медичного страхування.",
     },
     form_residence_extension: {
-      title: "Residence extension application",
+      title: "Подовження дозволу на проживання",
       shortDescription:
-        "Application form for extending your residence permit before expiry.",
+        "Заява на подовження дозволу на проживання до закінчення його терміну.",
     },
   },
   guidesCatalog: {
     guide_anmeldung: {
-      title: "Anmeldung (address registration)",
+      title: "Anmeldung (реєстрація адреси)",
       shortDescription:
-        "Register your address after moving to Germany and unlock key services.",
+        "Зареєструйте адресу після переїзду до Німеччини та отримайте доступ до ключових послуг.",
     },
     guide_steuer_id: {
-      title: "Get your Steuer-ID",
+      title: "Отримайте Steuer-ID",
       shortDescription:
-        "How to receive or recover your tax identification number in Germany.",
+        "Як отримати або відновити податковий ідентифікаційний номер у Німеччині.",
     },
     guide_kindergeld: {
-      title: "Apply for Kindergeld",
+      title: "Подайте заяву на Kindergeld",
       shortDescription:
-        "Step-by-step process for child benefit application through Familienkasse.",
+        "Покроково: заява на Kindergeld у Familienkasse.",
     },
     guide_health_insurance: {
-      title: "Health insurance setup",
+      title: "Налаштування медичного страхування",
       shortDescription:
-        "Choose and activate health insurance coverage required for work and residence.",
+        "Оберіть і активуйте страхування, потрібне для роботи та проживання.",
     },
     guide_residence_permit: {
-      title: "Residence permit extension",
+      title: "Подовження дозволу на проживання",
       shortDescription:
-        "Prepare your extension process at Ausländerbehörde without missing deadlines.",
+        "Підготуйте подовження в Ausländerbehörde без зайвих прострочень.",
     },
   },
   categoryLabels: {
-    residence: "Residence",
-    family: "Family",
-    work: "Work",
-    tax: "Tax",
-    health: "Health",
-    documents: "Documents",
-    school: "School",
-    benefits: "Benefits",
-    other: "Other",
+    residence: "Проживання",
+    family: "Сім'я",
+    work: "Робота",
+    tax: "Податки",
+    health: "Здоров'я",
+    documents: "Документи",
+    school: "Школа",
+    benefits: "Виплати",
+    other: "Інше",
   },
   formsDetail: {
     form_anmeldung: {
       full_name: {
-        label: "Full name",
-        explanation: "Enter your legal name exactly as shown in your passport.",
+        label: "Повне ім'я",
+        explanation: "Вкажіть офіційне ім'я точно як у паспорті.",
       },
       date_of_birth: {
-        label: "Date of birth",
-        explanation: "Use the official format shown on the form (usually DD.MM.YYYY).",
+        label: "Дата народження",
+        explanation: "Формат з форми (зазвичай ДД.ММ.РРРР).",
       },
       new_address: {
-        label: "New address",
+        label: "Нова адреса",
         explanation:
-          "Write the exact street, house number, postal code, and city of your current home.",
+          "Точна вулиця, номер будинку, поштовий індекс і місто поточного житла.",
       },
       move_in_date: {
-        label: "Move-in date",
+        label: "Дата вселення",
         explanation:
-          "Provide the date you actually moved into the apartment, not the contract start if different.",
+          "Фактична дата переїзду — не обов'язково початок договору оренди, якщо вони різняться.",
       },
       previous_address: {
-        label: "Previous address",
+        label: "Попередня адреса",
         explanation:
-          "State your last address in Germany or abroad so the office can update records correctly.",
+          "Остання адреса в Німеччині або за кордоном для коректного оновлення даних установою.",
       },
     },
     form_steuer_number_registration: {
       personal_details: {
-        label: "Personal details",
+        label: "Персональні дані",
         explanation:
-          "Name, address, and tax ID must match your official registration documents.",
+          "Ім'я, адреса та податковий ID мають збігатися з офіційними реєстраційними документами.",
       },
       business_activity: {
-        label: "Business activity description",
-        explanation: "Describe what services/products you provide in clear, practical words.",
+        label: "Опис діяльності",
+        explanation: "Опишіть послуги чи продукти чітко та зрозуміло.",
       },
       start_date: {
-        label: "Business start date",
+        label: "Початок діяльності",
         explanation:
-          "Enter when you started or plan to start generating freelance income.",
+          "Коли ви почали або плануєте почати отримувати дохід як фрілансер.",
       },
       revenue_estimate: {
-        label: "Estimated annual revenue",
+        label: "Орієнтовний річний дохід",
         explanation:
-          "Give your best realistic estimate; this helps set prepayments and tax expectations.",
+          "Реалістична оцінка допомагає з авансовими платежами та податковими очікуваннями.",
       },
       vat_preference: {
-        label: "VAT / Kleinunternehmer choice",
+        label: "ПДВ / режим Kleinunternehmer",
         explanation:
-          "Choose whether you use small-business VAT exemption or regular VAT handling.",
+          "Вибір між звільненням для малого бізнесу та стандартним ПДВ.",
       },
     },
     form_kindergeld_main_application: {
       applicant_info: {
-        label: "Applicant information",
-        explanation: "Parent/legal guardian details who is applying for benefit payments.",
+        label: "Дані заявника",
+        explanation: "Батько чи законний представник, який подає заяву на виплату.",
       },
       child_info: {
-        label: "Child information",
+        label: "Дані дитини",
         explanation:
-          "Name, date of birth, and household relation for each child in the application.",
+          "Ім'я, дата народження та зв'язок у домогосподарстві для кожної дитини в заяві.",
       },
       tax_ids: {
-        label: "Tax IDs (parent + child)",
-        explanation: "Both parent and child tax IDs are typically mandatory for processing.",
+        label: "Податкові ID (батько + дитина)",
+        explanation: "Зазвичай для обробки потрібні обидва ID.",
       },
       bank_account: {
-        label: "Bank account (IBAN)",
+        label: "Банківський рахунок (IBAN)",
         explanation:
-          "Use an account where you can reliably receive monthly Kindergeld payments.",
+          "Рахунок, на який надійно надходитимуть щомісячні виплати Kindergeld.",
       },
       residence_status: {
-        label: "Residence / permit status",
+        label: "Проживання / статус дозволу",
         explanation:
-          "Provide your current residence information if requested in your form package.",
+          "Актуальні дані про проживання, якщо це вимагає пакет форм.",
       },
     },
     form_health_insurance_membership: {
       insured_person: {
-        label: "Insured person details",
+        label: "Дані застрахованої особи",
         explanation:
-          "Your legal identity information must be consistent with passport and Anmeldung.",
+          "Юридична ідентичність має збігатися з паспортом та даними Anmeldung.",
       },
       employment_status: {
-        label: "Employment status",
+        label: "Статус зайнятості",
         explanation:
-          "Specify if you are employed, self-employed, student, or currently unemployed.",
+          "Працівник, самозайнятий, студент чи безробітний.",
       },
       start_of_coverage: {
-        label: "Coverage start date",
+        label: "Початок страхування",
         explanation:
-          "Choose the date from which insurance should begin based on your contract/residency timeline.",
+          "Дата згідно з договором, початком роботи або вашим графіком перебування.",
       },
       family_members: {
-        label: "Family co-insurance details",
-        explanation: "Add spouse/children if they should be included in family insurance.",
+        label: "Спільне сімейне страхування",
+        explanation: "Додайте подружжя/дітей, якщо вони мають бути у сімейному страхуванні.",
       },
       contact_preferences: {
-        label: "Contact and communication preferences",
+        label: "Контакт і комунікація",
         explanation:
-          "Set your email/phone and preferred communication language if available.",
+          "E-mail, телефон і бажана мова спілкування, якщо можливо.",
       },
     },
     form_residence_extension: {
       passport_permit_data: {
-        label: "Passport and current permit data",
-        explanation: "Enter passport and residence card details exactly as printed.",
+        label: "Паспорт і дані поточного дозволу",
+        explanation: "Вкажіть дані точно як у документах.",
       },
       reason_for_extension: {
-        label: "Reason for extension",
+        label: "Причина подовження",
         explanation:
-          "Explain if extension is for work, family, study, or another legal basis.",
+          "Робота, сім'я, навчання чи інша правова підстава.",
       },
       income_proof: {
-        label: "Income / financing details",
+        label: "Дохід / фінансування",
         explanation:
-          "Provide salary, contract, or sponsor details proving you can support yourself.",
+          "Зарплата, договір або дані спонсора як доказ самозабезпечення.",
       },
       housing_proof: {
-        label: "Housing details",
-        explanation: "Include rental address and documents showing stable accommodation.",
+        label: "Житло",
+        explanation: "Адреса оренди та документи про стабільне проживання.",
       },
       insurance_status: {
-        label: "Health insurance status",
+        label: "Медичне страхування",
         explanation:
-          "Confirm active health insurance coverage for the requested extension period.",
+          "Підтвердіть активне страхування на запитаний період подовження.",
       },
     },
   },
   guidesDetail: {
     guide_anmeldung: {
       anmeldung_1: {
-        title: "Book a Bürgeramt appointment",
-        text: "Search your city’s Bürgeramt website and book the earliest available Anmeldung appointment.",
+        title: "Запишіться до Bürgeramt",
+        text: "Знайдіть сайт Bürgeramt вашого міста та забронюйте найближчий термін Anmeldung.",
       },
       anmeldung_2: {
-        title: "Collect required documents",
-        text: "Prepare passport/ID, rental contract, and Wohnungsgeberbestätigung from your landlord.",
+        title: "Зберіть документи",
+        text: "Паспорт/ID, договір оренди та Wohnungsgeberbestätigung від орендодавця.",
       },
       anmeldung_3: {
-        title: "Fill the registration form",
-        text: "Complete the Anmeldung form before the appointment to avoid delays at the office.",
+        title: "Заповніть форму реєстрації",
+        text: "Заповніть форму Anmeldung до візиту, щоб не гаяти час в установі.",
       },
       anmeldung_4: {
-        title: "Attend appointment and submit documents",
-        text: "Arrive early, submit your documents, and verify your address details are correct.",
+        title: "Прийдіть на прийом і подайте документи",
+        text: "Приходьте завчасно, подайте документи та перевірте адресні дані.",
       },
       anmeldung_5: {
-        title: "Keep your Meldebescheinigung safe",
-        text: "Store the confirmation document securely; banks, employers, and other offices may request it.",
+        title: "Зберігайте Meldebescheinigung",
+        text: "Зберігайте підтвердження в надійному місці — банки, роботодавці та установи часто його вимагають.",
       },
     },
     guide_steuer_id: {
       steuer_1: {
-        title: "Complete Anmeldung first",
-        text: "Your Steuer-ID is generated after address registration, so finalize Anmeldung as your first step.",
+        title: "Спочатку завершіть Anmeldung",
+        text: "Steuer-ID формується після реєстрації адреси — першим кроком завершіть Anmeldung.",
       },
       steuer_2: {
-        title: "Wait for the official letter",
-        text: "The Bundeszentralamt usually sends your Steuer-ID by post within a few weeks.",
+        title: "Очікуйте офіційного листа",
+        text: "Bundeszentralamt зазвичай надсилає Steuer-ID поштою протягом кількох тижнів.",
       },
       steuer_3: {
-        title: "Check your mailbox name label",
-        text: "Ensure your surname is visible on the mailbox so official letters can be delivered correctly.",
+        title: "Перевірте прізвище на поштовій скриньці",
+        text: "Прізвище має бути читабельним для доставки офіційної кореспонденції.",
       },
       steuer_4: {
-        title: "Request it again if missing",
-        text: "If it does not arrive, request a re-send through the official tax office process.",
+        title: "Якщо не надійшло — запитайте повторно",
+        text: "Якщо листа немає, подайте запит на повторне надсилання за офіційною процедурою податкової.",
       },
       steuer_5: {
-        title: "Share with employer or tax advisor",
-        text: "Provide your Steuer-ID to your employer or advisor to avoid emergency tax class deductions.",
+        title: "Передайте роботодавцю або податковому раднику",
+        text: "Надайте Steuer-ID, щоб уникнути аварійної податкової класифікації та утримань.",
       },
     },
     guide_kindergeld: {
       kindergeld_1: {
-        title: "Check eligibility basics",
-        text: "Confirm residence status, child age, and household details meet Kindergeld requirements.",
+        title: "Перевірте базові умови",
+        text: "Переконайтеся, що статус перебування, вік дитини та домогосподарство відповідають вимогам Kindergeld.",
       },
       kindergeld_2: {
-        title: "Prepare personal and child documents",
-        text: "Collect IDs, birth certificate, Anmeldung proof, and tax IDs for parent and child.",
+        title: "Документи на вас і дитину",
+        text: "ID, свідоцтво про народження, підтвердження Anmeldung та податкові ID батька й дитини.",
       },
       kindergeld_3: {
-        title: "Complete KG1 and child annex forms",
-        text: "Fill the main application and child annex carefully; signatures and correct IBAN are important.",
+        title: "Заповніть KG1 та додатки на дітей",
+        text: "Уважно заповніть основну заяву та додатки; підписи та правильний IBAN важливі.",
       },
       kindergeld_4: {
-        title: "Submit to Familienkasse",
-        text: "Send forms online or by post to the correct Familienkasse office for your region.",
+        title: "Подайте до Familienkasse",
+        text: "Надішліть онлайн або поштою до відповідного офісу Familienkasse вашого регіону.",
       },
       kindergeld_5: {
-        title: "Track status and reply quickly",
-        text: "Respond fast to additional document requests to avoid delays in first payment.",
+        title: "Відстежуйте статус і швидко відповідайте",
+        text: "Швидко реагуйте на запити додаткових документів, щоб не відкласти першу виплату.",
       },
     },
     guide_health_insurance: {
       health_1: {
-        title: "Decide public vs private route",
-        text: "Most newcomers start with public insurance; check your employment type and salary threshold.",
+        title: "Державне чи приватне страхування",
+        text: "Більшість новачків починають з державного; перевірте тип зайнятості та поріг зарплати.",
       },
       health_2: {
-        title: "Compare providers and service language",
-        text: "Review contribution rates, digital tools, and whether customer support is available in your language.",
+        title: "Порівняйте каси та мову підтримки",
+        text: "Внески, цифрові сервіси та доступність підтримки вашою мовою.",
       },
       health_3: {
-        title: "Submit membership application",
-        text: "Apply with your personal details, address, and employment information.",
+        title: "Подайте заяву на членство",
+        text: "Подайте з персональними даними, адресою та інформацією про роботу.",
       },
       health_4: {
-        title: "Send confirmation to employer/office",
-        text: "Share your insurance confirmation with employer, immigration office, or university when required.",
+        title: "Надішліть підтвердження роботодавцю/установі",
+        text: "Надайте підтвердження страхування роботодавцю, міграційній службі або університету, коли потрібно.",
       },
       health_5: {
-        title: "Register family members if needed",
-        text: "If eligible, add spouse/children to family insurance and keep records of all confirmations.",
+        title: "Зареєструйте членів сім'ї",
+        text: "За наявності права додайте подружжя/дітей до сімейного страхування та зберігайте копії підтверджень.",
       },
     },
     guide_residence_permit: {
       residence_1: {
-        title: "Check permit expiry early",
-        text: "Start 8-12 weeks before expiry; many cities have long waiting times for appointments.",
+        title: "Перевірте термін дії завчасно",
+        text: "Почніть за 8–12 тижнів до закінчення; у багатьох містах довгі черги на запис.",
       },
       residence_2: {
-        title: "Collect mandatory documents",
-        text: "Prepare passport, current permit, biometric photo, proof of income, insurance, and housing.",
+        title: "Обов'язкові документи",
+        text: "Паспорт, поточний дозвіл, біометричне фото, доказ доходу, страхування та житла.",
       },
       residence_3: {
-        title: "Book appointment or submit online",
-        text: "Use your city’s online portal where available, and keep confirmation emails/screenshots.",
+        title: "Запис або подання онлайн",
+        text: "Використовуйте міський портал, якщо є; зберігайте листи та скриншоти.",
       },
       residence_4: {
-        title: "Submit complete application",
-        text: "Double-check all files before submission; incomplete applications are commonly delayed.",
+        title: "Подайте повну заяву",
+        text: "Перевірте всі файли; неповні заяви часто затримують.",
       },
       residence_5: {
-        title: "Request Fiktionsbescheinigung if needed",
-        text: "If your permit expires before decision, ask for temporary legal stay confirmation.",
+        title: "Fiktionsbescheinigung за потреби",
+        text: "Якщо дозвіл закінчиться до рішення, попросіть тимчасове підтвердження законного перебування.",
       },
       residence_6: {
-        title: "Track processing and collect card",
-        text: "Follow office instructions, then collect the new residence card once notified.",
+        title: "Відстежуйте справу та отримайте картку",
+        text: "Дотримуйтесь інструкцій установи та за повідомленням отримайте нову картку перебування.",
       },
     },
   },

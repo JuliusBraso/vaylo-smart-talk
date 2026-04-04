@@ -718,311 +718,311 @@ const tr = {
   },
   formsCatalog: {
     form_anmeldung: {
-      title: "Anmeldung form",
+      title: "Anmeldung formu",
       shortDescription:
-        "Address registration form required after moving into a new home in Germany.",
+        "Almanya'da yeni bir eve taşındıktan sonra zorunlu adres kayıt formu.",
     },
     form_steuer_number_registration: {
-      title: "Steuer number registration",
+      title: "Vergi numarası kaydı (Steuernummer)",
       shortDescription:
-        "Tax registration for self-employed/freelancers to receive a Steuernummer.",
+        "Steuernummer almak için serbest meslek/freelancer vergi kaydı.",
     },
     form_kindergeld_main_application: {
-      title: "Kindergeld main application",
+      title: "Kindergeld ana başvurusu",
       shortDescription:
-        "Core Familienkasse application to request child benefit payments.",
+        "Kindergeld ödemesi için Familienkasse'e yapılan temel başvuru.",
     },
     form_health_insurance_membership: {
-      title: "Health insurance membership",
+      title: "Sağlık sigortası üyeliği",
       shortDescription:
-        "Membership form used to activate statutory/public health insurance.",
+        "Zorunlu kamu sağlık sigortasını etkinleştirmek için form.",
     },
     form_residence_extension: {
-      title: "Residence extension application",
+      title: "İkamet izni uzatma",
       shortDescription:
-        "Application form for extending your residence permit before expiry.",
+        "İkamet izni süresi dolmadan uzatma başvurusu.",
     },
   },
   guidesCatalog: {
     guide_anmeldung: {
-      title: "Anmeldung (address registration)",
+      title: "Anmeldung (adres kaydı)",
       shortDescription:
-        "Register your address after moving to Germany and unlock key services.",
+        "Almanya'ya taşındıktan sonra adresinizi kaydedin ve temel hizmetlere erişin.",
     },
     guide_steuer_id: {
-      title: "Get your Steuer-ID",
+      title: "Steuer-ID alın",
       shortDescription:
-        "How to receive or recover your tax identification number in Germany.",
+        "Almanya'da vergi kimlik numaranızı nasıl alır veya yenilersiniz.",
     },
     guide_kindergeld: {
-      title: "Apply for Kindergeld",
+      title: "Kindergeld başvurusu",
       shortDescription:
-        "Step-by-step process for child benefit application through Familienkasse.",
+        "Adım adım: Familienkasse üzerinden Kindergeld başvurusu.",
     },
     guide_health_insurance: {
-      title: "Health insurance setup",
+      title: "Sağlık sigortası kurulumu",
       shortDescription:
-        "Choose and activate health insurance coverage required for work and residence.",
+        "Çalışma ve ikamet için gerekli sigortayı seçin ve etkinleştirin.",
     },
     guide_residence_permit: {
-      title: "Residence permit extension",
+      title: "İkamet izni uzatma",
       shortDescription:
-        "Prepare your extension process at Ausländerbehörde without missing deadlines.",
+        "Ausländerbehörde'de gereksiz gecikmeler olmadan uzatmaya hazırlanın.",
     },
   },
   categoryLabels: {
-    residence: "Residence",
-    family: "Family",
-    work: "Work",
-    tax: "Tax",
-    health: "Health",
-    documents: "Documents",
-    school: "School",
-    benefits: "Benefits",
-    other: "Other",
+    residence: "İkamet",
+    family: "Aile",
+    work: "İş",
+    tax: "Vergi",
+    health: "Sağlık",
+    documents: "Belgeler",
+    school: "Okul",
+    benefits: "Yardımlar",
+    other: "Diğer",
   },
   formsDetail: {
     form_anmeldung: {
       full_name: {
-        label: "Full name",
-        explanation: "Enter your legal name exactly as shown in your passport.",
+        label: "Ad soyad",
+        explanation: "Pasaporttakiyle birebir aynı resmi adınızı girin.",
       },
       date_of_birth: {
-        label: "Date of birth",
-        explanation: "Use the official format shown on the form (usually DD.MM.YYYY).",
+        label: "Doğum tarihi",
+        explanation: "Formdaki resmi formatı kullanın (genelde GG.AA.YYYY).",
       },
       new_address: {
-        label: "New address",
+        label: "Yeni adres",
         explanation:
-          "Write the exact street, house number, postal code, and city of your current home.",
+          "Güncel konutunuzun tam sokak, numara, posta kodu ve şehri.",
       },
       move_in_date: {
-        label: "Move-in date",
+        label: "Taşınma tarihi",
         explanation:
-          "Provide the date you actually moved into the apartment, not the contract start if different.",
+          "Gerçekten taşındığınız tarih — sözleşme başlangıcı farklıysa o değil.",
       },
       previous_address: {
-        label: "Previous address",
+        label: "Önceki adres",
         explanation:
-          "State your last address in Germany or abroad so the office can update records correctly.",
+          "Almanya'daki veya yurtdışındaki son adresiniz; kurum kayıtlarını doğru güncellemek için.",
       },
     },
     form_steuer_number_registration: {
       personal_details: {
-        label: "Personal details",
+        label: "Kişisel bilgiler",
         explanation:
-          "Name, address, and tax ID must match your official registration documents.",
+          "Ad, adres ve vergi kimliği resmi kayıt belgelerinizle eşleşmeli.",
       },
       business_activity: {
-        label: "Business activity description",
-        explanation: "Describe what services/products you provide in clear, practical words.",
+        label: "Faaliyet açıklaması",
+        explanation: "Verdiğiniz hizmet veya ürünleri net ve anlaşılır şekilde yazın.",
       },
       start_date: {
-        label: "Business start date",
+        label: "İşe başlama tarihi",
         explanation:
-          "Enter when you started or plan to start generating freelance income.",
+          "Serbest gelire ne zaman başladığınız veya başlamayı planladığınız.",
       },
       revenue_estimate: {
-        label: "Estimated annual revenue",
+        label: "Tahmini yıllık gelir",
         explanation:
-          "Give your best realistic estimate; this helps set prepayments and tax expectations.",
+          "Gerçekçi bir tahmin verin; avans ve vergi beklentilerini etkiler.",
       },
       vat_preference: {
-        label: "VAT / Kleinunternehmer choice",
+        label: "KDV / Kleinunternehmer seçimi",
         explanation:
-          "Choose whether you use small-business VAT exemption or regular VAT handling.",
+          "Küçük işletme KDV muafiyeti ile standart KDV yönetimi arasında seçim.",
       },
     },
     form_kindergeld_main_application: {
       applicant_info: {
-        label: "Applicant information",
-        explanation: "Parent/legal guardian details who is applying for benefit payments.",
+        label: "Başvuran bilgileri",
+        explanation: "Yardım başvurusunda bulunan ebeveyn veya yasal vasi.",
       },
       child_info: {
-        label: "Child information",
+        label: "Çocuk bilgileri",
         explanation:
-          "Name, date of birth, and household relation for each child in the application.",
+          "Başvurudaki her çocuk için ad, doğum tarihi ve hane içi ilişki.",
       },
       tax_ids: {
-        label: "Tax IDs (parent + child)",
-        explanation: "Both parent and child tax IDs are typically mandatory for processing.",
+        label: "Vergi numaraları (ebeveyn + çocuk)",
+        explanation: "İşleme için genelde her iki vergi kimliği de zorunludur.",
       },
       bank_account: {
-        label: "Bank account (IBAN)",
+        label: "Banka hesabı (IBAN)",
         explanation:
-          "Use an account where you can reliably receive monthly Kindergeld payments.",
+          "Aylık Kindergeld ödemelerinin güvenle yatacağı hesap.",
       },
       residence_status: {
-        label: "Residence / permit status",
+        label: "İkamet / izin durumu",
         explanation:
-          "Provide your current residence information if requested in your form package.",
+          "Form paketi istiyorsa güncel ikamet bilgilerinizi verin.",
       },
     },
     form_health_insurance_membership: {
       insured_person: {
-        label: "Insured person details",
+        label: "Sigortalı bilgileri",
         explanation:
-          "Your legal identity information must be consistent with passport and Anmeldung.",
+          "Yasal kimlik bilgileri pasaport ve Anmeldung ile tutarlı olmalı.",
       },
       employment_status: {
-        label: "Employment status",
+        label: "İstihdam durumu",
         explanation:
-          "Specify if you are employed, self-employed, student, or currently unemployed.",
+          "Çalışan, serbest meslek, öğrenci veya işsiz olduğunuzu belirtin.",
       },
       start_of_coverage: {
-        label: "Coverage start date",
+        label: "Kapsam başlangıç tarihi",
         explanation:
-          "Choose the date from which insurance should begin based on your contract/residency timeline.",
+          "Sözleşme, işe giriş veya ikamet planınıza göre başlangıç tarihi.",
       },
       family_members: {
-        label: "Family co-insurance details",
-        explanation: "Add spouse/children if they should be included in family insurance.",
+        label: "Aile sigortası",
+        explanation: "Eş/çocukları aile sigortasına ekleyin.",
       },
       contact_preferences: {
-        label: "Contact and communication preferences",
+        label: "İletişim tercihleri",
         explanation:
-          "Set your email/phone and preferred communication language if available.",
+          "E-posta, telefon ve mümkünse tercih ettiğiniz iletişim dili.",
       },
     },
     form_residence_extension: {
       passport_permit_data: {
-        label: "Passport and current permit data",
-        explanation: "Enter passport and residence card details exactly as printed.",
+        label: "Pasaport ve mevcut izin bilgileri",
+        explanation: "Pasaport ve ikamet kartındaki bilgileri aynen girin.",
       },
       reason_for_extension: {
-        label: "Reason for extension",
+        label: "Uzatma nedeni",
         explanation:
-          "Explain if extension is for work, family, study, or another legal basis.",
+          "İş, aile, eğitim veya başka bir hukuki dayanak.",
       },
       income_proof: {
-        label: "Income / financing details",
+        label: "Gelir / finansman",
         explanation:
-          "Provide salary, contract, or sponsor details proving you can support yourself.",
+          "Geçimini sağlayabildiğinizi gösteren maaş, sözleşme veya sponsor bilgileri.",
       },
       housing_proof: {
-        label: "Housing details",
-        explanation: "Include rental address and documents showing stable accommodation.",
+        label: "Konut",
+        explanation: "Kira adresi ve istikrarlı barınmayı gösteren belgeler.",
       },
       insurance_status: {
-        label: "Health insurance status",
+        label: "Sağlık sigortası durumu",
         explanation:
-          "Confirm active health insurance coverage for the requested extension period.",
+          "Talep edilen uzatma dönemi için aktif sigortayı onaylayın.",
       },
     },
   },
   guidesDetail: {
     guide_anmeldung: {
       anmeldung_1: {
-        title: "Book a Bürgeramt appointment",
-        text: "Search your city’s Bürgeramt website and book the earliest available Anmeldung appointment.",
+        title: "Bürgeramt randevusu alın",
+        text: "Şehrinizin Bürgeramt sitesini bulun ve en erken Anmeldung randevusunu ayırtın.",
       },
       anmeldung_2: {
-        title: "Collect required documents",
-        text: "Prepare passport/ID, rental contract, and Wohnungsgeberbestätigung from your landlord.",
+        title: "Gerekli belgeleri toplayın",
+        text: "Pasaport/kimlik, kira sözleşmesi ve ev sahibinden Wohnungsgeberbestätigung.",
       },
       anmeldung_3: {
-        title: "Fill the registration form",
-        text: "Complete the Anmeldung form before the appointment to avoid delays at the office.",
+        title: "Kayıt formunu doldurun",
+        text: "Randevudan önce Anmeldung formunu doldurun; kurumda gecikmeyi azaltır.",
       },
       anmeldung_4: {
-        title: "Attend appointment and submit documents",
-        text: "Arrive early, submit your documents, and verify your address details are correct.",
+        title: "Randevuya gidin ve belgeleri verin",
+        text: "Erken gelin, belgeleri teslim edin ve adres bilgilerini kontrol edin.",
       },
       anmeldung_5: {
-        title: "Keep your Meldebescheinigung safe",
-        text: "Store the confirmation document securely; banks, employers, and other offices may request it.",
+        title: "Meldebescheinigung'u saklayın",
+        text: "Onay belgesini güvenle saklayın; bankalar, işverenler ve kurumlar sıkça ister.",
       },
     },
     guide_steuer_id: {
       steuer_1: {
-        title: "Complete Anmeldung first",
-        text: "Your Steuer-ID is generated after address registration, so finalize Anmeldung as your first step.",
+        title: "Önce Anmeldung'u tamamlayın",
+        text: "Steuer-ID adres kaydından sonra oluşur; ilk adım Anmeldung'u bitirmektir.",
       },
       steuer_2: {
-        title: "Wait for the official letter",
-        text: "The Bundeszentralamt usually sends your Steuer-ID by post within a few weeks.",
+        title: "Resmi mektubu bekleyin",
+        text: "Bundeszentralamt genelde birkaç hafta içinde Steuer-ID'yi postayla gönderir.",
       },
       steuer_3: {
-        title: "Check your mailbox name label",
-        text: "Ensure your surname is visible on the mailbox so official letters can be delivered correctly.",
+        title: "Posta kutusundaki isim etiketini kontrol edin",
+        text: "Resmi posta için soyadınız kutuda okunaklı olmalı.",
       },
       steuer_4: {
-        title: "Request it again if missing",
-        text: "If it does not arrive, request a re-send through the official tax office process.",
+        title: "Gelmezse yeniden isteyin",
+        text: "Ulaşmazsa vergi dairesinin resmi süreciyle yeniden gönderim talep edin.",
       },
       steuer_5: {
-        title: "Share with employer or tax advisor",
-        text: "Provide your Steuer-ID to your employer or advisor to avoid emergency tax class deductions.",
+        title: "İşveren veya danışmana verin",
+        text: "Steuer-ID'yi verin; acil vergi sınıfı kesintilerinden kaçının.",
       },
     },
     guide_kindergeld: {
       kindergeld_1: {
-        title: "Check eligibility basics",
-        text: "Confirm residence status, child age, and household details meet Kindergeld requirements.",
+        title: "Temel uygunluk şartlarını kontrol edin",
+        text: "İkamet, çocuk yaşı ve hane bilgilerinin Kindergeld gereksinimlerini karşıladığını doğrulayın.",
       },
       kindergeld_2: {
-        title: "Prepare personal and child documents",
-        text: "Collect IDs, birth certificate, Anmeldung proof, and tax IDs for parent and child.",
+        title: "Kişisel ve çocuk belgeleri",
+        text: "Kimlikler, doğum belgesi, Anmeldung kanıtı ve ebeveyn/çocuk vergi numaraları.",
       },
       kindergeld_3: {
-        title: "Complete KG1 and child annex forms",
-        text: "Fill the main application and child annex carefully; signatures and correct IBAN are important.",
+        title: "KG1 ve çocuk ek formlarını doldurun",
+        text: "Ana başvuru ve ekleri dikkatle doldurun; imzalar ve doğru IBAN önemlidir.",
       },
       kindergeld_4: {
-        title: "Submit to Familienkasse",
-        text: "Send forms online or by post to the correct Familienkasse office for your region.",
+        title: "Familienkasse'e gönderin",
+        text: "Bölgenizdeki doğru Familienkasse ofisine çevrimiçi veya postayla gönderin.",
       },
       kindergeld_5: {
-        title: "Track status and reply quickly",
-        text: "Respond fast to additional document requests to avoid delays in first payment.",
+        title: "Durumu takip edin, hızlı yanıt verin",
+        text: "Ek belge taleplerine hızlı dönün; ilk ödeme gecikmesin.",
       },
     },
     guide_health_insurance: {
       health_1: {
-        title: "Decide public vs private route",
-        text: "Most newcomers start with public insurance; check your employment type and salary threshold.",
+        title: "Kamu veya özel yol",
+        text: "Yeni gelenler çoğunlukla kamu sigortasıyla başlar; iş türü ve maaş eşiğini kontrol edin.",
       },
       health_2: {
-        title: "Compare providers and service language",
-        text: "Review contribution rates, digital tools, and whether customer support is available in your language.",
+        title: "Kasaları ve destek dilini karşılaştırın",
+        text: "Primler, dijital araçlar ve dilinizde destek olup olmadığı.",
       },
       health_3: {
-        title: "Submit membership application",
-        text: "Apply with your personal details, address, and employment information.",
+        title: "Üyelik başvurusu",
+        text: "Kişisel bilgiler, adres ve istihdam bilgileriyle başvurun.",
       },
       health_4: {
-        title: "Send confirmation to employer/office",
-        text: "Share your insurance confirmation with employer, immigration office, or university when required.",
+        title: "Onayı işveren/kuruma gönderin",
+        text: "Gerektiğinde sigorta onayını işveren, göç dairesi veya üniversiteye verin.",
       },
       health_5: {
-        title: "Register family members if needed",
-        text: "If eligible, add spouse/children to family insurance and keep records of all confirmations.",
+        title: "Gerekirse aile üyelerini kaydedin",
+        text: "Uygunsanız eş/çocukları aile sigortasına ekleyin; tüm onayları saklayın.",
       },
     },
     guide_residence_permit: {
       residence_1: {
-        title: "Check permit expiry early",
-        text: "Start 8-12 weeks before expiry; many cities have long waiting times for appointments.",
+        title: "Bitiş tarihini erken kontrol edin",
+        text: "Süre dolmadan 8–12 hafta önce başlayın; birçok şehirde randevu beklemesi uzun.",
       },
       residence_2: {
-        title: "Collect mandatory documents",
-        text: "Prepare passport, current permit, biometric photo, proof of income, insurance, and housing.",
+        title: "Zorunlu belgeler",
+        text: "Pasaport, mevcut izin, biyometrik fotoğraf, gelir, sigorta ve konut kanıtı.",
       },
       residence_3: {
-        title: "Book appointment or submit online",
-        text: "Use your city’s online portal where available, and keep confirmation emails/screenshots.",
+        title: "Randevu veya çevrimiçi başvuru",
+        text: "Varsa belediye portalını kullanın; e-postaları ve ekran görüntülerini saklayın.",
       },
       residence_4: {
-        title: "Submit complete application",
-        text: "Double-check all files before submission; incomplete applications are commonly delayed.",
+        title: "Eksiksiz başvuru",
+        text: "Göndermeden önce tüm dosyaları kontrol edin; eksik başvurular gecikir.",
       },
       residence_5: {
-        title: "Request Fiktionsbescheinigung if needed",
-        text: "If your permit expires before decision, ask for temporary legal stay confirmation.",
+        title: "Gerekirse Fiktionsbescheinigung",
+        text: "Karar önce izin biterse geçici yasal kalış onayı isteyin.",
       },
       residence_6: {
-        title: "Track processing and collect card",
-        text: "Follow office instructions, then collect the new residence card once notified.",
+        title: "Süreci izleyin ve kartı alın",
+        text: "Kurum talimatlarını izleyin; bildirimden sonra yeni ikamet kartınızı alın.",
       },
     },
   },
