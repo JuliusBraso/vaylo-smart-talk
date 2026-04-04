@@ -71,6 +71,8 @@ export type Dict = {
   dashboard: Record<string, string>;
   documents: Record<string, string>;
   documentDetail: Record<string, string>;
+  forms: Record<string, string>;
+  letters: Record<string, string>;
   settings: Record<string, string>;
   phrases: Record<string, string>;
   premium: Record<string, string>;
