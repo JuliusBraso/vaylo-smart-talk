@@ -9,10 +9,14 @@ import {
 
 type Intent = "WHAT" | "HOW";
 
+const HOW_TRIGGERS = new Set(["ako", "how", "wie"]);
+const WHAT_TRIGGERS = new Set(["čo", "co", "what", "was"]);
+
 function detectIntent(message: string): Intent {
-  const m = message.toLowerCase();
-  if (m.includes("ako")) return "HOW";
-  if (m.includes("čo") || m.includes("co")) return "WHAT";
+  const normalized = message.trim().toLowerCase();
+  const tokens = normalized.split(/[^\p{L}\p{M}0-9]+/u).filter(Boolean);
+  if (tokens.some((tok) => HOW_TRIGGERS.has(tok))) return "HOW";
+  if (tokens.some((tok) => WHAT_TRIGGERS.has(tok))) return "WHAT";
   return "WHAT";
 }
 
