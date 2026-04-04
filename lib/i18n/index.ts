@@ -1,6 +1,7 @@
 import bg from "./locales/bg";
 import cs from "./locales/cs";
 import de from "./locales/de";
+import en from "./locales/en";
 import hu from "./locales/hu";
 import pl from "./locales/pl";
 import ro from "./locales/ro";
@@ -9,12 +10,13 @@ import sk from "./locales/sk";
 import tr from "./locales/tr";
 import uk from "./locales/uk";
 
-export const LOCALES = ["de", "sk", "hu", "pl", "cs", "ro", "bg", "uk", "tr", "ru"] as const;
+export const LOCALES = ["de", "sk", "en", "hu", "pl", "cs", "ro", "bg", "uk", "tr", "ru"] as const;
 export type Locale = (typeof LOCALES)[number];
 
 export const LOCALE_LABELS: Record<Locale, string> = {
   de: "Deutsch",
   sk: "Slovenčina",
+  en: "English",
   hu: "Magyar",
   pl: "Polski",
   cs: "Čeština",
@@ -74,10 +76,10 @@ export type Dict = {
   premium: Record<string, string>;
 };
 
-
 export const DICTS: Record<Locale, Dict> = {
   de,
   sk,
+  en,
   hu,
   pl,
   cs,
