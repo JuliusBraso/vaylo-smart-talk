@@ -568,6 +568,10 @@ const cs = {
     howToLine: "{prefix} {title}",
     noGuideLine: "{prefix} {title}",
     guideStepLine: "{n}. {step}",
+    noActionsWhatSoft:
+      "Teď nemám žádné další prioritní kroky. Můžeš se zeptat „Jak na …?“ (např. zdravotní pojištění, životopis, Arbeitsagentur).",
+    howEmptyActionsFallback:
+      "Napiš téma do zprávy (např. pojištění, životopis, Arbeitsagentur) nebo začni větou „Jak …?“.",
   },
   nudges: {
     longIgnore: "Odkládáš to už několik dní",
@@ -593,6 +597,24 @@ const cs = {
       "Zaregistruj se jako uchazeč o práci a domluv si termín/poradenství, pokud je k dispozici.",
     arbeitsagenturStep3:
       "Ulož si potvrzení registrace a sleduj další kroky (dokumenty, dávky, doporučení).",
+    bankAccountStep1:
+      "Porovnej nabídky (poplatky, karta, internetové bankovnictví) a připrav doklad totožnosti a adresy.",
+    bankAccountStep2:
+      "Účet založ online nebo na pobočce po termínu a podepiš smlouvy.",
+    bankAccountStep3:
+      "Ulož si IBAN/BIC, zapni internetové bankovnictví; údaje budou potřeba pro mzdu a úřady.",
+    anmeldungStep1:
+      "Domluv si termín na Bürgeramt nebo zkontroluj online postup podle města.",
+    anmeldungStep2:
+      "Připrav doklady: pas, nájemní smlouva, potvrzení od pronajímatele, případně předvyplň formulář.",
+    anmeldungStep3:
+      "Na úřadě vše odevzdej a uschovej Meldebescheinigung — často ji chtějí banka, zaměstnavatel a úřady.",
+    steuerIdStep1:
+      "Po přihlášení adresy ti spolkový daňový úřad vygeneruje daňové ID.",
+    steuerIdStep2:
+      "Počkej na dopis se Steuer-ID (často do několika týdnů).",
+    steuerIdStep3:
+      "Když dopis nepřijde: Finanzamt nebo znovuodeslání; číslo potřebuješ pro práci a daně.",
   },
   premium: {
     title: "Odemknout Premium",

@@ -570,6 +570,10 @@ const tr = {
     howToLine: "{prefix} {title}",
     noGuideLine: "{prefix} {title}",
     guideStepLine: "{n}. {step}",
+    noActionsWhatSoft:
+      "Şu an öncelikli sonraki adım yok. Yine de „Nasıl …?“ diye sorabilirsin (ör. sağlık sigortası, CV, Arbeitsagentur).",
+    howEmptyActionsFallback:
+      "Mesaja bir konu yaz (ör. sigorta, CV, Arbeitsagentur) veya „Nasıl …?“ ile başla.",
   },
   nudges: {
     longIgnore: "Bunu birkaç gündür erteliyorsun",
@@ -595,6 +599,24 @@ const tr = {
       "İş arayan olarak kayıt ol ve mümkünse randevu/danışmanlık ayarla.",
     arbeitsagenturStep3:
       "Onayı kaydet ve sonraki adımları takip et (belgeler, yardımlar, öneriler).",
+    bankAccountStep1:
+      "Teklifleri karşılaştır (ücretler, kart, online bankacılık) ve kimlik ile adres kanıtını hazırla.",
+    bankAccountStep2:
+      "Hesabı online veya randevudan sonra şubede aç ve sözleşmeleri imzala.",
+    bankAccountStep3:
+      "IBAN/BIC’yi kaydet, online bankacılığı aç; maaş ve kurumlar için hazır tut.",
+    anmeldungStep1:
+      "Bürgeramt randevusu al veya şehrinin online Anmeldung sürecini kontrol et.",
+    anmeldungStep2:
+      "Belgeler: pasaport, kira sözleşmesi, ev sahibi onayı; gerekirse formu önceden doldur.",
+    anmeldungStep3:
+      "Randevuya git ve Meldebescheinigung’u sakla — banka, işveren ve daireler sıkça ister.",
+    steuerIdStep1:
+      "Adres kaydından sonra federal vergi dairesi vergi numaranı oluşturur.",
+    steuerIdStep2:
+      "Steuer-ID mektubunu bekle (genelde birkaç hafta içinde).",
+    steuerIdStep3:
+      "Gelmezse Finanzamt ile iletişim veya yeniden gönderim; iş ve vergi için gereklidir.",
   },
   premium: {
     title: "Premium’u aç",

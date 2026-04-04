@@ -631,6 +631,10 @@ const de = {
     howToLine: "{prefix} {title}",
     noGuideLine: "{prefix} {title}",
     guideStepLine: "{n}. {step}",
+    noActionsWhatSoft:
+      "Aktuell habe ich keine priorisierten nächsten Schritte für dich. Du kannst trotzdem „Wie mache ich …?“ fragen (z. B. Krankenversicherung, Lebenslauf, Arbeitsagentur).",
+    howEmptyActionsFallback:
+      "Schreib bitte ein Thema in die Nachricht (z. B. Krankenversicherung, Lebenslauf, Arbeitsagentur) oder starte mit „Wie …?“.",
   },
   nudges: {
     longIgnore: "Du schiebst das seit ein paar Tagen auf",
@@ -656,6 +660,24 @@ const de = {
       "Melde dich als arbeitssuchend und vereinbare ggf. einen Termin oder Beratung.",
     arbeitsagenturStep3:
       "Speichere die Bestätigung und folge den nächsten Schritten (Dokumente, Leistungen, Hinweise).",
+    bankAccountStep1:
+      "Vergleiche Angebote (Gebühren, Karte, Online-Banking) und lege Ausweis sowie Melde-/Adressnachweis bereit.",
+    bankAccountStep2:
+      "Eröffne das Konto online oder nach Termin in der Filiale und unterschreibe die Verträge.",
+    bankAccountStep3:
+      "Notiere IBAN/BIC, aktiviere Online-Banking und hebe die Kontodaten für Gehalt und Behörden auf.",
+    anmeldungStep1:
+      "Termin beim Bürgeramt buchen oder Online-Anmeldung prüfen, je nach Stadt.",
+    anmeldungStep2:
+      "Unterlagen vorbereiten: Ausweis, Mietvertrag, Wohnungsgeberbestätigung, ggf. Formular vorausfüllen.",
+    anmeldungStep3:
+      "Termin wahrnehmen, Meldebescheinigung sicher aufbewahren — sie wird oft für Bank, Arbeit und Behörden gebraucht.",
+    steuerIdStep1:
+      "Nach der Anmeldung erzeugt das Bundeszentralamt für Steuern deine Steuer-ID.",
+    steuerIdStep2:
+      "Warte auf den Brief mit der Steuer-ID (oft innerhalb weniger Wochen).",
+    steuerIdStep3:
+      "Falls nichts ankommt: beim Finanzamt nachfragen oder Nachsendung beantragen; ID für Arbeitgeber/Steuer bereithalten.",
   },
   premium: {
     title: "Premium freischalten",

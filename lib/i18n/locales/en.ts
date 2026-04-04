@@ -133,6 +133,10 @@ const en = {
     howToLine: "{prefix} {title}",
     noGuideLine: "{prefix} {title}",
     guideStepLine: "{n}. {step}",
+    noActionsWhatSoft:
+      "There are no prioritized next steps right now. You can still ask “How do I …?” (e.g. health insurance, CV, Arbeitsagentur).",
+    howEmptyActionsFallback:
+      "Please name a topic in your message (e.g. health insurance, CV, Arbeitsagentur) or start with “How …?”.",
   },
   nudges: {
     longIgnore: "You’ve been putting this off for a few days",
@@ -158,6 +162,24 @@ const en = {
       "Register as a job seeker and book an appointment/advice if available.",
     arbeitsagenturStep3:
       "Save the confirmation and follow next steps (documents, benefits, guidance).",
+    bankAccountStep1:
+      "Compare offers (fees, card, online banking) and prepare ID plus proof of address.",
+    bankAccountStep2:
+      "Open the account online or in-branch after an appointment and sign the agreements.",
+    bankAccountStep3:
+      "Save IBAN/BIC, turn on online banking, and keep details ready for payroll and authorities.",
+    anmeldungStep1:
+      "Book a Bürgeramt appointment or check your city’s online registration process.",
+    anmeldungStep2:
+      "Prepare passport/ID, rental contract, landlord confirmation, and pre-fill forms if needed.",
+    anmeldungStep3:
+      "Attend the appointment and keep your Meldebescheinigung — banks, employers, and offices often need it.",
+    steuerIdStep1:
+      "After address registration, the Federal Central Tax Office generates your tax ID.",
+    steuerIdStep2:
+      "Wait for the letter with your Steuer-ID (often within a few weeks).",
+    steuerIdStep3:
+      "If nothing arrives, contact the Finanzamt or request a resend; keep the ID for work and taxes.",
   },
   premium: {
     title: "Unlock Premium",

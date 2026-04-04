@@ -589,6 +589,10 @@ const sk = {
     howToLine: "{prefix} {title}",
     noGuideLine: "{prefix} {title}",
     guideStepLine: "{n}. {step}",
+    noActionsWhatSoft:
+      "Teraz nemám v zozname ďalšie kroky. Môžeš sa opýtať „Ako na …?“ (napr. zdravotné poistenie, životopis, Arbeitsagentur).",
+    howEmptyActionsFallback:
+      "Napíš tému v správe (napr. poistenie, životopis, Arbeitsagentur) alebo začni vetou „Ako …?“.",
   },
   nudges: {
     longIgnore: "Odkladáš to už niekoľko dní",
@@ -614,6 +618,24 @@ const sk = {
       "Registruj sa ako uchádzač o prácu a dohodni si termín/poradenstvo, ak je dostupné.",
     arbeitsagenturStep3:
       "Ulož si potvrdenie registrácie a sleduj ďalšie kroky (dokumenty, dávky, odporúčania).",
+    bankAccountStep1:
+      "Porovnaj ponuky (poplatky, karta, internet banking) a priprav si doklad totožnosti a potvrdenie adresy.",
+    bankAccountStep2:
+      "Účet otvor online alebo po termíne na pobočke a podpíš zmluvy.",
+    bankAccountStep3:
+      "Ulož si IBAN/BIC, aktivuj internet banking a maj údaje po ruke pre mzdu a úrady.",
+    anmeldungStep1:
+      "Dohodni si termín na Bürgeramt alebo skontroluj online postup podľa mesta.",
+    anmeldungStep2:
+      "Priprav dokumenty: pas, nájomná zmluva, potvrdenie od prenajímateľa, prípadne formulár vopred vyplň.",
+    anmeldungStep3:
+      "Na úrade všetko odovzdaj a uschovaj Meldebescheinigung — často ju chcú banka, zamestnávateľ a úrady.",
+    steuerIdStep1:
+      "Po prihlásení adresy ti daňové ID spracuje spolkový daňový úrad.",
+    steuerIdStep2:
+      "Počkaj na list so Steuer-ID (často do niekoľkých týždňov).",
+    steuerIdStep3:
+      "Ak list nepríde, kontaktuj Finanzamt alebo požiadaj o znovuodoslanie; číslo potrebuješ pre prácu a dane.",
   },
   premium: {
     title: "Odomknúť Premium",

@@ -569,6 +569,10 @@ const hu = {
     howToLine: "{prefix} {title}",
     noGuideLine: "{prefix} {title}",
     guideStepLine: "{n}. {step}",
+    noActionsWhatSoft:
+      "Most nincs priorizált következő lépés. Kérdezhetsz így is: „Hogyan …?” (pl. egészségbiztosítás, önéletrajz, Arbeitsagentur).",
+    howEmptyActionsFallback:
+      "Írd be az üzenetbe a témát (pl. biztosítás, önéletrajz, Arbeitsagentur), vagy kezd „Hogyan …?” kérdéssel.",
   },
   nudges: {
     longIgnore: "Már pár napja halogatod",
@@ -594,6 +598,24 @@ const hu = {
       "Regisztrálj álláskeresőként, és ha lehet, kérj időpontot vagy tanácsadást.",
     arbeitsagenturStep3:
       "Mentsd el a visszaigazolást, és kövesd a következő lépéseket (dokumentumok, ellátások, ajánlások).",
+    bankAccountStep1:
+      "Hasonlítsd össze az ajánlatokat (díjak, kártya, netbank) és készítsd elő az igazolványt és a lakcímkártyát/igazolást.",
+    bankAccountStep2:
+      "Nyisd meg a számlát online vagy fiókban időpont után, és írd alá a szerződéseket.",
+    bankAccountStep3:
+      "Jegyezd fel az IBAN/BIC-t, kapcsold be a netbankot; add meg a munkáltatónak és hivataloknak.",
+    anmeldungStep1:
+      "Foglalj időpontot a Bürgeramtban vagy nézd meg a város online Anmeldung folyamatát.",
+    anmeldungStep2:
+      "Dokumentumok: útlevél/igazolvány, bérleti szerződés, bérbeadó igazolás; szükség esetén előre töltsd ki az űrlapot.",
+    anmeldungStep3:
+      "Menj el az időpontra és őrizd a Meldebescheinigungot — bank, munkáltató és hivatalok gyakran kérik.",
+    steuerIdStep1:
+      "A lakcímbejelentés után a szövetségi adóhivatal generálja az adóazonosítód.",
+    steuerIdStep2:
+      "Várd a Steuer-ID levelet (gyakran néhány héten belül).",
+    steuerIdStep3:
+      "Ha nem jön meg: Finanzamt vagy újraküldés; az adószám kell munkához és adózáshoz.",
   },
   premium: {
     title: "Premium feloldása",

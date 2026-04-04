@@ -570,6 +570,10 @@ const ro = {
     howToLine: "{prefix} {title}",
     noGuideLine: "{prefix} {title}",
     guideStepLine: "{n}. {step}",
+    noActionsWhatSoft:
+      "Nu am acum pași următori prioritați. Poți întreba totuși „Cum fac …?” (ex.: asigurare de sănătate, CV, Arbeitsagentur).",
+    howEmptyActionsFallback:
+      "Scrie un subiect în mesaj (ex.: asigurare, CV, Arbeitsagentur) sau începe cu „Cum …?”.",
   },
   nudges: {
     longIgnore: "Amâni asta de câteva zile",
@@ -595,6 +599,24 @@ const ro = {
       "Înregistrează-te ca persoană în căutarea unui job și programează o întâlnire/consiliere dacă este disponibilă.",
     arbeitsagenturStep3:
       "Păstrează confirmarea și urmează pașii următori (documente, beneficii, recomandări).",
+    bankAccountStep1:
+      "Compară oferte (comisioane, card, online banking) și pregătește actul de identitate și dovada adresei.",
+    bankAccountStep2:
+      "Deschide contul online sau la sucursală după programare și semnează contractele.",
+    bankAccountStep3:
+      "Notează IBAN/BIC, activează online banking; datele îți trebuie pentru salariu și instituții.",
+    anmeldungStep1:
+      "Programează o vizită la Bürgeramt sau verifică procesul online al orașului.",
+    anmeldungStep2:
+      "Documente: pașaport, contract de închiriere, confirmare proprietar; completează formularul din timp dacă e nevoie.",
+    anmeldungStep3:
+      "Participă la programare și păstrează Meldebescheinigung — banca, angajatorul și autoritățile o cer des.",
+    steuerIdStep1:
+      "După înregistrarea adresei, oficiul fiscal federal îți generează codul fiscal.",
+    steuerIdStep2:
+      "Așteaptă scrisoarea cu Steuer-ID (adesea în câteva săptămâni).",
+    steuerIdStep3:
+      "Dacă nu sosește: contactează Finanzamt sau solicită retrimitere; ai nevoie de cod pentru muncă și taxe.",
   },
   premium: {
     title: "Deblochează Premium",

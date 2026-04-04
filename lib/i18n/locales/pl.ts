@@ -569,6 +569,10 @@ const pl = {
     howToLine: "{prefix} {title}",
     noGuideLine: "{prefix} {title}",
     guideStepLine: "{n}. {step}",
+    noActionsWhatSoft:
+      "Nie mam teraz priorytetowych kolejnych kroków. Nadal możesz zapytać „Jak …?” (np. ubezpieczenie zdrowotne, CV, Arbeitsagentur).",
+    howEmptyActionsFallback:
+      "Napisz temat w wiadomości (np. ubezpieczenie, CV, Arbeitsagentur) lub zacznij od „Jak …?”.",
   },
   nudges: {
     longIgnore: "Odkładasz to już od kilku dni",
@@ -594,6 +598,24 @@ const pl = {
       "Zarejestruj się jako osoba szukająca pracy i umów termin/poradę, jeśli to możliwe.",
     arbeitsagenturStep3:
       "Zachowaj potwierdzenie i śledź kolejne kroki (dokumenty, świadczenia, wskazówki).",
+    bankAccountStep1:
+      "Porównaj oferty (opłaty, karta, bankowość online) i przygotuj dowód tożsamości oraz adres.",
+    bankAccountStep2:
+      "Otwórz konto online lub w oddziale po terminie i podpisz umowy.",
+    bankAccountStep3:
+      "Zapisz IBAN/BIC, włącz bankowość online; dane przydadzą się do wypłaty i urzędów.",
+    anmeldungStep1:
+      "Umów wizytę w Bürgeramt lub sprawdź online, jak działa rejestracja w Twoim mieście.",
+    anmeldungStep2:
+      "Dokumenty: paszport, umowa najmu, potwierdzenie wynajmującego; wypełnij formularz wcześniej, jeśli trzeba.",
+    anmeldungStep3:
+      "Weź udział w wizycie i przechowaj Meldebescheinigung — bank, pracodawca i urzędy często jej wymagają.",
+    steuerIdStep1:
+      "Po zameldowaniu adresu urząd federalny generuje Twój numer podatkowy.",
+    steuerIdStep2:
+      "Poczekaj na list ze Steuer-ID (często w kilka tygodni).",
+    steuerIdStep3:
+      "Jeśli list nie przyjdzie: Finanzamt lub ponowna wysyłka; numer potrzebny do pracy i podatków.",
   },
   premium: {
     title: "Odblokuj Premium",
