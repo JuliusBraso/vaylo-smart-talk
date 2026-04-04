@@ -716,69 +716,315 @@ const cs = {
   },
   formsCatalog: {
     form_anmeldung: {
-      title: "Anmeldung form",
+      title: "Formulář Anmeldung",
       shortDescription:
-        "Address registration form required after moving into a new home in Germany.",
+        "Formulář pro hlášení adresy po přestěhování do nového bydlení v Německu.",
     },
     form_steuer_number_registration: {
-      title: "Steuer number registration",
+      title: "Registrace daňového čísla (Steuernummer)",
       shortDescription:
-        "Tax registration for self-employed/freelancers to receive a Steuernummer.",
+        "Daňová registrace pro OSVČ/freelancery k získání Steuernummer.",
     },
     form_kindergeld_main_application: {
-      title: "Kindergeld main application",
+      title: "Hlavní žádost Kindergeld",
       shortDescription:
-        "Core Familienkasse application to request child benefit payments.",
+        "Základní žádost u Familienkasse o vyplácení Kindergeld.",
     },
     form_health_insurance_membership: {
-      title: "Health insurance membership",
+      title: "Členství ve zdravotním pojištění",
       shortDescription:
-        "Membership form used to activate statutory/public health insurance.",
+        "Formulář k aktivaci povinného veřejného zdravotního pojištění.",
     },
     form_residence_extension: {
-      title: "Residence extension application",
+      title: "Prodloužení povolení k pobytu",
       shortDescription:
-        "Application form for extending your residence permit before expiry.",
+        "Žádost o prodloužení povolení před vypršením platnosti.",
     },
   },
   guidesCatalog: {
     guide_anmeldung: {
-      title: "Anmeldung (address registration)",
+      title: "Anmeldung (hlášení adresy)",
       shortDescription:
-        "Register your address after moving to Germany and unlock key services.",
+        "Nahlaste adresu po přestěhování do Německa a získejte přístup ke službám.",
     },
     guide_steuer_id: {
-      title: "Get your Steuer-ID",
+      title: "Získejte Steuer-ID",
       shortDescription:
-        "How to receive or recover your tax identification number in Germany.",
+        "Jak získat nebo obnovit německé daňové identifikační číslo.",
     },
     guide_kindergeld: {
-      title: "Apply for Kindergeld",
+      title: "Požádejte o Kindergeld",
       shortDescription:
-        "Step-by-step process for child benefit application through Familienkasse.",
+        "Krok za krokem: žádost o Kindergeld u Familienkasse.",
     },
     guide_health_insurance: {
-      title: "Health insurance setup",
+      title: "Nastavení zdravotního pojištění",
       shortDescription:
-        "Choose and activate health insurance coverage required for work and residence.",
+        "Vyberte a aktivujte pojištění potřebné pro práci a pobyt.",
     },
     guide_residence_permit: {
-      title: "Residence permit extension",
+      title: "Prodloužení povolení k pobytu",
       shortDescription:
-        "Prepare your extension process at Ausländerbehörde without missing deadlines.",
+        "Připravte prodloužení u Ausländerbehörde včas a bez zbytečných odkladů.",
     },
   },
   categoryLabels: {
-    residence: "Residence",
-    family: "Family",
-    work: "Work",
-    tax: "Tax",
-    health: "Health",
-    documents: "Documents",
-    school: "School",
-    benefits: "Benefits",
-    other: "Other",
+    residence: "Pobyt",
+    family: "Rodina",
+    work: "Práce",
+    tax: "Daně",
+    health: "Zdraví",
+    documents: "Dokumenty",
+    school: "Škola",
+    benefits: "Dávky",
+    other: "Jiné",
   },
+  formsDetail: {
+    form_anmeldung: {
+      full_name: {
+        label: "Celé jméno",
+        explanation: "Uveďte úřední jméno přesně jako v pasu.",
+      },
+      date_of_birth: {
+        label: "Datum narození",
+        explanation: "Použijte formát z formuláře (obvykle DD.MM.RRRR).",
+      },
+      new_address: {
+        label: "Nová adresa",
+        explanation:
+          "Přesná ulice, číslo, PSČ a město současného bydliště.",
+      },
+      move_in_date: {
+        label: "Datum nastěhování",
+        explanation:
+          "Datum skutečného nastěhování — ne nutně začátek nájmu, pokud se liší.",
+      },
+      previous_address: {
+        label: "Předchozí adresa",
+        explanation:
+          "Poslední adresa v Německu nebo v zahraničí pro správnou aktualizaci úřadu.",
+      },
+    },
+    form_steuer_number_registration: {
+      personal_details: {
+        label: "Osobní údaje",
+        explanation:
+          "Jméno, adresa a daňové ID musí souhlasit s registračními doklady.",
+      },
+      business_activity: {
+        label: "Popis činnosti",
+        explanation: "Stručně a srozumitelně popište služby nebo produkty.",
+      },
+      start_date: {
+        label: "Zahájení podnikání",
+        explanation:
+          "Kdy jste začali nebo plánujete začít generovat příjem jako OSVČ.",
+      },
+      revenue_estimate: {
+        label: "Odhad ročního obratu",
+        explanation:
+          "Realistický odhad pomáhá u záloh a daňových očekávání.",
+      },
+      vat_preference: {
+        label: "DPH / režim Kleinunternehmer",
+        explanation:
+          "Volba mezi osvobozením pro malé podnikatele a standardní DPH.",
+      },
+    },
+    form_kindergeld_main_application: {
+      applicant_info: {
+        label: "Údaje žadatele",
+        explanation: "Rodič nebo zákonný zástupce podávající žádost o dávku.",
+      },
+      child_info: {
+        label: "Údaje o dítěti",
+        explanation:
+          "Jméno, datum narození a vztah v domácnosti pro každé dítě.",
+      },
+      tax_ids: {
+        label: "Daňová ID (rodič + dítě)",
+        explanation: "Pro vyřízení jsou obvykle nutná ID rodiče i dítěte.",
+      },
+      bank_account: {
+        label: "Bankovní účet (IBAN)",
+        explanation:
+          "Účet, na který spolehlivě dorazí měsíční platby Kindergeld.",
+      },
+      residence_status: {
+        label: "Pobyt / status povolení",
+        explanation:
+          "Aktuální informace o pobytu, pokud to balík formulářů vyžaduje.",
+      },
+    },
+    form_health_insurance_membership: {
+      insured_person: {
+        label: "Údaje pojištěné osoby",
+        explanation:
+          "Totožnost musí souhlasit s pasem a údaji z Anmeldung.",
+      },
+      employment_status: {
+        label: "Pracovní status",
+        explanation:
+          "Zaměstnanec, OSVČ, student nebo uchazeč o zaměstnání.",
+      },
+      start_of_coverage: {
+        label: "Začátek pojištění",
+        explanation:
+          "Datum podle smlouvy, nástupu do práce nebo časové osy pobytu.",
+      },
+      family_members: {
+        label: "Spolupojištění rodiny",
+        explanation: "Přidejte manžela/ku nebo děti do rodinného pojištění.",
+      },
+      contact_preferences: {
+        label: "Kontakt a komunikace",
+        explanation:
+          "E-mail, telefon a preferovaný jazyk, pokud je to možné.",
+      },
+    },
+    form_residence_extension: {
+      passport_permit_data: {
+        label: "Pas a údaje současného povolení",
+        explanation: "Údaje přesně jako vytištěné v dokladech.",
+      },
+      reason_for_extension: {
+        label: "Důvod prodloužení",
+        explanation:
+          "Práce, rodina, studium nebo jiný právní důvod.",
+      },
+      income_proof: {
+        label: "Příjem / financování",
+        explanation:
+          "Plat, smlouva nebo údaje sponzora prokazující živobytí.",
+      },
+      housing_proof: {
+        label: "Bydlení",
+        explanation: "Adresa nájmu a doklady o stabilním bydlení.",
+      },
+      insurance_status: {
+        label: "Zdravotní pojištění",
+        explanation:
+          "Potvrďte aktivní pojištění na požadované období prodloužení.",
+      },
+    },
+  },
+  guidesDetail: {
+    guide_anmeldung: {
+      anmeldung_1: {
+        title: "Objednejte termín na Bürgeramt",
+        text: "Najděte web vašeho Bürgeramt a rezervujte nejbližší termín Anmeldung.",
+      },
+      anmeldung_2: {
+        title: "Seberte dokumenty",
+        text: "Pas/občanka, nájemní smlouva a Wohnungsgeberbestätigung od pronajímatele.",
+      },
+      anmeldung_3: {
+        title: "Vyplňte registrační formulář",
+        text: "Před termínem vyplňte formulář Anmeldung, abyste na úřadě neztráceli čas.",
+      },
+      anmeldung_4: {
+        title: "Dostavte se a odevzdejte dokumenty",
+        text: "Přijďte včas, odevzdejte dokumenty a zkontrolujte adresu.",
+      },
+      anmeldung_5: {
+        title: "Uchovávejte Meldebescheinigung",
+        text: "Potvrzení bezpečně uložte — banky, zaměstnavatelé a úřady ho často vyžadují.",
+      },
+    },
+    guide_steuer_id: {
+      steuer_1: {
+        title: "Nejdřív dokončete Anmeldung",
+        text: "Steuer-ID vzniká po hlášení adresy — jako první krok dokončete Anmeldung.",
+      },
+      steuer_2: {
+        title: "Počkejte na úřední dopis",
+        text: "Bundeszentralamt obvykle pošle Steuer-ID poštou během několika týdnů.",
+      },
+      steuer_3: {
+        title: "Jméno na schránce",
+        text: "Na schránce musí být čitelné příjmení, aby doručily úřední zásilky.",
+      },
+      steuer_4: {
+        title: "Když nedorazí, požádejte znovu",
+        text: "Pokud dopis nepřijde, požádejte o opětovné zaslání dle postupu finančního úřadu.",
+      },
+      steuer_5: {
+        title: "Předejte zaměstnavateli nebo poradci",
+        text: "Sdělte Steuer-ID, abyste se vyhnuli nouzové daňové třídě a srážkám.",
+      },
+    },
+    guide_kindergeld: {
+      kindergeld_1: {
+        title: "Zkontrolujte základní podmínky",
+        text: "Ověřte pobyt, věk dítěte a domácnost podle pravidel Kindergeld.",
+      },
+      kindergeld_2: {
+        title: "Dokumenty pro vás i dítě",
+        text: "Občanky, rodný list, potvrzení Anmeldung a daňová ID rodiče i dítěte.",
+      },
+      kindergeld_3: {
+        title: "Vyplňte KG1 a přílohy k dětem",
+        text: "Hlavní žádost a přílohy pečlivě vyplňte; podpisy a správný IBAN jsou důležité.",
+      },
+      kindergeld_4: {
+        title: "Podání u Familienkasse",
+        text: "Pošlete online nebo poštou na správnou Familienkasse pro váš region.",
+      },
+      kindergeld_5: {
+        title: "Sledujte stav a odpovídejte rychle",
+        text: "Rychle reagujte na výzvy k doplnění, aby nebyla zpožděna první platba.",
+      },
+    },
+    guide_health_insurance: {
+      health_1: {
+        title: "Veřejné vs. soukromé pojištění",
+        text: "Většina nově příchozích začíná ve veřejném systému; zkontrolujte typ práce a příjem.",
+      },
+      health_2: {
+        title: "Porovnejte kasy a jazyk podpory",
+        text: "Příspěvky, digitální nástroje a dostupnost podpory ve vašem jazyce.",
+      },
+      health_3: {
+        title: "Podání žádosti o členství",
+        text: "Přihlaste se s osobními údaji, adresou a informacemi o zaměstnání.",
+      },
+      health_4: {
+        title: "Potvrzení zaměstnavateli/úřadu",
+        text: "Předejte potvrzení o pojištění zaměstnavateli, imigračnímu úřadu nebo škole, pokud je to nutné.",
+      },
+      health_5: {
+        title: "Registrace členů rodiny",
+        text: "Pokud máte nárok, přidejte manžela/ku nebo děti do rodinného pojištění a uchovávejte potvrzení.",
+      },
+    },
+    guide_residence_permit: {
+      residence_1: {
+        title: "Kontrola platnosti včas",
+        text: "Začněte 8–12 týdnů před koncem platnosti; na termíny se často dlouho čeká.",
+      },
+      residence_2: {
+        title: "Povinné dokumenty",
+        text: "Pas, současné povolení, biometrická fotka, důkaz příjmu, pojištění a bydlení.",
+      },
+      residence_3: {
+        title: "Termín nebo online podání",
+        text: "Použijte městský portál, pokud existuje; ukládejte e-maily a snímky obrazovky.",
+      },
+      residence_4: {
+        title: "Kompletní žádost",
+        text: "Před odesláním vše zkontrolujte; neúplné žádosti se často zdržují.",
+      },
+      residence_5: {
+        title: "Fiktionsbescheinigung v případě potřeby",
+        text: "Vyprší-li povolení před rozhodnutím, požádejte o dočasné potvrzení legálního pobytu.",
+      },
+      residence_6: {
+        title: "Sledujte řízení a vyzvedněte kartu",
+        text: "Postupujte podle pokynů úřadu a po výzvě si vyzvedněte novou kartu pobytu.",
+      },
+    },
+  },
+
   premium: {
     title: "Odemknout Premium",
     oneTime: "Jednorázová platba • Doživotní přístup",

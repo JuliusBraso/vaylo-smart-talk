@@ -781,6 +781,252 @@ const uk = {
     benefits: "Benefits",
     other: "Other",
   },
+  formsDetail: {
+    form_anmeldung: {
+      full_name: {
+        label: "Full name",
+        explanation: "Enter your legal name exactly as shown in your passport.",
+      },
+      date_of_birth: {
+        label: "Date of birth",
+        explanation: "Use the official format shown on the form (usually DD.MM.YYYY).",
+      },
+      new_address: {
+        label: "New address",
+        explanation:
+          "Write the exact street, house number, postal code, and city of your current home.",
+      },
+      move_in_date: {
+        label: "Move-in date",
+        explanation:
+          "Provide the date you actually moved into the apartment, not the contract start if different.",
+      },
+      previous_address: {
+        label: "Previous address",
+        explanation:
+          "State your last address in Germany or abroad so the office can update records correctly.",
+      },
+    },
+    form_steuer_number_registration: {
+      personal_details: {
+        label: "Personal details",
+        explanation:
+          "Name, address, and tax ID must match your official registration documents.",
+      },
+      business_activity: {
+        label: "Business activity description",
+        explanation: "Describe what services/products you provide in clear, practical words.",
+      },
+      start_date: {
+        label: "Business start date",
+        explanation:
+          "Enter when you started or plan to start generating freelance income.",
+      },
+      revenue_estimate: {
+        label: "Estimated annual revenue",
+        explanation:
+          "Give your best realistic estimate; this helps set prepayments and tax expectations.",
+      },
+      vat_preference: {
+        label: "VAT / Kleinunternehmer choice",
+        explanation:
+          "Choose whether you use small-business VAT exemption or regular VAT handling.",
+      },
+    },
+    form_kindergeld_main_application: {
+      applicant_info: {
+        label: "Applicant information",
+        explanation: "Parent/legal guardian details who is applying for benefit payments.",
+      },
+      child_info: {
+        label: "Child information",
+        explanation:
+          "Name, date of birth, and household relation for each child in the application.",
+      },
+      tax_ids: {
+        label: "Tax IDs (parent + child)",
+        explanation: "Both parent and child tax IDs are typically mandatory for processing.",
+      },
+      bank_account: {
+        label: "Bank account (IBAN)",
+        explanation:
+          "Use an account where you can reliably receive monthly Kindergeld payments.",
+      },
+      residence_status: {
+        label: "Residence / permit status",
+        explanation:
+          "Provide your current residence information if requested in your form package.",
+      },
+    },
+    form_health_insurance_membership: {
+      insured_person: {
+        label: "Insured person details",
+        explanation:
+          "Your legal identity information must be consistent with passport and Anmeldung.",
+      },
+      employment_status: {
+        label: "Employment status",
+        explanation:
+          "Specify if you are employed, self-employed, student, or currently unemployed.",
+      },
+      start_of_coverage: {
+        label: "Coverage start date",
+        explanation:
+          "Choose the date from which insurance should begin based on your contract/residency timeline.",
+      },
+      family_members: {
+        label: "Family co-insurance details",
+        explanation: "Add spouse/children if they should be included in family insurance.",
+      },
+      contact_preferences: {
+        label: "Contact and communication preferences",
+        explanation:
+          "Set your email/phone and preferred communication language if available.",
+      },
+    },
+    form_residence_extension: {
+      passport_permit_data: {
+        label: "Passport and current permit data",
+        explanation: "Enter passport and residence card details exactly as printed.",
+      },
+      reason_for_extension: {
+        label: "Reason for extension",
+        explanation:
+          "Explain if extension is for work, family, study, or another legal basis.",
+      },
+      income_proof: {
+        label: "Income / financing details",
+        explanation:
+          "Provide salary, contract, or sponsor details proving you can support yourself.",
+      },
+      housing_proof: {
+        label: "Housing details",
+        explanation: "Include rental address and documents showing stable accommodation.",
+      },
+      insurance_status: {
+        label: "Health insurance status",
+        explanation:
+          "Confirm active health insurance coverage for the requested extension period.",
+      },
+    },
+  },
+  guidesDetail: {
+    guide_anmeldung: {
+      anmeldung_1: {
+        title: "Book a Bürgeramt appointment",
+        text: "Search your city’s Bürgeramt website and book the earliest available Anmeldung appointment.",
+      },
+      anmeldung_2: {
+        title: "Collect required documents",
+        text: "Prepare passport/ID, rental contract, and Wohnungsgeberbestätigung from your landlord.",
+      },
+      anmeldung_3: {
+        title: "Fill the registration form",
+        text: "Complete the Anmeldung form before the appointment to avoid delays at the office.",
+      },
+      anmeldung_4: {
+        title: "Attend appointment and submit documents",
+        text: "Arrive early, submit your documents, and verify your address details are correct.",
+      },
+      anmeldung_5: {
+        title: "Keep your Meldebescheinigung safe",
+        text: "Store the confirmation document securely; banks, employers, and other offices may request it.",
+      },
+    },
+    guide_steuer_id: {
+      steuer_1: {
+        title: "Complete Anmeldung first",
+        text: "Your Steuer-ID is generated after address registration, so finalize Anmeldung as your first step.",
+      },
+      steuer_2: {
+        title: "Wait for the official letter",
+        text: "The Bundeszentralamt usually sends your Steuer-ID by post within a few weeks.",
+      },
+      steuer_3: {
+        title: "Check your mailbox name label",
+        text: "Ensure your surname is visible on the mailbox so official letters can be delivered correctly.",
+      },
+      steuer_4: {
+        title: "Request it again if missing",
+        text: "If it does not arrive, request a re-send through the official tax office process.",
+      },
+      steuer_5: {
+        title: "Share with employer or tax advisor",
+        text: "Provide your Steuer-ID to your employer or advisor to avoid emergency tax class deductions.",
+      },
+    },
+    guide_kindergeld: {
+      kindergeld_1: {
+        title: "Check eligibility basics",
+        text: "Confirm residence status, child age, and household details meet Kindergeld requirements.",
+      },
+      kindergeld_2: {
+        title: "Prepare personal and child documents",
+        text: "Collect IDs, birth certificate, Anmeldung proof, and tax IDs for parent and child.",
+      },
+      kindergeld_3: {
+        title: "Complete KG1 and child annex forms",
+        text: "Fill the main application and child annex carefully; signatures and correct IBAN are important.",
+      },
+      kindergeld_4: {
+        title: "Submit to Familienkasse",
+        text: "Send forms online or by post to the correct Familienkasse office for your region.",
+      },
+      kindergeld_5: {
+        title: "Track status and reply quickly",
+        text: "Respond fast to additional document requests to avoid delays in first payment.",
+      },
+    },
+    guide_health_insurance: {
+      health_1: {
+        title: "Decide public vs private route",
+        text: "Most newcomers start with public insurance; check your employment type and salary threshold.",
+      },
+      health_2: {
+        title: "Compare providers and service language",
+        text: "Review contribution rates, digital tools, and whether customer support is available in your language.",
+      },
+      health_3: {
+        title: "Submit membership application",
+        text: "Apply with your personal details, address, and employment information.",
+      },
+      health_4: {
+        title: "Send confirmation to employer/office",
+        text: "Share your insurance confirmation with employer, immigration office, or university when required.",
+      },
+      health_5: {
+        title: "Register family members if needed",
+        text: "If eligible, add spouse/children to family insurance and keep records of all confirmations.",
+      },
+    },
+    guide_residence_permit: {
+      residence_1: {
+        title: "Check permit expiry early",
+        text: "Start 8-12 weeks before expiry; many cities have long waiting times for appointments.",
+      },
+      residence_2: {
+        title: "Collect mandatory documents",
+        text: "Prepare passport, current permit, biometric photo, proof of income, insurance, and housing.",
+      },
+      residence_3: {
+        title: "Book appointment or submit online",
+        text: "Use your city’s online portal where available, and keep confirmation emails/screenshots.",
+      },
+      residence_4: {
+        title: "Submit complete application",
+        text: "Double-check all files before submission; incomplete applications are commonly delayed.",
+      },
+      residence_5: {
+        title: "Request Fiktionsbescheinigung if needed",
+        text: "If your permit expires before decision, ask for temporary legal stay confirmation.",
+      },
+      residence_6: {
+        title: "Track processing and collect card",
+        text: "Follow office instructions, then collect the new residence card once notified.",
+      },
+    },
+  },
+
   premium: {
     title: "Відкрити Premium",
     oneTime: "Один раз • Довічний доступ",

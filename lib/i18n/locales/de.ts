@@ -806,6 +806,251 @@ const de = {
     benefits: "Leistungen",
     other: "Sonstiges",
   },
+  formsDetail: {
+    form_anmeldung: {
+      full_name: {
+        label: "Vollständiger Name",
+        explanation: "Tragen Sie Ihren amtlichen Namen genau wie im Reisepass ein.",
+      },
+      date_of_birth: {
+        label: "Geburtsdatum",
+        explanation: "Verwenden Sie das auf dem Formular vorgesehene Format (meist TT.MM.JJJJ).",
+      },
+      new_address: {
+        label: "Neue Anschrift",
+        explanation:
+          "Geben Sie Straße, Hausnummer, Postleitzahl und Stadt Ihrer aktuellen Wohnung exakt an.",
+      },
+      move_in_date: {
+        label: "Einzugsdatum",
+        explanation:
+          "Datum des tatsächlichen Einzugs – nicht Vertragsbeginn, falls dieser abweicht.",
+      },
+      previous_address: {
+        label: "Frühere Anschrift",
+        explanation:
+          "Letzte Anschrift in Deutschland oder im Ausland, damit die Behörde die Daten aktualisieren kann.",
+      },
+    },
+    form_steuer_number_registration: {
+      personal_details: {
+        label: "Persönliche Angaben",
+        explanation:
+          "Name, Adresse und Steuer-ID müssen mit Melde- und Ausweisdokumenten übereinstimmen.",
+      },
+      business_activity: {
+        label: "Tätigkeitsbeschreibung",
+        explanation: "Beschreiben Sie Ihre Leistungen oder Produkte in klaren, sachlichen Worten.",
+      },
+      start_date: {
+        label: "Betriebsbeginn",
+        explanation:
+          "Datum, an dem Sie begonnen haben oder planen, freiberufliche Einkünfte zu erzielen.",
+      },
+      revenue_estimate: {
+        label: "Geschätzter Jahresumsatz",
+        explanation:
+          "Realistische Schätzung angeben; hilft bei Vorauszahlungen und steuerlicher Einschätzung.",
+      },
+      vat_preference: {
+        label: "Umsatzsteuer / Kleinunternehmer-Regelung",
+        explanation:
+          "Entscheidung zwischen Kleinunternehmerregelung und regulärer Umsatzsteuer.",
+      },
+    },
+    form_kindergeld_main_application: {
+      applicant_info: {
+        label: "Angaben zur antragstellenden Person",
+        explanation: "Daten des Elternteils oder gesetzlichen Vertreters, der den Antrag stellt.",
+      },
+      child_info: {
+        label: "Angaben zum Kind",
+        explanation:
+          "Name, Geburtsdatum und Verhältnis zum Haushalt für jedes Kind im Antrag.",
+      },
+      tax_ids: {
+        label: "Steuer-IDs (Eltern + Kind)",
+        explanation: "In der Regel sind die Steuer-IDs von Eltern und Kind erforderlich.",
+      },
+      bank_account: {
+        label: "Bankverbindung (IBAN)",
+        explanation:
+          "Konto angeben, auf das die monatlichen Kindergeld-Zahlungen eingehen sollen.",
+      },
+      residence_status: {
+        label: "Aufenthaltsstatus",
+        explanation:
+          "Aktuelle Aufenthaltsinformationen, falls im Formularpaket verlangt.",
+      },
+    },
+    form_health_insurance_membership: {
+      insured_person: {
+        label: "Angaben zur versicherten Person",
+        explanation: "Identität muss mit Pass und Anmeldung übereinstimmen.",
+      },
+      employment_status: {
+        label: "Beschäftigungsstatus",
+        explanation:
+          "Angeben: angestellt, selbstständig, Student/in oder arbeitssuchend.",
+      },
+      start_of_coverage: {
+        label: "Versicherungsbeginn",
+        explanation:
+          "Beginn ab Vertrag, Arbeitsaufnahme oder entsprechend Ihrer Situation.",
+      },
+      family_members: {
+        label: "Familienmitversicherung",
+        explanation: "Ehepartner/Kinder ergänzen, falls Mitversicherung gewünscht ist.",
+      },
+      contact_preferences: {
+        label: "Kontakt und Mitteilungen",
+        explanation:
+          "E-Mail, Telefon und bevorzugte Sprache angeben, falls vorgesehen.",
+      },
+    },
+    form_residence_extension: {
+      passport_permit_data: {
+        label: "Reisepass und aktueller Aufenthaltstitel",
+        explanation: "Angaben exakt wie im Dokument gedruckt.",
+      },
+      reason_for_extension: {
+        label: "Grund der Verlängerung",
+        explanation:
+          "Erläutern, ob Verlängerung wegen Arbeit, Familie, Studium oder anderer Grundlage erfolgt.",
+      },
+      income_proof: {
+        label: "Einkommen / Finanzierung",
+        explanation:
+          "Gehalt, Vertrag oder Unterhaltsnachweise zum Nachweis des Lebensunterhalts.",
+      },
+      housing_proof: {
+        label: "Wohnung / Unterkunft",
+        explanation: "Mietadresse und Nachweise für einen stabilen Wohnsitz.",
+      },
+      insurance_status: {
+        label: "Krankenversicherung",
+        explanation:
+          "Bestätigen Sie die Krankenversicherung für den beantragten Zeitraum.",
+      },
+    },
+  },
+  guidesDetail: {
+    guide_anmeldung: {
+      anmeldung_1: {
+        title: "Termin beim Bürgeramt buchen",
+        text: "Suchen Sie die Website Ihres Bürgeramts und buchen Sie den frühesten Anmeldetermin.",
+      },
+      anmeldung_2: {
+        title: "Unterlagen zusammenstellen",
+        text: "Reisepass/Personalausweis, Mietvertrag und Wohnungsgeberbestätigung vorbereiten.",
+      },
+      anmeldung_3: {
+        title: "Meldeformular ausfüllen",
+        text: "Füllen Sie das Anmeldeformular vor dem Termin aus, um Wartezeit zu vermeiden.",
+      },
+      anmeldung_4: {
+        title: "Termin wahrnehmen und einreichen",
+        text: "Pünktlich erscheinen, Unterlagen abgeben und Anschrift prüfen.",
+      },
+      anmeldung_5: {
+        title: "Meldebescheinigung aufbewahren",
+        text: "Dokument sicher aufbewahren; Bank, Arbeitgeber und Behörden verlangen es oft.",
+      },
+    },
+    guide_steuer_id: {
+      steuer_1: {
+        title: "Zuerst Anmeldung abschließen",
+        text: "Die Steuer-ID entsteht nach der Anmeldung des Wohnsitzes – Anmeldung zuerst erledigen.",
+      },
+      steuer_2: {
+        title: "Auf den amtlichen Brief warten",
+        text: "Das Bundeszentralamt sendet die Steuer-ID meist innerhalb weniger Wochen per Post.",
+      },
+      steuer_3: {
+        title: "Namensschild am Briefkasten prüfen",
+        text: "Der Familienname muss am Kasten lesbar sein, damit Behördenpost zugestellt wird.",
+      },
+      steuer_4: {
+        title: "Bei Ausbleiben erneut anfordern",
+        text: "Wenn nichts ankommt, erneute Zustellung über das Finanzamt beantragen.",
+      },
+      steuer_5: {
+        title: "Arbeitgeber oder Steuerberater informieren",
+        text: "Steuer-ID weitergeben, um Notsteuerklassen und Verzögerungen zu vermeiden.",
+      },
+    },
+    guide_kindergeld: {
+      kindergeld_1: {
+        title: "Grundvoraussetzungen prüfen",
+        text: "Aufenthalt, Alter des Kindes und Haushalt müssen zu den Kindergeldregeln passen.",
+      },
+      kindergeld_2: {
+        title: "Persönliche und Kindesunterlagen",
+        text: "Ausweise, Geburtsurkunde, Meldenachweis und Steuer-IDs von Eltern und Kind sammeln.",
+      },
+      kindergeld_3: {
+        title: "KG1 und Kind-Anlagen ausfüllen",
+        text: "Hauptantrag und Anlagen sorgfältig ausfüllen; Unterschriften und IBAN sind wichtig.",
+      },
+      kindergeld_4: {
+        title: "Bei der Familienkasse einreichen",
+        text: "Online oder per Post an die zuständige Familienkasse Ihrer Region senden.",
+      },
+      kindergeld_5: {
+        title: "Status verfolgen, schnell antworten",
+        text: "Auf Nachforderungen zeitnah reagieren, um Verzögerungen bei der ersten Zahlung zu vermeiden.",
+      },
+    },
+    guide_health_insurance: {
+      health_1: {
+        title: "Gesetzlich oder privat entscheiden",
+        text: "Die meisten Neuankömmlinge starten gesetzlich; Beschäftigungsart und Grenzen prüfen.",
+      },
+      health_2: {
+        title: "Kassen vergleichen, Sprache prüfen",
+        text: "Beiträge, digitale Services und Support in Ihrer Sprache vergleichen.",
+      },
+      health_3: {
+        title: "Mitgliedsantrag stellen",
+        text: "Mit persönlichen Daten, Adresse und Beschäftigungsinformationen bewerben.",
+      },
+      health_4: {
+        title: "Bestätigung an Arbeitgeber/Behörde",
+        text: "Versicherungsnachweis bei Arbeitgeber, Ausländerbehörde oder Universität vorlegen.",
+      },
+      health_5: {
+        title: "Familienmitglieder anmelden",
+        text: "Bei Anspruch Ehepartner/Kinder familienversichern und alle Bescheide aufbewahren.",
+      },
+    },
+    guide_residence_permit: {
+      residence_1: {
+        title: "Ablaufdatum früh prüfen",
+        text: "8–12 Wochen vor Ablauf starten; Wartezeiten auf Termine sind oft lang.",
+      },
+      residence_2: {
+        title: "Pflichtunterlagen sammeln",
+        text: "Pass, aktueller Titel, biometrisches Foto, Einkommen, Versicherung und Wohnung.",
+      },
+      residence_3: {
+        title: "Termin buchen oder online einreichen",
+        text: "Städtisches Portal nutzen, falls möglich; E-Mails und Screenshots sichern.",
+      },
+      residence_4: {
+        title: "Vollständigen Antrag einreichen",
+        text: "Vor Abgabe alles prüfen; unvollständige Anträge führen oft zu Verzögerungen.",
+      },
+      residence_5: {
+        title: "Fiktionsbescheinigung bei Bedarf",
+        text: "Läuft der Titel vor der Entscheidung ab, vorläufigen rechtmäßigen Aufenthalt beantragen.",
+      },
+      residence_6: {
+        title: "Bearbeitung verfolgen, Karte abholen",
+        text: "Weisungen der Behörde befolgen und die neue Aufenthaltskarte nach Aufforderung abholen.",
+      },
+    },
+  },
+
   premium: {
     title: "Premium freischalten",
     oneTime: "Einmalzahlung • Lebenslanger Zugriff",

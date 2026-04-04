@@ -72,6 +72,18 @@ export type CatalogCardCopy = {
   shortDescription: string;
 };
 
+/** Form field body copy on detail pages (Phase B). */
+export type FormFieldCopy = {
+  label: string;
+  explanation: string;
+};
+
+/** Guide step body copy on detail pages (Phase B). */
+export type GuideStepCopy = {
+  title: string;
+  text: string;
+};
+
 export type Dict = {
   app: {
     name: string;
@@ -93,6 +105,8 @@ export type Dict = {
   formsCatalog: Record<string, CatalogCardCopy>;
   guidesCatalog: Record<string, CatalogCardCopy>;
   categoryLabels: Record<ContentCategory, string>;
+  formsDetail: Record<string, Record<string, FormFieldCopy>>;
+  guidesDetail: Record<string, Record<string, GuideStepCopy>>;
   settings: Record<string, string>;
   phrases: Record<string, string>;
   premium: Record<string, string>;

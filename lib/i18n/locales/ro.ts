@@ -718,69 +718,315 @@ const ro = {
   },
   formsCatalog: {
     form_anmeldung: {
-      title: "Anmeldung form",
+      title: "Formular Anmeldung",
       shortDescription:
-        "Address registration form required after moving into a new home in Germany.",
+        "Formular de înregistrare a adresei obligatoriu după mutarea într-o locuință nouă în Germania.",
     },
     form_steuer_number_registration: {
-      title: "Steuer number registration",
+      title: "Înregistrare număr fiscal (Steuernummer)",
       shortDescription:
-        "Tax registration for self-employed/freelancers to receive a Steuernummer.",
+        "Înregistrare fiscală pentru liber-profesioniști/freelanceri pentru a primi Steuernummer.",
     },
     form_kindergeld_main_application: {
-      title: "Kindergeld main application",
+      title: "Cerere principală Kindergeld",
       shortDescription:
-        "Core Familienkasse application to request child benefit payments.",
+        "Cerere de bază la Familienkasse pentru alocația Kindergeld.",
     },
     form_health_insurance_membership: {
-      title: "Health insurance membership",
+      title: "Afilere asigurare de sănătate",
       shortDescription:
-        "Membership form used to activate statutory/public health insurance.",
+        "Formular pentru activarea asigurării de sănătate publice obligatorii.",
     },
     form_residence_extension: {
-      title: "Residence extension application",
+      title: "Prelungire permis de ședere",
       shortDescription:
-        "Application form for extending your residence permit before expiry.",
+        "Cerere de prelungire a permisului de ședere înainte de expirare.",
     },
   },
   guidesCatalog: {
     guide_anmeldung: {
-      title: "Anmeldung (address registration)",
+      title: "Anmeldung (înregistrare adresă)",
       shortDescription:
-        "Register your address after moving to Germany and unlock key services.",
+        "Înregistrează-ți adresa după mutarea în Germania și obține acces la servicii esențiale.",
     },
     guide_steuer_id: {
-      title: "Get your Steuer-ID",
+      title: "Obține Steuer-ID",
       shortDescription:
-        "How to receive or recover your tax identification number in Germany.",
+        "Cum primești sau recuperezi numărul tău de identificare fiscală în Germania.",
     },
     guide_kindergeld: {
-      title: "Apply for Kindergeld",
+      title: "Depune cerere Kindergeld",
       shortDescription:
-        "Step-by-step process for child benefit application through Familienkasse.",
+        "Pas cu pas: cererea Kindergeld la Familienkasse.",
     },
     guide_health_insurance: {
-      title: "Health insurance setup",
+      title: "Configurare asigurare de sănătate",
       shortDescription:
-        "Choose and activate health insurance coverage required for work and residence.",
+        "Alege și activează acoperirea necesară pentru muncă și ședere.",
     },
     guide_residence_permit: {
-      title: "Residence permit extension",
+      title: "Prelungire permis de ședere",
       shortDescription:
-        "Prepare your extension process at Ausländerbehörde without missing deadlines.",
+        "Pregătește prelungirea la Ausländerbehörde fără întârzieri evitabile.",
     },
   },
   categoryLabels: {
-    residence: "Residence",
-    family: "Family",
-    work: "Work",
-    tax: "Tax",
-    health: "Health",
-    documents: "Documents",
-    school: "School",
-    benefits: "Benefits",
-    other: "Other",
+    residence: "Ședere",
+    family: "Familie",
+    work: "Muncă",
+    tax: "Impozite",
+    health: "Sănătate",
+    documents: "Documente",
+    school: "Școală",
+    benefits: "Prestații",
+    other: "Altele",
   },
+  formsDetail: {
+    form_anmeldung: {
+      full_name: {
+        label: "Nume complet",
+        explanation: "Introdu numele legal exact ca în pașaport.",
+      },
+      date_of_birth: {
+        label: "Data nașterii",
+        explanation: "Folosește formatul din formular (de obicei ZZ.LL.AAAA).",
+      },
+      new_address: {
+        label: "Adresă nouă",
+        explanation:
+          "Strada, numărul, codul poștal și orașul locuinței actuale, exact.",
+      },
+      move_in_date: {
+        label: "Data mutării",
+        explanation:
+          "Data la care te-ai mutat efectiv — nu neapărat începutul contractului, dacă diferă.",
+      },
+      previous_address: {
+        label: "Adresa anterioară",
+        explanation:
+          "Ultima adresă în Germania sau în străinătate, pentru actualizarea corectă a evidențelor.",
+      },
+    },
+    form_steuer_number_registration: {
+      personal_details: {
+        label: "Date personale",
+        explanation:
+          "Numele, adresa și ID-ul fiscal trebuie să coincidă cu documentele oficiale.",
+      },
+      business_activity: {
+        label: "Descrierea activității",
+        explanation: "Descrie clar serviciile sau produsele pe care le oferi.",
+      },
+      start_date: {
+        label: "Data începerii activității",
+        explanation:
+          "Când ai început sau plănuiești să începi să obții venituri ca freelancer.",
+      },
+      revenue_estimate: {
+        label: "Venit anual estimat",
+        explanation:
+          "O estimare realistă ajută la avansuri și la așteptările fiscale.",
+      },
+      vat_preference: {
+        label: "TVA / opțiune Kleinunternehmer",
+        explanation:
+          "Alegere între scutirea pentru micii întreprinzători și TVA standard.",
+      },
+    },
+    form_kindergeld_main_application: {
+      applicant_info: {
+        label: "Date solicitant",
+        explanation: "Părinte sau tutore care depune cererea de prestație.",
+      },
+      child_info: {
+        label: "Date copil",
+        explanation:
+          "Nume, data nașterii și relația în gospodărie pentru fiecare copil.",
+      },
+      tax_ids: {
+        label: "ID-uri fiscale (părinte + copil)",
+        explanation: "De obicei sunt obligatorii ambele ID-uri pentru procesare.",
+      },
+      bank_account: {
+        label: "Cont bancar (IBAN)",
+        explanation:
+          "Un cont unde primești în mod sigur plățile lunare Kindergeld.",
+      },
+      residence_status: {
+        label: "Ședere / status permis",
+        explanation:
+          "Informații actuale despre ședere, dacă pachetul de formulare o cere.",
+      },
+    },
+    form_health_insurance_membership: {
+      insured_person: {
+        label: "Date persoană asigurată",
+        explanation:
+          "Identitatea trebuie să fie consecventă cu pașaportul și Anmeldung.",
+      },
+      employment_status: {
+        label: "Statut de angajare",
+        explanation:
+          "Angajat, liber profesionist, student sau șomer.",
+      },
+      start_of_coverage: {
+        label: "Începutul acoperirii",
+        explanation:
+          "Data în funcție de contract, începutul muncii sau planul tău de ședere.",
+      },
+      family_members: {
+        label: "Co-asigurare familială",
+        explanation: "Adaugă soț/soție sau copii dacă intră în asigurarea de familie.",
+      },
+      contact_preferences: {
+        label: "Contact și comunicare",
+        explanation:
+          "E-mail, telefon și limba preferată, dacă este posibil.",
+      },
+    },
+    form_residence_extension: {
+      passport_permit_data: {
+        label: "Pașaport și date permis curent",
+        explanation: "Introdu datele exact ca în documente.",
+      },
+      reason_for_extension: {
+        label: "Motivul prelungirii",
+        explanation:
+          "Explică: muncă, familie, studii sau alt temei legal.",
+      },
+      income_proof: {
+        label: "Venit / finanțare",
+        explanation:
+          "Salariu, contract sau date sponsor care dovedesc că te poți întreține.",
+      },
+      housing_proof: {
+        label: "Locuință",
+        explanation: "Adresa închiriată și documente care arată cazare stabilă.",
+      },
+      insurance_status: {
+        label: "Asigurare de sănătate",
+        explanation:
+          "Confirmă asigurarea activă pentru perioada de prelungire solicitată.",
+      },
+    },
+  },
+  guidesDetail: {
+    guide_anmeldung: {
+      anmeldung_1: {
+        title: "Programează o întâlnire la Bürgeramt",
+        text: "Caută site-ul Bürgeramt din orașul tău și rezervă cel mai devreme termen Anmeldung.",
+      },
+      anmeldung_2: {
+        title: "Strânge documentele",
+        text: "Pașaport/CI, contract de închiriere și Wohnungsgeberbestätigung de la proprietar.",
+      },
+      anmeldung_3: {
+        title: "Completează formularul de înregistrare",
+        text: "Completează formularul Anmeldung înainte de programare ca să eviți întârzieri la ghișeu.",
+      },
+      anmeldung_4: {
+        title: "Prezentare și depunere documente",
+        text: "Ajunge devreme, depune documentele și verifică corectitudinea adresei.",
+      },
+      anmeldung_5: {
+        title: "Păstrează în siguranță Meldebescheinigung",
+        text: "Depozitează confirmarea în siguranță; băncile, angajatorii și instituțiile o solicită des.",
+      },
+    },
+    guide_steuer_id: {
+      steuer_1: {
+        title: "Finalizează mai întâi Anmeldung",
+        text: "Steuer-ID se generează după înregistrarea adresei — primul pas este Anmeldung.",
+      },
+      steuer_2: {
+        title: "Așteaptă scrisoarea oficială",
+        text: "Bundeszentralamt trimite de obicei Steuer-ID prin poștă în câteva săptămâni.",
+      },
+      steuer_3: {
+        title: "Verifică numele pe cutia poștală",
+        text: "Numele de familie trebuie să fie vizibil pentru livrarea corespondenței oficiale.",
+      },
+      steuer_4: {
+        title: "Dacă lipsește, solicită din nou",
+        text: "Dacă nu sosește, cere reexpedierea conform procedurii oficiale a finanțelor.",
+      },
+      steuer_5: {
+        title: "Transmite angajatorului sau consultantului fiscal",
+        text: "Oferă Steuer-ID pentru a evita rețineri de urgență la clasă de impozit.",
+      },
+    },
+    guide_kindergeld: {
+      kindergeld_1: {
+        title: "Verifică condițiile de bază",
+        text: "Confirmă șederea, vârsta copilului și gospodăria conform cerințelor Kindergeld.",
+      },
+      kindergeld_2: {
+        title: "Documente personale și ale copilului",
+        text: "CI, certificat de naștere, dovadă Anmeldung și ID-uri fiscale pentru părinte și copil.",
+      },
+      kindergeld_3: {
+        title: "Completează KG1 și anexele pentru copii",
+        text: "Completează cu atenție cererea principală și anexele; semnăturile și IBAN corect contează.",
+      },
+      kindergeld_4: {
+        title: "Depune la Familienkasse",
+        text: "Trimite online sau prin poștă la biroul Familienkasse corespunzător regiunii tale.",
+      },
+      kindergeld_5: {
+        title: "Urmărește statusul și răspunde rapid",
+        text: "Răspunde rapid la solicitări de documente suplimentare ca să nu întârzie prima plată.",
+      },
+    },
+    guide_health_insurance: {
+      health_1: {
+        title: "Public vs. privat",
+        text: "Mulți nou-veniți încep cu asigurarea publică; verifică tipul muncii și pragul salarial.",
+      },
+      health_2: {
+        title: "Compară casele de sănătate și limba suportului",
+        text: "Cotizații, instrumente digitale și disponibilitatea suportului în limba ta.",
+      },
+      health_3: {
+        title: "Depune cererea de afiliere",
+        text: "Aplică cu date personale, adresă și informații despre angajare.",
+      },
+      health_4: {
+        title: "Trimite confirmarea angajatorului/instituției",
+        text: "Oferă confirmarea asigurării angajatorului, serviciului de imigrare sau universității, când e necesar.",
+      },
+      health_5: {
+        title: "Înregistrează membrii familiei",
+        text: "Dacă ești eligibil, adaugă soț/soție sau copii la asigurarea de familie și păstrează confirmările.",
+      },
+    },
+    guide_residence_permit: {
+      residence_1: {
+        title: "Verifică expirarea din timp",
+        text: "Începe cu 8–12 săptămâni înainte; în multe orașe termenii sunt greu de găsit.",
+      },
+      residence_2: {
+        title: "Documente obligatorii",
+        text: "Pașaport, permis curent, fotografie biometrică, dovezi venit, asigurare și locuință.",
+      },
+      residence_3: {
+        title: "Programare sau depunere online",
+        text: "Folosește portalul municipal dacă există; păstrează e-mailurile și capturile de ecran.",
+      },
+      residence_4: {
+        title: "Depune cererea completă",
+        text: "Verifică toate fișierele; cererile incomplete sunt adesea amânate.",
+      },
+      residence_5: {
+        title: "Fiktionsbescheinigung dacă e nevoie",
+        text: "Dacă permisul expiră înainte de decizie, solicită confirmare temporară de ședere legală.",
+      },
+      residence_6: {
+        title: "Urmărește dosarul și ridică cardul",
+        text: "Urmează instrucțiunile instituției și ridică noul card de ședere după notificare.",
+      },
+    },
+  },
+
   premium: {
     title: "Deblochează Premium",
     oneTime: "O singură plată • Acces pe viață",

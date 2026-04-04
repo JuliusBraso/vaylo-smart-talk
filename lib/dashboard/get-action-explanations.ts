@@ -150,6 +150,41 @@ export function getActionExplanations(
       }
       break;
     }
+    case "critical-steuer": {
+      addExplanation(out, t, "actionExplainSteuerMissing");
+      if (emp === "freelancer") {
+        addExplanation(out, t, "actionExplainSteuerFreelancer", {
+          employment: getEmploymentLabel(emp, t),
+        });
+      }
+      if (goals.includes("bureaucracy")) {
+        addExplanation(out, t, "actionExplainSteuerGoalBureaucracy", {
+          goal: getGoalLabel(goals[0] ?? "orientation", t),
+        });
+      }
+      break;
+    }
+    case "family-benefits": {
+      if (inputs.family_status === "children") {
+        addExplanation(out, t, "actionExplainFamilyBenefitsProfileChildren", {
+          family: getFamilyLabel(inputs.family_status, t),
+        });
+      } else if (liveSituation.hasChildren === true) {
+        addExplanation(out, t, "actionExplainFamilyBenefitsRefineChildren");
+      }
+      if (liveSituation.childrenSchoolAge === true) {
+        addExplanation(out, t, "actionExplainFamilyBenefitsSchoolAge");
+      }
+      if (goals.includes("bureaucracy")) {
+        addExplanation(out, t, "actionExplainFamilyBenefitsBureaucracyGoal", {
+          goal: getGoalLabel(goals[0] ?? "orientation", t),
+        });
+      }
+      if (out.length === 0) {
+        addExplanation(out, t, "actionExplainFamilyBenefitsDefault");
+      }
+      break;
+    }
     default:
       break;
   }

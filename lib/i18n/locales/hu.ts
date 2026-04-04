@@ -717,69 +717,315 @@ const hu = {
   },
   formsCatalog: {
     form_anmeldung: {
-      title: "Anmeldung form",
+      title: "Anmeldung-űrlap",
       shortDescription:
-        "Address registration form required after moving into a new home in Germany.",
+        "Címbejelentő űrlap, amely kötelező új lakásba költözés után Németországban.",
     },
     form_steuer_number_registration: {
-      title: "Steuer number registration",
+      title: "Steuernummer bejelentés",
       shortDescription:
-        "Tax registration for self-employed/freelancers to receive a Steuernummer.",
+        "Adóbejelentés szabadúszóknak/egyéni vállalkozóknak Steuernummer megszerzéséhez.",
     },
     form_kindergeld_main_application: {
-      title: "Kindergeld main application",
+      title: "Kindergeld főkérelmi lap",
       shortDescription:
-        "Core Familienkasse application to request child benefit payments.",
+        "Alap Familienkasse-kérelem a Kindergeld (családi pótlék) igényléséhez.",
     },
     form_health_insurance_membership: {
-      title: "Health insurance membership",
+      title: "Egészségbiztosítási tagság",
       shortDescription:
-        "Membership form used to activate statutory/public health insurance.",
+        "Űrlap a kötelező társadalombiztosítási egészségbiztosítás aktiválásához.",
     },
     form_residence_extension: {
-      title: "Residence extension application",
+      title: "Tartózkodási engedély meghosszabbítása",
       shortDescription:
-        "Application form for extending your residence permit before expiry.",
+        "Kérelem a tartózkodási engedély lejárta előtti meghosszabbításához.",
     },
   },
   guidesCatalog: {
     guide_anmeldung: {
-      title: "Anmeldung (address registration)",
+      title: "Anmeldung (címbejelentés)",
       shortDescription:
-        "Register your address after moving to Germany and unlock key services.",
+        "Jegyezze be címét Németországba költözés után, és nyisson hozzáférést a szolgáltatásokhoz.",
     },
     guide_steuer_id: {
-      title: "Get your Steuer-ID",
+      title: "Szerezze meg a Steuer-ID-t",
       shortDescription:
-        "How to receive or recover your tax identification number in Germany.",
+        "Hogyan kapja meg vagy állítsa vissza adóazonosítóját Németországban.",
     },
     guide_kindergeld: {
-      title: "Apply for Kindergeld",
+      title: "Kindergeld igénylése",
       shortDescription:
-        "Step-by-step process for child benefit application through Familienkasse.",
+        "Lépésről lépésre a Kindergeld-kérelem benyújtása a Familienkasse felé.",
     },
     guide_health_insurance: {
-      title: "Health insurance setup",
+      title: "Egészségbiztosítás beállítása",
       shortDescription:
-        "Choose and activate health insurance coverage required for work and residence.",
+        "Válasszon és aktiváljon munkához és tartózkodáshoz szükséges biztosítást.",
     },
     guide_residence_permit: {
-      title: "Residence permit extension",
+      title: "Tartózkodási engedély meghosszabbítása",
       shortDescription:
-        "Prepare your extension process at Ausländerbehörde without missing deadlines.",
+        "Készüljön fel a meghosszabbításra az Ausländerbehörde-nél, lehetőség szerint határidők nélkül.",
     },
   },
   categoryLabels: {
-    residence: "Residence",
-    family: "Family",
-    work: "Work",
-    tax: "Tax",
-    health: "Health",
-    documents: "Documents",
-    school: "School",
-    benefits: "Benefits",
-    other: "Other",
+    residence: "Tartózkodás",
+    family: "Család",
+    work: "Munka",
+    tax: "Adó",
+    health: "Egészség",
+    documents: "Dokumentumok",
+    school: "Iskola",
+    benefits: "Ellátások",
+    other: "Egyéb",
   },
+  formsDetail: {
+    form_anmeldung: {
+      full_name: {
+        label: "Teljes név",
+        explanation: "Írja be hivatalos nevét pontosan úgy, ahogy az útlevélben szerepel.",
+      },
+      date_of_birth: {
+        label: "Születési dátum",
+        explanation: "Használja az űrlapon kért formátumot (általában NN.HH.ÉÉÉÉ).",
+      },
+      new_address: {
+        label: "Új cím",
+        explanation:
+          "A pontos utca, házszám, irányítószám és város, ahol most lakik.",
+      },
+      move_in_date: {
+        label: "Költözés dátuma",
+        explanation:
+          "A tényleges beköltözés napja – nem feltétlenül a szerződés kezdete, ha az eltér.",
+      },
+      previous_address: {
+        label: "Előző cím",
+        explanation:
+          "Utolsó címe Németországban vagy külföldön, hogy a hivatal helyesen frissíthessen.",
+      },
+    },
+    form_steuer_number_registration: {
+      personal_details: {
+        label: "Személyes adatok",
+        explanation:
+          "A név, cím és adóazonosító egyezzen a hivatalos bejelentő dokumentumokkal.",
+      },
+      business_activity: {
+        label: "Tevékenység leírása",
+        explanation: "Írja le világosan, milyen szolgáltatást vagy terméket nyújt.",
+      },
+      start_date: {
+        label: "Vállalkozás kezdete",
+        explanation:
+          "Mikor kezdett vagy tervez szabadúszó jövedelmet realizálni.",
+      },
+      revenue_estimate: {
+        label: "Becsült éves bevétel",
+        explanation:
+          "Adjon reális becslést; ez segít az előlegfizetések és adóelvárások beállításában.",
+      },
+      vat_preference: {
+        label: "ÁFA / Kleinunternehmer választás",
+        explanation:
+          "Döntsön: kisvállalkozói ÁFA-mentesség vagy normál ÁFA-kezelés.",
+      },
+    },
+    form_kindergeld_main_application: {
+      applicant_info: {
+        label: "Kérelmező adatai",
+        explanation: "A szülő vagy törvényes képviselő adatai, aki az ellátást igényli.",
+      },
+      child_info: {
+        label: "Gyermek adatai",
+        explanation:
+          "Minden gyermek neve, születési dátuma és háztartáson belüli viszonya.",
+      },
+      tax_ids: {
+        label: "Adóazonosítók (szülő + gyermek)",
+        explanation: "A feldolgozáshoz általában mindkét adóazonosító szükséges.",
+      },
+      bank_account: {
+        label: "Bankszámla (IBAN)",
+        explanation:
+          "Olyan számla, ahová biztosan megérkeznek a havi Kindergeld-utalások.",
+      },
+      residence_status: {
+        label: "Tartózkodás / engedély státusza",
+        explanation:
+          "Adja meg aktuális tartózkodási adatait, ha az űrlapcsomag kéri.",
+      },
+    },
+    form_health_insurance_membership: {
+      insured_person: {
+        label: "Biztosított adatai",
+        explanation:
+          "A jogi személyazonosság egyezzen az útlevéllel és az Anmeldung adataival.",
+      },
+      employment_status: {
+        label: "Foglalkoztatási státusz",
+        explanation:
+          "Alkalmazott, egyéni vállalkozó, hallgató vagy munkanélküli.",
+      },
+      start_of_coverage: {
+        label: "Biztosítás kezdete",
+        explanation:
+          "Válassza ki a kezdő dátumot a szerződése vagy tartózkodási ütemezése szerint.",
+      },
+      family_members: {
+        label: "Családi társbiztosítás",
+        explanation: "Adja hozzá házastársát/gyermekeit, ha a családi biztosításba tartoznak.",
+      },
+      contact_preferences: {
+        label: "Kapcsolat és kommunikáció",
+        explanation:
+          "E-mail, telefon és – ha lehetséges – előnyben részesített nyelv.",
+      },
+    },
+    form_residence_extension: {
+      passport_permit_data: {
+        label: "Útlevél és jelenlegi engedély adatai",
+        explanation: "Írja be az adatokat pontosan, ahogy a dokumentumokon szerepelnek.",
+      },
+      reason_for_extension: {
+        label: "Meghosszabbítás oka",
+        explanation:
+          "Indokolja: munka, család, tanulmányok vagy más jogalap.",
+      },
+      income_proof: {
+        label: "Jövedelem / finanszírozás",
+        explanation:
+          "Fizetés, szerződés vagy támogató adatai annak igazolására, hogy el tudja tartani magát.",
+      },
+      housing_proof: {
+        label: "Lakhatás",
+        explanation: "Bérleti cím és dokumentumok stabil lakhatás igazolására.",
+      },
+      insurance_status: {
+        label: "Egészségbiztosítás státusza",
+        explanation:
+          "Erősítse meg az aktív biztosítást a kért meghosszabbítási időszakra.",
+      },
+    },
+  },
+  guidesDetail: {
+    guide_anmeldung: {
+      anmeldung_1: {
+        title: "Időpont foglalása a Bürgeramtban",
+        text: "Keresse meg városa Bürgeramt-weboldalát, és foglalja a legkorábbi Anmeldung-időpontot.",
+      },
+      anmeldung_2: {
+        title: "Szükséges dokumentumok",
+        text: "Készítse elő az útlevelet/igazolványt, a bérleti szerződést és a bérbeadó Wohnungsgeberbestätigung-ját.",
+      },
+      anmeldung_3: {
+        title: "Regisztrációs űrlap kitöltése",
+        text: "Töltse ki az Anmeldung-űrlapot az időpont előtt, hogy ne késjen a hivatalban.",
+      },
+      anmeldung_4: {
+        title: "Időponton megjelenés és benyújtás",
+        text: "Érkezzen időben, adja be a dokumentumokat, és ellenőrizze a címadatokat.",
+      },
+      anmeldung_5: {
+        title: "Őrizze a Meldebescheinigung-ot",
+        text: "Tegye el biztonságosan az igazolást; bank, munkáltató és hatóságok gyakran kérik.",
+      },
+    },
+    guide_steuer_id: {
+      steuer_1: {
+        title: "Először fejezze be az Anmeldung-ot",
+        text: "A Steuer-ID a címbejelentés után jön létre – első lépésként zárja le az Anmeldung-ot.",
+      },
+      steuer_2: {
+        title: "Várja az hivatalos levelet",
+        text: "A Bundeszentralamt általában néhány héten belül postázza a Steuer-ID-t.",
+      },
+      steuer_3: {
+        title: "Ellenőrizze a postaládán a nevet",
+        text: "A családnév legyen olvasható a ládán, hogy a hivatalos küldemények kézbesíthetők legyenek.",
+      },
+      steuer_4: {
+        title: "Ha nem jön meg, kérje újra",
+        text: "Ha nem érkezik meg, kérjen újraküldést a hivatalos adóügyi eljárás szerint.",
+      },
+      steuer_5: {
+        title: "Adja meg a munkáltatónak vagy adótanácsadónak",
+        text: "Adja át a Steuer-ID-t, hogy elkerülje a vészhelyzeti adóosztály-levonásokat.",
+      },
+    },
+    guide_kindergeld: {
+      kindergeld_1: {
+        title: "Alapvető jogosultság ellenőrzése",
+        text: "Ellenőrizze, hogy a tartózkodás, a gyermek kora és a háztartás megfelel-e a Kindergeld feltételeinek.",
+      },
+      kindergeld_2: {
+        title: "Személyes és gyermek dokumentumok",
+        text: "Gyűjtsön igazolványokat, születési anyakönyvi kivonatot, Anmeldung-igazolást és adóazonosítókat.",
+      },
+      kindergeld_3: {
+        title: "KG1 és gyermek-mellékletek",
+        text: "Töltse ki gondosan a főkérelmet és a mellékleteket; a aláírások és a helyes IBAN fontos.",
+      },
+      kindergeld_4: {
+        title: "Benyújtás a Familienkasse-nak",
+        text: "Küldje online vagy postán a régiójának megfelelő Familienkasse irodába.",
+      },
+      kindergeld_5: {
+        title: "Státusz követése, gyors válasz",
+        text: "Gyorsan válaszoljon a hiánypótlásokra, hogy ne késjen az első kifizetés.",
+      },
+    },
+    guide_health_insurance: {
+      health_1: {
+        title: "Állami vagy magán útvonal",
+        text: "Az újonnan érkezők többsége állami biztosítással kezd; nézze meg a foglalkoztatás típusát és a kereseti határt.",
+      },
+      health_2: {
+        title: "Összehasonlítás és ügyfélszolgálat nyelve",
+        text: "Nézze meg a díjakat, digitális szolgáltatásokat és hogy van-e támogatás az Ön nyelvén.",
+      },
+      health_3: {
+        title: "Tagsági kérelem benyújtása",
+        text: "Jelentkezzen személyes adataival, címével és munkahelyi információival.",
+      },
+      health_4: {
+        title: "Igazolás a munkáltatónak / hivatalnak",
+        text: "Adja át a biztosítási igazolást a munkáltatónak, bevándorlási hivatalnak vagy egyetemnek, ha kérik.",
+      },
+      health_5: {
+        title: "Családtagok regisztrálása szükség esetén",
+        text: "Jogosultság esetén vegye fel házastársát/gyermekeit a családi biztosításba, és őrizze az igazolásokat.",
+      },
+    },
+    guide_residence_permit: {
+      residence_1: {
+        title: "Ellenőrizze időben a lejáratot",
+        text: "Indítson 8–12 héttel a lejárat előtt; sok városban hosszú az időpontvárólista.",
+      },
+      residence_2: {
+        title: "Kötelező dokumentumok",
+        text: "Útlevél, jelenlegi engedély, biometrikus fénykép, jövedelem-, biztosítási és lakhatási igazolások.",
+      },
+      residence_3: {
+        title: "Időpont vagy online benyújtás",
+        text: "Használja a város online portálját, ha van; mentse az e-maileket és képernyőképeket.",
+      },
+      residence_4: {
+        title: "Teljes kérelem benyújtása",
+        text: "Ellenőrizze az összes fájlt; a hiányos kérelmeket gyakran késleltetik.",
+      },
+      residence_5: {
+        title: "Fiktionsbescheinigung szükség esetén",
+        text: "Ha az engedély a döntés előtt lejár, kérjen ideiglenes jogi tartózkodási igazolást.",
+      },
+      residence_6: {
+        title: "Ügyintézés követése, kártya átvétele",
+        text: "Kövesse a hivatal utasításait, és értesítés után vegye át az új tartózkodási kártyát.",
+      },
+    },
+  },
+
   premium: {
     title: "Premium feloldása",
     oneTime: "Egyszeri vásárlás • Élethosszig",

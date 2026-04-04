@@ -764,6 +764,251 @@ const sk = {
     benefits: "Dávky",
     other: "Iné",
   },
+  formsDetail: {
+    form_anmeldung: {
+      full_name: {
+        label: "Celé meno",
+        explanation: "Uveďte oficiálne meno presne ako v pase.",
+      },
+      date_of_birth: {
+        label: "Dátum narodenia",
+        explanation: "Použite formát uvedený na formulári (zvyčajne DD.MM.RRRR).",
+      },
+      new_address: {
+        label: "Nová adresa",
+        explanation:
+          "Presná ulica, číslo, PSČ a mesto vášho aktuálneho bydliska.",
+      },
+      move_in_date: {
+        label: "Dátum nasťahovania",
+        explanation:
+          "Dátum skutočného nasťahovania, nie začiatok nájmu, ak sa líši.",
+      },
+      previous_address: {
+        label: "Predchádzajúca adresa",
+        explanation:
+          "Posledná adresa v Nemecku alebo v zahraničí na aktualizáciu údajov.",
+      },
+    },
+    form_steuer_number_registration: {
+      personal_details: {
+        label: "Osobné údaje",
+        explanation:
+          "Meno, adresa a daňové ID musia súhlasiť s registračnými dokladmi.",
+      },
+      business_activity: {
+        label: "Popis podnikateľskej činnosti",
+        explanation: "Stručne a jasne popíšte služby alebo produkty.",
+      },
+      start_date: {
+        label: "Začiatok podnikania",
+        explanation:
+          "Kedy ste začali alebo plánujete začať s príjmom zo živnosti.",
+      },
+      revenue_estimate: {
+        label: "Odhad ročného obratu",
+        explanation:
+          "Realistický odhad pomáha pri zálohách a daňových očakávaniach.",
+      },
+      vat_preference: {
+        label: "DPH / režim malého podnikateľa",
+        explanation:
+          "Voľba medzi oslobodením pre malých podnikateľov a štandardnou DPH.",
+      },
+    },
+    form_kindergeld_main_application: {
+      applicant_info: {
+        label: "Údaje o žiadateľovi",
+        explanation: "Rodič alebo zákonný zástupca, ktorý žiada o dávku.",
+      },
+      child_info: {
+        label: "Údaje o dieťati",
+        explanation:
+          "Meno, dátum narodenia a vzťah k domácnosti pre každé dieťa.",
+      },
+      tax_ids: {
+        label: "Daňové ID (rodič + dieťa)",
+        explanation: "Spracovanie zvyčajne vyžaduje ID rodiča aj dieťaťa.",
+      },
+      bank_account: {
+        label: "Bankový účet (IBAN)",
+        explanation:
+          "Účet, na ktorý spoľahlivo dostanete mesačné Kindergeld.",
+      },
+      residence_status: {
+        label: "Pobyt / status",
+        explanation:
+          "Aktuálne informácie o pobyte, ak to balík formulárov vyžaduje.",
+      },
+    },
+    form_health_insurance_membership: {
+      insured_person: {
+        label: "Údaje o poistenej osobe",
+        explanation: "Identita musí súhlasiť s pasom a prihlásením na adresu.",
+      },
+      employment_status: {
+        label: "Pracovný status",
+        explanation:
+          "Zamestnanec, živnostník, študent alebo uchádzač o zamestnanie.",
+      },
+      start_of_coverage: {
+        label: "Začiatok poistenia",
+        explanation:
+          "Dátum podľa zmluvy, nástupu do práce alebo vášho časového plánu.",
+      },
+      family_members: {
+        label: "Spolupoistenie rodiny",
+        explanation: "Manžel/ka alebo deti, ak majú byť v rodinnom poistení.",
+      },
+      contact_preferences: {
+        label: "Kontakt a komunikácia",
+        explanation:
+          "E-mail, telefón a preferovaný jazyk, ak je to možné.",
+      },
+    },
+    form_residence_extension: {
+      passport_permit_data: {
+        label: "Pas a aktuálny pobytový doklad",
+        explanation: "Údaje presne ako v tlačených dokladoch.",
+      },
+      reason_for_extension: {
+        label: "Dôvod predĺženia",
+        explanation:
+          "Práca, rodina, štúdium alebo iný právny základ predĺženia.",
+      },
+      income_proof: {
+        label: "Príjem / financovanie",
+        explanation:
+          "Mzda, zmluva alebo iné dôkazy, že sa viete uživiť.",
+      },
+      housing_proof: {
+        label: "Bývanie",
+        explanation: "Adresa nájmu a doklady o stabilnom bývaní.",
+      },
+      insurance_status: {
+        label: "Zdravotné poistenie",
+        explanation:
+          "Potvrďte platné zdravotné poistenie na žiadané obdobie.",
+      },
+    },
+  },
+  guidesDetail: {
+    guide_anmeldung: {
+      anmeldung_1: {
+        title: "Objednať termín na Bürgeramt",
+        text: "Na stránke vášho Bürgeramt si rezervujte najskorší termín na Anmeldung.",
+      },
+      anmeldung_2: {
+        title: "Pripraviť doklady",
+        text: "Pas/občiansky preukaz, nájomná zmluva a potvrdenie prenájomcu (Wohnungsgeberbestätigung).",
+      },
+      anmeldung_3: {
+        title: "Vyplniť registračný formulár",
+        text: "Pred termínom vyplňte formulár, aby ste na úrade nestrácali čas.",
+      },
+      anmeldung_4: {
+        title: "Zúčastniť sa termínu a odovzdať dokumenty",
+        text: "Príďte včas, odovzdajte dokumenty a skontrolujte adresu.",
+      },
+      anmeldung_5: {
+        title: "Uchovať Meldebescheinigung",
+        text: "Potvrdenie si bezpečne uložte; banky, zamestnávatelia a úrady ho často vyžadujú.",
+      },
+    },
+    guide_steuer_id: {
+      steuer_1: {
+        title: "Najprv dokončiť Anmeldung",
+        text: "Steuer-ID vzniká po prihlásení adresy – najprv dokončite Anmeldung.",
+      },
+      steuer_2: {
+        title: "Počkať na úradný list",
+        text: "Bundeszentralamt zvyčajne pošle Steuer-ID poštou do niekoľkých týždňov.",
+      },
+      steuer_3: {
+        title: "Meno na schránke",
+        text: "Na schránke musí byť čitateľné priezvisko, aby doručili úradné listy.",
+      },
+      steuer_4: {
+        title: "Ak nepríde, znova požiadať",
+        text: "Ak list nepríde, požiadajte o opätovné zaslanie cez finančný úrad.",
+      },
+      steuer_5: {
+        title: "Poslať zamestnávateľovi alebo poradcovi",
+        text: "Steuer-ID odovzdajte zamestnávateľovi alebo daňovému poradcovi, aby ste sa vyhli núdzovým daňovým triedam.",
+      },
+    },
+    guide_kindergeld: {
+      kindergeld_1: {
+        title: "Skontrolovať základné podmienky",
+        text: "Overte pobyt, vek dieťaťa a domácnosť podľa pravidiel Kindergeld.",
+      },
+      kindergeld_2: {
+        title: "Dokumenty pre vás a dieťa",
+        text: "Občianske preukazy, rodný list, doklad o hlásení a daňové ID rodiča aj dieťaťa.",
+      },
+      kindergeld_3: {
+        title: "Vyplniť KG1 a prílohy k deťom",
+        text: "Hlavnú žiadosť a prílohy vyplňte pozorne; podpisy a správny IBAN sú dôležité.",
+      },
+      kindergeld_4: {
+        title: "Podanie Familienkasse",
+        text: "Odošlite online alebo poštou na správnu Familienkasse pre váš región.",
+      },
+      kindergeld_5: {
+        title: "Sledovať stav a rýchlo odpovedať",
+        text: "Na dopyty po doplňujúcich dokumentoch reagujte hneď, aby nebol odklad prvej platby.",
+      },
+    },
+    guide_health_insurance: {
+      health_1: {
+        title: "Verejná vs. súkromná cesta",
+        text: "Väčšina nováčikov začína v verejnom poistení; skontrolujte typ práce a príjem.",
+      },
+      health_2: {
+        title: "Porovnať kasy a jazyk podpory",
+        text: "Príspevky, digitálne nástroje a jazyk zákazníckej podpory.",
+      },
+      health_3: {
+        title: "Podanie o členstvo",
+        text: "Prihláste sa s osobnými údajmi, adresou a informáciami o zamestnaní.",
+      },
+      health_4: {
+        title: "Potvrdenie pre zamestnávateľa/úrad",
+        text: "Potvrdenie o poistení odovzdajte zamestnávateľovi, imigračnému úradu alebo škole.",
+      },
+      health_5: {
+        title: "Registrovať členov rodiny",
+        text: "Ak máte nárok, pridajte manžela/ku alebo deti do rodinného poistenia a uchovajte doklady.",
+      },
+    },
+    guide_residence_permit: {
+      residence_1: {
+        title: "Skontrolovať dátum expirácie včas",
+        text: "Začnite 8–12 týždňov vopred; čakacie lehoty na termíny bývajú dlhé.",
+      },
+      residence_2: {
+        title: "Povinné dokumenty",
+        text: "Pas, aktuálny titul, biometrická fotka, dôkaz o príjme, poistení a bývaní.",
+      },
+      residence_3: {
+        title: "Termín alebo online podanie",
+        text: "Použite mestský portál, ak existuje; uchovajte e-maily a snímky obrazovky.",
+      },
+      residence_4: {
+        title: "Kompletná žiadosť",
+        text: "Pred odoslaním všetko skontrolujte; neúplné žiadosti sa často oneskorujú.",
+      },
+      residence_5: {
+        title: "Fiktionsbescheinigung ak treba",
+        text: "Ak titul vyprší pred rozhodnutím, požiadajte o dočasné potvrdenie pobytu.",
+      },
+      residence_6: {
+        title: "Sledovať konanie a vyzdvihnúť kartu",
+        text: "Postupujte podľa pokynov úradu a po výzve si vyzdvihnite novú kartu pobytu.",
+      },
+    },
+  },
+
   premium: {
     title: "Odomknúť Premium",
     oneTime: "Jednorazová platba • Doživotný prístup",

@@ -61,9 +61,9 @@ export async function POST(request: NextRequest) {
 
   const path = buildDocumentStoragePath(user.id, file.name);
   const arrayBuffer = await file.arrayBuffer();
-  const buffer = new Uint8Array(arrayBuffer);
+  const buffer = Buffer.from(arrayBuffer);
 
-  const { error: upErr } = await supabase.storage
+  const { data, error: upErr } = await supabase.storage
     .from(DOCUMENTS_BUCKET)
     .upload(path, buffer, {
       cacheControl: "3600",

@@ -717,69 +717,315 @@ const pl = {
   },
   formsCatalog: {
     form_anmeldung: {
-      title: "Anmeldung form",
+      title: "Formularz Anmeldung",
       shortDescription:
-        "Address registration form required after moving into a new home in Germany.",
+        "Formularz zgłoszenia adresu wymagany po przeprowadzce do nowego mieszkania w Niemczech.",
     },
     form_steuer_number_registration: {
-      title: "Steuer number registration",
+      title: "Rejestracja numeru podatkowego (Steuernummer)",
       shortDescription:
-        "Tax registration for self-employed/freelancers to receive a Steuernummer.",
+        "Rejestracja podatkowa dla samozatrudnionych/freelancerów w celu uzyskania Steuernummer.",
     },
     form_kindergeld_main_application: {
-      title: "Kindergeld main application",
+      title: "Główny wniosek o Kindergeld",
       shortDescription:
-        "Core Familienkasse application to request child benefit payments.",
+        "Podstawowy wniosek do Familienkasse o świadczenie Kindergeld.",
     },
     form_health_insurance_membership: {
-      title: "Health insurance membership",
+      title: "Członkostwo w ubezpieczeniu zdrowotnym",
       shortDescription:
-        "Membership form used to activate statutory/public health insurance.",
+        "Formularz aktywacji obowiązkowego ubezpieczenia zdrowotnego (publicznego).",
     },
     form_residence_extension: {
-      title: "Residence extension application",
+      title: "Przedłużenie zezwolenia na pobyt",
       shortDescription:
-        "Application form for extending your residence permit before expiry.",
+        "Wniosek o przedłużenie zezwolenia na pobyt przed upływem ważności.",
     },
   },
   guidesCatalog: {
     guide_anmeldung: {
-      title: "Anmeldung (address registration)",
+      title: "Anmeldung (zgłoszenie adresu)",
       shortDescription:
-        "Register your address after moving to Germany and unlock key services.",
+        "Zgłoś adres po przeprowadzce do Niemiec i uzyskaj dostęp do kluczowych usług.",
     },
     guide_steuer_id: {
-      title: "Get your Steuer-ID",
+      title: "Uzyskaj Steuer-ID",
       shortDescription:
-        "How to receive or recover your tax identification number in Germany.",
+        "Jak otrzymać lub odzyskać niemiecki numer identyfikacji podatkowej.",
     },
     guide_kindergeld: {
-      title: "Apply for Kindergeld",
+      title: "Złóż wniosek o Kindergeld",
       shortDescription:
-        "Step-by-step process for child benefit application through Familienkasse.",
+        "Krok po kroku: wniosek o Kindergeld w Familienkasse.",
     },
     guide_health_insurance: {
-      title: "Health insurance setup",
+      title: "Ubezpieczenie zdrowotne — start",
       shortDescription:
-        "Choose and activate health insurance coverage required for work and residence.",
+        "Wybierz i aktywuj ubezpieczenie potrzebne do pracy i pobytu.",
     },
     guide_residence_permit: {
-      title: "Residence permit extension",
+      title: "Przedłużenie zezwolenia na pobyt",
       shortDescription:
-        "Prepare your extension process at Ausländerbehörde without missing deadlines.",
+        "Przygotuj przedłużenie w Ausländerbehörde bez zbędnych opóźnień.",
     },
   },
   categoryLabels: {
-    residence: "Residence",
-    family: "Family",
-    work: "Work",
-    tax: "Tax",
-    health: "Health",
-    documents: "Documents",
-    school: "School",
-    benefits: "Benefits",
-    other: "Other",
+    residence: "Pobyt",
+    family: "Rodzina",
+    work: "Praca",
+    tax: "Podatki",
+    health: "Zdrowie",
+    documents: "Dokumenty",
+    school: "Szkoła",
+    benefits: "Świadczenia",
+    other: "Inne",
   },
+  formsDetail: {
+    form_anmeldung: {
+      full_name: {
+        label: "Imię i nazwisko",
+        explanation: "Wpisz imię i nazwisko dokładnie jak w paszporcie.",
+      },
+      date_of_birth: {
+        label: "Data urodzenia",
+        explanation: "Użyj formatu z formularza (zwykle DD.MM.RRRR).",
+      },
+      new_address: {
+        label: "Nowy adres",
+        explanation:
+          "Dokładna ulica, numer, kod pocztowy i miasto obecnego miejsca zamieszkania.",
+      },
+      move_in_date: {
+        label: "Data wprowadzenia",
+        explanation:
+          "Data faktycznego zamieszkania — niekoniecznie początek umowy, jeśli się różni.",
+      },
+      previous_address: {
+        label: "Poprzedni adres",
+        explanation:
+          "Ostatni adres w Niemczech lub za granicą, aby urząd mógł poprawnie zaktualizować dane.",
+      },
+    },
+    form_steuer_number_registration: {
+      personal_details: {
+        label: "Dane osobowe",
+        explanation:
+          "Imię, adres i identyfikator podatkowy muszą zgadzać się z dokumentami rejestracyjnymi.",
+      },
+      business_activity: {
+        label: "Opis działalności",
+        explanation: "Opisz świadczone usługi lub produkty jasno i konkretnie.",
+      },
+      start_date: {
+        label: "Data rozpoczęcia działalności",
+        explanation:
+          "Kiedy rozpocząłeś lub planujesz rozpocząć przychody z freelancingu.",
+      },
+      revenue_estimate: {
+        label: "Szacowany roczny przychód",
+        explanation:
+          "Podaj realistyczną prognozę — pomaga to w zaliczkach i oczekiwaniach podatkowych.",
+      },
+      vat_preference: {
+        label: "VAT / opcja Kleinunternehmer",
+        explanation:
+          "Wybór między zwolnieniem dla małych przedsiębiorców a standardowym VAT.",
+      },
+    },
+    form_kindergeld_main_application: {
+      applicant_info: {
+        label: "Dane wnioskodawcy",
+        explanation: "Rodzic lub opiekun prawny składający wniosek o świadczenie.",
+      },
+      child_info: {
+        label: "Dane dziecka",
+        explanation:
+          "Imię, data urodzenia i relacja w gospodarstwie dla każdego dziecka we wniosku.",
+      },
+      tax_ids: {
+        label: "Numery podatkowe (rodzic + dziecko)",
+        explanation: "Zwykle wymagane są identyfikatory rodzica i dziecka.",
+      },
+      bank_account: {
+        label: "Rachunek bankowy (IBAN)",
+        explanation:
+          "Rachunek, na który niezawodnie wpłyną comiesięczne przelewy Kindergeld.",
+      },
+      residence_status: {
+        label: "Status pobytu / zezwolenia",
+        explanation:
+          "Podaj aktualne dane pobytowe, jeśli wymaga tego pakiet formularzy.",
+      },
+    },
+    form_health_insurance_membership: {
+      insured_person: {
+        label: "Dane ubezpieczonego",
+        explanation:
+          "Tożsamość musi być spójna z paszportem i danymi z Anmeldung.",
+      },
+      employment_status: {
+        label: "Status zatrudnienia",
+        explanation:
+          "Zatrudniony, samozatrudniony, student lub poszukujący pracy.",
+      },
+      start_of_coverage: {
+        label: "Początek ubezpieczenia",
+        explanation:
+          "Data rozpoczęcia zgodnie z umową, pracą lub Twoim harmonogramem pobytu.",
+      },
+      family_members: {
+        label: "Współubezpieczenie rodziny",
+        explanation: "Dodaj współmałżonka/dzieci, jeśli mają być w rodzinnym ubezpieczeniu.",
+      },
+      contact_preferences: {
+        label: "Kontakt i komunikacja",
+        explanation:
+          "E-mail, telefon i preferowany język kontaktu, jeśli to możliwe.",
+      },
+    },
+    form_residence_extension: {
+      passport_permit_data: {
+        label: "Paszport i dane aktualnego zezwolenia",
+        explanation: "Wpisz dane dokładnie jak w dokumentach.",
+      },
+      reason_for_extension: {
+        label: "Powód przedłużenia",
+        explanation:
+          "Wyjaśnij: praca, rodzina, studia lub inna podstawa prawna.",
+      },
+      income_proof: {
+        label: "Dochód / finansowanie",
+        explanation:
+          "Wynagrodzenie, umowa lub dane sponsora potwierdzające utrzymanie.",
+      },
+      housing_proof: {
+        label: "Mieszkanie",
+        explanation: "Adres najmu i dokumenty potwierdzające stabilne zakwaterowanie.",
+      },
+      insurance_status: {
+        label: "Status ubezpieczenia zdrowotnego",
+        explanation:
+          "Potwierdź aktywne ubezpieczenie na wnioskowany okres przedłużenia.",
+      },
+    },
+  },
+  guidesDetail: {
+    guide_anmeldung: {
+      anmeldung_1: {
+        title: "Umów wizytę w Bürgeramt",
+        text: "Znajdź stronę Bürgeramt w swoim mieście i zarezerwuj najwcześniejszy termin Anmeldung.",
+      },
+      anmeldung_2: {
+        title: "Zbierz dokumenty",
+        text: "Przygotuj paszport/dowód, umowę najmu i Wohnungsgeberbestätigung od wynajmującego.",
+      },
+      anmeldung_3: {
+        title: "Wypełnij formularz rejestracji",
+        text: "Uzupełnij formularz Anmeldung przed wizytą, aby uniknąć opóźnień w urzędzie.",
+      },
+      anmeldung_4: {
+        title: "Staw się na wizycie i złóż dokumenty",
+        text: "Przyjdź wcześniej, złóż dokumenty i sprawdź poprawność adresu.",
+      },
+      anmeldung_5: {
+        title: "Przechowuj Meldebescheinigung",
+        text: "Przechowuj potwierdzenie bezpiecznie — bank, pracodawca i urzędy często je wymagają.",
+      },
+    },
+    guide_steuer_id: {
+      steuer_1: {
+        title: "Najpierw dokończ Anmeldung",
+        text: "Steuer-ID powstaje po zgłoszeniu adresu — najpierw zakończ Anmeldung.",
+      },
+      steuer_2: {
+        title: "Poczekaj na list urzędowy",
+        text: "Bundeszentralamt zwykle wysyła Steuer-ID pocztą w ciągu kilku tygodni.",
+      },
+      steuer_3: {
+        title: "Sprawdź nazwisko na skrzynce",
+        text: "Nazwisko musi być czytelne na skrzynce, by listy urzędowe były doręczane.",
+      },
+      steuer_4: {
+        title: "Jeśli nie dotrze — poproś ponownie",
+        text: "Jeśli list nie przyjdzie, poproś o ponowną wysyłkę zgodnie z procedurą urzędu skarbowego.",
+      },
+      steuer_5: {
+        title: "Przekaż pracodawcy lub doradcy podatkowemu",
+        text: "Podaj Steuer-ID, aby uniknąć awaryjnej klasy podatkowej i potrąceń.",
+      },
+    },
+    guide_kindergeld: {
+      kindergeld_1: {
+        title: "Sprawdź podstawowe warunki",
+        text: "Potwierdź pobyt, wiek dziecka i gospodarstwo zgodnie z wymaganiami Kindergeld.",
+      },
+      kindergeld_2: {
+        title: "Dokumenty osobiste i dziecka",
+        text: "Zbierz dowody, akt urodzenia, potwierdzenie Anmeldung oraz numery podatkowe rodzica i dziecka.",
+      },
+      kindergeld_3: {
+        title: "Wypełnij KG1 i aneksy",
+        text: "Uważnie wypełnij wniosek główny i aneksy; podpisy i poprawny IBAN są ważne.",
+      },
+      kindergeld_4: {
+        title: "Złóż w Familienkasse",
+        text: "Wyślij online lub pocztą do właściwego biura Familienkasse dla Twojego regionu.",
+      },
+      kindergeld_5: {
+        title: "Śledź status i odpowiadaj szybko",
+        text: "Szybko reaguj na wezwania do uzupełnienia dokumentów, by nie opóźniać pierwszej wypłaty.",
+      },
+    },
+    guide_health_insurance: {
+      health_1: {
+        title: "Publiczne czy prywatne",
+        text: "Większość nowych mieszkańców zaczyna od publicznego; sprawdź typ pracy i próg dochodu.",
+      },
+      health_2: {
+        title: "Porównaj kasy i język obsługi",
+        text: "Sprawdź składki, narzędzia online i dostępność wsparcia w Twoim języku.",
+      },
+      health_3: {
+        title: "Złóż wniosek o członkostwo",
+        text: "Złóż wniosek z danymi osobowymi, adresem i informacją o zatrudnieniu.",
+      },
+      health_4: {
+        title: "Potwierdzenie do pracodawcy/urzędu",
+        text: "Przekaż potwierdzenie ubezpieczenia pracodawcy, urzędowi imigracyjnemu lub uczelni, gdy wymagane.",
+      },
+      health_5: {
+        title: "Zarejestruj członków rodziny",
+        text: "Przy kwalifikacji dodaj współmałżonka/dzieci do ubezpieczenia rodzinnego i zachowaj kopie potwierdzeń.",
+      },
+    },
+    guide_residence_permit: {
+      residence_1: {
+        title: "Sprawdź datę wygaśnięcia wcześnie",
+        text: "Zacznij 8–12 tygodni przed końcem; w wielu miastach długo czeka się na terminy.",
+      },
+      residence_2: {
+        title: "Obowiązkowe dokumenty",
+        text: "Paszport, aktualne zezwolenie, zdjęcie biometryczne, dochód, ubezpieczenie i mieszkanie.",
+      },
+      residence_3: {
+        title: "Termin lub zgłoszenie online",
+        text: "Użyj portalu miejskiego, jeśli jest; zachowaj e-maile i zrzuty ekranu.",
+      },
+      residence_4: {
+        title: "Złóż kompletny wniosek",
+        text: "Sprawdź wszystkie pliki przed wysłaniem; niekompletne wnioski często są opóźniane.",
+      },
+      residence_5: {
+        title: "Fiktionsbescheinigung w razie potrzeby",
+        text: "Jeśli zezwolenie wygaśnie przed decyzją, poproś o tymczasowe potwierdzenie legalnego pobytu.",
+      },
+      residence_6: {
+        title: "Śledź sprawę i odbierz kartę",
+        text: "Postępuj zgodnie z instrukcjami urzędu, a po powiadomieniu odbierz nową kartę pobytu.",
+      },
+    },
+  },
+
   premium: {
     title: "Odblokuj Premium",
     oneTime: "Jednorazowo • Dostęp na zawsze",
