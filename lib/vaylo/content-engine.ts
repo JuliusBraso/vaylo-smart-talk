@@ -816,3 +816,72 @@ export function getContentByDNA(dna: { inputs: DNAInputs }): ContentByCategory {
   return selected;
 }
 
+const RECOMMEND_CATEGORY_ORDER: ContentCategory[] = [
+  "family",
+  "job",
+  "freelancer",
+  "bureaucracy",
+];
+
+function recommendationScore(
+  inputs: DNAInputs,
+  phrase: VayloPhrase,
+  category: ContentCategory
+): number {
+  let s = 0;
+  const { goals, employment_type, family_status, language_level } = inputs;
+
+  if (goals.includes("job") && category === "job") s += 20;
+  if (goals.includes("bureaucracy") && category === "bureaucracy") s += 20;
+
+  if (employment_type === "job_seeker") {
+    if (phrase.tag === "job-interview") s += 15;
+    if (phrase.tag === "job-contract") s += 15;
+  }
+  if (employment_type === "employee" && phrase.tag === "job-work") s += 15;
+  if (employment_type === "freelancer" && category === "freelancer") s += 20;
+
+  if (family_status === "children" && category === "family") s += 15;
+  if (family_status === "family" && category === "family") s += 8;
+
+  if (language_level === "A1" || language_level === "A2") {
+    if (phrase.tag === "bureaucracy-basic") s += 10;
+    if (phrase.tag === "job-work") s += 10;
+  }
+  if (language_level === "B2" || language_level === "C1") {
+    if (phrase.tag === "job-interview") s += 10;
+  }
+
+  return s;
+}
+
+/** Deterministic DNA-based ranking within phrases already allowed by `getContentByDNA`. */
+export function getRecommendedPhrases(
+  inputs: DNAInputs,
+  content: ContentByCategory,
+  limit = 6
+): VayloPhrase[] {
+  const seen = new Set<string>();
+  const rows: { phrase: VayloPhrase; category: ContentCategory; score: number }[] =
+    [];
+
+  for (const category of RECOMMEND_CATEGORY_ORDER) {
+    for (const phrase of content[category] ?? []) {
+      if (seen.has(phrase.id)) continue;
+      seen.add(phrase.id);
+      rows.push({
+        phrase,
+        category,
+        score: recommendationScore(inputs, phrase, category),
+      });
+    }
+  }
+
+  rows.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    return a.phrase.id.localeCompare(b.phrase.id);
+  });
+
+  return rows.slice(0, limit).map((r) => r.phrase);
+}
+

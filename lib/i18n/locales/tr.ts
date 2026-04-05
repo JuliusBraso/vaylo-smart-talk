@@ -592,6 +592,9 @@ const tr = {
     explorerTitle: "Hızlı ifadeler",
     explorerSubtitle:
       "Almanca (DE), çeviri veya etikete göre ara. Kopyala ile Almanca ifadeyi kopyalarsın.",
+    recommendedTitle: "Sizin için önerilen",
+    recommendedSubtitle:
+      "Profilinize göre — aşağıdakiyle aynı kütüphane, sizin için sıralanmış.",
     explorerSearchPlaceholder: "İfade ara (DE / çeviri / etiket)…",
     explorerCategoryFamily: "Aile",
     explorerCategoryJob: "İş",

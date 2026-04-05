@@ -617,6 +617,9 @@ const de = {
     explorerTitle: "Schnelle Phrasen",
     explorerSubtitle:
       "Suche nach Deutsch (DE), Übersetzung oder Tag. Mit Kopieren kopierst du die deutsche Phrase.",
+    recommendedTitle: "Empfohlen für dich",
+    recommendedSubtitle:
+      "Basierend auf deinem Profil — dieselbe Bibliothek wie unten, für dich sortiert.",
     explorerSearchPlaceholder: "Phrasen suchen (DE / Übersetzung / Tag)…",
     explorerCategoryFamily: "Familie",
     explorerCategoryJob: "Job",

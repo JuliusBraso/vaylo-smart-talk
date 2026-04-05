@@ -591,6 +591,9 @@ const pl = {
     explorerTitle: "Szybkie frazy",
     explorerSubtitle:
       "Szukaj po niemieckim (DE), tłumaczeniu lub tagu. Kopiuj skopiuje niemiecką frazę.",
+    recommendedTitle: "Polecane dla Ciebie",
+    recommendedSubtitle:
+      "Na podstawie profilu — ta sama biblioteka co poniżej, uporządkowana dla Ciebie.",
     explorerSearchPlaceholder: "Szukaj fraz (DE / tłumaczenie / tag)…",
     explorerCategoryFamily: "Rodzina",
     explorerCategoryJob: "Praca",

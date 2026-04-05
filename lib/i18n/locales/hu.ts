@@ -591,6 +591,9 @@ const hu = {
     explorerTitle: "Gyors kifejezések",
     explorerSubtitle:
       "Keresés német (DE), fordítás vagy címke szerint. A Másolás a német mondatot másolja.",
+    recommendedTitle: "Ajánlott neked",
+    recommendedSubtitle:
+      "A profilod alapján — ugyanaz a könyvtár, mint lent, neked rendezve.",
     explorerSearchPlaceholder: "Kifejezések keresése (DE / fordítás / címke)…",
     explorerCategoryFamily: "Család",
     explorerCategoryJob: "Munka",

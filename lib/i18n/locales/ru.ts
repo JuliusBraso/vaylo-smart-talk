@@ -592,6 +592,9 @@ const ru = {
     explorerTitle: "Быстрые фразы",
     explorerSubtitle:
       "Ищи по-немецки (DE), переводу или тегу. Нажми Копировать, чтобы скопировать немецкую фразу.",
+    recommendedTitle: "Рекомендовано для вас",
+    recommendedSubtitle:
+      "По вашему профилю — та же библиотека, что ниже, отсортированная для вас.",
     explorerSearchPlaceholder: "Поиск фраз (DE / перевод / тег)…",
     explorerCategoryFamily: "Семья",
     explorerCategoryJob: "Работа",

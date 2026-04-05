@@ -651,6 +651,9 @@ const en = {
     explorerTitle: "Quick phrases",
     explorerSubtitle:
       "Search by German (DE), translation, or tag. Use Copy to copy the German phrase.",
+    recommendedTitle: "Recommended for you",
+    recommendedSubtitle:
+      "Based on your profile — same library as below, ranked for you.",
     explorerSearchPlaceholder: "Search phrases (DE / translation / tag)…",
     explorerCategoryFamily: "Family",
     explorerCategoryJob: "Job",

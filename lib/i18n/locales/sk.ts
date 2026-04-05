@@ -575,6 +575,9 @@ const sk = {
     explorerTitle: "Rýchle frázy",
     explorerSubtitle:
       "Hľadaj podľa nemčiny (DE), prekladu alebo tagu. Kopírovaním skopíruješ nemeckú vetu.",
+    recommendedTitle: "Odporúčané pre teba",
+    recommendedSubtitle:
+      "Podľa tvojho profilu — tá istá knižnica ako nižšie, zoradená pre teba.",
     explorerSearchPlaceholder: "Hľadať frázy (DE / preklad / tag)…",
     explorerCategoryFamily: "Rodina",
     explorerCategoryJob: "Práca",

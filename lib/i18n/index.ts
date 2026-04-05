@@ -108,6 +108,7 @@ export type Dict = {
   formsDetail: Record<string, Record<string, FormFieldCopy>>;
   guidesDetail: Record<string, Record<string, GuideStepCopy>>;
   settings: Record<string, string>;
+  /** Phrase explorer + Smart Phrases (recommendedTitle, recommendedSubtitle, explorer*, …). */
   phrases: Record<string, string>;
   premium: Record<string, string>;
 };

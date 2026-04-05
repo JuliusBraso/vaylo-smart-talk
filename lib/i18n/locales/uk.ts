@@ -592,6 +592,9 @@ const uk = {
     explorerTitle: "Швидкі фрази",
     explorerSubtitle:
       "Шукай за німецькою (DE), перекладом або тегом. Натисни Копіювати, щоб скопіювати німецьку фразу.",
+    recommendedTitle: "Рекомендовано для вас",
+    recommendedSubtitle:
+      "За вашим профілем — та сама бібліотека, що й нижче, відсортована для вас.",
     explorerSearchPlaceholder: "Пошук фраз (DE / переклад / тег)…",
     explorerCategoryFamily: "Сім’я",
     explorerCategoryJob: "Робота",

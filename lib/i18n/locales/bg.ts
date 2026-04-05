@@ -592,6 +592,9 @@ const bg = {
     explorerTitle: "Бързи фрази",
     explorerSubtitle:
       "Търси по немски (DE), превод или етикет. Използвай Копирай, за да копираш немската фраза.",
+    recommendedTitle: "Препоръчано за теб",
+    recommendedSubtitle:
+      "Според профила ти — същата библиотека като по-долу, подредена за теб.",
     explorerSearchPlaceholder: "Търси фрази (DE / превод / етикет)…",
     explorerCategoryFamily: "Семейство",
     explorerCategoryJob: "Работа",

@@ -592,6 +592,9 @@ const ro = {
     explorerTitle: "Fraze rapide",
     explorerSubtitle:
       "Caută după germană (DE), traducere sau etichetă. Folosește Copiază pentru a copia fraza în germană.",
+    recommendedTitle: "Recomandate pentru tine",
+    recommendedSubtitle:
+      "Pe baza profilului tău — aceeași bibliotecă ca mai jos, ordonată pentru tine.",
     explorerSearchPlaceholder: "Caută fraze (DE / traducere / etichetă)…",
     explorerCategoryFamily: "Familie",
     explorerCategoryJob: "Job",

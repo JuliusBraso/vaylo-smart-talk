@@ -590,6 +590,9 @@ const cs = {
     explorerTitle: "Rychlé fráze",
     explorerSubtitle:
       "Hledej podle němčiny (DE), překladu nebo tagu. Kopírováním zkopíruješ německou větu.",
+    recommendedTitle: "Doporučeno pro vás",
+    recommendedSubtitle:
+      "Podle vašeho profilu — stejná knihovna jako níže, seřazená pro vás.",
     explorerSearchPlaceholder: "Hledat fráze (DE / překlad / tag)…",
     explorerCategoryFamily: "Rodina",
     explorerCategoryJob: "Práce",

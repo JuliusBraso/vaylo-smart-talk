@@ -12,6 +12,7 @@ import type {
 
 type Props = {
   content: ContentByCategory;
+  recommended: VayloPhrase[];
 };
 
 const JOB_TAGS = [
@@ -62,7 +63,7 @@ function includesQuery(p: VayloPhrase, q: string): boolean {
   return hay.includes(q);
 }
 
-export default function PhrasesExplorer({ content }: Props) {
+export default function PhrasesExplorer({ content, recommended }: Props) {
   const { t } = useT();
   const p = t.phrases;
   const [query, setQuery] = useState("");
@@ -201,6 +202,27 @@ export default function PhrasesExplorer({ content }: Props) {
       </div>
 
       <div style={{ display: "grid", gap: 12 }}>
+        {recommended.length > 0 ? (
+          <section
+            className="card flex w-full flex-col gap-3"
+            style={{
+              borderColor: "rgba(16,185,129,0.35)",
+              background: "rgba(16,185,129,0.06)",
+            }}
+          >
+            <div className="cardHeader">
+              <div className="cardTitle">{p.recommendedTitle}</div>
+              <div className="cardSub muted">{p.recommendedSubtitle}</div>
+            </div>
+            <PhraseChips
+              phrases={recommended}
+              tone="emerald"
+              favorites={favorites}
+              onToggleFavorite={handleToggleFavorite}
+            />
+          </section>
+        ) : null}
+
         <div style={{ display: "grid", gap: 10 }}>
           <input
             value={query}
