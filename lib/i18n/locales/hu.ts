@@ -342,6 +342,11 @@ const hu = {
     actionExplainFamilyBenefitsDefault:
       "Ellenőrzőlista nélkül könnyen átnézed a Kindergeld határidőit és iratait.",
     quickPhrases: "Gyors kifejezések",
+    phrasesModuleTitle: "Kifejezések",
+    phrasesModuleSubtitle:
+      "Kész német mondatok ehhez a modulhoz — nyisd ki a másoláshoz vagy csillagozáshoz.",
+    phrasesModuleExpand: "Kifejezések megjelenítése",
+    phrasesModuleCollapse: "Kifejezések elrejtése",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Adók & számlák",
     freelancerIntro: "Kövesd a számlákat, az ÁFA- és adókötelezettségeket egy helyen.",

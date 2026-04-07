@@ -3,7 +3,7 @@
 import type { ProfileDNA } from "@/lib/dna/types";
 import type { Dict } from "@/lib/i18n";
 import { getContentByDNA } from "@/lib/vaylo/content-engine";
-import PhraseChips from "@/app/dashboard/_components/PhraseChips";
+import DashboardPhrasesCollapsible from "@/app/dashboard/_components/DashboardPhrasesCollapsible";
 
 export type FreelancerModuleProps = {
   dna: ProfileDNA;
@@ -17,7 +17,7 @@ export default function FreelancerModule({ dna, t }: FreelancerModuleProps) {
   const phrases = [...content.freelancer, ...content.bureaucracy];
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-emerald-400/40 bg-slate-950/80 p-4 text-sm text-slate-100 shadow-[0_0_36px_rgba(16,185,129,0.45)] backdrop-blur-2xl md:col-span-1">
+    <div className="relative overflow-hidden rounded-3xl border border-emerald-400/40 bg-slate-950/80 p-4 text-sm text-slate-100 shadow-[0_0_36px_rgba(16,185,129,0.45)] backdrop-blur-2xl">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_0_0,rgba(16,185,129,0.28),transparent_55%),radial-gradient(circle_at_100%_100%,rgba(56,189,248,0.25),transparent_55%)]" />
       <div className="relative flex flex-col gap-3">
         <div className="flex items-center justify-between gap-2">
@@ -64,12 +64,7 @@ export default function FreelancerModule({ dna, t }: FreelancerModuleProps) {
         </ul>
 
         {phrases.length > 0 && (
-          <div className="mt-3 rounded-2xl border border-emerald-400/40 bg-slate-950/70 px-3 py-2">
-            <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300/80">
-              {t.dashboard.quickPhrases}
-            </div>
-            <PhraseChips phrases={phrases} tone="emerald" />
-          </div>
+          <DashboardPhrasesCollapsible phrases={phrases} tone="emerald" t={t} />
         )}
       </div>
     </div>

@@ -14,6 +14,7 @@ function phraseSecondary(p: VayloPhrase, locale: Locale): string {
 type Props = {
   phrases: VayloPhrase[];
   tone?: "indigo" | "emerald" | "cyan";
+  layout?: "stack" | "grid";
   favorites?: Set<string> | string[];
   onToggleFavorite?: (phraseId: string, nextFav: boolean) => void;
 };
@@ -48,6 +49,7 @@ function getToneStyles(tone: NonNullable<Props["tone"]>) {
 export default function PhraseChips({
   phrases,
   tone = "indigo",
+  layout = "stack",
   favorites,
   onToggleFavorite,
 }: Props) {
@@ -69,7 +71,13 @@ export default function PhraseChips({
   };
 
   return (
-    <div style={{ display: "grid", gap: 10 }}>
+    <div
+      className={
+        layout === "grid"
+          ? "grid grid-cols-1 gap-2.5 md:grid-cols-2"
+          : "grid gap-2.5"
+      }
+    >
       {phrases.map((row) => (
         <div
           key={row.id}

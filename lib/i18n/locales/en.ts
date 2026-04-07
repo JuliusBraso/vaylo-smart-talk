@@ -384,6 +384,11 @@ const en = {
     cvWorkflowActionCreate: "Create a CV from scratch",
     cvWorkflowActionCheck: "Check German structure",
     quickPhrases: "Quick phrases",
+    phrasesModuleTitle: "Phrases",
+    phrasesModuleSubtitle:
+      "Ready-to-use German lines for this module — expand to copy or star.",
+    phrasesModuleExpand: "Show phrases",
+    phrasesModuleCollapse: "Hide phrases",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Taxes & invoices",
     freelancerIntro:

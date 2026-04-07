@@ -364,6 +364,11 @@ const de = {
     cvWorkflowActionCreate: "Lebenslauf von Grund auf erstellen",
     cvWorkflowActionCheck: "Deutsche Struktur prüfen",
     quickPhrases: "Schnelle Phrasen",
+    phrasesModuleTitle: "Phrasen",
+    phrasesModuleSubtitle:
+      "Fertige deutsche Sätze für dieses Modul — aufklappen zum Kopieren oder Markieren.",
+    phrasesModuleExpand: "Phrasen anzeigen",
+    phrasesModuleCollapse: "Phrasen ausblenden",
     freelancerTitle: "Freelancer-Cockpit",
     freelancerBadge: "Steuern & Rechnungen",
     freelancerIntro: "Behalte Rechnungen, Umsatzsteuer- und Einkommensteuer-Pflichten an einem Ort im Blick.",

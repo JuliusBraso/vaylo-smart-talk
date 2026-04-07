@@ -343,6 +343,11 @@ const ro = {
     actionExplainFamilyBenefitsDefault:
       "Fără o listă de verificare poți uita ușor termenele Kindergeld și documentele.",
     quickPhrases: "Fraze rapide",
+    phrasesModuleTitle: "Fraze",
+    phrasesModuleSubtitle:
+      "Propoziții germane gata de folosit pentru acest modul — extinde pentru copiere sau stea.",
+    phrasesModuleExpand: "Arată frazele",
+    phrasesModuleCollapse: "Ascunde frazele",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Taxe & facturi",
     freelancerIntro: "Urmărește facturile, TVA-ul și obligațiile fiscale într-un singur loc.",

@@ -266,7 +266,7 @@ export default function DashboardShell({
           </aside>
         </section>
 
-        <section className="grid gap-6 md:grid-cols-3">
+        <section className="grid grid-cols-1 gap-6">
           {injectModuleDict(children, t)}
         </section>
       </div>

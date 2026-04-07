@@ -343,6 +343,11 @@ const bg = {
     actionExplainFamilyBenefitsDefault:
       "Без контролен списък лесно пропускаш срокове и документи за Kindergeld.",
     quickPhrases: "Бързи фрази",
+    phrasesModuleTitle: "Фрази",
+    phrasesModuleSubtitle:
+      "Готови немски изречения за този модул — разгъни, за да копираш или отбележиш.",
+    phrasesModuleExpand: "Покажи фразите",
+    phrasesModuleCollapse: "Скрий фразите",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Данъци & фактури",
     freelancerIntro: "Следи фактури, ДДС и данъчни задължения на едно място.",

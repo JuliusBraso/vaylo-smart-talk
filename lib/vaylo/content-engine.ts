@@ -1,5 +1,24 @@
 import type { DNAInputs, Goal } from "@/lib/dna/types";
 
+function goalCategory(g: Goal): ContentCategory | null {
+  if (g === "job") return "job";
+  if (g === "bureaucracy") return "bureaucracy";
+  return null;
+}
+
+/** Primary vs secondary goal bonuses; orientation never contributes. */
+function scoreGoalsForCategory(goals: Goal[], category: ContentCategory): number {
+  if (goals.length === 0) return 0;
+  let s = 0;
+  const primaryCat = goalCategory(goals[0]);
+  if (primaryCat === category) s += 28;
+  for (let i = 1; i < goals.length; i++) {
+    const c = goalCategory(goals[i]);
+    if (c === category) s += 12;
+  }
+  return s;
+}
+
 export type ContentCategory = "family" | "job" | "freelancer" | "bureaucracy";
 
 export type VayloPhrase = {
@@ -831,25 +850,30 @@ function recommendationScore(
   let s = 0;
   const { goals, employment_type, family_status, language_level } = inputs;
 
-  if (goals.includes("job") && category === "job") s += 20;
-  if (goals.includes("bureaucracy") && category === "bureaucracy") s += 20;
+  s += scoreGoalsForCategory(goals, category);
 
   if (employment_type === "job_seeker") {
-    if (phrase.tag === "job-interview") s += 15;
-    if (phrase.tag === "job-contract") s += 15;
+    if (phrase.tag === "job-interview") s += 19;
+    if (phrase.tag === "job-contract") s += 17;
   }
-  if (employment_type === "employee" && phrase.tag === "job-work") s += 15;
-  if (employment_type === "freelancer" && category === "freelancer") s += 20;
+  if (employment_type === "employee" && phrase.tag === "job-work") s += 19;
+  if (employment_type === "freelancer" && category === "freelancer") s += 24;
 
   if (family_status === "children" && category === "family") s += 15;
   if (family_status === "family" && category === "family") s += 8;
 
   if (language_level === "A1" || language_level === "A2") {
-    if (phrase.tag === "bureaucracy-basic") s += 10;
-    if (phrase.tag === "job-work") s += 10;
+    if (phrase.tag === "bureaucracy-basic") s += 14;
+    if (phrase.tag === "job-work") s += 14;
+    if (phrase.tag === "bureaucracy-documents") s += 5;
+  }
+  if (language_level === "B1") {
+    if (phrase.tag === "bureaucracy-basic") s += 4;
+    if (phrase.tag === "job-work") s += 4;
   }
   if (language_level === "B2" || language_level === "C1") {
-    if (phrase.tag === "job-interview") s += 10;
+    if (phrase.tag === "job-interview") s += 14;
+    if (phrase.tag === "job-contract") s += 6;
   }
 
   return s;

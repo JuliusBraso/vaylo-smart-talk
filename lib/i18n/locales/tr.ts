@@ -343,6 +343,11 @@ const tr = {
     actionExplainFamilyBenefitsDefault:
       "Kontrol listesi olmadan Kindergeld sürelerini ve evrakları kolayca gözden kaçırırsın.",
     quickPhrases: "Hızlı cümleler",
+    phrasesModuleTitle: "İfadeler",
+    phrasesModuleSubtitle:
+      "Bu modül için hazır Almanca cümleler — kopyalamak veya yıldızlamak için genişlet.",
+    phrasesModuleExpand: "İfadeleri göster",
+    phrasesModuleCollapse: "İfadeleri gizle",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Vergi & faturalar",
     freelancerIntro: "Faturaları, KDV'yi ve vergi yükümlülüklerini tek yerde takip et.",

@@ -342,6 +342,11 @@ const pl = {
     actionExplainFamilyBenefitsDefault:
       "Bez listy kontrolnej łatwo przegapisz terminy Kindergeld i dokumenty.",
     quickPhrases: "Szybkie frazy",
+    phrasesModuleTitle: "Frazy",
+    phrasesModuleSubtitle:
+      "Gotowe zdania po niemiecku dla tego modułu — rozwiń, aby skopiować lub oznaczyć.",
+    phrasesModuleExpand: "Pokaż frazy",
+    phrasesModuleCollapse: "Ukryj frazy",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Podatki & faktury",
     freelancerIntro: "Śledź faktury, VAT i zobowiązania podatkowe w jednym miejscu.",

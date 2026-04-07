@@ -341,6 +341,11 @@ const cs = {
     actionExplainFamilyBenefitsDefault:
       "Bez kontrolního seznamu snadno přehlédneš termíny Kindergeld a dokumenty.",
     quickPhrases: "Rychlé fráze",
+    phrasesModuleTitle: "Fráze",
+    phrasesModuleSubtitle:
+      "Hotové německé věty pro tento modul — rozbalit ke kopírování nebo hvězdičce.",
+    phrasesModuleExpand: "Zobrazit fráze",
+    phrasesModuleCollapse: "Skrýt fráze",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Daně & faktury",
     freelancerIntro: "Sleduj faktury, DPH a daňové povinnosti na jednom místě.",

@@ -343,6 +343,11 @@ const uk = {
     actionExplainFamilyBenefitsDefault:
       "Без чеклиста легко пропустити строки Kindergeld і документи.",
     quickPhrases: "Швидкі фрази",
+    phrasesModuleTitle: "Фрази",
+    phrasesModuleSubtitle:
+      "Готові німецькі речення для цього модуля — розгорни, щоб скопіювати або позначити.",
+    phrasesModuleExpand: "Показати фрази",
+    phrasesModuleCollapse: "Сховати фрази",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Податки & рахунки",
     freelancerIntro: "Відстежуй рахунки, ПДВ і податкові зобов'язання в одному місці.",

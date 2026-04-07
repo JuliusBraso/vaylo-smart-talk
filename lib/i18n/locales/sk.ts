@@ -326,6 +326,11 @@ const sk = {
     cvWorkflowActionCreate: "Vytvoriť životopis od nuly",
     cvWorkflowActionCheck: "Skontrolovať nemeckú štruktúru",
     quickPhrases: "Rýchle frázy",
+    phrasesModuleTitle: "Frázy",
+    phrasesModuleSubtitle:
+      "Hotové nemecké vety pre tento modul — rozbaľ a skopíruj alebo označ hviezdičkou.",
+    phrasesModuleExpand: "Zobraziť frázy",
+    phrasesModuleCollapse: "Skryť frázy",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Dane & faktúry",
     freelancerIntro: "Sleduj faktúry, DPH a daňové povinnosti na jednom mieste.",

@@ -343,6 +343,11 @@ const ru = {
     actionExplainFamilyBenefitsDefault:
       "Без чеклиста легко пропустить сроки Kindergeld и документы.",
     quickPhrases: "Быстрые фразы",
+    phrasesModuleTitle: "Фразы",
+    phrasesModuleSubtitle:
+      "Готовые немецкие фразы для этого модуля — разверни, чтобы скопировать или отметить.",
+    phrasesModuleExpand: "Показать фразы",
+    phrasesModuleCollapse: "Скрыть фразы",
     freelancerTitle: "Freelancer cockpit",
     freelancerBadge: "Налоги & счета",
     freelancerIntro: "Отслеживай счета, НДС и налоговые обязательства в одном месте.",
