@@ -1,17 +1,15 @@
 import type { ReactNode } from "react";
-import type { ProfileDNA } from "@/lib/dna/types";
 import type { Dict, Locale } from "@/lib/i18n";
-import type { LiveSituation } from "@/lib/vaylo/live-situation";
-import { getDashboardActions } from "@/lib/dashboard/get-dashboard-actions";
+import { getDashboardActionsFromState } from "@/lib/dashboard/get-dashboard-actions-from-state";
+import type { UserState } from "@/lib/vaylo/state/types";
 import DashboardClientWrapper from "./DashboardClientWrapper";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 type Props = {
   supabase: SupabaseClient;
   userId: string;
-  dna: ProfileDNA;
+  userState: UserState;
   locale: Locale;
-  liveSituation: LiveSituation;
   /** Server-resolved dictionary (see `getDict(locale)` on the dashboard page). */
   t: Dict;
   children: ReactNode;
@@ -20,17 +18,22 @@ type Props = {
 export default async function DashboardDataProvider({
   supabase,
   userId,
-  dna,
+  userState,
   locale,
-  liveSituation,
   t,
   children,
 }: Props) {
-  const actions = await getDashboardActions({
+  const dna = userState.identity.dna;
+  const liveSituation = userState.reality.liveSituation;
+
+  if (!dna) {
+    throw new Error("DashboardDataProvider: missing DNA after dashboard gate");
+  }
+
+  const actions = await getDashboardActionsFromState({
     supabase,
     userId,
-    dna,
-    liveSituation,
+    userState,
     t,
   });
 

@@ -1,3 +1,8 @@
+/**
+ * Legacy standalone DNA scorer (not wired into onboarding or `profiles.dna` writes).
+ * Canonical production DNA: `calculateVayloDNA` in `lib/vaylo/dna-engine.ts` + `getProfileDNA`.
+ * Safe to remove only after confirming no imports/usages; see `ARCHITECTURE_NOTES.md`.
+ */
 export type FamilyStatus = "single" | "family" | "children";
 export type EmploymentType = "employee" | "freelancer" | "job_seeker";
 export type LanguageLevel = "A1" | "A2" | "B1" | "B2" | "C1";

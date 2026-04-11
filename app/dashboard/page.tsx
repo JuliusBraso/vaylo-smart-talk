@@ -2,9 +2,8 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 import { getUser } from "@/lib/auth/get-user";
-import { getProfileDNA } from "@/lib/dna/get-profile-dna";
 import { DEFAULT_LOCALE, getDict, LOCALES, type Locale } from "@/lib/i18n";
-import { getLiveSituationFromProfile } from "@/lib/vaylo/live-situation";
+import { getUserState } from "@/lib/vaylo/state/get-user-state";
 import DashboardDataProvider from "./_components/DashboardDataProvider";
 import FreelancerModule from "./_components/modules/FreelancerModule";
 import FamilyModule from "./_components/modules/FamilyModule";
@@ -24,20 +23,13 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const dna = await getProfileDNA(supabase, user.id);
+  const userState = await getUserState({ supabase, userId: user.id });
 
-  if (!dna) {
+  if (!userState.identity.dna) {
     redirect("/");
   }
 
-  const { data: profileRow } = await supabase
-    .from("profiles")
-    .select(
-      "has_steuer_id, has_health_insurance, has_bank_account, registered_arbeitsagentur, has_children, children_school_age, has_cv, job_search_urgency, employment_type"
-    )
-    .eq("id", user.id)
-    .maybeSingle();
-  const liveSituation = getLiveSituationFromProfile(profileRow);
+  const dna = userState.identity.dna;
 
   const t = getDict(locale);
 
@@ -61,9 +53,8 @@ export default async function DashboardPage() {
     <DashboardDataProvider
       supabase={supabase}
       userId={user.id}
-      dna={dna}
+      userState={userState}
       locale={locale}
-      liveSituation={liveSituation}
       t={t}
     >
       {modules}

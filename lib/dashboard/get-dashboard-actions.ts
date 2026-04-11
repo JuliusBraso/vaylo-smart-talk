@@ -10,7 +10,10 @@ import {
 import type { LiveSituation } from "@/lib/vaylo/live-situation";
 import { getActionExplanations } from "@/lib/dashboard/get-action-explanations";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getUserBehaviorSignals } from "@/lib/dashboard/get-user-behavior-signals";
+import {
+  type BehaviorSignals,
+  getUserBehaviorSignals,
+} from "@/lib/dashboard/get-user-behavior-signals";
 
 export type DashboardAction = {
   id: string;
@@ -725,9 +728,13 @@ export async function getDashboardActions(params: {
   dna: ProfileDNA;
   liveSituation: LiveSituation;
   t: Dict;
+  /** When set (e.g. from `getUserState`), avoids a second progress/events query. */
+  behaviorSignals?: BehaviorSignals;
 }): Promise<DashboardAction[]> {
   const { supabase, userId, dna, liveSituation, t } = params;
-  const behavior = await getUserBehaviorSignals(supabase, userId);
+  const behavior =
+    params.behaviorSignals ??
+    (await getUserBehaviorSignals(supabase, userId));
   const completedIds = new Set(Array.from(behavior.completedActionIds));
 
   const primaryRoute = getPrimaryRoute(dna);
