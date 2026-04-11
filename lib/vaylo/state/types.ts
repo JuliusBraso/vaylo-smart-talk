@@ -19,6 +19,9 @@ export type UserStateProfileFlags = {
 /**
  * Canonical consolidated user state for decision layers (dashboard, phrases, tasks).
  * Single read model: identity vs reality vs progress vs behavior vs derived interpretation.
+ *
+ * Server-only by convention: do not pass through to client components as a whole.
+ * `behavior.timeDecayBoost` uses `Record` (not `Map`) so the shape stays JSON-serializable if needed later.
  */
 export type UserState = {
   identity: {
@@ -45,7 +48,8 @@ export type UserState = {
 
   behavior: {
     repeatedClickActionIds: string[];
-    timeDecayBoost: Map<string, number>;
+    /** Action id → decay boost (0–30). Plain object for safe serialization. */
+    timeDecayBoost: Record<string, number>;
   };
 
   derived: {

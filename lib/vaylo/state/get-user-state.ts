@@ -2,8 +2,57 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getProfileDNA } from "@/lib/dna/get-profile-dna";
 import type { ProfileDNA } from "@/lib/dna/types";
 import { getUserBehaviorSignals } from "@/lib/dashboard/get-user-behavior-signals";
+import type { LiveSituation } from "@/lib/vaylo/live-situation";
 import { getLiveSituationFromProfile } from "@/lib/vaylo/live-situation";
 import type { UserState, UserStateProfileFlags } from "./types";
+
+/** Mirrors `employmentTypeForScoring` in `get-dashboard-actions.ts` (live overrides DNA). */
+function employmentTypeForDerived(
+  liveSituation: LiveSituation,
+  dna: ProfileDNA,
+): "employee" | "freelancer" | "job_seeker" {
+  return (
+    liveSituation.employmentType ?? dna.inputs.employment_type
+  ) as "employee" | "freelancer" | "job_seeker";
+}
+
+/**
+ * Conservative blockers aligned with `collectCriticalBlockers` in `get-dashboard-actions.ts`.
+ * Internal read model only — dashboard UI still uses the existing engine.
+ */
+function buildDerivedBlockers(
+  liveSituation: LiveSituation,
+  dna: ProfileDNA | null,
+): string[] {
+  if (!dna) return [];
+
+  const emp = employmentTypeForDerived(liveSituation, dna);
+  const blockers: string[] = [];
+
+  if (liveSituation.hasHealthInsurance === false) {
+    blockers.push("missing_health_insurance");
+  }
+  if (emp === "freelancer" && liveSituation.hasSteuerId === false) {
+    blockers.push("missing_steuer_id");
+  }
+  if (liveSituation.hasBankAccount === false) {
+    blockers.push("missing_bank_account");
+  }
+  if (emp === "job_seeker" && liveSituation.registeredArbeitsagentur === false) {
+    blockers.push("missing_arbeitsagentur_registration");
+  }
+
+  const missingCv =
+    liveSituation.hasCv === false || liveSituation.hasCV === false;
+  if (emp === "job_seeker" && missingCv) {
+    blockers.push("missing_cv_job_seeker");
+    if (liveSituation.jobSearchUrgency === "urgent") {
+      blockers.push("missing_cv_with_urgent_job_search");
+    }
+  }
+
+  return blockers;
+}
 
 /** Columns needed for live situation + scalar drift checks; keep in sync with `getLiveSituationFromProfile`. */
 const PROFILE_COLUMNS_FOR_USER_STATE =
@@ -65,10 +114,7 @@ function buildDerivedWarnings(params: {
 
   const empScalar =
     typeof profile?.employment_type === "string" ? profile.employment_type : null;
-  if (
-    empScalar &&
-    empScalar !== dna.inputs.employment_type
-  ) {
+  if (empScalar && empScalar !== dna.inputs.employment_type) {
     warnings.push("employment_scalar_dna_mismatch");
   }
 
@@ -88,6 +134,10 @@ function buildDerivedWarnings(params: {
   const goalsDna = dna.inputs.goals.map(String);
   if (goalsScalar && goalsScalar.length > 0 && !goalsEqual(goalsScalar, goalsDna)) {
     warnings.push("goals_scalar_dna_mismatch");
+  }
+
+  if (dna && profile == null) {
+    warnings.push("profile_context_missing_for_dna");
   }
 
   return warnings;
@@ -124,7 +174,10 @@ export async function getUserState(params: {
 
   const completedActionIds = Array.from(behavior.completedActionIds);
   const repeatedClickActionIds = Array.from(behavior.repeatedClickActionIds);
-  const timeDecayBoost = new Map(behavior.timeDecayBoost);
+  const timeDecayBoost: Record<string, number> = {};
+  for (const [k, v] of behavior.timeDecayBoost) {
+    timeDecayBoost[k] = v;
+  }
 
   // --- Documents summary (lightweight; no extracted_text) ---
   // Future: map verified document types into proof-of-truth reality signals.
@@ -166,7 +219,13 @@ export async function getUserState(params: {
   const canonicalEmploymentType =
     liveSituation.employmentType ?? identityFromDna?.employment_type ?? null;
 
-  const warnings = buildDerivedWarnings({ dna, profile });
+  const warnings = buildDerivedWarnings({
+    dna,
+    profile,
+  });
+
+  const blockers =
+    dna != null ? buildDerivedBlockers(liveSituation, dna) : [];
 
   const userState: UserState = {
     identity: {
@@ -194,7 +253,7 @@ export async function getUserState(params: {
     },
     derived: {
       canonicalEmploymentType,
-      blockers: [],
+      blockers,
       warnings,
     },
   };
