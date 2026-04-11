@@ -1,18 +1,49 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useT } from "../../lib/i18n/useT";
+
+type PanelPos = {
+  top: number;
+  left: number;
+  width: number;
+};
 
 export default function LanguageSwitcher() {
   const { locale, setLocale, locales, localeLabel } = useT();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const listId = useId();
+  const [pos, setPos] = useState<PanelPos | null>(null);
+
+  const portalReady = useMemo(() => typeof document !== "undefined", []);
+
+  const recompute = () => {
+    const el = triggerRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const width = Math.min(280, Math.max(Math.round(r.width), 220));
+    const gap = 6;
+
+    let left = Math.round(r.left);
+    const padding = 12;
+    const maxLeft = Math.max(padding, window.innerWidth - width - padding);
+    left = Math.max(padding, Math.min(maxLeft, left));
+
+    const top = Math.round(r.bottom + gap);
+    setPos({ top, left, width });
+  };
 
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (e: PointerEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      const inTrigger = !!rootRef.current?.contains(target);
+      const inPanel = !!panelRef.current?.contains(target);
+      if (!inTrigger && !inPanel) setOpen(false);
     };
     document.addEventListener("pointerdown", onPointerDown, true);
     return () => document.removeEventListener("pointerdown", onPointerDown, true);
@@ -27,6 +58,22 @@ export default function LanguageSwitcher() {
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+    recompute();
+
+    const onResize = () => recompute();
+    const onScroll = () => recompute();
+
+    window.addEventListener("resize", onResize);
+    window.addEventListener("scroll", onScroll, true);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("scroll", onScroll, true);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   return (
     <div ref={rootRef} className="languageSwitcher">
       <div className="languageSwitcherRow">
@@ -35,6 +82,7 @@ export default function LanguageSwitcher() {
           <button
             type="button"
             className="languageSwitcherTrigger"
+            ref={triggerRef}
             aria-expanded={open}
             aria-haspopup="listbox"
             aria-controls={listId}
@@ -45,12 +93,28 @@ export default function LanguageSwitcher() {
               ▼
             </span>
           </button>
-          {open ? (
+        </div>
+      </div>
+
+      {open && portalReady
+        ? createPortal(
             <div
+              ref={panelRef}
               id={listId}
-              className="languageSwitcherPanel"
+              className="languageSwitcherPanel languageSwitcherPanelPortal"
               role="listbox"
               aria-label="Language"
+              style={
+                pos
+                  ? {
+                      position: "fixed",
+                      top: pos.top,
+                      left: pos.left,
+                      width: pos.width,
+                      maxWidth: 280,
+                    }
+                  : { position: "fixed" }
+              }
             >
               {locales.map((l) => (
                 <button
@@ -71,10 +135,10 @@ export default function LanguageSwitcher() {
                   {localeLabel(l)}
                 </button>
               ))}
-            </div>
-          ) : null}
-        </div>
-      </div>
+            </div>,
+            document.body
+          )
+        : null}
     </div>
   );
 }

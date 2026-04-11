@@ -287,6 +287,22 @@ const sk = {
       "Nemáš potvrdený životopis — bez neho sa žiadosti spomalia.",
     actionExplainCvUrgent:
       "Hľadanie práce je naliehavé — bez životopisu nevieš rýchlo reagovať na ponuky.",
+    actionExplainSteuerMissing:
+      "Nemáš Steuer-ID — bez nej často nevieš pracovať ani fakturovať.",
+    actionExplainSteuerFreelancer:
+      "Ako {employment} ju potrebuješ na faktúry a Finanzamt.",
+    actionExplainSteuerGoalBureaucracy:
+      "Vybral si „{goal}“ — bez Steuer-ID sa mnohé úradné kroky zaseknú.",
+    actionExplainFamilyBenefitsProfileChildren:
+      "Máš „{family}“ — bez žiadosti prídeš o dávky a termíny.",
+    actionExplainFamilyBenefitsRefineChildren:
+      "Označil si deti — bez žiadostí prídeš o peniaze a termíny.",
+    actionExplainFamilyBenefitsSchoolAge:
+      "Školský vek znamená ďalšie doklady — bez nich sa dávky oneskoria.",
+    actionExplainFamilyBenefitsBureaucracyGoal:
+      "Vybral si „{goal}“ — Kindergeld je jasný úradný krok.",
+    actionExplainFamilyBenefitsDefault:
+      "Bez checklistu ľahko prehliadneš termíny a dokumenty pri Kindergelde.",
     editProfile: "Upraviť profil",
     editProfileTitle: "Upraviť profil",
     editProfileDesc: "Aktualizuj svoju aktuálnu situáciu. Vaylo sa podľa toho prispôsobí.",

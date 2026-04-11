@@ -22,20 +22,11 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     <html lang="de">
       <body>
         <LocaleProvider initialLocale={initialLocale}>
-          <div className="container">
-            <div className="topbar">
-              <div className="brand">
-                <span style={{ fontWeight: 700 }}>Vaylo</span>
-                <span className="badge">
-                  AI assistant for bureaucracy and life in Germany
-                </span>
-              </div>
-              <div className="badge">v0.1</div>
-            </div>
-
+          <div className="app-shell">
             <Menu />
-            <div style={{ height: 14 }} />
-            {children}
+            <div className="app-main">
+              <div className="container">{children}</div>
+            </div>
           </div>
         </LocaleProvider>
       </body>

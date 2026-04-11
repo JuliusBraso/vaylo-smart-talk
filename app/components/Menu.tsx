@@ -20,42 +20,67 @@ export default function Menu() {
   const isActive = (href: string) => pathname === href;
 
   return (
-    <nav className="topnav">
-      <div className="topnav-inner">
-        <div className="topnav-left">
-          <div className="brandTitle">{t.app.name}</div>
-          <div className="brandTag">{t.app.tagline}</div>
+    <aside className="app-sidebar" aria-label={t.nav.navigation ?? "Navigation"}>
+      <div className="sidebar-inner">
+        <div className="sidebar-brand">
+          <div className="sidebar-brandRow">
+            <div className="sidebar-brandIcon" aria-hidden>
+              V
+            </div>
+            <div className="brandTitle">Vaylo</div>
+          </div>
         </div>
 
-        <div className="topnav-center">
-          <Link className={`navpill ${isActive("/dashboard") ? "active" : ""}`} href="/dashboard">
+        <nav className="sidebar-nav">
+          <Link
+            className={`sidenav-link ${isActive("/dashboard") ? "active" : ""}`}
+            href="/dashboard"
+          >
             {t.nav.dashboard}
           </Link>
-          <Link className={`navpill ${isActive("/assistant") ? "active" : ""}`} href="/assistant">
+          <Link
+            className={`sidenav-link ${isActive("/assistant") ? "active" : ""}`}
+            href="/assistant"
+          >
             {t.nav.assistant}
           </Link>
-          <Link className={`navpill ${isActive("/letters") ? "active" : ""}`} href="/letters">
+          <Link
+            className={`sidenav-link ${isActive("/letters") ? "active" : ""}`}
+            href="/letters"
+          >
             {t.nav.letters}
           </Link>
-          <Link className={`navpill ${isActive("/forms") ? "active" : ""}`} href="/forms">
+          <Link
+            className={`sidenav-link ${isActive("/forms") ? "active" : ""}`}
+            href="/forms"
+          >
             {t.nav.forms}
           </Link>
-          <Link className={`navpill ${isActive("/guides") ? "active" : ""}`} href="/guides">
+          <Link
+            className={`sidenav-link ${isActive("/guides") ? "active" : ""}`}
+            href="/guides"
+          >
             {t.nav.guides}
           </Link>
-          <Link className={`navpill ${isActive("/documents") ? "active" : ""}`} href="/documents">
+          <Link
+            className={`sidenav-link ${isActive("/documents") ? "active" : ""}`}
+            href="/documents"
+          >
             {t.nav.documents}
           </Link>
-          <Link className={`navpill ${isActive("/premium") ? "active" : ""}`} href="/premium">
+          <Link
+            className={`sidenav-link ${isActive("/premium") ? "active" : ""}`}
+            href="/premium"
+          >
             {t.nav.premium}
           </Link>
-        </div>
+        </nav>
 
-        <div className="topnav-right">
+        <div className="sidebar-footer">
           <LanguageSwitcher />
           <span className="versionpill">v0.1</span>
         </div>
       </div>
-    </nav>
+    </aside>
   );
 }
