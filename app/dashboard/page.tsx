@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 import { getUser } from "@/lib/auth/get-user";
 import { DEFAULT_LOCALE, getDict, LOCALES, type Locale } from "@/lib/i18n";
+import { toClientPhrases } from "@/lib/vaylo/client-phrase";
 import { getSmartPhrases } from "@/lib/vaylo/get-smart-phrases";
 import { loadUserStateContext } from "@/lib/vaylo/state/load-user-state-context";
 import DashboardDataProvider from "./_components/DashboardDataProvider";
@@ -40,8 +41,11 @@ export default async function DashboardPage() {
   const modules: ReactNode[] = [];
 
   const inputs = dna.inputs;
-  /** Primary next action — strongest signal for `getSmartPhrases` (Phase 2). */
-  const primaryActionId = dashboardActions[0]?.id;
+  /** Top dashboard actions: [0] primary (+50), [1–2] secondary (+22) in `getSmartPhrases`. */
+  const dashboardActionIds = dashboardActions
+    .slice(0, 3)
+    .map((a) => a.id)
+    .filter((id): id is string => Boolean(id && id.trim()));
 
   if (inputs.employment_type === "freelancer") {
     modules.push(
@@ -49,12 +53,14 @@ export default async function DashboardPage() {
         key="freelancer"
         dna={dna}
         t={t}
-        smartPhrases={getSmartPhrases({
-          userState,
-          actionId: primaryActionId,
-          limit: 3,
-          categories: ["freelancer", "bureaucracy"],
-        })}
+        smartPhrases={toClientPhrases(
+          getSmartPhrases({
+            userState,
+            actionIds: dashboardActionIds,
+            limit: 3,
+            categories: ["freelancer", "bureaucracy"],
+          }),
+        )}
       />,
     );
   }
@@ -65,12 +71,14 @@ export default async function DashboardPage() {
         key="family"
         dna={dna}
         t={t}
-        smartPhrases={getSmartPhrases({
-          userState,
-          actionId: primaryActionId,
-          limit: 3,
-          categories: ["family", "bureaucracy"],
-        })}
+        smartPhrases={toClientPhrases(
+          getSmartPhrases({
+            userState,
+            actionIds: dashboardActionIds,
+            limit: 3,
+            categories: ["family", "bureaucracy"],
+          }),
+        )}
       />,
     );
   }
@@ -81,12 +89,14 @@ export default async function DashboardPage() {
         key="job"
         dna={dna}
         t={t}
-        smartPhrases={getSmartPhrases({
-          userState,
-          actionId: primaryActionId,
-          limit: 3,
-          categories: ["job", "bureaucracy"],
-        })}
+        smartPhrases={toClientPhrases(
+          getSmartPhrases({
+            userState,
+            actionIds: dashboardActionIds,
+            limit: 3,
+            categories: ["job", "bureaucracy"],
+          }),
+        )}
       />,
     );
   }

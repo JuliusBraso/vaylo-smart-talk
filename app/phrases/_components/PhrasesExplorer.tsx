@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import PhraseChips from "@/app/dashboard/_components/PhraseChips";
+import { toClientPhrases } from "@/lib/vaylo/client-phrase";
 import type { Dict } from "@/lib/i18n";
 import { useT } from "@/lib/i18n/useT";
 import type {
@@ -215,7 +216,7 @@ export default function PhrasesExplorer({ content, recommended }: Props) {
               <div className="cardSub muted">{p.recommendedSubtitle}</div>
             </div>
             <PhraseChips
-              phrases={recommended}
+              phrases={toClientPhrases(recommended)}
               tone="emerald"
               favorites={favorites}
               onToggleFavorite={handleToggleFavorite}
@@ -324,7 +325,7 @@ export default function PhrasesExplorer({ content, recommended }: Props) {
                   </div>
                 </div>
                 <PhraseChips
-                  phrases={phrases}
+                  phrases={toClientPhrases(phrases)}
                   favorites={favorites}
                   onToggleFavorite={handleToggleFavorite}
                 />

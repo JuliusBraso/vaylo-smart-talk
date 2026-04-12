@@ -2,7 +2,8 @@
 
 import type { ProfileDNA } from "@/lib/dna/types";
 import type { Dict } from "@/lib/i18n";
-import type { VayloPhrase } from "@/lib/vaylo/content-engine";
+import type { ClientPhrase } from "@/lib/vaylo/client-phrase";
+import { toClientPhrases } from "@/lib/vaylo/client-phrase";
 import { getContentByDNA } from "@/lib/vaylo/content-engine";
 import DashboardPhrasesCollapsible from "@/app/dashboard/_components/DashboardPhrasesCollapsible";
 
@@ -10,16 +11,16 @@ export type FamilyModuleProps = {
   dna: ProfileDNA;
   /** Server-resolved dictionary from `DashboardPage` / `DashboardShell` — never created on the client. */
   t: Dict;
-  /** State-aware top phrases from `getSmartPhrases` (server). */
-  smartPhrases?: VayloPhrase[];
+  /** State-aware top phrases (server, `ClientPhrase`). */
+  smartPhrases?: ClientPhrase[];
 };
 
 export default function FamilyModule({ dna, t, smartPhrases }: FamilyModuleProps) {
   const hasChildren = dna.inputs.family_status === "children";
   const content = getContentByDNA(dna);
-  const phrases =
+  const phrases: ClientPhrase[] =
     smartPhrases ??
-    [...content.family, ...content.bureaucracy];
+    toClientPhrases([...content.family, ...content.bureaucracy]);
 
   return (
     <div className="relative overflow-hidden rounded-3xl border border-indigo-400/40 bg-slate-950/80 p-4 text-sm text-slate-100 shadow-[0_0_36px_rgba(79,70,229,0.55)] backdrop-blur-2xl">

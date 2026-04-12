@@ -1,18 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import type { VayloPhrase } from "@/lib/vaylo/content-engine";
+import type { ClientPhrase } from "@/lib/vaylo/client-phrase";
 import type { Locale } from "@/lib/i18n";
 import { useT } from "@/lib/i18n/useT";
 
-function phraseSecondary(p: VayloPhrase, locale: Locale): string {
+function phraseSecondary(p: ClientPhrase, locale: Locale): string {
   if (locale === "sk") return p.sk;
   if (locale === "en") return p.en;
   return p.en || p.sk;
 }
 
 type Props = {
-  phrases: VayloPhrase[];
+  phrases: ClientPhrase[];
   tone?: "indigo" | "emerald" | "cyan";
   layout?: "stack" | "grid";
   favorites?: Set<string> | string[];
@@ -60,7 +60,7 @@ export default function PhraseChips({
   const favoriteSet =
     favorites instanceof Set ? favorites : new Set(favorites ?? []);
 
-  const copy = async (p: VayloPhrase) => {
+  const copy = async (p: ClientPhrase) => {
     try {
       await navigator.clipboard.writeText(p.de);
       setCopiedId(p.id);

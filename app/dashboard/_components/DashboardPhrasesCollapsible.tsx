@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import type { VayloPhrase } from "@/lib/vaylo/content-engine";
+import type { ClientPhrase } from "@/lib/vaylo/client-phrase";
 import type { Dict } from "@/lib/i18n";
 import PhraseChips from "@/app/dashboard/_components/PhraseChips";
 
@@ -48,7 +48,7 @@ const TONE_STYLES: Record<
 };
 
 export type DashboardPhrasesCollapsibleProps = {
-  phrases: VayloPhrase[];
+  phrases: ClientPhrase[];
   tone: Tone;
   t: Dict;
   defaultOpen?: boolean;
