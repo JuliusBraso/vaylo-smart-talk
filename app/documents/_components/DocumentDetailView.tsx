@@ -26,6 +26,11 @@ type Props = {
     category: string;
     suggestedActions: Array<{ label: string; href: string }>;
   };
+  documentIntelligence: {
+    sectionTitle: string;
+    sectionSubtitle: string;
+    lines: string[];
+  };
 };
 
 export default function DocumentDetailView({
@@ -33,6 +38,7 @@ export default function DocumentDetailView({
   preview,
   downloadHref,
   explanation,
+  documentIntelligence,
 }: Props) {
   const [mounted, setMounted] = useState(false);
   const { t } = useT();
@@ -101,6 +107,7 @@ export default function DocumentDetailView({
         extractionSupported={preview.supported}
         extractionMessage={preview.message}
         previewMessageKey={preview.messageKey}
+        documentIntelligence={documentIntelligence}
         explanationSummary={explanation.summary}
         explanationUrgency={explanation.urgency as "low" | "medium" | "high"}
         explanationCategory={

@@ -207,6 +207,31 @@ const en = {
     urgencyHigh: "High",
     urgencyMedium: "Medium",
     urgencyLow: "Low",
+    intelligenceSectionTitle: "System classification",
+    intelligenceSectionSubtitle:
+      "Heuristic match against the Vaylo document catalog — not a legal determination.",
+    intelligenceStatusLine: "Classification status: {status}",
+    intelligenceStatusPending: "Pending",
+    intelligenceStatusCompleted: "Classified",
+    intelligenceStatusUnknown: "Unknown type",
+    intelligenceStatusFailed: "Classification failed",
+    intelligenceMatchedType:
+      "Matched catalog type slug “{slug}” (title key {key}).",
+    intelligenceLinkedStep:
+      "Knowledge link ({link}): step {stepKey} · topic {topicKey}",
+    intelligenceNoCatalogMatch:
+      "No confident match to a known document type yet.",
+    intelligenceConfidenceLine: "Heuristic confidence: {pct}%.",
+    intelligenceMethodLine: "Method: {method}.",
+    intelligenceSenderLine: "Extracted sender: {sender}",
+    intelligenceDateLine: "Extracted document date: {date}",
+    intelligenceSummaryLine: "Extracted summary: {summary}",
+    intelligenceClassificationFailed:
+      "Automatic classification did not complete; the document was still saved.",
+    intelligenceTypeWithoutLinks:
+      "A document type id ({typeId}) is stored, but linked knowledge steps could not be loaded.",
+    intelligencePendingDetail:
+      "Catalog classification has not finished yet or is still pending.",
   },
   documentDetail: {
     untitled: "Untitled",

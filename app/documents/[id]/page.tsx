@@ -1,12 +1,13 @@
 import { notFound, redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import DocumentDetailView from "@/app/documents/_components/DocumentDetailView";
 import { createClient } from "@/lib/supabase/server";
+import { DEFAULT_LOCALE, getDict, LOCALES, type Locale } from "@/lib/i18n";
 import { explainDocumentMock } from "@/lib/vaylo/document-explainer";
 import { getDocumentTextPreview } from "@/lib/vaylo/document-text";
-import {
-  DOCUMENTS_BUCKET,
-  getDocumentById,
-} from "@/lib/vaylo/documents";
+import { DOCUMENTS_BUCKET, getDocumentById } from "@/lib/vaylo/documents";
+import { buildDocumentIntelligenceViewModel } from "@/lib/vaylo/documents/document-intelligence-explanation";
+import { getDocumentKnowledgeLinks } from "@/lib/vaylo/documents/get-document-knowledge-links";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -14,6 +15,14 @@ type Props = {
 
 export default async function DocumentDetailPage({ params }: Props) {
   const { id } = await params;
+  const cookieStore = await cookies();
+  const cookieLocale = cookieStore.get("wk_uiLang")?.value;
+  const locale: Locale =
+    cookieLocale && (LOCALES as readonly string[]).includes(cookieLocale)
+      ? (cookieLocale as Locale)
+      : DEFAULT_LOCALE;
+  const t = getDict(locale);
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -82,6 +91,29 @@ export default async function DocumentDetailPage({ params }: Props) {
 
   const downloadHref = !signErr && signed?.signedUrl ? signed.signedUrl : null;
 
+  let knowledgeLinks = null;
+  if (doc.document_type_id) {
+    try {
+      knowledgeLinks = await getDocumentKnowledgeLinks(
+        supabase,
+        doc.document_type_id,
+      );
+    } catch (e) {
+      console.error("[DOCUMENT KNOWLEDGE LINKS]", e);
+    }
+  }
+
+  const intelligenceVm = buildDocumentIntelligenceViewModel({
+    doc,
+    knowledge: knowledgeLinks,
+    t,
+  });
+  const documentIntelligence = {
+    sectionTitle: t.documents.intelligenceSectionTitle,
+    sectionSubtitle: t.documents.intelligenceSectionSubtitle,
+    lines: intelligenceVm.lines,
+  };
+
   return (
     <DocumentDetailView
       doc={{
@@ -98,6 +130,7 @@ export default async function DocumentDetailPage({ params }: Props) {
         category: mockExplanation.category,
         suggestedActions: mockExplanation.suggestedActions,
       }}
+      documentIntelligence={documentIntelligence}
     />
   );
 }

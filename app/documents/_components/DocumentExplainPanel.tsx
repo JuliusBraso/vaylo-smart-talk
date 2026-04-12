@@ -12,6 +12,11 @@ export type DocumentExplainPanelProps = {
   extractionSupported: boolean;
   extractionMessage: string;
   previewMessageKey?: "previewNotSupported" | "previewLoadFailed" | "previewLoaded";
+  documentIntelligence: {
+    sectionTitle: string;
+    sectionSubtitle: string;
+    lines: string[];
+  };
   explanationSummary: string;
   explanationUrgency: "low" | "medium" | "high";
   explanationCategory:
@@ -32,6 +37,7 @@ export default function DocumentExplainPanel({
   extractionSupported,
   extractionMessage,
   previewMessageKey,
+  documentIntelligence,
   explanationSummary,
   explanationUrgency,
   explanationCategory,
@@ -71,6 +77,39 @@ export default function DocumentExplainPanel({
           </div>
         </div>
         <span className="badgeSmall">{t.documents.previewBadge}</span>
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gap: 10,
+          padding: 12,
+          borderRadius: 12,
+          border: "1px solid rgba(120,200,255,0.22)",
+          background: "rgba(79,156,255,0.06)",
+        }}
+      >
+        <div className="cardTitle" style={{ fontSize: 16 }}>
+          {documentIntelligence.sectionTitle}
+        </div>
+        <div className="cardSub muted" style={{ fontSize: 12, lineHeight: 1.45 }}>
+          {documentIntelligence.sectionSubtitle}
+        </div>
+        <ul
+          style={{
+            margin: 0,
+            paddingLeft: 18,
+            fontSize: 13,
+            lineHeight: 1.5,
+            color: "rgba(255,255,255,0.88)",
+          }}
+        >
+          {documentIntelligence.lines.map((line, i) => (
+            <li key={i} style={{ marginBottom: 6 }}>
+              {line}
+            </li>
+          ))}
+        </ul>
       </div>
 
       <button

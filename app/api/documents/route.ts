@@ -11,6 +11,7 @@ import {
   getDocuments,
   setDocumentExtractedText,
 } from "@/lib/vaylo/documents";
+import { runDocumentIntelligencePhase1 } from "@/lib/vaylo/documents/apply-document-intelligence";
 
 export const runtime = "nodejs";
 
@@ -95,6 +96,18 @@ export async function POST(request: NextRequest) {
       } catch {
         // Upload succeeded; extraction persistence is best-effort (v3 foundation).
       }
+    }
+
+    try {
+      await runDocumentIntelligencePhase1({
+        supabase,
+        userId: user.id,
+        documentId: document.id,
+        fileName: file.name,
+        extractedText: extracted ?? null,
+      });
+    } catch {
+      // Classification must not fail the upload response.
     }
 
     const full = await getDocumentById(supabase, user.id, document.id);

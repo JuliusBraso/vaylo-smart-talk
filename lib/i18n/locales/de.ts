@@ -191,6 +191,31 @@ const de = {
     urgencyHigh: "Hoch",
     urgencyMedium: "Mittel",
     urgencyLow: "Niedrig",
+    intelligenceSectionTitle: "System-Klassifizierung",
+    intelligenceSectionSubtitle:
+      "Heuristischer Abgleich mit dem Vaylo-Dokumentenkatalog — keine Rechtsbewertung.",
+    intelligenceStatusLine: "Klassifizierungsstatus: {status}",
+    intelligenceStatusPending: "Ausstehend",
+    intelligenceStatusCompleted: "Klassifiziert",
+    intelligenceStatusUnknown: "Unbekannter Typ",
+    intelligenceStatusFailed: "Klassifizierung fehlgeschlagen",
+    intelligenceMatchedType:
+      "Passender Katalog-Typ-Slug „{slug}“ (Titel-Key {key}).",
+    intelligenceLinkedStep:
+      "Wissens-Link ({link}): Schritt {stepKey} · Thema {topicKey}",
+    intelligenceNoCatalogMatch:
+      "Noch kein sicherer Treffer mit einem bekannten Dokumententyp.",
+    intelligenceConfidenceLine: "Heuristische Zuverlässigkeit: {pct}%.",
+    intelligenceMethodLine: "Methode: {method}.",
+    intelligenceSenderLine: "Erkannter Absender: {sender}",
+    intelligenceDateLine: "Erkanntes Dokumentdatum: {date}",
+    intelligenceSummaryLine: "Extrahierte Kurzfassung: {summary}",
+    intelligenceClassificationFailed:
+      "Die automatische Klassifizierung ist fehlgeschlagen; das Dokument wurde trotzdem gespeichert.",
+    intelligenceTypeWithoutLinks:
+      "Es ist eine Dokumenttyp-ID ({typeId}) gespeichert, aber verknüpfte Wissensschritte konnten nicht geladen werden.",
+    intelligencePendingDetail:
+      "Die Katalog-Klassifizierung ist noch nicht abgeschlossen oder steht noch aus.",
   },
   documentDetail: {
     untitled: "Ohne Titel",

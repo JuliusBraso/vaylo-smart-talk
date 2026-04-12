@@ -173,6 +173,31 @@ const sk = {
     urgencyHigh: "Vysoká",
     urgencyMedium: "Stredná",
     urgencyLow: "Nízka",
+    intelligenceSectionTitle: "Klasifikácia systému",
+    intelligenceSectionSubtitle:
+      "Heuristická zhoda s katalógom dokumentov Vaylo — nie právny záver.",
+    intelligenceStatusLine: "Stav klasifikácie: {status}",
+    intelligenceStatusPending: "Čaká sa",
+    intelligenceStatusCompleted: "Zaradené",
+    intelligenceStatusUnknown: "Neznámy typ",
+    intelligenceStatusFailed: "Klasifikácia zlyhala",
+    intelligenceMatchedType:
+      "Zhoda so slugom katalógového typu „{slug}“ (kľúč názvu {key}).",
+    intelligenceLinkedStep:
+      "Prepojenie znalostí ({link}): krok {stepKey} · téma {topicKey}",
+    intelligenceNoCatalogMatch:
+      "Zatiaľ žiadna istá zhoda so známym typom dokumentu.",
+    intelligenceConfidenceLine: "Heuristická istota: {pct}%.",
+    intelligenceMethodLine: "Metóda: {method}.",
+    intelligenceSenderLine: "Rozpoznaný odosielateľ: {sender}",
+    intelligenceDateLine: "Rozpoznaný dátum dokumentu: {date}",
+    intelligenceSummaryLine: "Extrahované zhrnutie: {summary}",
+    intelligenceClassificationFailed:
+      "Automatická klasifikácia sa nedokončila; dokument sa aj tak uložil.",
+    intelligenceTypeWithoutLinks:
+      "Je uložené id typu dokumentu ({typeId}), ale prepojené kroky znalostí sa nepodarilo načítať.",
+    intelligencePendingDetail:
+      "Klasifikácia v katalógu ešte neskončila alebo stále čaká.",
   },
   documentDetail: {
     untitled: "Bez názvu",

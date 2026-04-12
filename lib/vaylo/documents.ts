@@ -1,4 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type {
+  DocumentClassificationStatus,
+  DocumentExtractedMetadataJson,
+} from "@/lib/vaylo/documents/document-intelligence-types";
 
 export const DOCUMENTS_BUCKET = "documents";
 
@@ -11,6 +15,12 @@ export type UserDocumentRow = {
   created_at: string;
   /** Plain text when extraction succeeded (PDF text layer, text/*, DOCX). */
   extracted_text?: string | null;
+  /** Knowledge catalog id when classification succeeded. */
+  document_type_id?: string | null;
+  classification_status?: DocumentClassificationStatus | null;
+  classification_confidence?: number | null;
+  classification_method?: string | null;
+  extracted_metadata?: DocumentExtractedMetadataJson | null;
 };
 
 export function sanitizeFileName(name: string): string {
@@ -33,7 +43,9 @@ export async function getDocuments(
 ): Promise<UserDocumentRow[]> {
   const { data, error } = await supabase
     .from("user_documents")
-    .select("id, user_id, file_path, file_name, mime_type, created_at")
+    .select(
+      "id, user_id, file_path, file_name, mime_type, created_at, classification_status, document_type_id",
+    )
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
   // Omit extracted_text on list to keep payloads small.
@@ -50,7 +62,7 @@ export async function getDocumentById(
   const { data, error } = await supabase
     .from("user_documents")
     .select(
-      "id, user_id, file_path, file_name, mime_type, created_at, extracted_text",
+      "id, user_id, file_path, file_name, mime_type, created_at, extracted_text, document_type_id, classification_status, classification_confidence, classification_method, extracted_metadata",
     )
     .eq("id", id)
     .eq("user_id", userId)
@@ -75,7 +87,9 @@ export async function addDocument(
       file_name: fileName,
       mime_type: mimeType,
     })
-    .select("id, user_id, file_path, file_name, mime_type, created_at")
+    .select(
+      "id, user_id, file_path, file_name, mime_type, created_at, classification_status, document_type_id",
+    )
     .single();
 
   if (error) throw error;
@@ -125,6 +139,34 @@ export async function setDocumentExtractedText(
   const { error } = await supabase
     .from("user_documents")
     .update({ extracted_text: extractedText })
+    .eq("id", documentId)
+    .eq("user_id", userId);
+
+  if (error) throw error;
+}
+
+/** Persists Phase 1 classification fields (does not touch profiles or UserState). */
+export async function updateDocumentClassification(
+  supabase: SupabaseClient,
+  userId: string,
+  documentId: string,
+  payload: {
+    document_type_id: string | null;
+    classification_status: DocumentClassificationStatus;
+    classification_confidence: number | null;
+    classification_method: string | null;
+    extracted_metadata: DocumentExtractedMetadataJson | null;
+  },
+): Promise<void> {
+  const { error } = await supabase
+    .from("user_documents")
+    .update({
+      document_type_id: payload.document_type_id,
+      classification_status: payload.classification_status,
+      classification_confidence: payload.classification_confidence,
+      classification_method: payload.classification_method,
+      extracted_metadata: payload.extracted_metadata,
+    })
     .eq("id", documentId)
     .eq("user_id", userId);
 
