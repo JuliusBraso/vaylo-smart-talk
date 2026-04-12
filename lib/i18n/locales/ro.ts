@@ -295,6 +295,8 @@ const ro = {
     criticalCvTitle: "Pregătește CV-ul german (Lebenslauf)",
     criticalCvDesc:
       "Un CV solid este necesar înainte de a aplica eficient în Germania.",
+    actionUploadDocumentCta: "Încarcă documentul",
+    actionViewGuideCta: "Vezi ghidul",
     actionMarkDone: "Gata",
     actionExplainBureaucracyGoal:
       "Obiectivul tău este „{goal}” — formularele și autoritățile se potrivesc acestei priorități.",
@@ -1033,6 +1035,40 @@ const ro = {
         text: "Urmează instrucțiunile instituției și ridică noul card de ședere după notificare.",
       },
     },
+  },
+
+  knowledge: {
+    "topics.residency.title": "Ședere și înregistrare",
+    "topics.residency.description": "Anmeldung, cod fiscal și pași de bază.",
+    "topics.health_insurance.title": "Asigurare de sănătate",
+    "topics.health_insurance.description": "Alegerea casei și dovada membrului.",
+    "steps.residency.anmeldung.title": "Înregistrare adresă (Anmeldung)",
+    "steps.residency.anmeldung.description":
+      "Înregistrează adresa la Bürgeramt — necesar pentru bancă, cod fiscal și altele.",
+    "steps.residency.receive_tax_id.title": "Primește codul fiscal (Steuer-ID)",
+    "steps.residency.receive_tax_id.description":
+      "După Anmeldung, Finanzamt trimite Steuer-ID prin poștă.",
+    "steps.residency.open_bank_account.title": "Deschide un cont bancar german",
+    "steps.residency.open_bank_account.description":
+      "Un cont local e necesar pentru salariu, chirie și multe cereri.",
+    "steps.health.choose_insurer.title": "Alege asigurarea de sănătate",
+    "steps.health.choose_insurer.description":
+      "Obligatorie (GKV) sau privată — în funcție de situație.",
+    "steps.health.submit_membership.title": "Trimite cererea de membru",
+    "steps.health.submit_membership.description":
+      "Trimite cererea semnată către casa aleasă.",
+    "steps.health.receive_membership_confirmation.title":
+      "Confirmarea membrului",
+    "steps.health.receive_membership_confirmation.description":
+      "Păstrează confirmarea casei — angajatorii și instituțiile o cer des.",
+    "document_types.meldebescheinigung.title": "Certificat de înregistrare (Meldebescheinigung)",
+    "document_types.meldebescheinigung.description":
+      "Dovada înregistrării adresei de la Bürgeramt.",
+    "document_types.tax_id_letter.title": "Scrisoare cu Steuer-ID",
+    "document_types.tax_id_letter.description": "Scrisoare de la Finanzamt cu codul fiscal.",
+    "document_types.health_membership_proof.title": "Confirmare asigurare sănătate",
+    "document_types.health_membership_proof.description":
+      "Confirmare de membru sau acoperire de la casă.",
   },
 
   premium: {

@@ -295,6 +295,8 @@ const bg = {
     criticalCvTitle: "Подготви немско CV (Lebenslauf)",
     criticalCvDesc:
       "Силно CV е необходимо преди успешни кандидатури в Германия.",
+    actionUploadDocumentCta: "Качи документ",
+    actionViewGuideCta: "Виж ръководството",
     actionMarkDone: "Готово",
     actionExplainBureaucracyGoal:
       "Фокусът ти е „{goal}“ — формулярите и властите съответстват на този приоритет.",
@@ -1033,6 +1035,40 @@ const bg = {
         text: "Следвайте указанията на институцията и след уведомление вземете новата карта за престой.",
       },
     },
+  },
+
+  knowledge: {
+    "topics.residency.title": "Престой и регистрация",
+    "topics.residency.description": "Anmeldung, данъчен номер и основни стъпки.",
+    "topics.health_insurance.title": "Здравно осигуряване",
+    "topics.health_insurance.description": "Избор на каса и доказателство за членство.",
+    "steps.residency.anmeldung.title": "Регистрация на адрес (Anmeldung)",
+    "steps.residency.anmeldung.description":
+      "Регистрирайте адреса си в Bürgeramt — необходимо за банка, данък и още.",
+    "steps.residency.receive_tax_id.title": "Получете данъчен номер (Steuer-ID)",
+    "steps.residency.receive_tax_id.description":
+      "След Anmeldung Finanzamt изпраща Steuer-ID по пощата.",
+    "steps.residency.open_bank_account.title": "Отворете немска банкова сметка",
+    "steps.residency.open_bank_account.description":
+      "Местна сметка е нужна за заплата, наем и много заявления.",
+    "steps.health.choose_insurer.title": "Изберете здравно осигуряване",
+    "steps.health.choose_insurer.description":
+      "Задължително (GKV) или частно — според ситуацията.",
+    "steps.health.submit_membership.title": "Подайте заявление за членство",
+    "steps.health.submit_membership.description":
+      "Изпратете подписаното заявление до избраната каса.",
+    "steps.health.receive_membership_confirmation.title":
+      "Потвърждение за членство",
+    "steps.health.receive_membership_confirmation.description":
+      "Пазете потвърждението от касата — работодатели и институции често го искат.",
+    "document_types.meldebescheinigung.title": "Удостоверение за адрес (Meldebescheinigung)",
+    "document_types.meldebescheinigung.description":
+      "Доказателство за регистрация от Bürgeramt.",
+    "document_types.tax_id_letter.title": "Писмо със Steuer-ID",
+    "document_types.tax_id_letter.description": "Писмо от Finanzamt с данъчния номер.",
+    "document_types.health_membership_proof.title": "Потвърждение за здравно осигуряване",
+    "document_types.health_membership_proof.description":
+      "Потвърждение за членство или покритие от касата.",
   },
 
   premium: {

@@ -294,6 +294,8 @@ const hu = {
     criticalCvTitle: "Készíts német önéletrajzot (Lebenslauf)",
     criticalCvDesc:
       "Erős önéletrajz kell a sikeres jelentkezésekhez Németországban.",
+    actionUploadDocumentCta: "Dokumentum feltöltése",
+    actionViewGuideCta: "Útmutató megtekintése",
     actionMarkDone: "Kész",
     actionExplainBureaucracyGoal:
       "A fókusz célod: „{goal}” — az űrlapok és hatóságok ehhez illeszkednek.",
@@ -1032,6 +1034,40 @@ const hu = {
         text: "Kövesse a hivatal utasításait, és értesítés után vegye át az új tartózkodási kártyát.",
       },
     },
+  },
+
+  knowledge: {
+    "topics.residency.title": "Lakcím és tartózkodás",
+    "topics.residency.description": "Anmeldung, adóazonosító és alapvető lépések.",
+    "topics.health_insurance.title": "Egészségbiztosítás",
+    "topics.health_insurance.description": "Kaszaválasztás és tagsági igazolás.",
+    "steps.residency.anmeldung.title": "Lakcím bejelentés (Anmeldung)",
+    "steps.residency.anmeldung.description":
+      "Jelentsd be a címed a Bürgeramt-nál — szükséges bankhoz, adószámhoz és sok máshoz.",
+    "steps.residency.receive_tax_id.title": "Adóazonosító (Steuer-ID) megérkezése",
+    "steps.residency.receive_tax_id.description":
+      "Az Anmeldung után a Finanzamt postán küldi a Steuer-ID-t.",
+    "steps.residency.open_bank_account.title": "Német bankszámla nyitása",
+    "steps.residency.open_bank_account.description":
+      "Helyi számla kell a fizetéshez, bérleti díjhoz és sok kérelemhez.",
+    "steps.health.choose_insurer.title": "Egészségbiztosító kiválasztása",
+    "steps.health.choose_insurer.description":
+      "Törvényes (GKV) vagy magán — a helyzetednek megfelelően.",
+    "steps.health.submit_membership.title": "Tagsági kérelem benyújtása",
+    "steps.health.submit_membership.description":
+      "Írd alá és küldd el a választott biztosítónak.",
+    "steps.health.receive_membership_confirmation.title":
+      "Tagsági visszaigazolás megérkezése",
+    "steps.health.receive_membership_confirmation.description":
+      "Őrizd meg a biztosító igazolását — munkáltatók és hivatalok gyakran kérik.",
+    "document_types.meldebescheinigung.title": "Lakcímigazolás (Meldebescheinigung)",
+    "document_types.meldebescheinigung.description":
+      "A Bürgeramt által kiállított lakcím-bejelentés igazolása.",
+    "document_types.tax_id_letter.title": "Steuer-ID levél",
+    "document_types.tax_id_letter.description": "A Finanzamt levele a Steuer-ID-val.",
+    "document_types.health_membership_proof.title": "Egészségbiztosítási igazolás",
+    "document_types.health_membership_proof.description":
+      "Tagsági vagy fedezeti igazolás a biztosítótól.",
   },
 
   premium: {

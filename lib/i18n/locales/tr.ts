@@ -295,6 +295,8 @@ const tr = {
     criticalCvTitle: "Almanca CV (Lebenslauf) hazırla",
     criticalCvDesc:
       "Güçlü bir CV, Almanya'da başvurulardan önce gereklidir.",
+    actionUploadDocumentCta: "Belge yükle",
+    actionViewGuideCta: "Rehberi görüntüle",
     actionMarkDone: "Tamam",
     actionExplainBureaucracyGoal:
       "Odak hedefin „{goal}“ — formlar ve kurumlar bu önceliğe uyar.",
@@ -1033,6 +1035,40 @@ const tr = {
         text: "Kurum talimatlarını izleyin; bildirimden sonra yeni ikamet kartınızı alın.",
       },
     },
+  },
+
+  knowledge: {
+    "topics.residency.title": "İkamet ve kayıt",
+    "topics.residency.description": "Anmeldung, vergi numarası ve temel adımlar.",
+    "topics.health_insurance.title": "Sağlık sigortası",
+    "topics.health_insurance.description": "Kasa seçimi ve üyelik kanıtı.",
+    "steps.residency.anmeldung.title": "Adres kaydı (Anmeldung)",
+    "steps.residency.anmeldung.description":
+      "Adresinizi Bürgeramt’ta kaydedin — banka, vergi ve daha fazlası için gerekli.",
+    "steps.residency.receive_tax_id.title": "Vergi numaranızı (Steuer-ID) alın",
+    "steps.residency.receive_tax_id.description":
+      "Anmeldung sonrası Finanzamt Steuer-ID’yi postayla gönderir.",
+    "steps.residency.open_bank_account.title": "Almanya’da banka hesabı açın",
+    "steps.residency.open_bank_account.description":
+      "Yerel hesap maaş, kira ve birçok başvuru için gereklidir.",
+    "steps.health.choose_insurer.title": "Sağlık sigortası seçin",
+    "steps.health.choose_insurer.description":
+      "Zorunlu (GKV) veya özel — durumunuza göre.",
+    "steps.health.submit_membership.title": "Üyelik başvurusunu gönderin",
+    "steps.health.submit_membership.description":
+      "İmzalı başvuruyu seçtiğiniz kasaya gönderin.",
+    "steps.health.receive_membership_confirmation.title":
+      "Üyelik onayı",
+    "steps.health.receive_membership_confirmation.description":
+      "Kasanın onayını saklayın — işverenler ve kurumlar sıkça ister.",
+    "document_types.meldebescheinigung.title": "Adres kayıt belgesi (Meldebescheinigung)",
+    "document_types.meldebescheinigung.description":
+      "Bürgeramt’tan adres kaydı kanıtı.",
+    "document_types.tax_id_letter.title": "Steuer-ID mektubu",
+    "document_types.tax_id_letter.description": "Finanzamt’tan vergi numaralı mektup.",
+    "document_types.health_membership_proof.title": "Sağlık sigortası onayı",
+    "document_types.health_membership_proof.description":
+      "Kasadan üyelik veya teminat onayı.",
   },
 
   premium: {

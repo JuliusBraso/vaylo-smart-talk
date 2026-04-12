@@ -295,6 +295,8 @@ const uk = {
     criticalCvTitle: "Підготуй німецьке CV (Lebenslauf)",
     criticalCvDesc:
       "Сильне CV потрібне перед ефективними відгуками в Німеччині.",
+    actionUploadDocumentCta: "Завантажити документ",
+    actionViewGuideCta: "Переглянути посібник",
     actionMarkDone: "Готово",
     actionExplainBureaucracyGoal:
       "Твій фокус — „{goal}“: форми та органи відповідають цьому пріоритету.",
@@ -1033,6 +1035,40 @@ const uk = {
         text: "Дотримуйтесь інструкцій установи та за повідомленням отримайте нову картку перебування.",
       },
     },
+  },
+
+  knowledge: {
+    "topics.residency.title": "Перебування та реєстрація",
+    "topics.residency.description": "Anmeldung, податковий номер і базові кроки.",
+    "topics.health_insurance.title": "Медичне страхування",
+    "topics.health_insurance.description": "Вибір каси та підтвердження членства.",
+    "steps.residency.anmeldung.title": "Реєстрація адреси (Anmeldung)",
+    "steps.residency.anmeldung.description":
+      "Зареєструйте адресу в Bürgeramt — потрібно для банку, податку й іншого.",
+    "steps.residency.receive_tax_id.title": "Отримайте податковий номер (Steuer-ID)",
+    "steps.residency.receive_tax_id.description":
+      "Після Anmeldung Finanzamt надсилає Steuer-ID поштою.",
+    "steps.residency.open_bank_account.title": "Відкрийте німецький банківський рахунок",
+    "steps.residency.open_bank_account.description":
+      "Локальний рахунок потрібен для зарплати, оренди та багатьох заяв.",
+    "steps.health.choose_insurer.title": "Оберіть медстрахування",
+    "steps.health.choose_insurer.description":
+      "Обов’язкове (GKV) або приватне — залежно від ситуації.",
+    "steps.health.submit_membership.title": "Подайте заяву на членство",
+    "steps.health.submit_membership.description":
+      "Надішліть підписану заяву до обраної каси.",
+    "steps.health.receive_membership_confirmation.title":
+      "Підтвердження членства",
+    "steps.health.receive_membership_confirmation.description":
+      "Зберігайте підтвердження каси — роботодавці та установи часто вимагають його.",
+    "document_types.meldebescheinigung.title": "Довідка про реєстрацію (Meldebescheinigung)",
+    "document_types.meldebescheinigung.description":
+      "Підтвердження реєстрації адреси від Bürgeramt.",
+    "document_types.tax_id_letter.title": "Лист зі Steuer-ID",
+    "document_types.tax_id_letter.description": "Лист від Finanzamt з податковим номером.",
+    "document_types.health_membership_proof.title": "Підтвердження медстрахування",
+    "document_types.health_membership_proof.description":
+      "Підтвердження членства або покриття від каси.",
   },
 
   premium: {

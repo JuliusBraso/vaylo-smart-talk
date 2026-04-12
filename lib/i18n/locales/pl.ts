@@ -294,6 +294,8 @@ const pl = {
     criticalCvTitle: "Przygotuj niemieckie CV (Lebenslauf)",
     criticalCvDesc:
       "Silne CV jest potrzebne przed skutecznymi aplikacjami w Niemczech.",
+    actionUploadDocumentCta: "Prześlij dokument",
+    actionViewGuideCta: "Zobacz przewodnik",
     actionMarkDone: "Gotowe",
     actionExplainBureaucracyGoal:
       "Twój cel to „{goal}” — formularze i urzędy pasują do tego priorytetu.",
@@ -1032,6 +1034,40 @@ const pl = {
         text: "Postępuj zgodnie z instrukcjami urzędu, a po powiadomieniu odbierz nową kartę pobytu.",
       },
     },
+  },
+
+  knowledge: {
+    "topics.residency.title": "Pobyt i meldunek",
+    "topics.residency.description": "Anmeldung, NIP podatkowy i podstawowe kroki.",
+    "topics.health_insurance.title": "Ubezpieczenie zdrowotne",
+    "topics.health_insurance.description": "Wybór kasy i potwierdzenie członkostwa.",
+    "steps.residency.anmeldung.title": "Zgłoszenie adresu (Anmeldung)",
+    "steps.residency.anmeldung.description":
+      "Zamelduj adres w Bürgeramt — potrzebne do banku, podatku i wielu spraw.",
+    "steps.residency.receive_tax_id.title": "Otrzymaj numer podatkowy (Steuer-ID)",
+    "steps.residency.receive_tax_id.description":
+      "Po Anmeldung Finanzamt wyśle Steuer-ID pocztą.",
+    "steps.residency.open_bank_account.title": "Otwórz niemieckie konto bankowe",
+    "steps.residency.open_bank_account.description":
+      "Lokalne konto jest potrzebne do wypłaty, czynszu i wielu wniosków.",
+    "steps.health.choose_insurer.title": "Wybierz ubezpieczyciela zdrowotnego",
+    "steps.health.choose_insurer.description":
+      "Ubezpieczenie ustawowe (GKV) lub prywatne — dopasowane do sytuacji.",
+    "steps.health.submit_membership.title": "Złóż wniosek członkowski",
+    "steps.health.submit_membership.description":
+      "Podpisany wniosek wyślij do wybranej kasy.",
+    "steps.health.receive_membership_confirmation.title":
+      "Otrzymanie potwierdzenia członkostwa",
+    "steps.health.receive_membership_confirmation.description":
+      "Zachowaj potwierdzenie kasy — pracodawcy i urzędy często je wymagają.",
+    "document_types.meldebescheinigung.title": "Zaświadczenie meldunkowe (Meldebescheinigung)",
+    "document_types.meldebescheinigung.description":
+      "Potwierdzenie zameldowania z Bürgeramt.",
+    "document_types.tax_id_letter.title": "Pismo ze Steuer-ID",
+    "document_types.tax_id_letter.description": "Pismo z Finanzamt z numerem podatkowym.",
+    "document_types.health_membership_proof.title": "Potwierdzenie ubezpieczenia zdrowotnego",
+    "document_types.health_membership_proof.description":
+      "Potwierdzenie członkostwa lub ochrony od kasy.",
   },
 
   premium: {

@@ -293,6 +293,8 @@ const cs = {
     criticalCvTitle: "Připrav si německý životopis (Lebenslauf)",
     criticalCvDesc:
       "Silný životopis potřebuješ před úspěšnými žádostmi v Německu.",
+    actionUploadDocumentCta: "Nahrát dokument",
+    actionViewGuideCta: "Zobrazit průvodce",
     actionMarkDone: "Hotovo",
     actionExplainBureaucracyGoal:
       "Tvůj cíl je „{goal}“ — formuláře a úřady tomu odpovídají.",
@@ -1031,6 +1033,40 @@ const cs = {
         text: "Postupujte podle pokynů úřadu a po výzvě si vyzvedněte novou kartu pobytu.",
       },
     },
+  },
+
+  knowledge: {
+    "topics.residency.title": "Pobyt a registrace",
+    "topics.residency.description": "Anmeldung, daňové ID a základní kroky v Německu.",
+    "topics.health_insurance.title": "Zdravotní pojištění",
+    "topics.health_insurance.description": "Výběr pojišťovny a potvrzení členství.",
+    "steps.residency.anmeldung.title": "Hlášení adresy (Anmeldung)",
+    "steps.residency.anmeldung.description":
+      "Nahlaste adresu na Bürgeramt — nutné pro banku, daňové ID a další kroky.",
+    "steps.residency.receive_tax_id.title": "Získejte daňové číslo (Steuer-ID)",
+    "steps.residency.receive_tax_id.description":
+      "Po Anmeldung vám Finanzamt zašle Steuer-ID poštou.",
+    "steps.residency.open_bank_account.title": "Otevřete německý bankovní účet",
+    "steps.residency.open_bank_account.description":
+      "Místní účet potřebujete na plat, nájem a mnohé žádosti.",
+    "steps.health.choose_insurer.title": "Vyberte zdravotní pojišťovnu",
+    "steps.health.choose_insurer.description":
+      "Zákonné (GKV) nebo soukromé — podle vaší situace.",
+    "steps.health.submit_membership.title": "Podání přihlášky do pojišťovny",
+    "steps.health.submit_membership.description":
+      "Podepsanou přihlášku odešlete vybrané pojišťovně.",
+    "steps.health.receive_membership_confirmation.title":
+      "Potvrzení o členství",
+    "steps.health.receive_membership_confirmation.description":
+      "Uschovejte potvrzení pojišťovny — zaměstnavatelé a úřady ho často vyžadují.",
+    "document_types.meldebescheinigung.title": "Potvrzení o hlášení pobytu (Meldebescheinigung)",
+    "document_types.meldebescheinigung.description":
+      "Důkaz registrace adresy z Bürgeramt.",
+    "document_types.tax_id_letter.title": "Dopis se Steuer-ID",
+    "document_types.tax_id_letter.description": "Dopis od Finanzamt s vaším daňovým číslem.",
+    "document_types.health_membership_proof.title": "Potvrzení zdravotního pojištění",
+    "document_types.health_membership_proof.description":
+      "Potvrzení o členství nebo krytí od pojišťovny.",
   },
 
   premium: {

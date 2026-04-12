@@ -295,6 +295,8 @@ const ru = {
     criticalCvTitle: "Подготовь немецкое резюме (Lebenslauf)",
     criticalCvDesc:
       "Сильное резюме нужно до эффективных откликов в Германии.",
+    actionUploadDocumentCta: "Загрузить документ",
+    actionViewGuideCta: "Открыть руководство",
     actionMarkDone: "Готово",
     actionExplainBureaucracyGoal:
       "Твой фокус — «{goal}»: формы и ведомства соответствуют этому приоритету.",
@@ -1033,6 +1035,40 @@ const ru = {
         text: "Следуйте указаниям ведомства и после уведомления получите новую карту ВНЖ.",
       },
     },
+  },
+
+  knowledge: {
+    "topics.residency.title": "Пребытание и регистрация",
+    "topics.residency.description": "Anmeldung, налоговый номер и базовые шаги.",
+    "topics.health_insurance.title": "Медицинская страховка",
+    "topics.health_insurance.description": "Выбор кассы и подтверждение членства.",
+    "steps.residency.anmeldung.title": "Регистрация адреса (Anmeldung)",
+    "steps.residency.anmeldung.description":
+      "Зарегистрируйте адрес в Bürgeramt — нужно для банка, налога и многого другого.",
+    "steps.residency.receive_tax_id.title": "Получите налоговый номер (Steuer-ID)",
+    "steps.residency.receive_tax_id.description":
+      "После Anmeldung Finanzamt отправит Steuer-ID по почте.",
+    "steps.residency.open_bank_account.title": "Откройте немецкий банковский счёт",
+    "steps.residency.open_bank_account.description":
+      "Локальный счёт нужен для зарплаты, аренды и многих заявлений.",
+    "steps.health.choose_insurer.title": "Выберите медстраховку",
+    "steps.health.choose_insurer.description":
+      "Обязательная (GKV) или частная — по ситуации.",
+    "steps.health.submit_membership.title": "Подайте заявление о членстве",
+    "steps.health.submit_membership.description":
+      "Отправьте подписанное заявление в выбранную кассу.",
+    "steps.health.receive_membership_confirmation.title":
+      "Подтверждение членства",
+    "steps.health.receive_membership_confirmation.description":
+      "Сохраните подтверждение кассы — работодатели и ведомства часто требуют его.",
+    "document_types.meldebescheinigung.title": "Справка о регистрации (Meldebescheinigung)",
+    "document_types.meldebescheinigung.description":
+      "Подтверждение регистрации адреса от Bürgeramt.",
+    "document_types.tax_id_letter.title": "Письмо со Steuer-ID",
+    "document_types.tax_id_letter.description": "Письмо от Finanzamt с налоговым номером.",
+    "document_types.health_membership_proof.title": "Подтверждение медстраховки",
+    "document_types.health_membership_proof.description":
+      "Подтверждение членства или покрытия от кассы.",
   },
 
   premium: {
