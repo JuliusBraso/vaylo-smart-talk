@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 import { getUser } from "@/lib/auth/get-user";
 import { DEFAULT_LOCALE, getDict, LOCALES, type Locale } from "@/lib/i18n";
+import { getSmartPhrases } from "@/lib/vaylo/get-smart-phrases";
 import { loadUserStateContext } from "@/lib/vaylo/state/load-user-state-context";
 import DashboardDataProvider from "./_components/DashboardDataProvider";
 import FreelancerModule from "./_components/modules/FreelancerModule";
@@ -39,17 +40,55 @@ export default async function DashboardPage() {
   const modules: ReactNode[] = [];
 
   const inputs = dna.inputs;
+  /** Primary next action — strongest signal for `getSmartPhrases` (Phase 2). */
+  const primaryActionId = dashboardActions[0]?.id;
 
   if (inputs.employment_type === "freelancer") {
-    modules.push(<FreelancerModule key="freelancer" dna={dna} t={t} />);
+    modules.push(
+      <FreelancerModule
+        key="freelancer"
+        dna={dna}
+        t={t}
+        smartPhrases={getSmartPhrases({
+          userState,
+          actionId: primaryActionId,
+          limit: 3,
+          categories: ["freelancer", "bureaucracy"],
+        })}
+      />,
+    );
   }
 
   if (inputs.family_status === "family" || inputs.family_status === "children") {
-    modules.push(<FamilyModule key="family" dna={dna} t={t} />);
+    modules.push(
+      <FamilyModule
+        key="family"
+        dna={dna}
+        t={t}
+        smartPhrases={getSmartPhrases({
+          userState,
+          actionId: primaryActionId,
+          limit: 3,
+          categories: ["family", "bureaucracy"],
+        })}
+      />,
+    );
   }
 
   if (inputs.employment_type === "job_seeker") {
-    modules.push(<JobSeekerModule key="job" dna={dna} t={t} />);
+    modules.push(
+      <JobSeekerModule
+        key="job"
+        dna={dna}
+        t={t}
+        smartPhrases={getSmartPhrases({
+          userState,
+          actionId: primaryActionId,
+          limit: 3,
+          categories: ["job", "bureaucracy"],
+        })}
+      />,
+    );
   }
 
   return (

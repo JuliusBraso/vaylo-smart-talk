@@ -21,12 +21,23 @@ function scoreGoalsForCategory(goals: Goal[], category: ContentCategory): number
 
 export type ContentCategory = "family" | "job" | "freelancer" | "bureaucracy";
 
+/** Optional targeting for state-aware phrase ranking (Phase 2). DB-ready extension point. */
+export type PhraseContext = {
+  /** Dashboard / system action ids this phrase supports (normalized, see `get-smart-phrases`). */
+  actionIds?: string[];
+  /** Situation flags from `UserState` / derived blockers (e.g. `missing_health_insurance`). */
+  situationFlags?: string[];
+  priority?: "low" | "medium" | "high";
+};
+
 export type VayloPhrase = {
   id: string;
   de: string;
   sk: string;
   en: string;
   tag: string;
+  /** When set, phrase participates in smart selection for matching actions / situations. */
+  context?: PhraseContext;
 };
 
 export type ContentByCategory = Record<ContentCategory, VayloPhrase[]>;
@@ -62,6 +73,14 @@ const PHRASES: ContentByCategory = {
       de: "Können Sie meinen Lebenslauf prüfen?",
       sk: "Môžete mi skontrolovať životopis?",
       en: "Could you review my CV?",
+      context: {
+        actionIds: ["cv", "critical-cv"],
+        situationFlags: [
+          "missing_cv_job_seeker",
+          "missing_cv_with_urgent_job_search",
+        ],
+        priority: "high",
+      },
     },
     {
       id: "job_application_status",
@@ -69,6 +88,11 @@ const PHRASES: ContentByCategory = {
       de: "Ich möchte den Status meiner Bewerbung nachfragen.",
       sk: "Chcem sa informovať o stave mojej žiadosti.",
       en: "I would like to ask about the status of my application.",
+      context: {
+        actionIds: ["arbeitsagentur", "critical-arbeitsagentur"],
+        situationFlags: ["missing_arbeitsagentur_registration"],
+        priority: "medium",
+      },
     },
     {
       id: "job_interview_availability",
@@ -414,6 +438,11 @@ const PHRASES: ContentByCategory = {
       de: "Ich möchte eine Steuernummer beantragen.",
       sk: "Chcem požiadať o daňové číslo (Steuernummer).",
       en: "I would like to apply for a tax number (Steuernummer).",
+      context: {
+        actionIds: ["steuer-id", "critical-steuer"],
+        situationFlags: ["missing_steuer_id"],
+        priority: "high",
+      },
     },
     {
       id: "invoice_create",
@@ -472,6 +501,11 @@ const PHRASES: ContentByCategory = {
       de: "Ich warte noch auf meine Steuer-ID.",
       sk: "Stále čakám na daňové číslo.",
       en: "I’m still waiting for my tax ID.",
+      context: {
+        actionIds: ["steuer-id", "critical-steuer"],
+        situationFlags: ["missing_steuer_id"],
+        priority: "high",
+      },
     },
     {
       id: "bur_bas_need_health_ins",
@@ -479,6 +513,11 @@ const PHRASES: ContentByCategory = {
       de: "Ich brauche eine Krankenversicherung.",
       sk: "Potrebujem zdravotné poistenie.",
       en: "I need health insurance.",
+      context: {
+        actionIds: ["health-insurance", "critical-health"],
+        situationFlags: ["missing_health_insurance"],
+        priority: "high",
+      },
     },
     {
       id: "bur_bas_need_bank",
@@ -486,6 +525,11 @@ const PHRASES: ContentByCategory = {
       de: "Ich brauche ein deutsches Bankkonto.",
       sk: "Potrebujem nemecký bankový účet.",
       en: "I need a German bank account.",
+      context: {
+        actionIds: ["bank-account", "critical-bank"],
+        situationFlags: ["missing_bank_account"],
+        priority: "high",
+      },
     },
     {
       id: "bur_bas_landlord_confirm",
@@ -591,6 +635,11 @@ const PHRASES: ContentByCategory = {
       de: "Ich möchte einen Beratungstermin bei der Krankenkasse.",
       sk: "Chcem poradenstvo v zdravotnej poisťovni.",
       en: "I’d like an advice appointment with my health insurer.",
+      context: {
+        actionIds: ["health-insurance", "critical-health"],
+        situationFlags: ["missing_health_insurance"],
+        priority: "medium",
+      },
     },
     {
       id: "bur_appt_cancel",
@@ -717,6 +766,11 @@ const PHRASES: ContentByCategory = {
       de: "Meine Steuer-ID kommt nicht an, was soll ich tun?",
       sk: "Daňové číslo neprichádza, čo mám robiť?",
       en: "My tax ID isn’t arriving, what should I do?",
+      context: {
+        actionIds: ["steuer-id", "critical-steuer"],
+        situationFlags: ["missing_steuer_id"],
+        priority: "medium",
+      },
     },
     {
       id: "bur_pr_name_wrong_letter",
@@ -842,7 +896,8 @@ const RECOMMEND_CATEGORY_ORDER: ContentCategory[] = [
   "bureaucracy",
 ];
 
-function recommendationScore(
+/** Weak DNA-based score for phrases already allowed by `getContentByDNA` (smart phrases Phase 2). */
+export function dnaPhraseAlignmentScore(
   inputs: DNAInputs,
   phrase: VayloPhrase,
   category: ContentCategory
@@ -896,7 +951,7 @@ export function getRecommendedPhrases(
       rows.push({
         phrase,
         category,
-        score: recommendationScore(inputs, phrase, category),
+        score: dnaPhraseAlignmentScore(inputs, phrase, category),
       });
     }
   }

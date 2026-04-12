@@ -2,6 +2,7 @@
 
 import type { ProfileDNA } from "@/lib/dna/types";
 import type { Dict } from "@/lib/i18n";
+import type { VayloPhrase } from "@/lib/vaylo/content-engine";
 import { getContentByDNA } from "@/lib/vaylo/content-engine";
 import DashboardPhrasesCollapsible from "@/app/dashboard/_components/DashboardPhrasesCollapsible";
 
@@ -9,12 +10,16 @@ export type JobSeekerModuleProps = {
   dna: ProfileDNA;
   /** Server-resolved dictionary from `DashboardPage` / `DashboardShell` — never created on the client. */
   t: Dict;
+  /** State-aware top phrases from `getSmartPhrases` (server); when absent, DNA-visible list is used. */
+  smartPhrases?: VayloPhrase[];
 };
 
-export default function JobSeekerModule({ dna, t }: JobSeekerModuleProps) {
+export default function JobSeekerModule({ dna, t, smartPhrases }: JobSeekerModuleProps) {
   const score = dna.scores?.job_focus ?? dna.scores?.JP ?? 0;
   const content = getContentByDNA(dna);
-  const phrases = [...content.job, ...content.bureaucracy];
+  const phrases =
+    smartPhrases ??
+    [...content.job, ...content.bureaucracy];
 
   return (
     <div className="relative overflow-hidden rounded-3xl border border-cyan-400/40 bg-slate-950/80 p-4 text-sm text-slate-100 shadow-[0_0_36px_rgba(34,211,238,0.55)] backdrop-blur-2xl">

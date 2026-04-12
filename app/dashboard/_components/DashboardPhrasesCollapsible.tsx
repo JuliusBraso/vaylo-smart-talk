@@ -111,6 +111,7 @@ export default function DashboardPhrasesCollapsible({
         className={open ? "mt-3" : undefined}
       >
         {open ? (
+          /* Phrases may be state-aware (server-ranked via UserState) or DNA-only fallback. */
           <PhraseChips phrases={phrases} tone={tone} />
         ) : null}
       </div>
