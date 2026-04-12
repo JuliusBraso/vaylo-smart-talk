@@ -6,7 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "i18n:sync": "npx -y tsx@4.19.2 scripts/sync-i18n.ts",
+    "i18n:check": "npx -y tsx@4.19.2 scripts/sync-i18n.ts --ci --scope full",
+    "i18n:check:strict": "npx -y tsx@4.19.2 scripts/sync-i18n.ts --ci-strict",
+    "i18n:baseline": "npx -y tsx@4.19.2 scripts/sync-i18n.ts --generate-baseline",
+    "i18n:baseline:all": "npx -y tsx@4.19.2 scripts/sync-i18n.ts --generate-baseline-all",
+    "i18n:post-pr-comment": "npx -y tsx@4.19.2 scripts/post-i18n-comment.ts"
   },
   "dependencies": {
     "@supabase/ssr": "0.5.2",
