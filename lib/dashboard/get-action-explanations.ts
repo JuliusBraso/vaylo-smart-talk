@@ -7,6 +7,10 @@ import {
   getGoalLabel,
 } from "@/lib/i18n/labels";
 import type { LiveSituation } from "@/lib/vaylo/live-situation";
+import {
+  isBankAccountCriticalGap,
+  isHealthInsuranceMissing,
+} from "@/lib/dashboard/reality-gates";
 
 function employmentTypeForScoring(
   liveSituation: LiveSituation,
@@ -87,7 +91,7 @@ export function getActionExplanations(
           employment: getEmploymentLabel(emp, t),
         });
       }
-      if (liveSituation.hasBankAccount === false) {
+      if (isBankAccountCriticalGap(liveSituation)) {
         addExplanation(out, t, "actionExplainBureaucracyBank");
       }
       if (inputs.family_status === "children") {
@@ -98,7 +102,7 @@ export function getActionExplanations(
       break;
     }
     case "health-insurance": {
-      if (liveSituation.hasHealthInsurance === false) {
+      if (isHealthInsuranceMissing(liveSituation)) {
         addExplanation(out, t, "actionExplainHealthMissing");
       }
       if (goals.includes("bureaucracy")) {

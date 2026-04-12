@@ -4,6 +4,10 @@ import type { ProfileDNA } from "@/lib/dna/types";
 import { getUserBehaviorSignals } from "@/lib/dashboard/get-user-behavior-signals";
 import type { LiveSituation } from "@/lib/vaylo/live-situation";
 import { getLiveSituationFromProfile } from "@/lib/vaylo/live-situation";
+import {
+  isBankAccountCriticalGap,
+  isHealthInsuranceMissing,
+} from "@/lib/dashboard/reality-gates";
 import type { UserState, UserStateProfileFlags } from "./types";
 
 /** Mirrors `employmentTypeForScoring` in `get-dashboard-actions.ts` (live overrides DNA). */
@@ -29,13 +33,13 @@ function buildDerivedBlockers(
   const emp = employmentTypeForDerived(liveSituation, dna);
   const blockers: string[] = [];
 
-  if (liveSituation.hasHealthInsurance === false) {
+  if (isHealthInsuranceMissing(liveSituation)) {
     blockers.push("missing_health_insurance");
   }
   if (emp === "freelancer" && liveSituation.hasSteuerId === false) {
     blockers.push("missing_steuer_id");
   }
-  if (liveSituation.hasBankAccount === false) {
+  if (isBankAccountCriticalGap(liveSituation)) {
     blockers.push("missing_bank_account");
   }
   if (emp === "job_seeker" && liveSituation.registeredArbeitsagentur === false) {

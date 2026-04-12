@@ -9,6 +9,10 @@ import {
 } from "@/lib/i18n/labels";
 import type { LiveSituation } from "@/lib/vaylo/live-situation";
 import { getActionExplanations } from "@/lib/dashboard/get-action-explanations";
+import {
+  isBankAccountCriticalGap,
+  isHealthInsuranceMissing,
+} from "@/lib/dashboard/reality-gates";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   type BehaviorSignals,
@@ -76,13 +80,13 @@ function collectCriticalBlockers(
   const emp = employmentTypeForScoring(liveSituation, dna);
   const out: CriticalBlockerKind[] = [];
 
-  if (liveSituation.hasHealthInsurance === false) {
+  if (isHealthInsuranceMissing(liveSituation)) {
     out.push("health");
   }
   if (emp === "freelancer" && liveSituation.hasSteuerId === false) {
     out.push("steuer");
   }
-  if (liveSituation.hasBankAccount === false) {
+  if (isBankAccountCriticalGap(liveSituation)) {
     out.push("bank");
   }
   if (emp === "job_seeker" && liveSituation.registeredArbeitsagentur === false) {
@@ -465,11 +469,11 @@ function scoreNextAction(
   }
 
   // Live situation boosts (DNA fallback path only — explicit false blockers use critical_blocker_layer).
-  if (liveSituation.hasHealthInsurance === false && actionId === "health-insurance") {
+  if (isHealthInsuranceMissing(liveSituation) && actionId === "health-insurance") {
     liveBoost += 80;
     reasons.push("CRITICAL_missing_health_insurance");
   }
-  if (liveSituation.hasBankAccount === false && actionId === "bureaucracy-priority") {
+  if (isBankAccountCriticalGap(liveSituation) && actionId === "bureaucracy-priority") {
     liveBoost += 45;
     reasons.push("CRITICAL_missing_bank_account");
   }
