@@ -136,6 +136,18 @@ export default function DashboardShell({
                     {action.title}
                   </h3>
                   <p className="mt-1 text-xs text-slate-300">{action.description}</p>
+                  {action.stepDetails ? (
+                    <div className="mt-2 rounded-lg border border-white/10 bg-slate-900/40 px-3 py-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-300/90">
+                        {action.stepDetails.title}
+                      </p>
+                      {action.stepDetails.hint ? (
+                        <p className="mt-1 text-[11px] leading-snug text-slate-400">
+                          {action.stepDetails.hint}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
                   {whyLines.length > 0 ? (
                     <ul className="mt-2 list-disc space-y-1 pl-4 text-[11px] leading-snug text-slate-500">
                       {whyLines.map((line, li) => (
@@ -164,6 +176,36 @@ export default function DashboardShell({
                     >
                       {action.cta}
                     </Link>
+                    {action.uploadDocumentHref ? (
+                      <Link
+                        href={action.uploadDocumentHref}
+                        onClick={() => {
+                          void trackActionEvent({
+                            userId,
+                            actionId: action.id,
+                            eventType: "click",
+                          });
+                        }}
+                        className="inline-flex rounded-lg border border-amber-400/40 bg-amber-500/15 px-3 py-1.5 text-xs font-semibold text-amber-100 transition hover:bg-amber-500/25"
+                      >
+                        {t.dashboard.actionUploadDocumentCta}
+                      </Link>
+                    ) : null}
+                    {action.guideHref ? (
+                      <Link
+                        href={action.guideHref}
+                        onClick={() => {
+                          void trackActionEvent({
+                            userId,
+                            actionId: action.id,
+                            eventType: "click",
+                          });
+                        }}
+                        className="inline-flex rounded-lg border border-indigo-400/40 bg-indigo-500/15 px-3 py-1.5 text-xs font-semibold text-indigo-100 transition hover:bg-indigo-500/25"
+                      >
+                        {t.dashboard.actionViewGuideCta}
+                      </Link>
+                    ) : null}
                     <MarkTaskDoneButton
                       userId={userId}
                       actionId={action.id}

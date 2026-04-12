@@ -111,6 +111,11 @@ export type Dict = {
   /** Phrase explorer + Smart Phrases (recommendedTitle, recommendedSubtitle, explorer*, …). */
   phrases: Record<string, string>;
   premium: Record<string, string>;
+  /**
+   * Optional flat map for DB `knowledge.*` message keys (short keys without `knowledge.` prefix).
+   * Used by server-side dashboard enrichment; merged from locale over German.
+   */
+  knowledge?: Record<string, string>;
 };
 
 export const DICTS: Record<Locale, Dict> = {

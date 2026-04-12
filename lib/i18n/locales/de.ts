@@ -176,6 +176,8 @@ const de = {
     previewNotSupported: "Vorschau für diesen Dateityp nicht verfügbar",
     previewLoadFailed: "Dateiinhalt konnte nicht geladen werden",
     previewEmpty: "Für dieses Dokument ist noch kein Text verfügbar",
+    fromDashboardStepHint:
+      "Du kommst von einem Dashboard-Schritt. Lade unten hoch — Klassifizierung und Nachweis-Bestätigung laufen wie gewohnt.",
     explainTitle: "Dokument erklären",
     explainSubtitle: "Mock-Vorschau — nur Keyword-Routing. Echte KI ist noch nicht verbunden.",
     previewBadge: "Vorschau",
@@ -315,6 +317,8 @@ const de = {
     criticalCvDesc:
       "Ein starker Lebenslauf ist Voraussetzung für erfolgreiche Bewerbungen in Deutschland.",
     actionMarkDone: "Erledigt",
+    actionUploadDocumentCta: "Dokument hochladen",
+    actionViewGuideCta: "Guide ansehen",
     actionExplainBureaucracyGoal:
       "Du willst „{goal}“ — ohne Behörden-Tasks kommst du bei Formularen nicht weiter.",
     actionExplainBureaucracyFreelancerSteuer:
@@ -1097,6 +1101,39 @@ const de = {
         text: "Weisungen der Behörde befolgen und die neue Aufenthaltskarte nach Aufforderung abholen.",
       },
     },
+  },
+
+  knowledge: {
+    "topics.residency.title": "Aufenthalt & Anmeldung",
+    "topics.residency.description": "Anmeldung, Steuer-ID und lokale Grundlagen.",
+    "topics.health_insurance.title": "Krankenversicherung",
+    "topics.health_insurance.description": "Kasse wählen und Mitgliedsnachweis.",
+    "steps.residency.anmeldung.title": "Adressanmeldung (Anmeldung)",
+    "steps.residency.anmeldung.description":
+      "Melde dich beim Bürgeramt an — Voraussetzung für Bank, Steuer-ID und mehr.",
+    "steps.residency.receive_tax_id.title": "Steuer-ID erhalten",
+    "steps.residency.receive_tax_id.description":
+      "Nach der Anmeldung sendet das Finanzamt deine Steuer-ID per Post.",
+    "steps.residency.open_bank_account.title": "Deutsches Bankkonto eröffnen",
+    "steps.residency.open_bank_account.description":
+      "Ein lokales Konto brauchst du für Gehalt, Miete und viele Anträge.",
+    "steps.health.choose_insurer.title": "Krankenkasse wählen",
+    "steps.health.choose_insurer.description":
+      "Gesetzlich (GKV) oder privat — je nach Situation.",
+    "steps.health.submit_membership.title": "Mitgliedsantrag einreichen",
+    "steps.health.submit_membership.description":
+      "Unterschriebenen Antrag an die gewählte Kasse senden.",
+    "steps.health.receive_membership_confirmation.title": "Bestätigung erhalten",
+    "steps.health.receive_membership_confirmation.description":
+      "Bewahre die Bestätigung der Kasse auf — Arbeitgeber und Behörden verlangen sie oft.",
+    "document_types.meldebescheinigung.title": "Meldebescheinigung",
+    "document_types.meldebescheinigung.description":
+      "Nachweis der Adressanmeldung vom Bürgeramt.",
+    "document_types.tax_id_letter.title": "Steuer-ID-Schreiben",
+    "document_types.tax_id_letter.description": "Schreiben des Finanzamts mit Steuer-ID.",
+    "document_types.health_membership_proof.title": "KV-Nachweis",
+    "document_types.health_membership_proof.description":
+      "Mitglieds- oder Versicherungsnachweis deiner Kasse.",
   },
 
   premium: {

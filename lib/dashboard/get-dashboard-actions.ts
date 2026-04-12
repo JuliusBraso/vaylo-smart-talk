@@ -18,6 +18,15 @@ import {
   type BehaviorSignals,
   getUserBehaviorSignals,
 } from "@/lib/dashboard/get-user-behavior-signals";
+import { fetchKnowledgeCatalogActionToStepIdMap } from "@/lib/dashboard/fetch-knowledge-catalog-action-to-step-id-map";
+import { mapDashboardActionToKnowledgeCatalogActionId } from "@/lib/dashboard/map-dashboard-action-to-knowledge-catalog-action-id";
+import type { DocumentTypeStepLinkType } from "@/lib/vaylo/knowledge/types";
+
+export type DashboardRelatedDocument = {
+  documentTypeId: string;
+  title: string;
+  linkType: DocumentTypeStepLinkType;
+};
 
 export type DashboardAction = {
   id: string;
@@ -32,6 +41,19 @@ export type DashboardAction = {
    * Not part of the original minimal type request, but required to keep existing dashboard behavior.
    */
   cta: string;
+  /**
+   * Bridge to `knowledge_steps.id` — resolved from `knowledge_steps.action_id` via
+   * `mapDashboardActionToKnowledgeCatalogActionId` + DB lookup (no topic/document mappings here).
+   */
+  knowledgeStepId?: string;
+  /** Server-resolved step copy for presentation (from knowledge layer keys). */
+  stepDetails?: { title: string; hint: string | null };
+  /** Document types linked to this step (`document_type_step_links` + `document_types`). */
+  relatedDocuments?: DashboardRelatedDocument[];
+  /** When set, deep-link to a guide that matches this bureaucratic step. */
+  guideHref?: string;
+  /** When the step expects uploads, link to Documents (existing upload + classification flow). */
+  uploadDocumentHref?: string;
 };
 
 type NextAction = {
@@ -736,6 +758,9 @@ export async function getDashboardActions(params: {
   behaviorSignals?: BehaviorSignals;
 }): Promise<DashboardAction[]> {
   const { supabase, userId, dna, liveSituation, t } = params;
+  const catalogActionToStepId = await fetchKnowledgeCatalogActionToStepIdMap(
+    supabase,
+  );
   const behavior =
     params.behaviorSignals ??
     (await getUserBehaviorSignals(supabase, userId));
@@ -782,6 +807,9 @@ export async function getDashboardActions(params: {
 
       const nudgesLimited = nudges.slice(0, 2);
 
+    const catalogActionId = mapDashboardActionToKnowledgeCatalogActionId(a.id);
+    const knowledgeStepId = catalogActionToStepId.get(catalogActionId);
+
     return {
       id: a.id,
       title: copy.title,
@@ -791,6 +819,7 @@ export async function getDashboardActions(params: {
       priority,
         nudges: nudgesLimited.length > 0 ? nudgesLimited : undefined,
       cta: copy.cta,
+      ...(knowledgeStepId ? { knowledgeStepId } : {}),
     };
   });
 }

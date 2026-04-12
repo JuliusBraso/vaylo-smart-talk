@@ -1,5 +1,6 @@
 import type { Dict } from "@/lib/i18n";
 import type { BehaviorSignals } from "@/lib/dashboard/get-user-behavior-signals";
+import { enrichActionsWithKnowledge } from "@/lib/dashboard/enrich-actions-with-knowledge";
 import { getDashboardActions } from "@/lib/dashboard/get-dashboard-actions";
 import type { UserState } from "@/lib/vaylo/state/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -27,7 +28,7 @@ export async function getDashboardActionsFromState(params: {
     ),
   };
 
-  return getDashboardActions({
+  const actions = await getDashboardActions({
     supabase,
     userId,
     dna,
@@ -35,4 +36,6 @@ export async function getDashboardActionsFromState(params: {
     t,
     behaviorSignals,
   });
+
+  return enrichActionsWithKnowledge({ supabase, actions, t });
 }

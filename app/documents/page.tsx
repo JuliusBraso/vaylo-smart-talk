@@ -1,12 +1,34 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useT } from "@/lib/i18n/useT";
 import type { UserDocumentRow } from "@/lib/vaylo/documents";
 import { supabase } from "@/lib/supabase";
 
 const MAX_BYTES = 52_428_800;
+
+function FromDashboardStepBanner() {
+  const searchParams = useSearchParams();
+  const { t } = useT();
+  if (!searchParams.get("step")) return null;
+  return (
+    <div
+      className="muted"
+      style={{
+        fontSize: 13,
+        marginBottom: 10,
+        padding: "10px 12px",
+        borderRadius: 10,
+        border: "1px solid rgba(52,211,153,0.35)",
+        background: "rgba(16,185,129,0.08)",
+      }}
+    >
+      {t.documents.fromDashboardStepHint}
+    </div>
+  );
+}
 
 function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
@@ -156,6 +178,10 @@ export default function DocumentsPage() {
             {t.documents.subtitle}
           </div>
         </div>
+
+        <Suspense fallback={null}>
+          <FromDashboardStepBanner />
+        </Suspense>
 
         {!authReady || loading ? (
           <div className="muted" style={{ fontSize: 13 }}>

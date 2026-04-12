@@ -192,6 +192,8 @@ const en = {
     previewNotSupported: "Preview not available for this file type",
     previewLoadFailed: "Could not load file content",
     previewEmpty: "No text is available for this document yet",
+    fromDashboardStepHint:
+      "You came here from a dashboard step. Upload below — classification and proof confirmation work as usual.",
     explainTitle: "Explain document",
     explainSubtitle: "Mock preview — keyword routing only. Real AI is not connected yet.",
     previewBadge: "Preview",
@@ -334,6 +336,8 @@ const en = {
     criticalCvDesc:
       "A strong CV is essential for successful applications in Germany.",
     actionMarkDone: "Done",
+    actionUploadDocumentCta: "Upload document",
+    actionViewGuideCta: "View guide",
     actionExplainBureaucracyGoal:
       "You chose \"{goal}\" — without authority tasks you will get stuck on forms.",
     actionExplainBureaucracyFreelancerSteuer:
@@ -1132,6 +1136,40 @@ const en = {
         text: "Follow office instructions, then collect the new residence card once notified.",
       },
     },
+  },
+
+  knowledge: {
+    "topics.residency.title": "Residence",
+    "topics.residency.description": "Registration, tax ID, and local setup.",
+    "topics.health_insurance.title": "Health insurance",
+    "topics.health_insurance.description": "Choosing a fund and membership proof.",
+    "steps.residency.anmeldung.title": "Address registration (Anmeldung)",
+    "steps.residency.anmeldung.description":
+      "Register your address at the Bürgeramt — required for bank, tax ID, and more.",
+    "steps.residency.receive_tax_id.title": "Receive your tax ID (Steuer-ID)",
+    "steps.residency.receive_tax_id.description":
+      "After Anmeldung, the Finanzamt issues your Steuer-ID by post.",
+    "steps.residency.open_bank_account.title": "Open a German bank account",
+    "steps.residency.open_bank_account.description":
+      "A local account is needed for salary, rent, and many applications.",
+    "steps.health.choose_insurer.title": "Choose health insurance",
+    "steps.health.choose_insurer.description":
+      "Pick statutory (GKV) or private coverage that fits your situation.",
+    "steps.health.submit_membership.title": "Submit your membership application",
+    "steps.health.submit_membership.description":
+      "Send the signed application to your chosen insurer.",
+    "steps.health.receive_membership_confirmation.title":
+      "Receive membership confirmation",
+    "steps.health.receive_membership_confirmation.description":
+      "Keep the insurer’s confirmation — you may need it for employers and offices.",
+    "document_types.meldebescheinigung.title": "Registration certificate (Meldebescheinigung)",
+    "document_types.meldebescheinigung.description":
+      "Proof of address registration from the Bürgeramt.",
+    "document_types.tax_id_letter.title": "Tax ID letter (Steuer-ID)",
+    "document_types.tax_id_letter.description": "Letter from Finanzamt with your Steuer-ID.",
+    "document_types.health_membership_proof.title": "Health insurance confirmation",
+    "document_types.health_membership_proof.description":
+      "Membership or coverage confirmation from your insurer.",
   },
 
   premium: {
