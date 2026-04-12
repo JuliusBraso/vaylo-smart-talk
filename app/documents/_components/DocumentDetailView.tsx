@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useT } from "@/lib/i18n/useT";
 import DocumentExplainPanel from "@/app/documents/_components/DocumentExplainPanel";
 import DocumentPreviewPanel from "@/app/documents/_components/DocumentPreviewPanel";
+import type { ProofSuggestionUiState } from "@/lib/vaylo/documents/get-proof-suggestion-ui-state";
 
 type Props = {
   doc: {
@@ -31,6 +32,8 @@ type Props = {
     sectionSubtitle: string;
     lines: string[];
   };
+  /** Proof confirmation block; null when no catalog proof links for this document. */
+  proofUi: ProofSuggestionUiState | null;
 };
 
 export default function DocumentDetailView({
@@ -39,6 +42,7 @@ export default function DocumentDetailView({
   downloadHref,
   explanation,
   documentIntelligence,
+  proofUi,
 }: Props) {
   const [mounted, setMounted] = useState(false);
   const { t } = useT();
@@ -120,6 +124,7 @@ export default function DocumentDetailView({
             | "other"
         }
         explanationActions={explanation.suggestedActions}
+        proofUi={proofUi}
       />
     </main>
   );

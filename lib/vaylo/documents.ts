@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
+  DocumentClassificationNotesJson,
   DocumentClassificationStatus,
   DocumentExtractedMetadataJson,
 } from "@/lib/vaylo/documents/document-intelligence-types";
@@ -21,6 +22,8 @@ export type UserDocumentRow = {
   classification_confidence?: number | null;
   classification_method?: string | null;
   extracted_metadata?: DocumentExtractedMetadataJson | null;
+  /** Audit / proof-suggestion hints (Phase 2). */
+  classification_notes?: DocumentClassificationNotesJson | null;
 };
 
 export function sanitizeFileName(name: string): string {
@@ -62,7 +65,7 @@ export async function getDocumentById(
   const { data, error } = await supabase
     .from("user_documents")
     .select(
-      "id, user_id, file_path, file_name, mime_type, created_at, extracted_text, document_type_id, classification_status, classification_confidence, classification_method, extracted_metadata",
+      "id, user_id, file_path, file_name, mime_type, created_at, extracted_text, document_type_id, classification_status, classification_confidence, classification_method, extracted_metadata, classification_notes",
     )
     .eq("id", id)
     .eq("user_id", userId)

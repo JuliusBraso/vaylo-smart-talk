@@ -198,6 +198,21 @@ const sk = {
       "Je uložené id typu dokumentu ({typeId}), ale prepojené kroky znalostí sa nepodarilo načítať.",
     intelligencePendingDetail:
       "Klasifikácia v katalógu ešte neskončila alebo stále čaká.",
+    proofSectionTitle: "Prepojenie na tvoj postup",
+    proofSectionSubtitle:
+      "Bez tvojho potvrdenia sa nič nezmení. Nesprávna klasifikácia je bezpečná.",
+    proofSuggestionLine:
+      "Tento dokument môže podporiť dokončenie: {step}",
+    proofConfirmButton: "Potvrdiť dokončenie",
+    proofRejectButton: "Toto nie je správne",
+    proofNotEligible:
+      "Potvrdenie sa zobrazí len pri dokončenej klasifikácii so spoľahlivosťou aspoň 65 % a keď katalóg viaže dokument ako dôkaz pre krok.",
+    proofStateConfirmed: "Toto prepojenie si už pre tento dokument potvrdil.",
+    proofStateRejected: "Tento návrh si označil ako nesprávny.",
+    proofStateProgress: "Tento krok je už v tvojom postupe označený ako hotový.",
+    proofStateProfile: "Tvoj profil to už odráža.",
+    proofWorking: "Ukladám…",
+    proofError: "Nepodarilo sa uložiť. Skús to znova.",
   },
   documentDetail: {
     untitled: "Bez názvu",

@@ -1,6 +1,8 @@
 export type LiveSituation = {
   hasSteuerId?: boolean;
   hasHealthInsurance?: boolean;
+  /** Address registration / Anmeldung (when `profiles.has_address_registration` is set). */
+  hasAddressRegistration?: boolean;
   hasBankAccount?: boolean;
   registeredArbeitsagentur?: boolean;
   hasChildren?: boolean;
@@ -25,6 +27,8 @@ export function getLiveSituationFromProfile(profile: unknown): LiveSituation {
   if (isBoolean(p.has_steuer_id)) live.hasSteuerId = p.has_steuer_id;
   if (isBoolean(p.has_health_insurance))
     live.hasHealthInsurance = p.has_health_insurance;
+  if (isBoolean(p.has_address_registration))
+    live.hasAddressRegistration = p.has_address_registration;
   if (isBoolean(p.has_bank_account)) live.hasBankAccount = p.has_bank_account;
   if (isBoolean(p.registered_arbeitsagentur))
     live.registeredArbeitsagentur = p.registered_arbeitsagentur;

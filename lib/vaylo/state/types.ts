@@ -8,6 +8,7 @@ import type { LiveSituation } from "@/lib/vaylo/live-situation";
 export type UserStateProfileFlags = {
   hasSteuerId?: boolean | null;
   hasHealthInsurance?: boolean | null;
+  hasAddressRegistration?: boolean | null;
   hasBankAccount?: boolean | null;
   registeredArbeitsagentur?: boolean | null;
   hasChildren?: boolean | null;

@@ -8,6 +8,7 @@ import { getDocumentTextPreview } from "@/lib/vaylo/document-text";
 import { DOCUMENTS_BUCKET, getDocumentById } from "@/lib/vaylo/documents";
 import { buildDocumentIntelligenceViewModel } from "@/lib/vaylo/documents/document-intelligence-explanation";
 import { getDocumentKnowledgeLinks } from "@/lib/vaylo/documents/get-document-knowledge-links";
+import { getProofSuggestionUiState } from "@/lib/vaylo/documents/get-proof-suggestion-ui-state";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -114,6 +115,19 @@ export default async function DocumentDetailPage({ params }: Props) {
     lines: intelligenceVm.lines,
   };
 
+  let proofUi = null;
+  try {
+    const proofState = await getProofSuggestionUiState({
+      supabase,
+      userId: user.id,
+      doc,
+    });
+    proofUi =
+      proofState.signals.length > 0 ? proofState : null;
+  } catch (e) {
+    console.error("[DOCUMENT PROOF UI]", e);
+  }
+
   return (
     <DocumentDetailView
       doc={{
@@ -131,6 +145,7 @@ export default async function DocumentDetailPage({ params }: Props) {
         suggestedActions: mockExplanation.suggestedActions,
       }}
       documentIntelligence={documentIntelligence}
+      proofUi={proofUi}
     />
   );
 }

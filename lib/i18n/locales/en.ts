@@ -232,6 +232,21 @@ const en = {
       "A document type id ({typeId}) is stored, but linked knowledge steps could not be loaded.",
     intelligencePendingDetail:
       "Catalog classification has not finished yet or is still pending.",
+    proofSectionTitle: "Link to your progress",
+    proofSectionSubtitle:
+      "Nothing updates until you confirm. Wrong classifications stay harmless.",
+    proofSuggestionLine:
+      "This document may support completing: {step}",
+    proofConfirmButton: "Confirm completion",
+    proofRejectButton: "This is not correct",
+    proofNotEligible:
+      "Confirmation is only offered when classification is complete with confidence ≥ 65% and the catalog links this document as proof for a step.",
+    proofStateConfirmed: "You already confirmed this link for this document.",
+    proofStateRejected: "You marked this suggestion as not correct.",
+    proofStateProgress: "This step is already marked complete in your progress.",
+    proofStateProfile: "Your profile already reflects this.",
+    proofWorking: "Saving…",
+    proofError: "Could not save. Try again.",
   },
   documentDetail: {
     untitled: "Untitled",

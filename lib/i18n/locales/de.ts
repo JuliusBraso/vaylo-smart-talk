@@ -216,6 +216,21 @@ const de = {
       "Es ist eine Dokumenttyp-ID ({typeId}) gespeichert, aber verknüpfte Wissensschritte konnten nicht geladen werden.",
     intelligencePendingDetail:
       "Die Katalog-Klassifizierung ist noch nicht abgeschlossen oder steht noch aus.",
+    proofSectionTitle: "Bezug zu deinem Fortschritt",
+    proofSectionSubtitle:
+      "Ohne deine Bestätigung ändert sich nichts. Falsche Klassifizierungen bleiben unkritisch.",
+    proofSuggestionLine:
+      "Dieses Dokument kann den Abschluss unterstützen: {step}",
+    proofConfirmButton: "Abschluss bestätigen",
+    proofRejectButton: "Das passt nicht",
+    proofNotEligible:
+      "Eine Bestätigung wird nur angeboten, wenn die Klassifizierung abgeschlossen ist, die Zuverlässigkeit mindestens 65 % beträgt und der Katalog dieses Dokument als Nachweis für einen Schritt verknüpft.",
+    proofStateConfirmed: "Du hast diese Verknüpfung für dieses Dokument bereits bestätigt.",
+    proofStateRejected: "Du hast diesen Vorschlag als nicht passend markiert.",
+    proofStateProgress: "Dieser Schritt ist in deinem Fortschritt bereits als erledigt markiert.",
+    proofStateProfile: "Dein Profil spiegelt das bereits wider.",
+    proofWorking: "Speichern…",
+    proofError: "Speichern fehlgeschlagen. Bitte erneut versuchen.",
   },
   documentDetail: {
     untitled: "Ohne Titel",

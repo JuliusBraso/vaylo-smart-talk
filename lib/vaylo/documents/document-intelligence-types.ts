@@ -27,6 +27,16 @@ export type DocumentExtractedMetadataJson = {
   summary?: string | null;
 };
 
+/** Optional audit / observability payload on `user_documents.classification_notes`. */
+export type DocumentClassificationNotesJson = {
+  proof_suggestion?: {
+    source: "knowledge_link_proof";
+    reason: string;
+    step_ids: string[];
+    updated_at?: string;
+  };
+};
+
 /** One step linked to a document type, with parent topic and link role. */
 export type DocumentKnowledgeStepLink = {
   link_type: "required" | "proof" | "supporting";

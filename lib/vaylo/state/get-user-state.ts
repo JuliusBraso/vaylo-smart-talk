@@ -56,7 +56,7 @@ function buildDerivedBlockers(
 
 /** Columns needed for live situation + scalar drift checks; keep in sync with `getLiveSituationFromProfile`. */
 const PROFILE_COLUMNS_FOR_USER_STATE =
-  "has_steuer_id, has_health_insurance, has_bank_account, registered_arbeitsagentur, has_children, children_school_age, has_cv, job_search_urgency, employment_type, family_status, language_level, goals";
+  "has_steuer_id, has_health_insurance, has_address_registration, has_bank_account, registered_arbeitsagentur, has_children, children_school_age, has_cv, job_search_urgency, employment_type, family_status, language_level, goals";
 
 function profileRowToFlags(
   profile: Record<string, unknown> | null | undefined,
@@ -67,6 +67,10 @@ function profileRowToFlags(
     hasSteuerId: typeof p.has_steuer_id === "boolean" ? p.has_steuer_id : null,
     hasHealthInsurance:
       typeof p.has_health_insurance === "boolean" ? p.has_health_insurance : null,
+    hasAddressRegistration:
+      typeof p.has_address_registration === "boolean"
+        ? p.has_address_registration
+        : null,
     hasBankAccount: typeof p.has_bank_account === "boolean" ? p.has_bank_account : null,
     registeredArbeitsagentur:
       typeof p.registered_arbeitsagentur === "boolean"

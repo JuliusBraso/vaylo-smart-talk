@@ -24,6 +24,11 @@ export type KnowledgeStep = {
   is_critical: boolean;
   /** Optional alignment with dashboard / `user_progress` action ids. */
   action_id: string | null;
+  /**
+   * When user confirms a document as proof for this step, this `profiles` boolean column may be set.
+   * Allowlisted in DB RPC `confirm_document_step_proof` — keep in sync with migrations.
+   */
+  profile_flag_key?: string | null;
   is_active: boolean;
   created_at: string;
 };
