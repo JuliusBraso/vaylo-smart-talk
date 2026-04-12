@@ -2,6 +2,12 @@ import type { ReactNode } from "react";
 import type { DashboardAction } from "@/lib/dashboard/get-dashboard-actions";
 import { getDashboardActionsFromState } from "@/lib/dashboard/get-dashboard-actions-from-state";
 import type { Dict, Locale } from "@/lib/i18n";
+import { formatMessage } from "@/lib/i18n/format";
+import {
+  getEmploymentLabel,
+  getGoalLabel,
+  getLanguageLabel,
+} from "@/lib/i18n/labels";
 import type { UserState } from "@/lib/vaylo/state/types";
 import DashboardClientWrapper from "./DashboardClientWrapper";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -28,7 +34,6 @@ export default async function DashboardDataProvider({
   children,
 }: Props) {
   const dna = userState.identity.dna;
-  const liveSituation = userState.reality.liveSituation;
 
   if (!dna) {
     throw new Error("DashboardDataProvider: missing DNA after dashboard gate");
@@ -43,13 +48,30 @@ export default async function DashboardDataProvider({
       t,
     }));
 
+  const primaryGoal = dna.priority?.[0] ?? "orientation";
+  const activePriorityLabel =
+    primaryGoal === "job"
+      ? t.dashboard.priorityJob
+      : primaryGoal === "bureaucracy"
+        ? t.dashboard.priorityBureaucracy
+        : primaryGoal === "family_admin"
+          ? t.dashboard.priorityFamilyAdmin
+          : t.dashboard.priorityOrientation;
+
+  const situationSummaryLine = formatMessage(t.dashboard.actionSituationSummary, {
+    employment: getEmploymentLabel(dna.inputs.employment_type, t),
+    goal: getGoalLabel(dna.inputs.goals[0] ?? "orientation", t),
+    language: getLanguageLabel(dna.inputs.language_level, t),
+  });
+
   return (
     <DashboardClientWrapper
       dna={dna}
       locale={locale}
-      liveSituation={liveSituation}
       userId={userId}
       actions={actions}
+      activePriorityLabel={activePriorityLabel}
+      situationSummaryLine={situationSummaryLine}
       t={t}
     >
       {children}
