@@ -2,7 +2,8 @@ import { notFound, redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import DocumentDetailView from "@/app/documents/_components/DocumentDetailView";
 import { createClient } from "@/lib/supabase/server";
-import { DEFAULT_LOCALE, getDict, LOCALES, type Locale } from "@/lib/i18n";
+import { DEFAULT_LOCALE, LOCALES, type Locale } from "@/lib/i18n";
+import { getResolvedDict } from "@/lib/i18n/resolved-dict";
 import { explainDocumentMock } from "@/lib/vaylo/document-explainer";
 import { getDocumentTextPreview } from "@/lib/vaylo/document-text";
 import { DOCUMENTS_BUCKET, getDocumentById } from "@/lib/vaylo/documents";
@@ -22,7 +23,7 @@ export default async function DocumentDetailPage({ params }: Props) {
     cookieLocale && (LOCALES as readonly string[]).includes(cookieLocale)
       ? (cookieLocale as Locale)
       : DEFAULT_LOCALE;
-  const t = getDict(locale);
+  const t = await getResolvedDict(locale);
 
   const supabase = await createClient();
   const {

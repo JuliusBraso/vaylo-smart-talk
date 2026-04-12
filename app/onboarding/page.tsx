@@ -2,7 +2,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/auth/get-user";
 import { getProfileDNA } from "@/lib/dna/get-profile-dna";
-import { DEFAULT_LOCALE, getDict, LOCALES, type Locale } from "@/lib/i18n";
+import { DEFAULT_LOCALE, LOCALES, type Locale } from "@/lib/i18n";
+import { getResolvedDict } from "@/lib/i18n/resolved-dict";
 import OnboardingFlow from "./_components/OnboardingFlow";
 
 export default async function OnboardingPage() {
@@ -12,7 +13,7 @@ export default async function OnboardingPage() {
     cookieLocale && (LOCALES as readonly string[]).includes(cookieLocale)
       ? (cookieLocale as Locale)
       : DEFAULT_LOCALE;
-  const t = getDict(locale);
+  const t = await getResolvedDict(locale);
 
   const { supabase, user } = await getUser();
 

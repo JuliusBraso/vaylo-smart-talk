@@ -102,9 +102,10 @@ export function getActionExplanations(
       break;
     }
     case "health-insurance": {
-      if (isHealthInsuranceMissing(liveSituation)) {
-        addExplanation(out, t, "actionExplainHealthMissing");
+      if (!isHealthInsuranceMissing(liveSituation)) {
+        break;
       }
+      addExplanation(out, t, "actionExplainHealthMissing");
       if (goals.includes("bureaucracy")) {
         addExplanation(out, t, "actionExplainHealthGoalBureaucracy", {
           goal: getGoalLabel(goals[0] ?? "orientation", t),

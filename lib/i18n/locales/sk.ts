@@ -158,6 +158,8 @@ const sk = {
     previewNotSupported: "Náhľad nie je dostupný pre tento typ súboru",
     previewLoadFailed: "Obsah súboru sa nepodarilo načítať",
     previewEmpty: "Pre tento dokument zatiaľ nie je dostupný žiadny text",
+    fromDashboardStepHint:
+      "Prišiel si z kroku na dashboarde. Nahraj súbor nižšie — klasifikácia a potvrdenie dôkazu prebieha ako zvyčajne.",
     explainTitle: "Vysvetliť dokument",
     explainSubtitle: "Mock náhľad — iba keyword routing. Skutočné AI zatiaľ nie je pripojené.",
     previewBadge: "Náhľad",
@@ -297,6 +299,8 @@ const sk = {
     criticalCvDesc:
       "Silný životopis potrebuješ pred efektívnymi žiadosťami v Nemecku.",
     actionMarkDone: "Hotovo",
+    actionUploadDocumentCta: "Nahrať dokument",
+    actionViewGuideCta: "Zobraziť návod",
     actionExplainBureaucracyGoal:
       "Chceš „{goal}“ — bez úradných krokov sa pri formulároch zasekneš.",
     actionExplainBureaucracyFreelancerSteuer:
@@ -1071,6 +1075,40 @@ const sk = {
         text: "Postupujte podľa pokynov úradu a po výzve si vyzdvihnite novú kartu pobytu.",
       },
     },
+  },
+
+  knowledge: {
+    "topics.residency.title": "Pobyt a registrácia",
+    "topics.residency.description": "Anmeldung, daňové ID a základné kroky v Nemecku.",
+    "topics.health_insurance.title": "Zdravotné poistenie",
+    "topics.health_insurance.description": "Výber kasy a potvrdenie členstva.",
+    "steps.residency.anmeldung.title": "Registrácia adresy (Anmeldung)",
+    "steps.residency.anmeldung.description":
+      "Prihlás sa na úrade (Bürgeramt) — potrebné pre banku, daňové ID a ďalšie kroky.",
+    "steps.residency.receive_tax_id.title": "Získaj daňové číslo (Steuer-ID)",
+    "steps.residency.receive_tax_id.description":
+      "Po Anmeldung ti Finanzamt pošle Steuer-ID poštou.",
+    "steps.residency.open_bank_account.title": "Otvor nemecký bankový účet",
+    "steps.residency.open_bank_account.description":
+      "Lokálny účet potrebuješ na plat, nájom a mnohé žiadosti.",
+    "steps.health.choose_insurer.title": "Vyber zdravotnú poisťovňu",
+    "steps.health.choose_insurer.description":
+      "Verejné (GKV) alebo súkromné krytie podľa tvojej situácie.",
+    "steps.health.submit_membership.title": "Odošli prihlášku do poisťovne",
+    "steps.health.submit_membership.description":
+      "Podpísanú prihlášku pošli vybranej poisťovni.",
+    "steps.health.receive_membership_confirmation.title":
+      "Získaj potvrdenie o členstve",
+    "steps.health.receive_membership_confirmation.description":
+      "Uschovaj potvrdenie poisťovne — zamestnávatelia a úrady ho často vyžadujú.",
+    "document_types.meldebescheinigung.title": "Potvrdenie o hlásení pobytu (Meldebescheinigung)",
+    "document_types.meldebescheinigung.description":
+      "Dôkaz registrácie adresy z Bürgeramt.",
+    "document_types.tax_id_letter.title": "List so Steuer-ID",
+    "document_types.tax_id_letter.description": "List od Finanzamt s tvojím daňovým číslom.",
+    "document_types.health_membership_proof.title": "Potvrdenie zdravotného poistenia",
+    "document_types.health_membership_proof.description":
+      "Potvrdenie o členstve alebo krytí od poisťovne.",
   },
 
   premium: {

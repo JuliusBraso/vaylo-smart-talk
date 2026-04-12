@@ -384,12 +384,14 @@ function buildDnaCandidateActions(
     });
   }
 
-  actions.push({
-    id: "health-insurance",
-    title: t.dashboard.actionHealthStatusTitle,
-    desc: t.dashboard.actionHealthStatusDesc,
-    cta: t.dashboard.actionCtaCheck,
-  });
+  if (isHealthInsuranceMissing(liveSituation)) {
+    actions.push({
+      id: "health-insurance",
+      title: t.dashboard.actionHealthStatusTitle,
+      desc: t.dashboard.actionHealthStatusDesc,
+      cta: t.dashboard.actionCtaCheck,
+    });
+  }
 
   if (goals.includes("bureaucracy")) {
     actions.unshift({

@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 import { getUser } from "@/lib/auth/get-user";
-import { DEFAULT_LOCALE, getDict, LOCALES, type Locale } from "@/lib/i18n";
+import { DEFAULT_LOCALE, LOCALES, type Locale } from "@/lib/i18n";
+import { getResolvedDict } from "@/lib/i18n/resolved-dict";
 import { toClientPhrases } from "@/lib/vaylo/client-phrase";
 import { getSmartPhrases } from "@/lib/vaylo/get-smart-phrases";
 import { loadUserStateContext } from "@/lib/vaylo/state/load-user-state-context";
@@ -25,7 +26,7 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const t = getDict(locale);
+  const t = await getResolvedDict(locale);
   const { userState, dashboardActions } = await loadUserStateContext({
     supabase,
     userId: user.id,

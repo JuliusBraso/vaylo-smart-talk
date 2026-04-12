@@ -1,3 +1,5 @@
+import { deepMergeDict } from "./merge-dict";
+import { warnMissingKeysOnce } from "./missing-keys";
 import bg from "./locales/bg";
 import cs from "./locales/cs";
 import de from "./locales/de";
@@ -113,10 +115,13 @@ export type Dict = {
   premium: Record<string, string>;
   /**
    * Optional flat map for DB `knowledge.*` message keys (short keys without `knowledge.` prefix).
-   * Used by server-side dashboard enrichment; merged from locale over German.
+   * Used by server-side dashboard enrichment; merged from locale over English (`I18N_BASE_LOCALE`).
    */
   knowledge?: Record<string, string>;
 };
+
+/** Canonical copy lives in `en`; all other locales are deep-merged over this. */
+export const I18N_BASE_LOCALE: Locale = "en";
 
 export const DICTS: Record<Locale, Dict> = {
   de,
@@ -132,32 +137,35 @@ export const DICTS: Record<Locale, Dict> = {
   ru,
 };
 
+/** Default UI locale when cookie/param is absent (routing / provider only — not the i18n merge base). */
 export const DEFAULT_LOCALE: Locale = "de";
 
-function deepMerge<T extends Record<string, unknown>>(base: T, patch: T): T {
-  const out = { ...base };
-  for (const k of Object.keys(patch) as (keyof T)[]) {
-    const bv = base[k];
-    const pv = patch[k];
-    if (
-      bv !== null &&
-      typeof bv === "object" &&
-      !Array.isArray(bv) &&
-      pv !== null &&
-      typeof pv === "object" &&
-      !Array.isArray(pv)
-    ) {
-      out[k] = deepMerge(bv as Record<string, unknown>, pv as Record<string, unknown>) as T[keyof T];
-    } else if (pv !== undefined) {
-      out[k] = pv;
-    }
+/**
+ * Returns a complete dictionary for `locale`: {@link I18N_BASE_LOCALE} (English) plus
+ * deep overrides from the locale file. Missing keys never surface as another language —
+ * they inherit English. Shallow spread is not used because nested sections (`dashboard`, …)
+ * would drop sibling keys when a locale only overrides part of a subtree.
+ */
+export function getDict(locale: Locale): Dict {
+  const base = DICTS[I18N_BASE_LOCALE];
+  if (locale === I18N_BASE_LOCALE) {
+    return base;
   }
-  return out;
+  const patch = DICTS[locale];
+  if (patch === undefined) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn(
+        `[i18n] Unknown locale "${String(locale)}", falling back to English`,
+      );
+    }
+    return base;
+  }
+  warnMissingKeysOnce(locale, base, patch);
+  return deepMergeDict(
+    base as unknown as Record<string, unknown>,
+    patch as unknown as Record<string, unknown>,
+  ) as Dict;
 }
 
-/** Merges selected locale over German so missing nested keys fall back to `de`. */
-export function getDict(locale: Locale): Dict {
-  const sel = DICTS[locale] ?? DICTS[DEFAULT_LOCALE];
-  if (locale === DEFAULT_LOCALE) return sel;
-  return deepMerge(DICTS[DEFAULT_LOCALE] as unknown as Record<string, unknown>, sel as unknown as Record<string, unknown>) as Dict;
-}
+/** For scripts / CI: list dot-paths defined in English but absent from a raw locale file. */
+export { getMissingTranslationKeyPaths } from "./missing-keys";

@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# optional persisted auto-translations (see I18N_PERSIST_TRANSLATIONS)
+/lib/i18n/generated/*.json

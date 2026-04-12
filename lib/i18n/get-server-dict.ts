@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
-import { DEFAULT_LOCALE, getDict, LOCALES, type Dict, type Locale } from "./index";
+import { DEFAULT_LOCALE, LOCALES, type Dict, type Locale } from "./index";
+import { getResolvedDict } from "./resolved-dict";
 
 export async function getServerLocaleAndDict(): Promise<{ locale: Locale; t: Dict }> {
   const cookieStore = await cookies();
@@ -8,5 +9,6 @@ export async function getServerLocaleAndDict(): Promise<{ locale: Locale; t: Dic
     cookieLocale && (LOCALES as readonly string[]).includes(cookieLocale)
       ? (cookieLocale as Locale)
       : DEFAULT_LOCALE;
-  return { locale, t: getDict(locale) };
+  const t = await getResolvedDict(locale);
+  return { locale, t };
 }
