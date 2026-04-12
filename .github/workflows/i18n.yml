@@ -1,0 +1,51 @@
+name: i18n
+
+on:
+  pull_request:
+    paths:
+      - "lib/i18n/**"
+      - "scripts/sync-i18n.ts"
+      - "scripts/post-i18n-comment.ts"
+      - "i18n-baseline.json"
+      - ".github/workflows/i18n.yml"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run i18n check
+        id: i18n
+        continue-on-error: true
+        run: |
+          npx -y tsx@4.19.2 scripts/sync-i18n.ts --ci-strict --json > i18n-result.json
+
+      - name: Post PR comment
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npx -y tsx@4.19.2 scripts/post-i18n-comment.ts i18n-result.json
+
+      - name: Fail if i18n failed
+        run: |
+          node -e "
+            const fs = require('fs');
+            const r = JSON.parse(fs.readFileSync('i18n-result.json', 'utf8'));
+            const e = Number(r.exitIntent);
+            if (!Number.isFinite(e) || e !== 0) process.exit(Number.isFinite(e) ? e : 1);
+          "
