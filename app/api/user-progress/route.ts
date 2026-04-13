@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { markActionCompleted } from "@/lib/vaylo/user-progress";
+import { recordStepStateAfterActionCompleted } from "@/lib/vaylo/steps/record-action-completion-step-state";
 
 /**
  * POST body: { actionId: string }
@@ -42,6 +43,16 @@ export async function POST(req: NextRequest) {
       error,
     });
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  try {
+    await recordStepStateAfterActionCompleted({
+      supabase,
+      userId,
+      dashboardActionId: actionId,
+    });
+  } catch {
+    // Non-fatal: `user_progress` is canonical for dashboard exclusion; step-state is additive.
   }
 
   if (process.env.NEXT_PUBLIC_VAYLO_DEBUG === "1") {

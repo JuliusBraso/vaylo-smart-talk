@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { applyDocumentStepProofDecision } from "@/lib/vaylo/documents/confirm-step-proof";
-import { getUserStepState } from "@/lib/vaylo/steps/get-user-step-state";
-import { syncUserStepState } from "@/lib/vaylo/steps/sync-user-step-state";
+import { writeStepTransition } from "@/lib/vaylo/steps/write-step-transition";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -66,12 +65,31 @@ export async function POST(req: NextRequest, context: Ctx) {
     );
   }
 
-  // Best-effort: ensure proof-confirmed steps become durable `verified` state.
-  // Does not change RPC contract; relies on resolver + service-role sync.
+  // Durable step-state reflection (audit/progress/profile still canonical in RPC).
   if (decision === "confirm") {
     try {
-      const stepState = await getUserStepState({ supabase, userId: user.id });
-      void syncUserStepState({ userId: user.id, resolvedSteps: stepState.steps });
+      const { data: stepRow } = await supabase
+        .from("knowledge_steps")
+        .select("action_id")
+        .eq("id", stepId)
+        .maybeSingle();
+      const catalogActionId =
+        stepRow && typeof (stepRow as { action_id?: unknown }).action_id === "string"
+          ? (stepRow as { action_id: string }).action_id
+          : null;
+
+      void writeStepTransition({
+        supabase,
+        userId: user.id,
+        stepId,
+        nextStatus: "verified",
+        source: "proof",
+        actionId: catalogActionId,
+        documentId,
+        notes: { bridge: "proof_confirm_rpc" },
+      }).catch(() => {
+        /* non-fatal */
+      });
     } catch {
       // Non-fatal: proof RPC already applied canonical writes (audit/progress/profile).
     }
