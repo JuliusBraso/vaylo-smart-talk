@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { applyDocumentStepProofDecision } from "@/lib/vaylo/documents/confirm-step-proof";
+import { getUserStepState } from "@/lib/vaylo/steps/get-user-step-state";
+import { syncUserStepState } from "@/lib/vaylo/steps/sync-user-step-state";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -62,6 +64,17 @@ export async function POST(req: NextRequest, context: Ctx) {
       { error: result.error ?? "failed" },
       { status: statusForError(result.error) },
     );
+  }
+
+  // Best-effort: ensure proof-confirmed steps become durable `verified` state.
+  // Does not change RPC contract; relies on resolver + service-role sync.
+  if (decision === "confirm") {
+    try {
+      const stepState = await getUserStepState({ supabase, userId: user.id });
+      void syncUserStepState({ userId: user.id, resolvedSteps: stepState.steps });
+    } catch {
+      // Non-fatal: proof RPC already applied canonical writes (audit/progress/profile).
+    }
   }
 
   return NextResponse.json({ ok: true });

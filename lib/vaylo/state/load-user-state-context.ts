@@ -4,6 +4,8 @@ import { getDashboardActionsFromState } from "@/lib/dashboard/get-dashboard-acti
 import type { Dict } from "@/lib/i18n";
 import { getUserState } from "./get-user-state";
 import type { UserState } from "./types";
+import { getUserStepState } from "@/lib/vaylo/steps/get-user-step-state";
+import type { GetUserStepStateResult } from "@/lib/vaylo/steps/types";
 
 /**
  * Shared server bundle: one `getUserState` + dashboard actions from that state.
@@ -13,6 +15,11 @@ export type LoadedUserStateContext = {
   userState: UserState;
   /** Empty when `userState.identity.dna` is null (caller should redirect to onboarding). */
   dashboardActions: DashboardAction[];
+  /**
+   * Resolved per-step state (foundation for future step-driven dashboard/workflows).
+   * Always computed from the knowledge graph + progress + proof + persisted rows.
+   */
+  stepState: GetUserStepStateResult;
 };
 
 export async function loadUserStateContext(params: {
@@ -22,6 +29,8 @@ export async function loadUserStateContext(params: {
 }): Promise<LoadedUserStateContext> {
   const { supabase, userId, t } = params;
   const userState = await getUserState({ supabase, userId });
+
+  const stepState = await getUserStepState({ supabase, userId, userState });
 
   const dashboardActions =
     userState.identity.dna != null
@@ -33,5 +42,5 @@ export async function loadUserStateContext(params: {
         })
       : [];
 
-  return { userState, dashboardActions };
+  return { userState, dashboardActions, stepState };
 }
