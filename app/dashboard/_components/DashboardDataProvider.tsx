@@ -9,6 +9,7 @@ import {
   getLanguageLabel,
 } from "@/lib/i18n/labels";
 import type { UserState } from "@/lib/vaylo/state/types";
+import type { GetUserStepStateResult } from "@/lib/vaylo/steps/types";
 import DashboardClientWrapper from "./DashboardClientWrapper";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -18,6 +19,8 @@ type Props = {
   userState: UserState;
   /** From `loadUserStateContext` to avoid resolving actions twice. */
   dashboardActions?: DashboardAction[];
+  /** When refetching actions inside the provider, keeps step-state alignment. */
+  stepState?: GetUserStepStateResult;
   locale: Locale;
   /** Server-resolved dictionary (see `getDict(locale)` on the dashboard page). */
   t: Dict;
@@ -29,6 +32,7 @@ export default async function DashboardDataProvider({
   userId,
   userState,
   dashboardActions: dashboardActionsProp,
+  stepState,
   locale,
   t,
   children,
@@ -46,6 +50,7 @@ export default async function DashboardDataProvider({
       userId,
       userState,
       t,
+      stepState,
     }));
 
   const primaryGoal = dna.priority?.[0] ?? "orientation";

@@ -21,6 +21,7 @@ import {
 import { fetchKnowledgeCatalogActionToStepIdMap } from "@/lib/dashboard/fetch-knowledge-catalog-action-to-step-id-map";
 import { mapDashboardActionToKnowledgeCatalogActionId } from "@/lib/dashboard/map-dashboard-action-to-knowledge-catalog-action-id";
 import type { DocumentTypeStepLinkType } from "@/lib/vaylo/knowledge/types";
+import type { UserStepSource, UserStepStatus } from "@/lib/vaylo/steps/types";
 
 export type DashboardRelatedDocument = {
   documentTypeId: string;
@@ -54,6 +55,16 @@ export type DashboardAction = {
   guideHref?: string;
   /** When the step expects uploads, link to Documents (existing upload + classification flow). */
   uploadDocumentHref?: string;
+  /** Process state for mapped knowledge steps (server-resolved; optional). */
+  stepStatus?: UserStepStatus;
+  stepSource?: UserStepSource;
+  /** True when resolver marks the step blocked by DAG prerequisites. */
+  isBlockedByStepState?: boolean;
+  blockedByStepIds?: string[];
+  /** Server-resolved i18n label for a compact process badge. */
+  stepProcessBadge?: string;
+  /** Secondary line (e.g. blocked hint or proof-backed note). */
+  stepProcessSubtle?: string;
 };
 
 type NextAction = {

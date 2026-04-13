@@ -336,6 +336,13 @@ const en = {
     criticalCvDesc:
       "A strong CV is essential for successful applications in Germany.",
     actionMarkDone: "Done",
+    stepProcessVerified: "Verified",
+    stepProcessCompleted: "Completed",
+    stepProcessEligible: "Ready",
+    stepProcessBlocked: "Waiting",
+    stepProcessInProgress: "In progress",
+    stepProcessBlockedHint: "Complete earlier steps first",
+    stepProcessProofBacked: "Confirmed with document",
     actionUploadDocumentCta: "Upload document",
     actionViewGuideCta: "View guide",
     actionExplainBureaucracyGoal:

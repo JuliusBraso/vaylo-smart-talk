@@ -135,6 +135,24 @@ export default function DashboardShell({
                   <h3 className="mt-2 text-sm font-semibold text-slate-100">
                     {action.title}
                   </h3>
+                  {action.stepProcessBadge ? (
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <span
+                        className={
+                          action.stepSource === "proof" && action.stepStatus === "verified"
+                            ? "rounded-full border border-emerald-500/35 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-200/95"
+                            : "rounded-full border border-white/20 bg-white/5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300"
+                        }
+                      >
+                        {action.stepProcessBadge}
+                      </span>
+                    </div>
+                  ) : null}
+                  {action.stepProcessSubtle ? (
+                    <p className="mt-1 text-[10px] leading-snug text-slate-500">
+                      {action.stepProcessSubtle}
+                    </p>
+                  ) : null}
                   <p className="mt-1 text-xs text-slate-300">{action.description}</p>
                   {action.stepDetails ? (
                     <div className="mt-2 rounded-lg border border-white/10 bg-slate-900/40 px-3 py-2">
