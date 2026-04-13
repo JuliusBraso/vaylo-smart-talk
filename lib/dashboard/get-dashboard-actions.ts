@@ -21,9 +21,9 @@ import {
 import { fetchKnowledgeCatalogActionToStepIdMap } from "@/lib/dashboard/fetch-knowledge-catalog-action-to-step-id-map";
 import { mapDashboardActionToKnowledgeCatalogActionId } from "@/lib/dashboard/map-dashboard-action-to-knowledge-catalog-action-id";
 import {
-  promoteWideNonCriticalFillers,
+  selectStepFirstNonCriticalFromWide,
   WIDE_DASHBOARD_CANDIDATE_POOL_MAX,
-} from "@/lib/dashboard/promote-eligible-dashboard-fillers";
+} from "@/lib/dashboard/step-first-non-critical-selection";
 import type { DocumentTypeStepLinkType } from "@/lib/vaylo/knowledge/types";
 import type {
   GetUserStepStateResult,
@@ -73,6 +73,8 @@ export type DashboardAction = {
   stepProcessBadge?: string;
   /** Secondary line (e.g. blocked hint or proof-backed note). */
   stepProcessSubtle?: string;
+  /** Light label when this card is a process-recommended next step (mapped + eligible). */
+  recommendedNextHint?: string;
 };
 
 type NextAction = {
@@ -694,14 +696,15 @@ function pickWideNonCriticalWithOptionalPromotion(
     wideCap,
   );
   if (opts?.stepState) {
-    const { result, promoted, details } = promoteWideNonCriticalFillers(
-      wide,
-      need,
-      opts.catalogActionToStepId,
-      opts.stepState,
-    );
-    if (process.env.NODE_ENV === "development" && promoted && details) {
-      console.info("[dashboard] eligible-step promotion:", details);
+    const { result, changedFromScorerBaseline, details } =
+      selectStepFirstNonCriticalFromWide(
+        wide,
+        need,
+        opts.catalogActionToStepId,
+        opts.stepState,
+      );
+    if (process.env.NODE_ENV === "development" && changedFromScorerBaseline && details) {
+      console.info("[dashboard] step-first selection:", details);
     }
     return result;
   }
@@ -849,7 +852,7 @@ export async function getDashboardActions(params: {
   t: Dict;
   /** When set (e.g. from `getUserState`), avoids a second progress/events query. */
   behaviorSignals?: BehaviorSignals;
-  /** When set with catalog mapping, enables Phase 3.4 eligible-step promotion before Top 3. */
+  /** When set with catalog mapping, enables step-first non-critical selection before Top 3. */
   stepState?: GetUserStepStateResult;
 }): Promise<DashboardAction[]> {
   const { supabase, userId, dna, liveSituation, t } = params;
@@ -905,6 +908,14 @@ export async function getDashboardActions(params: {
 
     const catalogActionId = mapDashboardActionToKnowledgeCatalogActionId(a.id);
     const knowledgeStepId = catalogActionToStepId.get(catalogActionId);
+    const stepResolved =
+      knowledgeStepId && params.stepState
+        ? params.stepState.steps[knowledgeStepId]
+        : undefined;
+    const showRecommendedNext =
+      !!stepResolved &&
+      stepResolved.status === "eligible" &&
+      !a.id.startsWith("critical-");
 
     return {
       id: a.id,
@@ -916,6 +927,7 @@ export async function getDashboardActions(params: {
         nudges: nudgesLimited.length > 0 ? nudgesLimited : undefined,
       cta: copy.cta,
       ...(knowledgeStepId ? { knowledgeStepId } : {}),
+      ...(showRecommendedNext ? { recommendedNextHint: t.dashboard.stepRecommendedNext } : {}),
     };
   });
 }

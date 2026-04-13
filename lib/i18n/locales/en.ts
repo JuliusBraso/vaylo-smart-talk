@@ -343,6 +343,7 @@ const en = {
     stepProcessInProgress: "In progress",
     stepProcessBlockedHint: "Complete earlier steps first",
     stepProcessProofBacked: "Confirmed with document",
+    stepRecommendedNext: "Recommended next step",
     actionUploadDocumentCta: "Upload document",
     actionViewGuideCta: "View guide",
     actionExplainBureaucracyGoal:

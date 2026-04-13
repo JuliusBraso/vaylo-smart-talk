@@ -153,6 +153,11 @@ export default function DashboardShell({
                       {action.stepProcessSubtle}
                     </p>
                   ) : null}
+                  {action.recommendedNextHint ? (
+                    <p className="mt-1 text-[10px] font-medium text-emerald-400/90">
+                      {action.recommendedNextHint}
+                    </p>
+                  ) : null}
                   <p className="mt-1 text-xs text-slate-300">{action.description}</p>
                   {action.stepDetails ? (
                     <div className="mt-2 rounded-lg border border-white/10 bg-slate-900/40 px-3 py-2">

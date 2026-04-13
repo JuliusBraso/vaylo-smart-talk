@@ -8,8 +8,9 @@ import type { GetUserStepStateResult } from "@/lib/vaylo/steps/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
- * Bridge `UserState` into the existing dashboard engine without rewriting scoring/priority logic.
- * When `stepState` is provided, mapped actions get process-state metadata and a safe reorder of non-critical cards.
+ * Bridge `UserState` into the existing dashboard engine.
+ * When `stepState` is provided, non-critical Top 3 selection is step-first (see `step-first-non-critical-selection`),
+ * then mapped actions receive process-state metadata for display (badges/hints).
  */
 export async function getDashboardActionsFromState(params: {
   supabase: SupabaseClient;
