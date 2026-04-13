@@ -39,6 +39,7 @@ export async function getDashboardActionsFromState(params: {
     liveSituation: userState.reality.liveSituation,
     t,
     behaviorSignals,
+    stepState,
   });
 
   const enriched = await enrichActionsWithKnowledge({ supabase, actions, t });

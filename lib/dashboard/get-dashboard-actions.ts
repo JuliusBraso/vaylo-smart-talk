@@ -20,8 +20,16 @@ import {
 } from "@/lib/dashboard/get-user-behavior-signals";
 import { fetchKnowledgeCatalogActionToStepIdMap } from "@/lib/dashboard/fetch-knowledge-catalog-action-to-step-id-map";
 import { mapDashboardActionToKnowledgeCatalogActionId } from "@/lib/dashboard/map-dashboard-action-to-knowledge-catalog-action-id";
+import {
+  promoteWideNonCriticalFillers,
+  WIDE_DASHBOARD_CANDIDATE_POOL_MAX,
+} from "@/lib/dashboard/promote-eligible-dashboard-fillers";
 import type { DocumentTypeStepLinkType } from "@/lib/vaylo/knowledge/types";
-import type { UserStepSource, UserStepStatus } from "@/lib/vaylo/steps/types";
+import type {
+  GetUserStepStateResult,
+  UserStepSource,
+  UserStepStatus,
+} from "@/lib/vaylo/steps/types";
 
 export type DashboardRelatedDocument = {
   documentTypeId: string;
@@ -601,7 +609,7 @@ function dedupeById(actions: NextAction[]): NextAction[] {
   return out;
 }
 
-function pickOrderedActions(
+function pickOrderedActionsUpTo(
   actions: NextAction[],
   dna: ProfileDNA,
   liveSituation: LiveSituation,
@@ -610,7 +618,8 @@ function pickOrderedActions(
   behavior: {
     repeatedClickActionIds: Set<string>;
     timeDecayBoost: Map<string, number>;
-  }
+  },
+  maxSlots: number,
 ): NextAction[] {
   // Greedy, position-aware ordering:
   // - card 0 always uses primaryRoute
@@ -618,7 +627,7 @@ function pickOrderedActions(
   const remaining = [...actions];
   const result: NextAction[] = [];
 
-  for (let idx = 0; idx < 3 && remaining.length > 0; idx++) {
+  for (let idx = 0; idx < maxSlots && remaining.length > 0; idx++) {
     const best = pickBestForPosition(
       remaining,
       dna,
@@ -634,6 +643,69 @@ function pickOrderedActions(
   }
 
   return result;
+}
+
+function pickOrderedActions(
+  actions: NextAction[],
+  dna: ProfileDNA,
+  liveSituation: LiveSituation,
+  primaryRoute: string,
+  secondaryRoute: string,
+  behavior: {
+    repeatedClickActionIds: Set<string>;
+    timeDecayBoost: Map<string, number>;
+  }
+): NextAction[] {
+  return pickOrderedActionsUpTo(
+    actions,
+    dna,
+    liveSituation,
+    primaryRoute,
+    secondaryRoute,
+    behavior,
+    3,
+  );
+}
+
+function pickWideNonCriticalWithOptionalPromotion(
+  deduped: NextAction[],
+  need: number,
+  dna: ProfileDNA,
+  liveSituation: LiveSituation,
+  primaryRoute: string,
+  secondaryRoute: string,
+  behavior: {
+    repeatedClickActionIds: Set<string>;
+    timeDecayBoost: Map<string, number>;
+  },
+  opts?: {
+    catalogActionToStepId: Map<string, string>;
+    stepState?: GetUserStepStateResult;
+  },
+): NextAction[] {
+  const wideCap = Math.min(WIDE_DASHBOARD_CANDIDATE_POOL_MAX, deduped.length);
+  const wide = pickOrderedActionsUpTo(
+    deduped,
+    dna,
+    liveSituation,
+    primaryRoute,
+    secondaryRoute,
+    behavior,
+    wideCap,
+  );
+  if (opts?.stepState) {
+    const { result, promoted, details } = promoteWideNonCriticalFillers(
+      wide,
+      need,
+      opts.catalogActionToStepId,
+      opts.stepState,
+    );
+    if (process.env.NODE_ENV === "development" && promoted && details) {
+      console.info("[dashboard] eligible-step promotion:", details);
+    }
+    return result;
+  }
+  return wide.slice(0, need);
 }
 
 function criticalBlockerToAction(
@@ -696,7 +768,11 @@ function buildNextActions(
   behavior: {
     repeatedClickActionIds: Set<string>;
     timeDecayBoost: Map<string, number>;
-  }
+  },
+  opts?: {
+    catalogActionToStepId: Map<string, string>;
+    stepState?: GetUserStepStateResult;
+  },
 ): NextAction[] {
   const rawBlockers = collectCriticalBlockers(liveSituation, dna);
   const blockers = filterCompletedCriticalBlockers(rawBlockers, completedIds);
@@ -718,14 +794,16 @@ function buildNextActions(
     const filtered = dnaPool.filter((a) => !dnaActionConflictsWithBlockers(a.id, activeBlockers));
     const deduped = dedupeById(filtered);
     const need = 3 - criticalCards.length;
-    const fillerWithBoost = pickOrderedActions(
+    const fillerWithBoost = pickWideNonCriticalWithOptionalPromotion(
       deduped,
+      need,
       dna,
       liveSituation,
       primaryRoute,
       secondaryRoute,
-      behavior
-    ).slice(0, need);
+      behavior,
+      opts,
+    );
 
     const combined = [...criticalCards, ...fillerWithBoost];
     return combined.map((a, idx) => {
@@ -745,14 +823,16 @@ function buildNextActions(
     completedIds
   );
   const deduped = dedupeById(dnaPool);
-  const orderedWithBoost = pickOrderedActions(
+  const orderedWithBoost = pickWideNonCriticalWithOptionalPromotion(
     deduped,
+    3,
     dna,
     liveSituation,
     primaryRoute,
     secondaryRoute,
-    behavior
-  ).slice(0, 3);
+    behavior,
+    opts,
+  );
 
   return orderedWithBoost.map((a, idx) => {
     const href = idx === 0 ? primaryRoute : getActionRoute(a.id, dna, secondaryRoute);
@@ -769,6 +849,8 @@ export async function getDashboardActions(params: {
   t: Dict;
   /** When set (e.g. from `getUserState`), avoids a second progress/events query. */
   behaviorSignals?: BehaviorSignals;
+  /** When set with catalog mapping, enables Phase 3.4 eligible-step promotion before Top 3. */
+  stepState?: GetUserStepStateResult;
 }): Promise<DashboardAction[]> {
   const { supabase, userId, dna, liveSituation, t } = params;
   const catalogActionToStepId = await fetchKnowledgeCatalogActionToStepIdMap(
@@ -788,7 +870,8 @@ export async function getDashboardActions(params: {
     t,
     primaryRoute,
     secondaryRoute,
-    behavior
+    behavior,
+    { catalogActionToStepId, stepState: params.stepState },
   );
 
   // Keep deterministic ordering from the existing picker/critical layer.
