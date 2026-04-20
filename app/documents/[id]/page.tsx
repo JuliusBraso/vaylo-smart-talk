@@ -101,20 +101,31 @@ export default async function DocumentDetailPage({ params }: Props) {
         doc.document_type_id,
       );
     } catch (e) {
-      console.error("[DOCUMENT KNOWLEDGE LINKS]", e);
+      console.error("[documents detail intelligence ERROR]", e);
     }
   }
 
-  const intelligenceVm = buildDocumentIntelligenceViewModel({
-    doc,
-    knowledge: knowledgeLinks,
-    t,
-  });
-  const documentIntelligence = {
-    sectionTitle: t.documents.intelligenceSectionTitle,
-    sectionSubtitle: t.documents.intelligenceSectionSubtitle,
-    lines: intelligenceVm.lines,
-  };
+  // Intelligence panels must be best-effort: older DBs may lack knowledge tables/columns.
+  let documentIntelligence: {
+    sectionTitle: string;
+    sectionSubtitle: string;
+    lines: string[];
+  } | null = null;
+  try {
+    const intelligenceVm = buildDocumentIntelligenceViewModel({
+      doc,
+      knowledge: knowledgeLinks,
+      t,
+    });
+    documentIntelligence = {
+      sectionTitle: t.documents.intelligenceSectionTitle,
+      sectionSubtitle: t.documents.intelligenceSectionSubtitle,
+      lines: intelligenceVm.lines,
+    };
+  } catch (e) {
+    console.error("[documents detail intelligence ERROR]", e);
+    documentIntelligence = null;
+  }
 
   let proofUi = null;
   try {

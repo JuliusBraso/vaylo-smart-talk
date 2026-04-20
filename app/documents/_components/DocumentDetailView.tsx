@@ -27,11 +27,13 @@ type Props = {
     category: string;
     suggestedActions: Array<{ label: string; href: string }>;
   };
-  documentIntelligence: {
-    sectionTitle: string;
-    sectionSubtitle: string;
-    lines: string[];
-  };
+  documentIntelligence:
+    | {
+        sectionTitle: string;
+        sectionSubtitle: string;
+        lines: string[];
+      }
+    | null;
   /** Proof confirmation block; null when no catalog proof links for this document. */
   proofUi: ProofSuggestionUiState | null;
 };

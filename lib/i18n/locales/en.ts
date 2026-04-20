@@ -212,6 +212,8 @@ const en = {
     intelligenceSectionTitle: "System classification",
     intelligenceSectionSubtitle:
       "Heuristic match against the Vaylo document catalog — not a legal determination.",
+    intelligenceUnavailable:
+      "Document intelligence is not available on this server yet.",
     intelligenceStatusLine: "Classification status: {status}",
     intelligenceStatusPending: "Pending",
     intelligenceStatusCompleted: "Classified",

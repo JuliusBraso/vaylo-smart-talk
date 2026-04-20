@@ -7,13 +7,22 @@ import type {
 
 export const DOCUMENTS_BUCKET = "documents";
 
-export type UserDocumentRow = {
+export const DOCUMENT_BASE_SELECT =
+  "id, user_id, file_path, file_name, mime_type, created_at";
+
+export const DOCUMENT_INTELLIGENCE_SELECT =
+  "extracted_text, document_type_id, classification_status, classification_confidence, classification_method, extracted_metadata, classification_notes";
+
+export type BaseUserDocumentRow = {
   id: string;
   user_id: string;
   file_path: string;
   file_name: string | null;
   mime_type: string | null;
   created_at: string;
+};
+
+export type UserDocumentRow = BaseUserDocumentRow & {
   /** Plain text when extraction succeeded (PDF text layer, text/*, DOCX). */
   extracted_text?: string | null;
   /** Knowledge catalog id when classification succeeded. */
@@ -44,11 +53,12 @@ export async function getDocuments(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<UserDocumentRow[]> {
+  // List view + compatibility: only columns guaranteed by `005_documents_v1.sql`.
+  // Intelligence columns live in later migrations; selecting them breaks listing when those
+  // migrations are not applied on a database (PostgREST "column does not exist").
   const { data, error } = await supabase
     .from("user_documents")
-    .select(
-      "id, user_id, file_path, file_name, mime_type, created_at, classification_status, document_type_id",
-    )
+    .select(DOCUMENT_BASE_SELECT)
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
   // Omit extracted_text on list to keep payloads small.
@@ -57,22 +67,59 @@ export async function getDocuments(
   return (data ?? []) as UserDocumentRow[];
 }
 
-export async function getDocumentById(
+async function getDocumentByIdBase(
   supabase: SupabaseClient,
   userId: string,
   id: string,
-): Promise<UserDocumentRow | null> {
+): Promise<BaseUserDocumentRow | null> {
   const { data, error } = await supabase
     .from("user_documents")
-    .select(
-      "id, user_id, file_path, file_name, mime_type, created_at, extracted_text, document_type_id, classification_status, classification_confidence, classification_method, extracted_metadata, classification_notes",
-    )
+    .select(DOCUMENT_BASE_SELECT)
     .eq("id", id)
     .eq("user_id", userId)
     .maybeSingle();
 
   if (error) throw error;
-  return data as UserDocumentRow | null;
+  return data as BaseUserDocumentRow | null;
+}
+
+async function getDocumentIntelligenceFieldsById(params: {
+  supabase: SupabaseClient;
+  userId: string;
+  id: string;
+}): Promise<Partial<UserDocumentRow> | null> {
+  const { supabase, userId, id } = params;
+  const { data, error } = await supabase
+    .from("user_documents")
+    .select(DOCUMENT_INTELLIGENCE_SELECT)
+    .eq("id", id)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return (data ?? null) as Partial<UserDocumentRow> | null;
+}
+
+export async function getDocumentById(
+  supabase: SupabaseClient,
+  userId: string,
+  id: string,
+): Promise<UserDocumentRow | null> {
+  const base = await getDocumentByIdBase(supabase, userId, id);
+  if (!base) return null;
+
+  // Optional intelligence fields: best-effort for compatibility with older schemas.
+  try {
+    const extra = await getDocumentIntelligenceFieldsById({
+      supabase,
+      userId,
+      id,
+    });
+    return { ...base, ...(extra ?? {}) } as UserDocumentRow;
+  } catch (err) {
+    console.error("[documents detail intelligence ERROR]", err);
+    return base as UserDocumentRow;
+  }
 }
 
 export async function addDocument(
@@ -90,9 +137,7 @@ export async function addDocument(
       file_name: fileName,
       mime_type: mimeType,
     })
-    .select(
-      "id, user_id, file_path, file_name, mime_type, created_at, classification_status, document_type_id",
-    )
+    .select(DOCUMENT_BASE_SELECT)
     .single();
 
   if (error) throw error;

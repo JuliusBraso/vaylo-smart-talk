@@ -18,19 +18,21 @@ export const runtime = "nodejs";
 const MAX_BYTES = 52_428_800; // 50 MiB
 
 export async function GET() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const documents = await getDocuments(supabase, user.id);
     return NextResponse.json({ documents });
-  } catch (e) {
-    const message = e instanceof Error ? e.message : "Failed to list documents";
+  } catch (err) {
+    console.error("[documents API ERROR]", err);
+    const message =
+      err instanceof Error ? err.message : "Failed to list documents";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -76,8 +78,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: upErr.message }, { status: 500 });
   }
 
+  let coreDocument:
+    | Awaited<ReturnType<typeof addDocument>>
+    | null = null;
+  const warnings: string[] = [];
+
   try {
-    const document = await addDocument(
+    coreDocument = await addDocument(
       supabase,
       user.id,
       path,
@@ -85,16 +92,27 @@ export async function POST(request: NextRequest) {
       file.type || null,
     );
 
-    const extracted = await extractDocumentTextFromBuffer(
-      buffer,
-      file.type || null,
-      file.name,
-    );
+    // Post-insert processing must be best-effort: never fail the upload response
+    // when storage + metadata insert already succeeded.
+    let extracted: string | null = null;
+    try {
+      extracted =
+        (await extractDocumentTextFromBuffer(
+          buffer,
+          file.type || null,
+          file.name,
+        )) ?? null;
+    } catch (err) {
+      console.error("[documents POST postprocess ERROR]", err);
+      warnings.push("extract_failed");
+    }
+
     if (extracted) {
       try {
-        await setDocumentExtractedText(supabase, user.id, document.id, extracted);
-      } catch {
-        // Upload succeeded; extraction persistence is best-effort (v3 foundation).
+        await setDocumentExtractedText(supabase, user.id, coreDocument.id, extracted);
+      } catch (err) {
+        console.error("[documents POST postprocess ERROR]", err);
+        warnings.push("extracted_text_persist_failed");
       }
     }
 
@@ -102,19 +120,39 @@ export async function POST(request: NextRequest) {
       await runDocumentIntelligencePhase1({
         supabase,
         userId: user.id,
-        documentId: document.id,
+        documentId: coreDocument.id,
         fileName: file.name,
         extractedText: extracted ?? null,
       });
-    } catch {
-      // Classification must not fail the upload response.
+    } catch (err) {
+      console.error("[documents POST postprocess ERROR]", err);
+      warnings.push("intelligence_phase1_failed");
     }
 
-    const full = await getDocumentById(supabase, user.id, document.id);
-    return NextResponse.json({ document: full ?? document });
-  } catch (e) {
-    await supabase.storage.from(DOCUMENTS_BUCKET).remove([path]);
-    const message = e instanceof Error ? e.message : "Failed to save metadata";
+    let full = coreDocument;
+    try {
+      full = (await getDocumentById(supabase, user.id, coreDocument.id)) ?? coreDocument;
+    } catch (err) {
+      console.error("[documents POST postprocess ERROR]", err);
+      warnings.push("get_document_projection_failed");
+      full = coreDocument;
+    }
+
+    return NextResponse.json({
+      document: full,
+      ...(warnings.length > 0 ? { warnings } : {}),
+    });
+  } catch (err) {
+    console.error("[documents API ERROR]", err);
+    // If core metadata insert failed, clean up storage.
+    if (!coreDocument) {
+      try {
+        await supabase.storage.from(DOCUMENTS_BUCKET).remove([path]);
+      } catch (cleanupErr) {
+        console.error("[documents POST postprocess ERROR]", cleanupErr);
+      }
+    }
+    const message = err instanceof Error ? err.message : "Failed to save metadata";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
