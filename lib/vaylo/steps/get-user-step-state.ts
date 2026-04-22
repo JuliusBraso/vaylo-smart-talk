@@ -186,6 +186,7 @@ export async function getUserStepState(params: {
                 status: persisted.status,
                 source: persisted.source,
                 updatedAt: persisted.updated_at,
+                notes: persisted.notes ?? null,
               },
             }
           : {}),

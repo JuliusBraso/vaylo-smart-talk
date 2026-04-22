@@ -346,6 +346,9 @@ const en = {
     stepProcessBlockedHint: "Complete earlier steps first",
     stepProcessProofBacked: "Confirmed with document",
     stepRecommendedNext: "Recommended next step",
+    autoByVaylo: "Auto by Vaylo",
+    autoByVayloTooltip: "Automatically completed based on your documents",
+    documentAnalyzingHint: "Analyzing document…",
     actionUploadDocumentCta: "Upload document",
     actionViewGuideCta: "View guide",
     actionExplainBureaucracyGoal:

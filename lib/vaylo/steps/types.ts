@@ -47,6 +47,7 @@ export type ResolvedUserStepState = {
       status: UserStepStatus;
       source: UserStepSource;
       updatedAt: string;
+      notes?: unknown | null;
     };
     documentId?: string | null;
   };

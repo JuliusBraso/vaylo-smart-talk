@@ -75,6 +75,12 @@ export type DashboardAction = {
   stepProcessSubtle?: string;
   /** Light label when this card is a process-recommended next step (mapped + eligible). */
   recommendedNextHint?: string;
+  /** True when step completion likely came from automation (derived from step source/notes). */
+  isAutomatedBySystem?: boolean;
+  /** Optional automation confidence (0..1) when available from step-state notes. */
+  automationConfidence?: number;
+  /** Optional live hint when related doc intelligence is still running. */
+  processingHint?: string;
 };
 
 type NextAction = {

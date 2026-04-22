@@ -3,9 +3,83 @@ import { applyStepStateToDashboardActions } from "@/lib/dashboard/apply-step-sta
 import type { BehaviorSignals } from "@/lib/dashboard/get-user-behavior-signals";
 import { enrichActionsWithKnowledge } from "@/lib/dashboard/enrich-actions-with-knowledge";
 import { getDashboardActions } from "@/lib/dashboard/get-dashboard-actions";
+import type { DashboardAction } from "@/lib/dashboard/get-dashboard-actions";
 import type { UserState } from "@/lib/vaylo/state/types";
 import type { GetUserStepStateResult } from "@/lib/vaylo/steps/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
+
+async function attachDocumentJobProcessingHints(params: {
+  supabase: SupabaseClient;
+  userId: string;
+  actions: DashboardAction[];
+  t: Dict;
+}) {
+  const { supabase, userId, actions, t } = params;
+  const eligibleStepIds = actions
+    .map((a) => (a.stepStatus === "eligible" ? a.knowledgeStepId : null))
+    .filter((id): id is string => typeof id === "string" && id.length > 0);
+  if (eligibleStepIds.length === 0) return actions;
+
+  // Minimal job lookup: any queued/running doc job for this user.
+  const { data: jobs, error: jobsErr } = await supabase
+    .from("document_intelligence_jobs")
+    .select("document_id, status")
+    .eq("user_id", userId)
+    .in("status", ["queued", "running"])
+    .limit(50);
+  if (jobsErr) {
+    console.error("[dashboard] doc job hints ERROR", jobsErr);
+    return actions;
+  }
+  const docIds = [
+    ...new Set(
+      (jobs ?? [])
+        .map((j) => String((j as { document_id?: unknown }).document_id ?? ""))
+        .filter((id) => id.length > 0),
+    ),
+  ];
+  if (docIds.length === 0) return actions;
+
+  const { data: docs, error: docsErr } = await supabase
+    .from("user_documents")
+    .select("id, document_type_id")
+    .in("id", docIds)
+    .eq("user_id", userId);
+  if (docsErr) {
+    console.error("[dashboard] doc job hints ERROR", docsErr);
+    return actions;
+  }
+  const typeIds = [
+    ...new Set(
+      (docs ?? [])
+        .map((d) => String((d as { document_type_id?: unknown }).document_type_id ?? ""))
+        .filter((id) => id.length > 0),
+    ),
+  ];
+  if (typeIds.length === 0) return actions;
+
+  const { data: links, error: linkErr } = await supabase
+    .from("document_type_step_links")
+    .select("step_id")
+    .in("document_type_id", typeIds);
+  if (linkErr) {
+    console.error("[dashboard] doc job hints ERROR", linkErr);
+    return actions;
+  }
+  const stepIdsWithRunningDocs = new Set(
+    (links ?? [])
+      .map((l) => String((l as { step_id?: unknown }).step_id ?? ""))
+      .filter((id) => id.length > 0),
+  );
+
+  const hint = t.dashboard.documentAnalyzingHint;
+  return actions.map((a) => {
+    if (a.stepStatus === "eligible" && a.knowledgeStepId && stepIdsWithRunningDocs.has(a.knowledgeStepId)) {
+      return { ...a, processingHint: hint };
+    }
+    return a;
+  });
+}
 
 /**
  * Bridge `UserState` into the existing dashboard engine.
@@ -44,5 +118,6 @@ export async function getDashboardActionsFromState(params: {
   });
 
   const enriched = await enrichActionsWithKnowledge({ supabase, actions, t });
-  return applyStepStateToDashboardActions(enriched, stepState, t);
+  const withStep = applyStepStateToDashboardActions(enriched, stepState, t);
+  return attachDocumentJobProcessingHints({ supabase, userId, actions: withStep, t });
 }

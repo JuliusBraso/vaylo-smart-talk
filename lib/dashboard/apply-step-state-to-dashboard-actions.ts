@@ -82,6 +82,18 @@ export function applyStepStateToDashboardActions(
     }
 
     const { badge, subtle } = badgeCopy(t, resolved);
+    const persistedNotes = resolved.evidence.persisted?.notes ?? null;
+    const inferredAutomation =
+      resolved.source === "system" ||
+      (typeof persistedNotes === "object" &&
+        persistedNotes != null &&
+        (persistedNotes as { automation?: unknown }).automation === true);
+    const inferredConfidenceRaw =
+      typeof persistedNotes === "object" && persistedNotes != null
+        ? (persistedNotes as { confidence?: unknown }).confidence
+        : undefined;
+    const inferredConfidence =
+      typeof inferredConfidenceRaw === "number" ? inferredConfidenceRaw : undefined;
 
     const next: DashboardAction = {
       ...action,
@@ -91,6 +103,8 @@ export function applyStepStateToDashboardActions(
       ...(blockedBy.length > 0 ? { blockedByStepIds: blockedBy } : {}),
       stepProcessBadge: badge,
       ...(subtle ? { stepProcessSubtle: subtle } : {}),
+      ...(inferredAutomation ? { isAutomatedBySystem: true } : {}),
+      ...(inferredConfidence != null ? { automationConfidence: inferredConfidence } : {}),
     };
 
     return next;

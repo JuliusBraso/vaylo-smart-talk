@@ -6,6 +6,9 @@ import {
   cloneElement,
   isValidElement,
   useCallback,
+  useEffect,
+  useMemo,
+  useRef,
   useState,
   type ReactElement,
   type ReactNode,
@@ -22,6 +25,7 @@ import {
 } from "@/lib/i18n/labels";
 import type { DashboardAction } from "@/lib/dashboard/get-dashboard-actions";
 import { trackActionEvent } from "@/lib/vaylo/action-tracking";
+import { useStepStateRealtime } from "@/lib/vaylo/realtime/use-step-state-realtime";
 
 type Props = {
   dna: ProfileDNA;
@@ -59,6 +63,57 @@ export default function DashboardShell({
   t,
   children,
 }: Props) {
+  const router = useRouter();
+  const [liveActions, setLiveActions] = useState<DashboardAction[]>(actions);
+  const prevByIdRef = useRef<Map<string, DashboardAction>>(new Map());
+  const [changedIds, setChangedIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    setLiveActions(actions);
+    prevByIdRef.current = new Map(actions.map((a) => [a.id, a]));
+  }, [actions]);
+
+  const changedClassById = useMemo(() => {
+    return (id: string) =>
+      changedIds.has(id)
+        ? "ring-2 ring-emerald-400/35 shadow-[0_0_28px_rgba(52,211,153,0.18)]"
+        : "";
+  }, [changedIds]);
+
+  const refreshDashboard = useCallback(async () => {
+    try {
+      const res = await fetch("/api/dashboard/actions?trigger=realtime", { method: "GET" });
+      if (!res.ok) return;
+      const body = (await res.json()) as { actions?: DashboardAction[] };
+      const next = body.actions ?? [];
+
+      const prevMap = prevByIdRef.current;
+      const changed = new Set<string>();
+      for (const nextAction of next) {
+        const prev = prevMap.get(nextAction.id);
+        if (!prev) continue;
+        if ((prev.stepStatus ?? null) !== (nextAction.stepStatus ?? null)) {
+          changed.add(nextAction.id);
+        }
+      }
+
+      prevByIdRef.current = new Map(next.map((a) => [a.id, a]));
+      setLiveActions(next);
+      if (changed.size > 0) {
+        setChangedIds(changed);
+        window.setTimeout(() => setChangedIds(new Set()), 1400);
+      }
+    } catch {
+      // Realtime is an enhancement; ignore failures.
+    }
+  }, []);
+
+  useStepStateRealtime({
+    userId,
+    onRefreshRequested: refreshDashboard,
+    debounceMs: 800,
+  });
+
   return (
     <main
       className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900 text-slate-100"
@@ -116,15 +171,15 @@ export default function DashboardShell({
             </div>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-3">
-            {actions.map((action, idx) => {
+            {liveActions.map((action, idx) => {
               const whyLines = action.reasons;
               return (
                 <article
                   key={action.id}
                   className={
                     idx === 0
-                      ? "rounded-2xl border border-cyan-400/45 bg-cyan-900/20 p-4 shadow-[0_0_38px_rgba(34,211,238,0.3)] md:col-span-2"
-                      : "rounded-2xl border border-white/15 bg-white/5 p-4"
+                      ? `rounded-2xl border border-cyan-400/45 bg-cyan-900/20 p-4 shadow-[0_0_38px_rgba(34,211,238,0.3)] md:col-span-2 ${changedClassById(action.id)}`
+                      : `rounded-2xl border border-white/15 bg-white/5 p-4 ${changedClassById(action.id)}`
                   }
                 >
                   <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400">
@@ -146,6 +201,18 @@ export default function DashboardShell({
                       >
                         {action.stepProcessBadge}
                       </span>
+                      {action.isAutomatedBySystem ? (
+                        <span
+                          title={`${t.dashboard.autoByVayloTooltip}${
+                            typeof action.automationConfidence === "number"
+                              ? ` — Confidence: ${Math.round(action.automationConfidence * 100)}%`
+                              : ""
+                          }`}
+                          className="rounded-full border border-emerald-400/35 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-200/95 shadow-[0_0_18px_rgba(52,211,153,0.12)]"
+                        >
+                          {t.dashboard.autoByVaylo}
+                        </span>
+                      ) : null}
                     </div>
                   ) : null}
                   {action.stepProcessSubtle ? (
@@ -156,6 +223,11 @@ export default function DashboardShell({
                   {action.recommendedNextHint ? (
                     <p className="mt-1 text-[10px] font-medium text-emerald-400/90">
                       {action.recommendedNextHint}
+                    </p>
+                  ) : null}
+                  {action.processingHint ? (
+                    <p className="mt-1 text-[10px] font-medium text-indigo-300/85">
+                      {action.processingHint}
                     </p>
                   ) : null}
                   <p className="mt-1 text-xs text-slate-300">{action.description}</p>
