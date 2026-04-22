@@ -7,20 +7,29 @@ export async function fetchI18nTranslationsFromDb(
   supabase: SupabaseClient,
   locale: string,
 ): Promise<Record<string, string>> {
-  const { data, error } = await supabase
-    .from("i18n_translations")
-    .select("key, value")
-    .eq("locale", locale);
-
-  if (error) throw error;
-
-  const out: Record<string, string> = {};
-  for (const row of data ?? []) {
-    const k = typeof row.key === "string" ? row.key : "";
-    const v = typeof row.value === "string" ? row.value : "";
-    if (k && v) out[k] = v;
+  async function tryLoad(table: "i18n_translations" | "phrase_translations"): Promise<Record<string, string>> {
+    const { data, error } = await supabase
+      .from(table)
+      .select("key, value")
+      .eq("locale", locale);
+    if (error) throw error;
+    const out: Record<string, string> = {};
+    for (const row of data ?? []) {
+      const k = typeof (row as { key?: unknown }).key === "string" ? ((row as { key: string }).key as string) : "";
+      const v = typeof (row as { value?: unknown }).value === "string" ? ((row as { value: string }).value as string) : "";
+      if (k && v) out[k] = v;
+    }
+    return out;
   }
-  return out;
+
+  try {
+    return await tryLoad("i18n_translations");
+  } catch (e) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[i18n] fallback to phrase_translations");
+    }
+    return await tryLoad("phrase_translations");
+  }
 }
 
 export type I18nTranslationRow = {

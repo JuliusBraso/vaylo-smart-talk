@@ -14,71 +14,88 @@ async function attachDocumentJobProcessingHints(params: {
   actions: DashboardAction[];
   t: Dict;
 }) {
-  const { supabase, userId, actions, t } = params;
-  const eligibleStepIds = actions
-    .map((a) => (a.stepStatus === "eligible" ? a.knowledgeStepId : null))
-    .filter((id): id is string => typeof id === "string" && id.length > 0);
-  if (eligibleStepIds.length === 0) return actions;
+  try {
+    const { supabase, userId, actions, t } = params;
+    const eligibleStepIds = actions
+      .map((a) => (a.stepStatus === "eligible" ? a.knowledgeStepId : null))
+      .filter((id): id is string => typeof id === "string" && id.length > 0);
+    if (eligibleStepIds.length === 0) return actions;
 
-  // Minimal job lookup: any queued/running doc job for this user.
-  const { data: jobs, error: jobsErr } = await supabase
-    .from("document_intelligence_jobs")
-    .select("document_id, status")
-    .eq("user_id", userId)
-    .in("status", ["queued", "running"])
-    .limit(50);
-  if (jobsErr) {
-    console.error("[dashboard] doc job hints ERROR", jobsErr);
-    return actions;
-  }
-  const docIds = [
-    ...new Set(
-      (jobs ?? [])
-        .map((j) => String((j as { document_id?: unknown }).document_id ?? ""))
-        .filter((id) => id.length > 0),
-    ),
-  ];
-  if (docIds.length === 0) return actions;
-
-  const { data: docs, error: docsErr } = await supabase
-    .from("user_documents")
-    .select("id, document_type_id")
-    .in("id", docIds)
-    .eq("user_id", userId);
-  if (docsErr) {
-    console.error("[dashboard] doc job hints ERROR", docsErr);
-    return actions;
-  }
-  const typeIds = [
-    ...new Set(
-      (docs ?? [])
-        .map((d) => String((d as { document_type_id?: unknown }).document_type_id ?? ""))
-        .filter((id) => id.length > 0),
-    ),
-  ];
-  if (typeIds.length === 0) return actions;
-
-  const { data: links, error: linkErr } = await supabase
-    .from("document_type_step_links")
-    .select("step_id")
-    .in("document_type_id", typeIds);
-  if (linkErr) {
-    console.error("[dashboard] doc job hints ERROR", linkErr);
-    return actions;
-  }
-  const stepIdsWithRunningDocs = new Set(
-    (links ?? [])
-      .map((l) => String((l as { step_id?: unknown }).step_id ?? ""))
-      .filter((id) => id.length > 0),
-  );
-
-  const hint = t.dashboard.documentAnalyzingHint;
-  return actions.map((a) => {
-    if (a.stepStatus === "eligible" && a.knowledgeStepId && stepIdsWithRunningDocs.has(a.knowledgeStepId)) {
-      return { ...a, processingHint: hint };
+    // Minimal job lookup: any queued/running doc job for this user.
+    const { data: jobs, error: jobsErr } = await supabase
+      .from("document_intelligence_jobs")
+      .select("document_id, status")
+      .eq("user_id", userId)
+      .in("status", ["queued", "running"])
+      .limit(50);
+    if (jobsErr) {
+      console.error("[dashboard] doc job hints ERROR", {
+        message: (jobsErr as { message?: unknown })?.message,
+        details: (jobsErr as { details?: unknown })?.details,
+        hint: (jobsErr as { hint?: unknown })?.hint,
+      });
+      return actions;
     }
-    return a;
-  });
+    const docIds = [
+      ...new Set(
+        (jobs ?? [])
+          .map((j) => String((j as { document_id?: unknown }).document_id ?? ""))
+          .filter((id) => id.length > 0),
+      ),
+    ];
+    if (docIds.length === 0) return actions;
+
+    const { data: docs, error: docsErr } = await supabase
+      .from("user_documents")
+      .select("id, document_type_id")
+      .in("id", docIds)
+      .eq("user_id", userId);
+    if (docsErr) {
+      console.error("[dashboard] doc job hints ERROR", {
+        message: (docsErr as { message?: unknown })?.message,
+        details: (docsErr as { details?: unknown })?.details,
+        hint: (docsErr as { hint?: unknown })?.hint,
+      });
+      return actions;
+    }
+    const typeIds = [
+      ...new Set(
+        (docs ?? [])
+          .map((d) => String((d as { document_type_id?: unknown }).document_type_id ?? ""))
+          .filter((id) => id.length > 0),
+      ),
+    ];
+    if (typeIds.length === 0) return actions;
+
+    const { data: links, error: linkErr } = await supabase
+      .from("document_type_step_links")
+      .select("step_id")
+      .in("document_type_id", typeIds);
+    if (linkErr) {
+      console.error("[dashboard] doc job hints ERROR", {
+        message: (linkErr as { message?: unknown })?.message,
+        details: (linkErr as { details?: unknown })?.details,
+        hint: (linkErr as { hint?: unknown })?.hint,
+      });
+      return actions;
+    }
+    const stepIdsWithRunningDocs = new Set(
+      (links ?? [])
+        .map((l) => String((l as { step_id?: unknown }).step_id ?? ""))
+        .filter((id) => id.length > 0),
+    );
+
+    const hint = t.dashboard.documentAnalyzingHint;
+    return actions.map((a) => {
+      if (a.stepStatus === "eligible" && a.knowledgeStepId && stepIdsWithRunningDocs.has(a.knowledgeStepId)) {
+        return { ...a, processingHint: hint };
+      }
+      return a;
+    });
+  } catch (err) {
+    console.error("[dashboard] doc job hints ERROR", err);
+    return params.actions;
+  }
 }
 
 /**
