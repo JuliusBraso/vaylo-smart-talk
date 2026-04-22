@@ -57,16 +57,31 @@ export async function getUserStepState(params: {
   const { supabase, userId } = params;
 
   // A) Knowledge graph: active steps + dependency edges
-  const [{ data: stepsRaw, error: stepsErr }, { data: depsRaw, error: depsErr }] = await Promise.all([
-    supabase
+  const { data: depsRaw, error: depsErr } = await supabase
+    .from("knowledge_step_dependencies")
+    .select("step_id, depends_on_step_id");
+  if (depsErr) throw depsErr;
+
+  // Compatibility: older DBs may not have `eligibility_criteria` yet.
+  let stepsRaw: unknown[] | null = null;
+  try {
+    const { data, error } = await supabase
       .from("knowledge_steps")
       .select("id, topic_id, slug, action_id, eligibility_criteria")
-      .eq("is_active", true),
-    supabase.from("knowledge_step_dependencies").select("step_id, depends_on_step_id"),
-  ]);
-
-  if (stepsErr) throw stepsErr;
-  if (depsErr) throw depsErr;
+      .eq("is_active", true);
+    if (error) throw error;
+    stepsRaw = data as unknown[] | null;
+  } catch (err) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[step-state] eligibility_criteria unavailable, skipping eligibility rules");
+    }
+    const { data, error } = await supabase
+      .from("knowledge_steps")
+      .select("id, topic_id, slug, action_id")
+      .eq("is_active", true);
+    if (error) throw error;
+    stepsRaw = data as unknown[] | null;
+  }
 
   const steps: KnowledgeStepRow[] = (stepsRaw ?? [])
     .map((r) => {
@@ -100,33 +115,69 @@ export async function getUserStepState(params: {
     }
   }
 
-  function eligibilityApplies(criteria: unknown): boolean {
-    if (!criteria || typeof criteria !== "object") return true;
-    const c = criteria as Record<string, unknown>;
+  function evaluateEligibility(
+    criteria: unknown,
+  ): { applicable: boolean; reason?: string } {
+    if (criteria == null) return { applicable: true };
+    if (typeof criteria !== "object" || Array.isArray(criteria)) {
+      return { applicable: true };
+    }
     if (!dnaInputs) {
       // No DNA/userState available: safest is to treat as applicable (do not hide steps).
-      return true;
+      return { applicable: true };
     }
 
-    const emp = dnaInputs.employment_type;
-    const fam = dnaInputs.family_status;
-    const lang = dnaInputs.language_level;
+    const ctx: Record<string, string | null> = {
+      employment_type: dnaInputs.employment_type ?? null,
+      family_status: dnaInputs.family_status ?? null,
+      language_level: dnaInputs.language_level ?? null,
+    };
 
-    if (Array.isArray(c.employment_type)) {
-      const allowed = c.employment_type.filter((x) => typeof x === "string") as string[];
-      if (allowed.length > 0 && !allowed.includes(emp)) return false;
-    }
-    if (Array.isArray(c.family_status)) {
-      const allowed = c.family_status.filter((x) => typeof x === "string") as string[];
-      if (allowed.length > 0 && !allowed.includes(fam)) return false;
-    }
-    if (typeof c.requires_language_level_below === "string") {
-      const max = langRank(c.requires_language_level_below);
-      const cur = langRank(lang);
-      if (max > 0 && cur >= max) return false;
+    const c = criteria as Record<string, unknown>;
+
+    for (const [field, raw] of Object.entries(c)) {
+      const current = ctx[field] ?? null;
+
+      // Back-compat: simple array means "in".
+      if (Array.isArray(raw)) {
+        const allowed = raw.filter((x) => typeof x === "string") as string[];
+        if (allowed.length > 0 && (!current || !allowed.includes(current))) {
+          return { applicable: false, reason: "criteria_not_met" };
+        }
+        continue;
+      }
+
+      // Back-compat: scalar string equals.
+      if (typeof raw === "string") {
+        if (!current || current !== raw) return { applicable: false, reason: "criteria_not_met" };
+        continue;
+      }
+
+      // V1: operator object.
+      if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+        const o = raw as Record<string, unknown>;
+        if ("exists" in o) {
+          const want = o.exists === true;
+          const exists = current != null && String(current).length > 0;
+          if (want !== exists) return { applicable: false, reason: "criteria_not_met" };
+          continue;
+        }
+        if ("equals" in o) {
+          const want = typeof o.equals === "string" ? o.equals : null;
+          if (!want || !current || current !== want) return { applicable: false, reason: "criteria_not_met" };
+          continue;
+        }
+        if ("in" in o) {
+          const allowed = Array.isArray(o.in) ? (o.in.filter((x) => typeof x === "string") as string[]) : [];
+          if (allowed.length > 0 && (!current || !allowed.includes(current))) {
+            return { applicable: false, reason: "criteria_not_met" };
+          }
+          continue;
+        }
+      }
     }
 
-    return true;
+    return { applicable: true };
   }
 
   const deps: DependencyEdgeRow[] = (depsRaw ?? [])
@@ -218,22 +269,29 @@ export async function getUserStepState(params: {
       status = chooseStrongerStatus(persisted.status, status);
     }
 
-    const eligibilityOk = eligibilityApplies(s.eligibility_criteria);
+    const eligibility = evaluateEligibility(s.eligibility_criteria);
+    if (process.env.NODE_ENV === "development" && s.eligibility_criteria != null) {
+      console.info("[step-state] eligibility evaluated", {
+        stepId: s.id,
+        applicable: eligibility.applicable,
+        criteria: s.eligibility_criteria,
+      });
+    }
 
     resolved[s.id] = {
       stepId: s.id,
       topicId: s.topic_id,
       slug: s.slug,
       actionId: s.action_id,
-      isApplicable: eligibilityOk,
-      status: eligibilityOk ? status : chooseStrongerStatus(status, "blocked"),
+      isApplicable: eligibility.applicable,
+      status: eligibility.applicable ? status : chooseStrongerStatus(status, "blocked"),
       source: persisted?.source ?? sourceForDerivedStatus(status, { proof: hasConfirmedProof, legacyProgress: hasLegacyCompletedAction }),
       evidence: {
         hasConfirmedProof,
         hasLegacyCompletedAction,
         dependencyStepIds: depsForStep,
         blockedByStepIds: [],
-        ...(eligibilityOk ? {} : { eligibility: { applicable: false } }),
+        ...(eligibility.applicable ? {} : { eligibility: { applicable: false, reason: "criteria_not_met" as const } }),
         ...(persisted
           ? {
               persisted: {

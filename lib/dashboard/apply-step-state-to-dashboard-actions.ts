@@ -108,6 +108,7 @@ export function applyStepStateToDashboardActions(
       ...(subtle ? { stepProcessSubtle: subtle } : {}),
       ...(inferredAutomation ? { isAutomatedBySystem: true } : {}),
       ...(inferredConfidence != null ? { automationConfidence: inferredConfidence } : {}),
+      ...(resolved.isApplicable === false ? { isEligible: false } : {}),
     };
 
     return next;

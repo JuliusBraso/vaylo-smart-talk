@@ -81,6 +81,8 @@ export type DashboardAction = {
   automationConfidence?: number;
   /** Optional live hint when related doc intelligence is still running. */
   processingHint?: string;
+  /** Derived display flag: false when the step does not apply to the user. */
+  isEligible?: boolean;
 };
 
 type NextAction = {

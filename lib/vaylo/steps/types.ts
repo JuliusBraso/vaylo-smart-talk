@@ -48,7 +48,7 @@ export type ResolvedUserStepState = {
     /** Eligibility rules from `knowledge_steps.eligibility_criteria` matched against user state. */
     eligibility?: {
       applicable: boolean;
-      reason?: "eligibility";
+      reason?: "criteria_not_met";
     };
     persisted?: {
       status: UserStepStatus;
