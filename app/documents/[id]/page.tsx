@@ -101,7 +101,9 @@ export default async function DocumentDetailPage({ params }: Props) {
         doc.document_type_id,
       );
     } catch (e) {
-      console.error("[documents detail intelligence ERROR]", e);
+      if (process.env.NODE_ENV === "development") {
+        console.warn("[documents detail intelligence unavailable]", e);
+      }
     }
   }
 
@@ -123,7 +125,9 @@ export default async function DocumentDetailPage({ params }: Props) {
       lines: intelligenceVm.lines,
     };
   } catch (e) {
-    console.error("[documents detail intelligence ERROR]", e);
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[documents detail intelligence unavailable]", e);
+    }
     documentIntelligence = null;
   }
 

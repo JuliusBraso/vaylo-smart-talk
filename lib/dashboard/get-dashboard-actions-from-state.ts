@@ -18,6 +18,16 @@ function warnDocJobHintsUnavailableOnce(reason: string) {
   console.warn(`[dashboard] document job hints unavailable: ${reason}`);
 }
 
+function isCompatUnavailableErrorMessage(msg: string): boolean {
+  const m = msg.toLowerCase();
+  return (
+    m.includes("does not exist") ||
+    m.includes("missing relation") ||
+    m.includes("unknown column") ||
+    m.includes("column") && m.includes("does not exist")
+  );
+}
+
 async function attachDocumentJobProcessingHints(params: {
   supabase: SupabaseClient;
   userId: string;
@@ -40,15 +50,17 @@ async function attachDocumentJobProcessingHints(params: {
       .limit(50);
     if (jobsErr) {
       const msg = String((jobsErr as { message?: unknown })?.message ?? "");
-      if (msg.toLowerCase().includes("does not exist")) {
+      if (isCompatUnavailableErrorMessage(msg)) {
         warnDocJobHintsUnavailableOnce("missing document_intelligence_jobs table");
         return actions;
       }
-      console.error("[dashboard] doc job hints ERROR", {
-        message: (jobsErr as { message?: unknown })?.message,
-        details: (jobsErr as { details?: unknown })?.details,
-        hint: (jobsErr as { hint?: unknown })?.hint,
-      });
+      if (process.env.NODE_ENV === "development") {
+        console.warn("[dashboard] doc job hints unavailable", {
+          message: (jobsErr as { message?: unknown })?.message,
+          details: (jobsErr as { details?: unknown })?.details,
+          hint: (jobsErr as { hint?: unknown })?.hint,
+        });
+      }
       return actions;
     }
     const docIds = [
@@ -66,11 +78,13 @@ async function attachDocumentJobProcessingHints(params: {
       .in("id", docIds)
       .eq("user_id", userId);
     if (docsErr) {
-      console.error("[dashboard] doc job hints ERROR", {
-        message: (docsErr as { message?: unknown })?.message,
-        details: (docsErr as { details?: unknown })?.details,
-        hint: (docsErr as { hint?: unknown })?.hint,
-      });
+      if (process.env.NODE_ENV === "development") {
+        console.warn("[dashboard] doc job hints unavailable", {
+          message: (docsErr as { message?: unknown })?.message,
+          details: (docsErr as { details?: unknown })?.details,
+          hint: (docsErr as { hint?: unknown })?.hint,
+        });
+      }
       return actions;
     }
     const typeIds = [
@@ -87,11 +101,13 @@ async function attachDocumentJobProcessingHints(params: {
       .select("step_id")
       .in("document_type_id", typeIds);
     if (linkErr) {
-      console.error("[dashboard] doc job hints ERROR", {
-        message: (linkErr as { message?: unknown })?.message,
-        details: (linkErr as { details?: unknown })?.details,
-        hint: (linkErr as { hint?: unknown })?.hint,
-      });
+      if (process.env.NODE_ENV === "development") {
+        console.warn("[dashboard] doc job hints unavailable", {
+          message: (linkErr as { message?: unknown })?.message,
+          details: (linkErr as { details?: unknown })?.details,
+          hint: (linkErr as { hint?: unknown })?.hint,
+        });
+      }
       return actions;
     }
     const stepIdsWithRunningDocs = new Set(
@@ -109,7 +125,7 @@ async function attachDocumentJobProcessingHints(params: {
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    if (msg.toLowerCase().includes("document_intelligence_jobs") && msg.toLowerCase().includes("does not exist")) {
+    if (msg.toLowerCase().includes("document_intelligence_jobs") && isCompatUnavailableErrorMessage(msg)) {
       warnDocJobHintsUnavailableOnce("missing document_intelligence_jobs table");
       return params.actions;
     }

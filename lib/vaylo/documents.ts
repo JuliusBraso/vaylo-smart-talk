@@ -148,7 +148,9 @@ export async function getDocumentById(
     });
     return { ...base, ...(extra ?? {}) } as UserDocumentRow;
   } catch (err) {
-    console.error("[documents detail intelligence ERROR]", err);
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[documents detail intelligence unavailable]", err);
+    }
     return base as UserDocumentRow;
   }
 }
