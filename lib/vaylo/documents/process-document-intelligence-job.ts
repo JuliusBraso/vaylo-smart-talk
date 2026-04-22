@@ -19,7 +19,7 @@ function safeErrMessage(err: unknown): string {
 
 export async function runDocumentIntelligenceWorkerOnce(params?: {
   leaseSeconds?: number;
-}): Promise<{ processed: boolean; jobId?: string }> {
+}): Promise<{ processed: boolean; jobId?: string; ok?: boolean }> {
   const admin = createServiceRoleClient();
   if (!admin) {
     console.warn("[documents intelligence job ERROR]", { reason: "no_service_role" });
@@ -56,7 +56,7 @@ export async function runDocumentIntelligenceWorkerOnce(params?: {
     });
     await markDocumentIntelligenceJobCompleted({ supabase: admin, jobId: job.id });
     console.info("[documents intelligence job COMPLETE]", { jobId: job.id });
-    return { processed: true, jobId: job.id };
+    return { processed: true, jobId: job.id, ok: true };
   } catch (err) {
     const msg = safeErrMessage(err);
     console.error("[documents intelligence job FAIL]", { jobId: job.id, err });
@@ -70,7 +70,7 @@ export async function runDocumentIntelligenceWorkerOnce(params?: {
     } catch (markErr) {
       console.error("[documents intelligence job FAIL]", { jobId: job.id, markErr });
     }
-    return { processed: true, jobId: job.id };
+    return { processed: true, jobId: job.id, ok: false };
   }
 }
 
