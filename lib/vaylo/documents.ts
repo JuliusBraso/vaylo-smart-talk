@@ -13,6 +13,9 @@ export const DOCUMENT_BASE_SELECT =
 export const DOCUMENT_INTELLIGENCE_SELECT =
   "extracted_text, document_type_id, classification_status, classification_confidence, classification_method, extracted_metadata, classification_notes";
 
+const DOCUMENT_INTELLIGENCE_LIST_SELECT =
+  "id, document_type_id, classification_status, classification_confidence, classification_method";
+
 export type BaseUserDocumentRow = {
   id: string;
   user_id: string;
@@ -64,7 +67,35 @@ export async function getDocuments(
   // Omit extracted_text on list to keep payloads small.
 
   if (error) throw error;
-  return (data ?? []) as UserDocumentRow[];
+  const base = (data ?? []) as BaseUserDocumentRow[];
+
+  // Optional intelligence enrichment for list UI. Best-effort for compatibility with older schemas.
+  try {
+    const ids = base.map((r) => r.id).filter((id) => typeof id === "string" && id.length > 0);
+    if (ids.length === 0) return base as UserDocumentRow[];
+    const { data: extra, error: exErr } = await supabase
+      .from("user_documents")
+      .select(DOCUMENT_INTELLIGENCE_LIST_SELECT)
+      .in("id", ids)
+      .eq("user_id", userId);
+
+    if (exErr) throw exErr;
+    const extraById = new Map(
+      (extra ?? []).map((r) => {
+        const o = r as Record<string, unknown>;
+        const id = String(o.id ?? "");
+        return [id, o] as const;
+      }),
+    );
+
+    return base.map((b) => {
+      const ex = extraById.get(b.id);
+      return ex ? ({ ...b, ...(ex as Partial<UserDocumentRow>) } as UserDocumentRow) : (b as UserDocumentRow);
+    });
+  } catch (err) {
+    console.error("[documents list intelligence ERROR]", err);
+    return base as UserDocumentRow[];
+  }
 }
 
 async function getDocumentByIdBase(

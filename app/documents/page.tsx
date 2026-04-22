@@ -36,6 +36,15 @@ function formatBytes(n: number): string {
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function statusBadge(t: ReturnType<typeof useT>["t"], row: UserDocumentRow): string | null {
+  const st = row.classification_status ?? null;
+  if (!st) return null;
+  if (st === "completed") return t.documents.intelligenceStatusCompleted;
+  if (st === "unknown") return t.documents.intelligenceStatusUnknown;
+  if (st === "failed") return t.documents.intelligenceStatusFailed;
+  return t.documents.intelligenceStatusPending;
+}
+
 export default function DocumentsPage() {
   const { t } = useT();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -298,6 +307,11 @@ export default function DocumentsPage() {
                       >
                         {row.mime_type ? (
                           <span className="badgeSmall">{row.mime_type}</span>
+                        ) : null}
+                        {statusBadge(t, row) ? (
+                          <span className="badgeSmall">
+                            {statusBadge(t, row)}
+                          </span>
                         ) : null}
                         <span className="muted" style={{ fontSize: 12 }}>
                           {new Date(row.created_at).toLocaleString()}

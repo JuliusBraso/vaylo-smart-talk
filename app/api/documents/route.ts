@@ -1,17 +1,15 @@
 import { Buffer } from "node:buffer";
 import { NextRequest, NextResponse } from "next/server";
+import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { extractDocumentTextFromBuffer } from "@/lib/vaylo/extract-document-text";
 import {
   addDocument,
   buildDocumentStoragePath,
   deleteDocument,
   DOCUMENTS_BUCKET,
-  getDocumentById,
   getDocuments,
-  setDocumentExtractedText,
 } from "@/lib/vaylo/documents";
-import { runDocumentIntelligencePhase1 } from "@/lib/vaylo/documents/apply-document-intelligence";
+import { processDocumentIntelligence } from "@/lib/vaylo/documents/process-document-intelligence";
 
 export const runtime = "nodejs";
 
@@ -78,13 +76,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: upErr.message }, { status: 500 });
   }
 
-  let coreDocument:
-    | Awaited<ReturnType<typeof addDocument>>
-    | null = null;
-  const warnings: string[] = [];
-
   try {
-    coreDocument = await addDocument(
+    const document = await addDocument(
       supabase,
       user.id,
       path,
@@ -92,65 +85,24 @@ export async function POST(request: NextRequest) {
       file.type || null,
     );
 
-    // Post-insert processing must be best-effort: never fail the upload response
-    // when storage + metadata insert already succeeded.
-    let extracted: string | null = null;
+    // Phase 3.6: async intelligence. Trigger after response when available.
     try {
-      extracted =
-        (await extractDocumentTextFromBuffer(
-          buffer,
-          file.type || null,
-          file.name,
-        )) ?? null;
-    } catch (err) {
-      console.error("[documents POST postprocess ERROR]", err);
-      warnings.push("extract_failed");
-    }
-
-    if (extracted) {
-      try {
-        await setDocumentExtractedText(supabase, user.id, coreDocument.id, extracted);
-      } catch (err) {
-        console.error("[documents POST postprocess ERROR]", err);
-        warnings.push("extracted_text_persist_failed");
-      }
-    }
-
-    try {
-      await runDocumentIntelligencePhase1({
-        supabase,
-        userId: user.id,
-        documentId: coreDocument.id,
-        fileName: file.name,
-        extractedText: extracted ?? null,
+      after(() => {
+        void processDocumentIntelligence({ userId: user.id, documentId: document.id });
       });
-    } catch (err) {
-      console.error("[documents POST postprocess ERROR]", err);
-      warnings.push("intelligence_phase1_failed");
+    } catch {
+      // Fallback: start async task without awaiting; may not survive some serverless runtimes.
+      void processDocumentIntelligence({ userId: user.id, documentId: document.id });
     }
 
-    let full = coreDocument;
-    try {
-      full = (await getDocumentById(supabase, user.id, coreDocument.id)) ?? coreDocument;
-    } catch (err) {
-      console.error("[documents POST postprocess ERROR]", err);
-      warnings.push("get_document_projection_failed");
-      full = coreDocument;
-    }
-
-    return NextResponse.json({
-      document: full,
-      ...(warnings.length > 0 ? { warnings } : {}),
-    });
+    return NextResponse.json({ document });
   } catch (err) {
     console.error("[documents API ERROR]", err);
-    // If core metadata insert failed, clean up storage.
-    if (!coreDocument) {
-      try {
-        await supabase.storage.from(DOCUMENTS_BUCKET).remove([path]);
-      } catch (cleanupErr) {
-        console.error("[documents POST postprocess ERROR]", cleanupErr);
-      }
+    // Core metadata insert failed; clean up storage.
+    try {
+      await supabase.storage.from(DOCUMENTS_BUCKET).remove([path]);
+    } catch (cleanupErr) {
+      console.error("[documents POST postprocess ERROR]", cleanupErr);
     }
     const message = err instanceof Error ? err.message : "Failed to save metadata";
     return NextResponse.json({ error: message }, { status: 500 });
