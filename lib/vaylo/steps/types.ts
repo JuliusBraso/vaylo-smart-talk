@@ -32,6 +32,8 @@ export type ResolvedUserStepState = {
   topicId: string;
   slug: string;
   actionId: string | null;
+  /** True when the step applies to this user's situation (eligibility rules passed). */
+  isApplicable: boolean;
   status: UserStepStatus;
   source: UserStepSource;
   /**
@@ -43,6 +45,11 @@ export type ResolvedUserStepState = {
     hasLegacyCompletedAction: boolean;
     dependencyStepIds: string[];
     blockedByStepIds: string[];
+    /** Eligibility rules from `knowledge_steps.eligibility_criteria` matched against user state. */
+    eligibility?: {
+      applicable: boolean;
+      reason?: "eligibility";
+    };
     persisted?: {
       status: UserStepStatus;
       source: UserStepSource;

@@ -39,6 +39,9 @@ function badgeCopy(
   }
 
   if (status === "blocked") {
+    if (resolved.evidence.eligibility?.applicable === false) {
+      return { badge, subtle: d.stepProcessNotApplicable };
+    }
     return { badge, subtle: d.stepProcessBlockedHint };
   }
   if (proofBacked) {

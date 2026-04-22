@@ -344,6 +344,7 @@ const en = {
     stepProcessBlocked: "Waiting",
     stepProcessInProgress: "In progress",
     stepProcessBlockedHint: "Complete earlier steps first",
+    stepProcessNotApplicable: "Not applicable to your situation",
     stepProcessProofBacked: "Confirmed with document",
     stepRecommendedNext: "Recommended next step",
     autoByVaylo: "Auto by Vaylo",

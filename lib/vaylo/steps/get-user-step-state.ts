@@ -14,6 +14,7 @@ type KnowledgeStepRow = {
   topic_id: string;
   slug: string;
   action_id: string | null;
+  eligibility_criteria: unknown | null;
 };
 
 type DependencyEdgeRow = { step_id: string; depends_on_step_id: string };
@@ -59,7 +60,7 @@ export async function getUserStepState(params: {
   const [{ data: stepsRaw, error: stepsErr }, { data: depsRaw, error: depsErr }] = await Promise.all([
     supabase
       .from("knowledge_steps")
-      .select("id, topic_id, slug, action_id")
+      .select("id, topic_id, slug, action_id, eligibility_criteria")
       .eq("is_active", true),
     supabase.from("knowledge_step_dependencies").select("step_id, depends_on_step_id"),
   ]);
@@ -75,9 +76,58 @@ export async function getUserStepState(params: {
         topic_id: String(o.topic_id ?? ""),
         slug: String(o.slug ?? ""),
         action_id: typeof o.action_id === "string" ? o.action_id : null,
+        eligibility_criteria: o.eligibility_criteria ?? null,
       } satisfies KnowledgeStepRow;
     })
     .filter((s) => !!s.id && !!s.topic_id && !!s.slug);
+
+  const dnaInputs = params.userState?.identity.dna?.inputs;
+
+  function langRank(lvl: string): number {
+    switch (lvl) {
+      case "A1":
+        return 1;
+      case "A2":
+        return 2;
+      case "B1":
+        return 3;
+      case "B2":
+        return 4;
+      case "C1":
+        return 5;
+      default:
+        return 0;
+    }
+  }
+
+  function eligibilityApplies(criteria: unknown): boolean {
+    if (!criteria || typeof criteria !== "object") return true;
+    const c = criteria as Record<string, unknown>;
+    if (!dnaInputs) {
+      // No DNA/userState available: safest is to treat as applicable (do not hide steps).
+      return true;
+    }
+
+    const emp = dnaInputs.employment_type;
+    const fam = dnaInputs.family_status;
+    const lang = dnaInputs.language_level;
+
+    if (Array.isArray(c.employment_type)) {
+      const allowed = c.employment_type.filter((x) => typeof x === "string") as string[];
+      if (allowed.length > 0 && !allowed.includes(emp)) return false;
+    }
+    if (Array.isArray(c.family_status)) {
+      const allowed = c.family_status.filter((x) => typeof x === "string") as string[];
+      if (allowed.length > 0 && !allowed.includes(fam)) return false;
+    }
+    if (typeof c.requires_language_level_below === "string") {
+      const max = langRank(c.requires_language_level_below);
+      const cur = langRank(lang);
+      if (max > 0 && cur >= max) return false;
+    }
+
+    return true;
+  }
 
   const deps: DependencyEdgeRow[] = (depsRaw ?? [])
     .map((r) => {
@@ -168,18 +218,22 @@ export async function getUserStepState(params: {
       status = chooseStrongerStatus(persisted.status, status);
     }
 
+    const eligibilityOk = eligibilityApplies(s.eligibility_criteria);
+
     resolved[s.id] = {
       stepId: s.id,
       topicId: s.topic_id,
       slug: s.slug,
       actionId: s.action_id,
-      status,
+      isApplicable: eligibilityOk,
+      status: eligibilityOk ? status : chooseStrongerStatus(status, "blocked"),
       source: persisted?.source ?? sourceForDerivedStatus(status, { proof: hasConfirmedProof, legacyProgress: hasLegacyCompletedAction }),
       evidence: {
         hasConfirmedProof,
         hasLegacyCompletedAction,
         dependencyStepIds: depsForStep,
         blockedByStepIds: [],
+        ...(eligibilityOk ? {} : { eligibility: { applicable: false } }),
         ...(persisted
           ? {
               persisted: {
@@ -197,7 +251,11 @@ export async function getUserStepState(params: {
 
   // Second pass: dependency gating for non-completed/non-verified steps
   for (const step of Object.values(resolved)) {
-    if (step.status === "verified" || step.status === "completed" || step.status === "in_progress") {
+    if (
+      step.status === "verified" ||
+      step.status === "completed" ||
+      step.status === "in_progress"
+    ) {
       continue;
     }
     const depsForStep = step.evidence.dependencyStepIds;
@@ -219,6 +277,13 @@ export async function getUserStepState(params: {
       }
     }
     step.evidence.blockedByStepIds = blockedBy.sort();
+    if (step.isApplicable === false) {
+      // Eligibility failure forces blocked, but we still compute DAG blockers for consistency/inspection.
+      step.status = "blocked";
+      step.source = step.source ?? "system";
+      continue;
+    }
+
     if (blockedBy.length === 0) {
       step.status = "eligible";
       step.source = step.source ?? "system";
