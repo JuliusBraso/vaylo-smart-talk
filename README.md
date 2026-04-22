@@ -54,6 +54,18 @@ The app supports the following locales:
 
 ### Database Setup
 
+#### 0. Migration discipline (deploy-safe)
+
+This repo treats the database as a versioned part of the product.
+
+**Deploy order must always be:**
+
+1. apply migrations
+2. verify schema
+3. deploy app code
+
+See `docs/MIGRATIONS.md` for the full workflow, staging-first release guidance, and the no-drift policy.
+
 #### 1. Run Migrations in Supabase
 
 The app requires two database tables: `phrases` and `phrase_translations`. Run the migration files in order:
@@ -91,6 +103,16 @@ The app requires two database tables: `phrases` and `phrase_translations`. Run t
 # If you have Supabase CLI installed
 supabase db push
 ```
+
+#### 3. Verify schema (deploy-time)
+
+Run:
+
+```bash
+npm run db:verify
+```
+
+This uses the service role to check for required tables/columns and fails with actionable output if the schema is behind.
 
 **Option C: Direct SQL Execution**
 1. Connect to your Supabase database using any PostgreSQL client

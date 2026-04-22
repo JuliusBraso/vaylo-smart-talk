@@ -16,7 +16,9 @@
     "verify:dashboard-selection": "npx -y tsx@4.19.2 scripts/verify-dashboard-selection.ts"
     ,
     "docs:worker": "npx -y tsx@4.19.2 scripts/run-document-intelligence-worker.ts --mode worker",
-    "docs:requeue-stale": "npx -y tsx@4.19.2 scripts/run-document-intelligence-worker.ts --mode requeue-stale"
+    "docs:requeue-stale": "npx -y tsx@4.19.2 scripts/run-document-intelligence-worker.ts --mode requeue-stale",
+    "db:verify": "npx -y tsx@4.19.2 scripts/verify-db-schema.ts",
+    "release:check": "npm run db:verify"
   },
   "dependencies": {
     "@supabase/ssr": "0.5.2",
