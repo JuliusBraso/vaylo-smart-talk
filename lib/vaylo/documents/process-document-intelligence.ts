@@ -1,4 +1,5 @@
 import { Buffer } from "node:buffer";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import {
   DOCUMENTS_BUCKET,
@@ -9,13 +10,12 @@ import { extractDocumentTextFromBuffer } from "@/lib/vaylo/extract-document-text
 import { runDocumentIntelligencePhase1 } from "@/lib/vaylo/documents/apply-document-intelligence";
 
 export async function processDocumentIntelligence(params: {
+  supabase?: SupabaseClient;
   userId: string;
   documentId: string;
 }): Promise<void> {
   const { userId, documentId } = params;
-  console.info("[documents intelligence job START]", { userId, documentId });
-
-  const admin = createServiceRoleClient();
+  const admin = params.supabase ?? createServiceRoleClient();
   if (!admin) {
     console.warn("[documents intelligence job ERROR]", {
       userId,
@@ -89,8 +89,6 @@ export async function processDocumentIntelligence(params: {
       fileName: doc.file_name ?? null,
       extractedText: extracted ?? null,
     });
-
-    console.info("[documents intelligence job COMPLETE]", { userId, documentId });
   } catch (err) {
     console.error("[documents intelligence job ERROR]", { userId, documentId, err });
   }

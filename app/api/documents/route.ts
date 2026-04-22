@@ -9,7 +9,8 @@ import {
   DOCUMENTS_BUCKET,
   getDocuments,
 } from "@/lib/vaylo/documents";
-import { processDocumentIntelligence } from "@/lib/vaylo/documents/process-document-intelligence";
+import { enqueueDocumentIntelligenceJob } from "@/lib/vaylo/documents/document-intelligence-jobs";
+import { runDocumentIntelligenceWorkerOnce } from "@/lib/vaylo/documents/process-document-intelligence-job";
 
 export const runtime = "nodejs";
 
@@ -85,14 +86,29 @@ export async function POST(request: NextRequest) {
       file.type || null,
     );
 
-    // Phase 3.6: async intelligence. Trigger after response when available.
+    // Phase 3.7: durable enqueue. Upload must succeed even if worker is delayed.
+    try {
+      const job = await enqueueDocumentIntelligenceJob({
+        supabase,
+        userId: user.id,
+        documentId: document.id,
+      });
+      console.info("[documents intelligence enqueue]", {
+        documentId: document.id,
+        jobId: job?.id ?? null,
+        status: job?.status ?? null,
+      });
+    } catch (err) {
+      console.error("[documents intelligence enqueue]", err);
+    }
+
+    // Best-effort worker kick; job row remains the durable source of truth.
     try {
       after(() => {
-        void processDocumentIntelligence({ userId: user.id, documentId: document.id });
+        void runDocumentIntelligenceWorkerOnce();
       });
     } catch {
-      // Fallback: start async task without awaiting; may not survive some serverless runtimes.
-      void processDocumentIntelligence({ userId: user.id, documentId: document.id });
+      void runDocumentIntelligenceWorkerOnce();
     }
 
     return NextResponse.json({ document });
