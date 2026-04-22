@@ -178,6 +178,8 @@ const sk = {
     intelligenceSectionTitle: "Klasifikácia systému",
     intelligenceSectionSubtitle:
       "Heuristická zhoda s katalógom dokumentov Vaylo — nie právny záver.",
+    intelligenceUnavailable:
+      "Inteligentná analýza dokumentov zatiaľ nie je na tomto serveri dostupná.",
     intelligenceStatusLine: "Stav klasifikácie: {status}",
     intelligenceStatusPending: "Čaká sa",
     intelligenceStatusCompleted: "Zaradené",
@@ -299,6 +301,18 @@ const sk = {
     criticalCvDesc:
       "Silný životopis potrebuješ pred efektívnymi žiadosťami v Nemecku.",
     actionMarkDone: "Hotovo",
+    stepProcessVerified: "Overené",
+    stepProcessCompleted: "Dokončené",
+    stepProcessEligible: "Pripravené",
+    stepProcessBlocked: "Čaká",
+    stepProcessInProgress: "Prebieha",
+    stepProcessBlockedHint: "Najprv dokonči skoršie kroky",
+    stepProcessNotApplicable: "Nie je relevantné pre tvoju situáciu",
+    stepProcessProofBacked: "Potvrdené dokumentom",
+    stepRecommendedNext: "Odporúčaný ďalší krok",
+    autoByVaylo: "Auto od Vaylo",
+    autoByVayloTooltip: "Automaticky dokončené na základe tvojich dokumentov",
+    documentAnalyzingHint: "Analyzujem dokument…",
     actionUploadDocumentCta: "Nahrať dokument",
     actionViewGuideCta: "Zobraziť návod",
     actionExplainBureaucracyGoal:
@@ -1126,4 +1140,4 @@ const sk = {
   },
 } as const;
 
-export default sk;
+export default sk; 

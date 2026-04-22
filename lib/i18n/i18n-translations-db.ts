@@ -7,12 +7,27 @@ export async function fetchI18nTranslationsFromDb(
   supabase: SupabaseClient,
   locale: string,
 ): Promise<Record<string, string>> {
-  async function tryLoad(table: "i18n_translations" | "phrase_translations"): Promise<Record<string, string>> {
+  // Compatibility: DB-backed i18n is optional. If the table is missing or schema differs,
+  // fall back to locale files only (no cascading errors).
+  const warnKey = `${locale}:i18n_translations_unavailable`;
+  const warned = (globalThis as unknown as { __vaylo_i18n_warned?: Set<string> }).__vaylo_i18n_warned;
+  const warnOnce = () => {
+    if (process.env.NODE_ENV !== "development") return;
+    const g = globalThis as unknown as { __vaylo_i18n_warned?: Set<string> };
+    if (!g.__vaylo_i18n_warned) g.__vaylo_i18n_warned = new Set();
+    if (g.__vaylo_i18n_warned.has(warnKey)) return;
+    g.__vaylo_i18n_warned.add(warnKey);
+    console.warn("[i18n] translations table unavailable, using locale-file fallback only");
+  };
+
+  try {
     const { data, error } = await supabase
-      .from(table)
+      .from("i18n_translations")
       .select("key, value")
       .eq("locale", locale);
+
     if (error) throw error;
+
     const out: Record<string, string> = {};
     for (const row of data ?? []) {
       const k = typeof (row as { key?: unknown }).key === "string" ? ((row as { key: string }).key as string) : "";
@@ -20,15 +35,9 @@ export async function fetchI18nTranslationsFromDb(
       if (k && v) out[k] = v;
     }
     return out;
-  }
-
-  try {
-    return await tryLoad("i18n_translations");
-  } catch (e) {
-    if (process.env.NODE_ENV === "development") {
-      console.warn("[i18n] fallback to phrase_translations");
-    }
-    return await tryLoad("phrase_translations");
+  } catch {
+    warnOnce();
+    return {};
   }
 }
 

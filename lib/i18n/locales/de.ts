@@ -196,6 +196,8 @@ const de = {
     intelligenceSectionTitle: "System-Klassifizierung",
     intelligenceSectionSubtitle:
       "Heuristischer Abgleich mit dem Vaylo-Dokumentenkatalog — keine Rechtsbewertung.",
+    intelligenceUnavailable:
+      "Dokumenten-Intelligenz ist auf diesem Server noch nicht verfügbar.",
     intelligenceStatusLine: "Klassifizierungsstatus: {status}",
     intelligenceStatusPending: "Ausstehend",
     intelligenceStatusCompleted: "Klassifiziert",
@@ -317,6 +319,18 @@ const de = {
     criticalCvDesc:
       "Ein starker Lebenslauf ist Voraussetzung für erfolgreiche Bewerbungen in Deutschland.",
     actionMarkDone: "Erledigt",
+    stepProcessVerified: "Verifiziert",
+    stepProcessCompleted: "Abgeschlossen",
+    stepProcessEligible: "Bereit",
+    stepProcessBlocked: "Wartet",
+    stepProcessInProgress: "In Bearbeitung",
+    stepProcessBlockedHint: "Zuerst frühere Schritte abschließen",
+    stepProcessNotApplicable: "Für deine Situation nicht relevant",
+    stepProcessProofBacked: "Mit Dokument bestätigt",
+    stepRecommendedNext: "Empfohlener nächster Schritt",
+    autoByVaylo: "Auto von Vaylo",
+    autoByVayloTooltip: "Automatisch abgeschlossen basierend auf deinen Dokumenten",
+    documentAnalyzingHint: "Dokument wird analysiert…",
     actionUploadDocumentCta: "Dokument hochladen",
     actionViewGuideCta: "Guide ansehen",
     actionExplainBureaucracyGoal:
