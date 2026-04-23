@@ -17,7 +17,9 @@ export function dependencySatisfied(dep: ResolvedUserStepState): boolean {
   return (
     dep.status === "completed" ||
     dep.status === "verified" ||
-    (dep.status === "not_applicable" && dep.applicabilityReason === "criteria_not_met")
+    (dep.status === "not_applicable" &&
+      (dep.applicabilityReason === "criteria_not_met" ||
+        dep.applicabilityReason === "already_satisfied"))
   );
 }
 

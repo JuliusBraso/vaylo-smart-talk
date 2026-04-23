@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { UserState } from "@/lib/vaylo/state/types";
+import { resolveRealityFlags } from "@/lib/vaylo/state/resolve-reality-flags";
 import { chooseStrongerStatus } from "./status-precedence";
 import { evaluateGroupedDependencies } from "./dependency-groups";
 import {
@@ -132,7 +133,11 @@ export async function getUserStepState(params: {
 
   function evaluateEligibility(
     criteria: unknown,
-  ): { applicable: boolean; reason?: "criteria_not_met" | "missing_data" | "unknown" } {
+  ): {
+    applicable: boolean;
+    reason?: "criteria_not_met" | "missing_data" | "unknown" | "already_satisfied";
+    realityCheck?: { flag: string; value: boolean; expected: boolean };
+  } {
     if (criteria == null) return { applicable: true };
     if (typeof criteria !== "object" || Array.isArray(criteria)) {
       // Malformed rules: do not skip; treat as unknown -> keep blocked downstream.
@@ -140,10 +145,13 @@ export async function getUserStepState(params: {
     }
     if (!dnaInputs) return { applicable: false, reason: "missing_data" };
 
-    const ctx: Record<string, string | null> = {
+    const ctx: Record<string, string | boolean | null> = {
       employment_type: dnaInputs.employment_type ?? null,
       family_status: dnaInputs.family_status ?? null,
       language_level: dnaInputs.language_level ?? null,
+      has_anmeldung: realityFlags.has_anmeldung,
+      has_health_insurance: realityFlags.has_health_insurance,
+      has_bank_account: realityFlags.has_bank_account,
     };
 
     const c = criteria as Record<string, unknown>;
@@ -156,6 +164,7 @@ export async function getUserStepState(params: {
       // Back-compat: simple array means "in".
       if (Array.isArray(raw)) {
         const allowed = raw.filter((x) => typeof x === "string") as string[];
+        if (typeof current !== "string") return { applicable: false, reason: "missing_data" };
         if (allowed.length > 0 && (!current || !allowed.includes(current))) {
           return { applicable: false, reason: "criteria_not_met" };
         }
@@ -178,15 +187,35 @@ export async function getUserStepState(params: {
           continue;
         }
         if ("equals" in o) {
-          const want = typeof o.equals === "string" ? o.equals : null;
-          if (!want) return { applicable: false, reason: "unknown" };
-          if (!current || current !== want) return { applicable: false, reason: "criteria_not_met" };
+          const wantString = typeof o.equals === "string" ? o.equals : null;
+          const wantBool = typeof o.equals === "boolean" ? o.equals : null;
+          if (wantString == null && wantBool == null) return { applicable: false, reason: "unknown" };
+
+          if (wantBool != null) {
+            if (typeof current !== "boolean") return { applicable: false, reason: "missing_data" };
+            if (current !== wantBool) {
+              if (current === true && wantBool === false) {
+                return {
+                  applicable: false,
+                  reason: "already_satisfied",
+                  realityCheck: { flag: field, value: current, expected: wantBool },
+                };
+              }
+              return { applicable: false, reason: "criteria_not_met" };
+            }
+            continue;
+          }
+
+          if (!wantString) return { applicable: false, reason: "unknown" };
+          if (typeof current !== "string") return { applicable: false, reason: "missing_data" };
+          if (!current || current !== wantString) return { applicable: false, reason: "criteria_not_met" };
           continue;
         }
         if ("in" in o) {
           const allowed = Array.isArray(o.in) ? (o.in.filter((x) => typeof x === "string") as string[]) : [];
           if (Array.isArray(o.in) && allowed.length === 0) return { applicable: false, reason: "unknown" };
-          if (allowed.length > 0 && (!current || !allowed.includes(current))) {
+        if (typeof current !== "string") return { applicable: false, reason: "missing_data" };
+        if (allowed.length > 0 && (!current || !allowed.includes(current))) {
             return { applicable: false, reason: "criteria_not_met" };
           }
           continue;
@@ -266,6 +295,19 @@ export async function getUserStepState(params: {
     persistedByStep.set(parsed.step_id, parsed);
   }
 
+  // Reality flags: read-only derived state (no DB writes).
+  // We only trust strong outcomes here; eligibility must never depend on weaker statuses.
+  const realityFlags = resolveRealityFlags({
+    userState: params.userState,
+    stepOutcomes: {
+      anmeldung: verifiedByStep.has("anmeldung") ? "verified" : persistedByStep.get("anmeldung")?.status,
+      health_insurance: verifiedByStep.has("health_insurance")
+        ? "verified"
+        : persistedByStep.get("health_insurance")?.status,
+      bank_account: verifiedByStep.has("bank_account") ? "verified" : persistedByStep.get("bank_account")?.status,
+    },
+  });
+
   // Resolve per-step status
   const resolved: Record<string, ResolvedUserStepState> = {};
 
@@ -305,7 +347,7 @@ export async function getUserStepState(params: {
         ? status
         : status === "verified" || status === "completed" || status === "in_progress"
           ? status
-          : eligibility.reason === "criteria_not_met"
+          : eligibility.reason === "criteria_not_met" || eligibility.reason === "already_satisfied"
             ? "not_applicable"
             : "blocked";
 
@@ -316,6 +358,14 @@ export async function getUserStepState(params: {
         isApplicable: eligibility.applicable,
         reason: eligibility.reason,
       });
+      if (eligibility.reason === "already_satisfied" && eligibility.realityCheck) {
+        console.info("[step-state] reality-check", {
+          stepId: s.id,
+          flag: eligibility.realityCheck.flag,
+          value: eligibility.realityCheck.value,
+          result: "not_applicable",
+        });
+      }
     }
 
     resolved[s.id] = {
