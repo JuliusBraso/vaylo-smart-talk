@@ -161,55 +161,53 @@ export default function DashboardShell({
       data-locale={locale}
     >
       <div className="relative" onClick={() => setVibeOpen(false)}>
-        {/* ZONE A: Hero canvas */}
-        <section className="relative">
-          <div className="mx-auto max-w-6xl px-4 pt-10 sm:px-6 lg:px-8">
+        {/* Page canvas: Hero background as a layer (not a panel). */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-[520px]" style={heroVars}>
+          <div
+            className="absolute inset-0 transition-opacity duration-500"
+            style={{ background: "var(--vaylo-atmosphere-gradient)" }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(180deg, rgba(255,255,255,0.90) 0%, rgba(255,255,255,0.84) 44%, rgba(248,250,252,1) 100%)",
+            }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              backdropFilter: `blur(${Math.max(10, Math.round(appliedAtmosphere.blur * 0.7))}px)`,
+              filter: "saturate(0.82) brightness(1.08)",
+            }}
+          />
+          <div
+            className="absolute -left-24 top-[-180px] h-[560px] w-[820px] rounded-full blur-3xl opacity-35"
+            style={{
+              background:
+                "radial-gradient(circle at 30% 35%, color-mix(in srgb, var(--vaylo-atmosphere-accent) 12%, transparent) 0%, transparent 62%)",
+            }}
+          />
+          <div
+            className="absolute -right-48 top-[-240px] h-[560px] w-[820px] rounded-full blur-3xl opacity-25"
+            style={{
+              background:
+                "radial-gradient(circle at 55% 35%, color-mix(in srgb, var(--vaylo-atmosphere-accent) 9%, transparent) 0%, transparent 65%)",
+            }}
+          />
+        </div>
+
+        {/* ZONE A — HERO CANVAS (full-width composition, internal readable widths only). */}
+        <section className="relative pt-10">
+          <div className="px-4 sm:px-6 lg:px-10">
             <div
-              className="relative overflow-hidden rounded-[28px] border border-slate-200 bg-white/60"
+              className={`relative grid gap-8 md:grid-cols-[1.25fr_0.75fr] md:gap-10 transition duration-300 ease-out motion-reduce:transition-none ${
+                heroMounted ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"
+              }`}
               style={{ minHeight: 480 }}
             >
-              {/* Atmosphere background fills canvas */}
-              <div className="pointer-events-none absolute inset-0" style={heroVars}>
-                <div className="absolute inset-0 transition-opacity duration-500" style={{ background: "var(--vaylo-atmosphere-gradient)" }} />
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    background:
-                      "linear-gradient(180deg, rgba(255,255,255,0.88) 0%, rgba(255,255,255,0.82) 42%, rgba(255,255,255,0.96) 100%)",
-                  }}
-                />
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    backdropFilter: `blur(${Math.max(10, Math.round(appliedAtmosphere.blur * 0.7))}px)`,
-                    filter: "saturate(0.82) brightness(1.08)",
-                  }}
-                />
-                {/* Very subtle internal lighting */}
-                <div
-                  className="absolute -left-24 top-[-160px] h-[520px] w-[760px] rounded-full blur-3xl opacity-45"
-                  style={{
-                    background:
-                      "radial-gradient(circle at 30% 35%, color-mix(in srgb, var(--vaylo-atmosphere-accent) 14%, transparent) 0%, transparent 62%)",
-                  }}
-                />
-                <div
-                  className="absolute -right-40 top-[-200px] h-[520px] w-[720px] rounded-full blur-3xl opacity-35"
-                  style={{
-                    background:
-                      "radial-gradient(circle at 55% 35%, color-mix(in srgb, var(--vaylo-atmosphere-accent) 10%, transparent) 0%, transparent 65%)",
-                  }}
-                />
-              </div>
-
-              {/* Canvas content */}
-              <div
-                className={`relative grid gap-8 p-8 md:grid-cols-[1.25fr_0.75fr] md:gap-10 transition duration-300 ease-out motion-reduce:transition-none ${
-                  heroMounted ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"
-                }`}
-              >
-                {/* LEFT: greeting + input */}
-                <div className="max-w-2xl">
+              {/* LEFT: greeting + input */}
+              <div className="max-w-2xl">
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
                     {t.dashboard.controlCenter}
                   </p>
@@ -302,8 +300,8 @@ export default function DashboardShell({
                   </div>
                 </div>
 
-                {/* RIGHT: floating status / vibe */}
-                <div className="flex flex-col items-end gap-3">
+              {/* RIGHT: floating status / vibe */}
+              <div className="flex flex-col items-end gap-3">
                   <div className="relative" onClick={(e) => e.stopPropagation()}>
                     <button
                       type="button"
@@ -394,17 +392,17 @@ export default function DashboardShell({
                       </div>
                     </div>
                   </div>
-                </div>
               </div>
             </div>
           </div>
         </section>
 
         {/* ZONE B: Clean base (tasks + history) */}
-        <section className="relative z-10 -mt-8 pb-12">
-          <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 sm:px-6 lg:px-8">
-            {/* Top tasks */}
-            <div>
+        <section className="relative z-10 -mt-10 pb-12">
+          <div className="flex flex-col gap-8 px-4 sm:px-6 lg:px-10">
+            <div className="mx-auto w-full max-w-6xl">
+              {/* Top tasks */}
+              <div>
               <div className="mb-4 flex items-end justify-between gap-4">
                 <div>
                   <h2 className="text-base font-semibold tracking-tight text-slate-900">
@@ -483,11 +481,11 @@ export default function DashboardShell({
                   );
                 })}
               </div>
-            </div>
+              </div>
 
-            {/* History */}
-            {historyActions.length > 0 ? (
-              <div className={`${surface("subtlePanel")} p-6`}>
+              {/* History */}
+              {historyActions.length > 0 ? (
+                <div className={`${surface("subtlePanel")} p-6`}>
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <h2 className="text-base font-semibold tracking-tight text-slate-900">
@@ -519,12 +517,13 @@ export default function DashboardShell({
                     </div>
                   </div>
                 ) : null}
-              </div>
-            ) : null}
+                </div>
+              ) : null}
 
-            {/* Modules (kept intact) */}
-            <div className="grid grid-cols-1 gap-6">
-              {injectModuleDict(children, t)}
+              {/* Modules (kept intact) */}
+              <div className="grid grid-cols-1 gap-6">
+                {injectModuleDict(children, t)}
+              </div>
             </div>
           </div>
         </section>
