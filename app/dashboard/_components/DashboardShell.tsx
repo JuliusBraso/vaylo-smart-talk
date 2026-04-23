@@ -28,6 +28,8 @@ import { getActionExplanation } from "@/lib/dashboard/get-action-explanation";
 import { trackActionEvent } from "@/lib/vaylo/action-tracking";
 import { useStepStateRealtime } from "@/lib/vaylo/realtime/use-step-state-realtime";
 import DashboardActionCard from "./DashboardActionCard";
+import { ATMOSPHERE_ORDER, getAtmosphereById, type AtmosphereId } from "@/lib/ui/atmospheres";
+import { getDefaultAtmosphereFromDna } from "@/lib/ui/get-default-atmosphere-from-dna";
 
 type Props = {
   dna: ProfileDNA;
@@ -74,6 +76,34 @@ export default function DashboardShell({
   const prevByIdRef = useRef<Map<string, DashboardAction>>(new Map());
   const [changedIds, setChangedIds] = useState<Set<string>>(new Set());
   const [debugExplain, setDebugExplain] = useState(false);
+  const [vibeOpen, setVibeOpen] = useState(false);
+  const [selectedAtmosphereId, setSelectedAtmosphereId] = useState<AtmosphereId | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem("vaylo_atmosphere");
+      const parsed = typeof raw === "string" ? raw.trim() : "";
+      setSelectedAtmosphereId((getAtmosphereById(parsed)?.id as AtmosphereId | undefined) ?? null);
+    } catch {
+      // localStorage is best-effort; ignore failures.
+    }
+  }, []);
+
+  const appliedAtmosphere = useMemo(() => {
+    const fromUser = selectedAtmosphereId ? getAtmosphereById(selectedAtmosphereId) : null;
+    if (fromUser) return fromUser;
+    const fromDna = getAtmosphereById(getDefaultAtmosphereFromDna(dna));
+    return fromDna ?? getAtmosphereById("minimal")!;
+  }, [dna, selectedAtmosphereId]);
+
+  const heroVars = useMemo(() => {
+    return {
+      ["--vaylo-atmosphere-gradient" as string]: appliedAtmosphere.gradient,
+      ["--vaylo-atmosphere-overlay" as string]: appliedAtmosphere.overlay,
+      ["--vaylo-atmosphere-text" as string]: appliedAtmosphere.textMode,
+      ["--vaylo-atmosphere-accent" as string]: appliedAtmosphere.accentColor ?? "#34d399",
+    } as Record<string, string>;
+  }, [appliedAtmosphere]);
 
   useEffect(() => {
     setLiveActions(actions);
@@ -123,47 +153,137 @@ export default function DashboardShell({
 
   return (
     <main
-      className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900 text-slate-100"
+      className="min-h-screen bg-slate-950 text-slate-100"
       data-locale={locale}
     >
-      <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-10 sm:px-6 lg:px-8">
-        <header className="flex items-center justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400/80">
-              {t.dashboard.controlCenter}
-            </p>
-            <h1 className="mt-2 bg-gradient-to-r from-emerald-300 via-cyan-300 to-indigo-400 bg-clip-text text-3xl font-semibold text-transparent md:text-4xl">
-              {t.dashboard.operationsCockpit}
-            </h1>
-            <p className="mt-2 max-w-xl text-sm text-slate-400">
-              {t.dashboard.intro}
-            </p>
-            <Link
-              href="/profile/edit"
-              className="mt-4 inline-flex rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-semibold text-slate-200 transition hover:border-white/30 hover:bg-white/10"
-            >
-              {t.dashboard.editProfile}
-            </Link>
-            <Link
-              href="/profile/refine"
-              className="ml-2 mt-4 inline-flex rounded-full border border-cyan-400/35 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-100 transition hover:border-cyan-400/50 hover:bg-cyan-500/15"
-            >
-              {t.dashboard.refineProfile}
-            </Link>
-          </div>
-          <div className="rounded-2xl border border-emerald-400/30 bg-slate-950/60 px-4 py-3 text-right shadow-[0_0_40px_rgba(16,185,129,0.35)] backdrop-blur-2xl">
-            <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400">
-              {t.dashboard.activePriority}
+      <div className="relative">
+        {/* Atmosphere hero layer (top only) */}
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-[40vh] max-h-[460px] min-h-[260px]"
+          style={heroVars}
+        >
+          <div
+            className="absolute inset-0 transition-opacity duration-500"
+            style={{ background: "var(--vaylo-atmosphere-gradient)" }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{ background: "var(--vaylo-atmosphere-overlay)" }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{ backdropFilter: `blur(${appliedAtmosphere.blur}px)` }}
+          />
+          {/* Fade into main background */}
+          <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-b from-transparent to-slate-950" />
+        </div>
+
+        <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-10 sm:px-6 lg:px-8">
+          <header className="relative flex items-center justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400/80">
+                {t.dashboard.controlCenter}
+              </p>
+              <h1 className="mt-2 bg-gradient-to-r from-emerald-300 via-cyan-300 to-indigo-400 bg-clip-text text-3xl font-semibold text-transparent md:text-4xl">
+                {t.dashboard.operationsCockpit}
+              </h1>
+              <p className="mt-2 max-w-xl text-sm text-slate-300/80">
+                {t.dashboard.intro}
+              </p>
+              <Link
+                href="/profile/edit"
+                className="mt-4 inline-flex rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-semibold text-slate-200 transition hover:border-white/30 hover:bg-white/10"
+              >
+                {t.dashboard.editProfile}
+              </Link>
+              <Link
+                href="/profile/refine"
+                className="ml-2 mt-4 inline-flex rounded-full border border-cyan-400/35 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-100 transition hover:border-cyan-400/50 hover:bg-cyan-500/15"
+              >
+                {t.dashboard.refineProfile}
+              </Link>
             </div>
-            <div className="mt-1 text-sm font-semibold text-emerald-300">
-              {activePriorityLabel}
+
+            <div className="flex flex-col items-end gap-2">
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setVibeOpen((v) => !v)}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] font-semibold text-slate-200 transition hover:border-white/25 hover:bg-white/10"
+                  title="Vibe"
+                >
+                  <span className="inline-block h-2 w-2 rounded-full" style={{ background: "var(--vaylo-atmosphere-accent)" }} />
+                  Vibe
+                </button>
+                {vibeOpen ? (
+                  <div className="absolute right-0 z-20 mt-2 w-48 overflow-hidden rounded-2xl border border-white/15 bg-slate-950/80 shadow-[0_0_40px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
+                    <div className="p-2">
+                      {ATMOSPHERE_ORDER.map((id) => {
+                        const a = getAtmosphereById(id)!;
+                        const active = a.id === appliedAtmosphere.id;
+                        return (
+                          <button
+                            key={a.id}
+                            type="button"
+                            onClick={() => {
+                              try {
+                                window.localStorage.setItem("vaylo_atmosphere", a.id);
+                              } catch {
+                                // ignore
+                              }
+                              setSelectedAtmosphereId(a.id);
+                              setVibeOpen(false);
+                            }}
+                            className={
+                              active
+                                ? "flex w-full items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-2 py-2 text-left text-xs font-semibold text-emerald-100"
+                                : "flex w-full items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-2 py-2 text-left text-xs font-semibold text-slate-200 transition hover:border-white/20 hover:bg-white/10"
+                            }
+                          >
+                            <span
+                              className="h-8 w-10 rounded-lg border border-white/10"
+                              style={{ background: a.gradient }}
+                            />
+                            <span className="flex-1">{a.label}</span>
+                            {active ? <span className="text-[10px] text-emerald-200/90">On</span> : null}
+                          </button>
+                        );
+                      })}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          try {
+                            window.localStorage.removeItem("vaylo_atmosphere");
+                          } catch {
+                            // ignore
+                          }
+                          setSelectedAtmosphereId(null);
+                          setVibeOpen(false);
+                        }}
+                        className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-2 py-2 text-left text-[11px] font-semibold text-slate-300 transition hover:border-white/20 hover:bg-white/10"
+                        title="Use DNA default"
+                      >
+                        Use suggested default
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="rounded-2xl border border-emerald-400/30 bg-slate-950/60 px-4 py-3 text-right shadow-[0_0_40px_rgba(16,185,129,0.35)] backdrop-blur-2xl">
+                <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400">
+                  {t.dashboard.activePriority}
+                </div>
+                <div className="mt-1 text-sm font-semibold text-emerald-300">
+                  {activePriorityLabel}
+                </div>
+                <div className="mt-1 text-[10px] text-slate-500">
+                  {t.dashboard.level}{" "}
+                  {getLanguageLabel(dna.inputs.language_level, t)}
+                </div>
+              </div>
             </div>
-            <div className="mt-1 text-[10px] text-slate-500">
-              {t.dashboard.level}{" "}
-              {getLanguageLabel(dna.inputs.language_level, t)}
-            </div>
-          </div>
-        </header>
+          </header>
 
         <section className="rounded-3xl border border-white/10 bg-slate-950/70 p-5 shadow-[0_0_55px_rgba(56,189,248,0.28)] backdrop-blur-2xl">
           <div className="flex items-center justify-between gap-3">
@@ -368,6 +488,7 @@ export default function DashboardShell({
         <section className="grid grid-cols-1 gap-6">
           {injectModuleDict(children, t)}
         </section>
+        </div>
       </div>
     </main>
   );
