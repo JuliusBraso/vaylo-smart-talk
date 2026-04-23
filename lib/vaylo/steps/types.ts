@@ -48,6 +48,11 @@ export type ResolvedUserStepState = {
     hasLegacyCompletedAction: boolean;
     dependencyStepIds: string[];
     blockedByStepIds: string[];
+    /**
+     * Optional: OR-groups that were evaluated and found unsatisfied.
+     * Key is a group id, value is the dependency step ids in that group.
+     */
+    blockedDependencyGroups?: Record<string, string[]>;
     /** Eligibility rules from `knowledge_steps.eligibility_criteria` matched against user state. */
     eligibility?: {
       applicable: boolean;

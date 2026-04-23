@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { UserState } from "@/lib/vaylo/state/types";
 import { chooseStrongerStatus } from "./status-precedence";
+import { evaluateGroupedDependencies } from "./dependency-groups";
 import {
   type GetUserStepStateResult,
   type ResolvedUserStepState,
@@ -17,7 +18,7 @@ type KnowledgeStepRow = {
   eligibility_criteria: unknown | null;
 };
 
-type DependencyEdgeRow = { step_id: string; depends_on_step_id: string };
+type DependencyEdgeRow = { step_id: string; depends_on_step_id: string; dependency_group: string | null };
 
 type ProgressRow = { action_id: string };
 
@@ -57,10 +58,24 @@ export async function getUserStepState(params: {
   const { supabase, userId } = params;
 
   // A) Knowledge graph: active steps + dependency edges
-  const { data: depsRaw, error: depsErr } = await supabase
-    .from("knowledge_step_dependencies")
-    .select("step_id, depends_on_step_id");
-  if (depsErr) throw depsErr;
+  // Compatibility: older DBs may not have `dependency_group` yet.
+  let depsRaw: unknown[] | null = null;
+  try {
+    const { data, error } = await supabase
+      .from("knowledge_step_dependencies")
+      .select("step_id, depends_on_step_id, dependency_group");
+    if (error) throw error;
+    depsRaw = data as unknown[] | null;
+  } catch (err) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[step-state] dependency_group unavailable, using legacy AND dependencies only");
+    }
+    const { data, error } = await supabase
+      .from("knowledge_step_dependencies")
+      .select("step_id, depends_on_step_id");
+    if (error) throw error;
+    depsRaw = data as unknown[] | null;
+  }
 
   // Compatibility: older DBs may not have `eligibility_criteria` yet.
   let stepsRaw: unknown[] | null = null;
@@ -190,14 +205,15 @@ export async function getUserStepState(params: {
       return {
         step_id: String(o.step_id ?? ""),
         depends_on_step_id: String(o.depends_on_step_id ?? ""),
+        dependency_group: typeof o.dependency_group === "string" ? o.dependency_group : null,
       } satisfies DependencyEdgeRow;
     })
     .filter((e) => !!e.step_id && !!e.depends_on_step_id);
 
-  const depsByStep = new Map<string, string[]>();
+  const depsByStep = new Map<string, DependencyEdgeRow[]>();
   for (const e of deps) {
     const prev = depsByStep.get(e.step_id) ?? [];
-    prev.push(e.depends_on_step_id);
+    prev.push(e);
     depsByStep.set(e.step_id, prev);
   }
 
@@ -255,7 +271,9 @@ export async function getUserStepState(params: {
 
   // First pass: compute VERIFIED/COMPLETED baseline by truth sources, else dependency-based status
   for (const s of steps) {
-    const depsForStep = [...new Set((depsByStep.get(s.id) ?? []).filter(Boolean))].sort();
+    const depsForStep = [
+      ...new Set((depsByStep.get(s.id) ?? []).map((e) => e.depends_on_step_id).filter(Boolean)),
+    ].sort();
     const hasConfirmedProof = verifiedByStep.has(s.id);
     const hasLegacyCompletedAction = !!s.action_id && completedActionsSet.has(s.action_id);
 
@@ -346,24 +364,32 @@ export async function getUserStepState(params: {
       step.source = step.source ?? "system";
       continue;
     }
-    const blockedBy: string[] = [];
-    for (const depId of depsForStep) {
-      const dep = resolved[depId];
-      if (!dep) {
-        // Missing dependency row (inactive or unknown) is treated as blocked for safety.
-        blockedBy.push(depId);
-        continue;
-      }
-      const depSatisfied =
-        dep.status === "completed" ||
-        dep.status === "verified" ||
-        (dep.status === "not_applicable" && dep.applicabilityReason === "criteria_not_met");
-      if (!depSatisfied) {
-        blockedBy.push(depId);
+
+    const depEdgesForStep = depsByStep.get(step.stepId) ?? [];
+    const grouped = evaluateGroupedDependencies({
+      deps: depEdgesForStep.map((e) => ({
+        stepId: e.step_id,
+        dependsOnStepId: e.depends_on_step_id,
+        dependencyGroup: e.dependency_group,
+      })),
+      resolvedByStepId: resolved,
+    });
+
+    step.evidence.blockedByStepIds = grouped.blockedByStepIds;
+    if (Object.keys(grouped.blockedDependencyGroups).length > 0) {
+      step.evidence.blockedDependencyGroups = grouped.blockedDependencyGroups;
+      if (process.env.NODE_ENV === "development") {
+        console.info("[step-state] dependency group evaluated", {
+          stepId: step.stepId,
+          unsatisfiedGroups: Object.entries(grouped.blockedDependencyGroups).map(([groupId, deps]) => ({
+            groupId,
+            deps,
+          })),
+        });
       }
     }
-    step.evidence.blockedByStepIds = blockedBy.sort();
-    if (blockedBy.length === 0) {
+
+    if (grouped.blockedByStepIds.length === 0) {
       step.status = "eligible";
       step.source = step.source ?? "system";
     } else {
