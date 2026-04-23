@@ -30,6 +30,7 @@ import { useStepStateRealtime } from "@/lib/vaylo/realtime/use-step-state-realti
 import DashboardActionCard from "./DashboardActionCard";
 import { ATMOSPHERE_ORDER, getAtmosphereById, type AtmosphereId } from "@/lib/ui/atmospheres";
 import { getDefaultAtmosphereFromDna } from "@/lib/ui/get-default-atmosphere-from-dna";
+import { surface } from "@/lib/ui/surfaces";
 
 type Props = {
   dna: ProfileDNA;
@@ -78,8 +79,11 @@ export default function DashboardShell({
   const [debugExplain, setDebugExplain] = useState(false);
   const [vibeOpen, setVibeOpen] = useState(false);
   const [selectedAtmosphereId, setSelectedAtmosphereId] = useState<AtmosphereId | null>(null);
+  const [heroMounted, setHeroMounted] = useState(false);
+  const [heroQuery, setHeroQuery] = useState("");
 
   useEffect(() => {
+    setHeroMounted(true);
     try {
       const raw = window.localStorage.getItem("vaylo_atmosphere");
       const parsed = typeof raw === "string" ? raw.trim() : "";
@@ -153,342 +157,377 @@ export default function DashboardShell({
 
   return (
     <main
-      className="min-h-screen bg-slate-950 text-slate-100"
+      className="min-h-screen bg-slate-50 text-slate-900"
       data-locale={locale}
     >
-      <div className="relative">
-        {/* Atmosphere hero layer (top only) */}
-        <div
-          className="pointer-events-none absolute inset-x-0 top-0 h-[40vh] max-h-[460px] min-h-[260px]"
-          style={heroVars}
-        >
-          <div
-            className="absolute inset-0 transition-opacity duration-500"
-            style={{ background: "var(--vaylo-atmosphere-gradient)" }}
-          />
-          <div
-            className="absolute inset-0"
-            style={{ background: "var(--vaylo-atmosphere-overlay)" }}
-          />
-          <div
-            className="absolute inset-0"
-            style={{ backdropFilter: `blur(${appliedAtmosphere.blur}px)` }}
-          />
-          {/* Fade into main background */}
-          <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-b from-transparent to-slate-950" />
-        </div>
+      <div className="relative" onClick={() => setVibeOpen(false)}>
+        {/* ZONE A: Hero canvas */}
+        <section className="relative">
+          <div className="mx-auto max-w-6xl px-4 pt-10 sm:px-6 lg:px-8">
+            <div
+              className="relative overflow-hidden rounded-[28px] border border-slate-200 bg-white/60"
+              style={{ minHeight: 480 }}
+            >
+              {/* Atmosphere background fills canvas */}
+              <div className="pointer-events-none absolute inset-0" style={heroVars}>
+                <div className="absolute inset-0 transition-opacity duration-500" style={{ background: "var(--vaylo-atmosphere-gradient)" }} />
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background:
+                      "linear-gradient(180deg, rgba(255,255,255,0.88) 0%, rgba(255,255,255,0.82) 42%, rgba(255,255,255,0.96) 100%)",
+                  }}
+                />
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    backdropFilter: `blur(${Math.max(10, Math.round(appliedAtmosphere.blur * 0.7))}px)`,
+                    filter: "saturate(0.82) brightness(1.08)",
+                  }}
+                />
+                {/* Very subtle internal lighting */}
+                <div
+                  className="absolute -left-24 top-[-160px] h-[520px] w-[760px] rounded-full blur-3xl opacity-45"
+                  style={{
+                    background:
+                      "radial-gradient(circle at 30% 35%, color-mix(in srgb, var(--vaylo-atmosphere-accent) 14%, transparent) 0%, transparent 62%)",
+                  }}
+                />
+                <div
+                  className="absolute -right-40 top-[-200px] h-[520px] w-[720px] rounded-full blur-3xl opacity-35"
+                  style={{
+                    background:
+                      "radial-gradient(circle at 55% 35%, color-mix(in srgb, var(--vaylo-atmosphere-accent) 10%, transparent) 0%, transparent 65%)",
+                  }}
+                />
+              </div>
 
-        <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-10 sm:px-6 lg:px-8">
-          <header className="relative flex items-center justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400/80">
-                {t.dashboard.controlCenter}
-              </p>
-              <h1 className="mt-2 bg-gradient-to-r from-emerald-300 via-cyan-300 to-indigo-400 bg-clip-text text-3xl font-semibold text-transparent md:text-4xl">
-                {t.dashboard.operationsCockpit}
-              </h1>
-              <p className="mt-2 max-w-xl text-sm text-slate-300/80">
-                {t.dashboard.intro}
-              </p>
-              <Link
-                href="/profile/edit"
-                className="mt-4 inline-flex rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-semibold text-slate-200 transition hover:border-white/30 hover:bg-white/10"
+              {/* Canvas content */}
+              <div
+                className={`relative grid gap-8 p-8 md:grid-cols-[1.25fr_0.75fr] md:gap-10 transition duration-300 ease-out motion-reduce:transition-none ${
+                  heroMounted ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"
+                }`}
               >
-                {t.dashboard.editProfile}
-              </Link>
-              <Link
-                href="/profile/refine"
-                className="ml-2 mt-4 inline-flex rounded-full border border-cyan-400/35 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-100 transition hover:border-cyan-400/50 hover:bg-cyan-500/15"
-              >
-                {t.dashboard.refineProfile}
-              </Link>
-            </div>
+                {/* LEFT: greeting + input */}
+                <div className="max-w-2xl">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                    {t.dashboard.controlCenter}
+                  </p>
+                  <h1 className="mt-2 text-[34px] font-semibold tracking-tight text-slate-900 md:text-5xl">
+                    {t.dashboard.operationsCockpit}
+                  </h1>
+                  <p className="mt-3 text-sm text-slate-600">
+                    {t.dashboard.intro}
+                  </p>
 
-            <div className="flex flex-col items-end gap-2">
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setVibeOpen((v) => !v)}
-                  className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] font-semibold text-slate-200 transition hover:border-white/25 hover:bg-white/10"
-                  title="Vibe"
-                >
-                  <span className="inline-block h-2 w-2 rounded-full" style={{ background: "var(--vaylo-atmosphere-accent)" }} />
-                  Vibe
-                </button>
-                {vibeOpen ? (
-                  <div className="absolute right-0 z-20 mt-2 w-48 overflow-hidden rounded-2xl border border-white/15 bg-slate-950/80 shadow-[0_0_40px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
-                    <div className="p-2">
-                      {ATMOSPHERE_ORDER.map((id) => {
-                        const a = getAtmosphereById(id)!;
-                        const active = a.id === appliedAtmosphere.id;
-                        return (
+                  <div className="mt-6 flex items-center gap-2">
+                    <div className="flex-1">
+                      <input
+                        value={heroQuery}
+                        onChange={(e) => setHeroQuery(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key !== "Enter") return;
+                          const q = heroQuery.trim();
+                          router.push(q ? `/assistant?q=${encodeURIComponent(q)}` : "/assistant");
+                        }}
+                        placeholder="Ask Vaylo…"
+                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-[0_14px_34px_rgba(15,23,42,0.12)] placeholder:text-slate-400 transition duration-150 ease-out focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:shadow-[0_20px_52px_rgba(15,23,42,0.16)] motion-reduce:transition-none"
+                        aria-label="Ask Vaylo"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const q = heroQuery.trim();
+                        router.push(q ? `/assistant?q=${encodeURIComponent(q)}` : "/assistant");
+                      }}
+                      className="inline-flex shrink-0 items-center justify-center rounded-2xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-[0_10px_22px_rgba(15,23,42,0.10)] transition duration-150 ease-out hover:bg-indigo-700 active:scale-[0.98] motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                    >
+                      Go
+                    </button>
+                  </div>
+
+                  {/* Floating support cards (overlap into Zone B) */}
+                  <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                    <div className={`${surface("secondaryCard", { hover: true })} p-4 translate-y-6`}>
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        Recent documents
+                      </div>
+                      <div className="mt-2 text-sm font-semibold text-slate-900">
+                        Upload or review what you already have
+                      </div>
+                      <p className="mt-1 text-xs text-slate-600">
+                        Vaylo uses your documents to verify steps.
+                      </p>
+                      <Link
+                        href="/documents"
+                        className="mt-3 inline-flex rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition duration-150 hover:bg-slate-50 active:scale-[0.98] motion-reduce:transition-none"
+                      >
+                        Open documents
+                      </Link>
+                    </div>
+
+                    <div className={`${surface("secondaryCard", { hover: true })} p-4 translate-y-6`}>
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        Help & questions
+                      </div>
+                      <div className="mt-2 text-sm font-semibold text-slate-900">
+                        Ask anything about your next steps
+                      </div>
+                      <p className="mt-1 text-xs text-slate-600">
+                        Get clear guidance without digging through forms.
+                      </p>
+                      <Link
+                        href="/assistant"
+                        className="mt-3 inline-flex rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition duration-150 hover:bg-slate-50 active:scale-[0.98] motion-reduce:transition-none"
+                      >
+                        Ask Vaylo
+                      </Link>
+                    </div>
+                  </div>
+
+                  <div className="mt-10 flex flex-wrap items-center gap-2 text-xs">
+                    <Link
+                      href="/profile/edit"
+                      className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 font-semibold text-slate-700 shadow-sm transition duration-150 ease-out hover:bg-slate-50 active:scale-[0.98] motion-reduce:transition-none"
+                    >
+                      {t.dashboard.editProfile}
+                    </Link>
+                    <Link
+                      href="/profile/refine"
+                      className="inline-flex rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 font-semibold text-indigo-800 shadow-sm transition duration-150 ease-out hover:bg-indigo-100 active:scale-[0.98] motion-reduce:transition-none"
+                    >
+                      {t.dashboard.refineProfile}
+                    </Link>
+                  </div>
+                </div>
+
+                {/* RIGHT: floating status / vibe */}
+                <div className="flex flex-col items-end gap-3">
+                  <div className="relative" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={() => setVibeOpen((v) => !v)}
+                      className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-700 shadow-sm transition duration-150 hover:bg-slate-50 active:scale-[0.98] motion-reduce:transition-none"
+                      title="Vibe"
+                    >
+                      <span
+                        className="inline-block h-2 w-2 rounded-full"
+                        style={{ background: "var(--vaylo-atmosphere-accent)" }}
+                      />
+                      Vibe
+                    </button>
+                    {vibeOpen ? (
+                      <div className={`absolute right-0 z-20 mt-2 w-56 overflow-hidden ${surface("heroGlass")}`}>
+                        <div className="p-2">
+                          {ATMOSPHERE_ORDER.map((id) => {
+                            const a = getAtmosphereById(id)!;
+                            const active = a.id === appliedAtmosphere.id;
+                            return (
+                              <button
+                                key={a.id}
+                                type="button"
+                                onClick={() => {
+                                  try {
+                                    window.localStorage.setItem("vaylo_atmosphere", a.id);
+                                  } catch {
+                                    // ignore
+                                  }
+                                  setSelectedAtmosphereId(a.id);
+                                  setVibeOpen(false);
+                                }}
+                                className={
+                                  active
+                                    ? "flex w-full items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-2 py-2 text-left text-xs font-semibold text-indigo-900"
+                                    : "flex w-full items-center gap-2 rounded-xl border border-slate-200 bg-white px-2 py-2 text-left text-xs font-semibold text-slate-800 transition duration-150 hover:bg-slate-50 active:scale-[0.99] motion-reduce:transition-none"
+                                }
+                              >
+                                <span
+                                  className="h-8 w-10 rounded-lg border border-slate-200"
+                                  style={{ background: a.gradient }}
+                                />
+                                <span className="flex-1">{a.label}</span>
+                                {active ? <span className="text-[10px] text-indigo-700">On</span> : null}
+                              </button>
+                            );
+                          })}
                           <button
-                            key={a.id}
                             type="button"
                             onClick={() => {
                               try {
-                                window.localStorage.setItem("vaylo_atmosphere", a.id);
+                                window.localStorage.removeItem("vaylo_atmosphere");
                               } catch {
                                 // ignore
                               }
-                              setSelectedAtmosphereId(a.id);
+                              setSelectedAtmosphereId(null);
                               setVibeOpen(false);
                             }}
-                            className={
-                              active
-                                ? "flex w-full items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-2 py-2 text-left text-xs font-semibold text-emerald-100"
-                                : "flex w-full items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-2 py-2 text-left text-xs font-semibold text-slate-200 transition hover:border-white/20 hover:bg-white/10"
-                            }
+                            className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-2 py-2 text-left text-[11px] font-semibold text-slate-700 transition duration-150 hover:bg-slate-50 active:scale-[0.99] motion-reduce:transition-none"
+                            title="Use DNA default"
                           >
-                            <span
-                              className="h-8 w-10 rounded-lg border border-white/10"
-                              style={{ background: a.gradient }}
-                            />
-                            <span className="flex-1">{a.label}</span>
-                            {active ? <span className="text-[10px] text-emerald-200/90">On</span> : null}
+                            Use suggested default
                           </button>
-                        );
-                      })}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          try {
-                            window.localStorage.removeItem("vaylo_atmosphere");
-                          } catch {
-                            // ignore
-                          }
-                          setSelectedAtmosphereId(null);
-                          setVibeOpen(false);
-                        }}
-                        className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-2 py-2 text-left text-[11px] font-semibold text-slate-300 transition hover:border-white/20 hover:bg-white/10"
-                        title="Use DNA default"
-                      >
-                        Use suggested default
-                      </button>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className={`${surface("elevatedCard", { hover: true })} w-full max-w-xs p-5`}>
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                      {t.dashboard.activePriority}
+                    </div>
+                    <div className="mt-2 text-base font-semibold text-slate-900">
+                      {activePriorityLabel}
+                    </div>
+                    <div className="mt-2 text-xs text-slate-600">
+                      {t.dashboard.level} {getLanguageLabel(dna.inputs.language_level, t)}
+                    </div>
+                    <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        {t.dashboard.statusLabel}
+                      </div>
+                      <div className="mt-1 text-sm font-semibold text-slate-900">
+                        {t.dashboard.statusLocked}
+                      </div>
+                      <div className="mt-1 text-[11px] text-slate-600">
+                        {t.dashboard.statusDesc}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ZONE B: Clean base (tasks + history) */}
+        <section className="relative z-10 -mt-8 pb-12">
+          <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 sm:px-6 lg:px-8">
+            {/* Top tasks */}
+            <div>
+              <div className="mb-4 flex items-end justify-between gap-4">
+                <div>
+                  <h2 className="text-base font-semibold tracking-tight text-slate-900">
+                    {t.dashboard.nextActionsTitle}
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-600">{t.dashboard.nextActionsDesc}</p>
+                  <p className="mt-1 text-xs text-slate-500">{situationSummaryLine}</p>
+                </div>
+                {process.env.NODE_ENV === "development" ? (
+                  <button
+                    type="button"
+                    onClick={() => setDebugExplain((v) => !v)}
+                    className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600 shadow-sm transition hover:bg-slate-50"
+                    title="Dev only: logs step reasoning to console"
+                  >
+                    Explain: {debugExplain ? "on" : "off"}
+                  </button>
+                ) : null}
+              </div>
+
+              <div className="grid gap-5 md:grid-cols-3">
+                {liveActions.map((action, idx) => {
+                  const whyLines = action.reasons;
+                  const explanation = getActionExplanation(action);
+                  if (debugExplain && process.env.NODE_ENV === "development") {
+                    // eslint-disable-next-line no-console
+                    console.info("[dashboard] action explanation", {
+                      actionId: action.id,
+                      stepId: action.knowledgeStepId,
+                      stepStatus: action.stepStatus,
+                      applicabilityReason: action.applicabilityReason,
+                      blockedByStepIds: action.blockedByStepIds,
+                      explanation,
+                      whyLines,
+                    });
+                  }
+
+                  return (
+                    <DashboardActionCard
+                      key={action.id}
+                      t={t}
+                      action={action}
+                      variant="main"
+                      index={idx}
+                      headerLabel={idx === 0 ? t.dashboard.highestPriorityLabel : t.dashboard.nextLabel}
+                      className={changedClassById(action.id)}
+                      onPrimaryCtaClick={() => {
+                        void trackActionEvent({
+                          userId,
+                          actionId: action.id,
+                          eventType: "click",
+                        });
+                      }}
+                      onSecondaryCtaClick={() => {
+                        void trackActionEvent({
+                          userId,
+                          actionId: action.id,
+                          eventType: "click",
+                        });
+                      }}
+                      onGuideCtaClick={() => {
+                        void trackActionEvent({
+                          userId,
+                          actionId: action.id,
+                          eventType: "click",
+                        });
+                      }}
+                      footerActions={
+                        <MarkTaskDoneButton
+                          userId={userId}
+                          actionId={action.id}
+                          markDoneLabel={t.dashboard.actionMarkDone}
+                        />
+                      }
+                    />
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* History */}
+            {historyActions.length > 0 ? (
+              <div className={`${surface("subtlePanel")} p-6`}>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-base font-semibold tracking-tight text-slate-900">
+                      Completed &amp; Automated
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-600">Already handled for you</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setHistoryOpen((v) => !v)}
+                    className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600 shadow-sm transition hover:bg-slate-50"
+                    title="Show completed and auto-resolved steps"
+                  >
+                    {historyOpen ? "Hide" : "Show"}
+                  </button>
+                </div>
+                {historyOpen ? (
+                  <div className="mt-4 border-t border-slate-200/70 pt-4">
+                    <div className="grid gap-3 md:grid-cols-3">
+                      {historyActions.map((action) => (
+                        <DashboardActionCard
+                          key={action.id}
+                          t={t}
+                          action={action}
+                          variant="history"
+                          className={`${surface("historyCard", { hover: true })} p-3`}
+                        />
+                      ))}
                     </div>
                   </div>
                 ) : null}
               </div>
-
-              <div className="rounded-2xl border border-emerald-400/30 bg-slate-950/60 px-4 py-3 text-right shadow-[0_0_40px_rgba(16,185,129,0.35)] backdrop-blur-2xl">
-                <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400">
-                  {t.dashboard.activePriority}
-                </div>
-                <div className="mt-1 text-sm font-semibold text-emerald-300">
-                  {activePriorityLabel}
-                </div>
-                <div className="mt-1 text-[10px] text-slate-500">
-                  {t.dashboard.level}{" "}
-                  {getLanguageLabel(dna.inputs.language_level, t)}
-                </div>
-              </div>
-            </div>
-          </header>
-
-        <section className="rounded-3xl border border-white/10 bg-slate-950/70 p-5 shadow-[0_0_55px_rgba(56,189,248,0.28)] backdrop-blur-2xl">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-sm font-semibold tracking-wide text-slate-100">
-                {t.dashboard.nextActionsTitle}
-              </h2>
-              <p className="mt-1 text-xs text-slate-400">
-                {t.dashboard.nextActionsDesc}
-              </p>
-              <p className="mt-1 text-[11px] text-slate-500">{situationSummaryLine}</p>
-            </div>
-            {process.env.NODE_ENV === "development" ? (
-              <button
-                type="button"
-                onClick={() => setDebugExplain((v) => !v)}
-                className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-300 transition hover:border-white/25 hover:bg-white/10"
-                title="Dev only: logs step reasoning to console"
-              >
-                Explain: {debugExplain ? "on" : "off"}
-              </button>
             ) : null}
-          </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-3">
-            {liveActions.map((action, idx) => {
-              const whyLines = action.reasons;
-              const explanation = getActionExplanation(action);
-              if (debugExplain && process.env.NODE_ENV === "development") {
-                // Console-only: keep UI minimal.
-                // eslint-disable-next-line no-console
-                console.info("[dashboard] action explanation", {
-                  actionId: action.id,
-                  stepId: action.knowledgeStepId,
-                  stepStatus: action.stepStatus,
-                  applicabilityReason: action.applicabilityReason,
-                  blockedByStepIds: action.blockedByStepIds,
-                  explanation,
-                });
-              }
 
-              const humanizeStepId = (id: string) =>
-                id
-                  .replace(/[-_]+/g, " ")
-                  .replace(/\b\w/g, (m) => m.toUpperCase());
-
-              const requiresTooltip =
-                explanation.type === "dependency" && (action.blockedByStepIds?.length ?? 0) > 0
-                  ? `Requires: ${(action.blockedByStepIds ?? []).map(humanizeStepId).join(", ")}`
-                  : undefined;
-              return (
-                <DashboardActionCard
-                  key={action.id}
-                  t={t}
-                  action={action}
-                  variant="main"
-                  index={idx}
-                  headerLabel={idx === 0 ? t.dashboard.highestPriorityLabel : t.dashboard.nextLabel}
-                  className={
-                    idx === 0
-                      ? `rounded-2xl border border-cyan-400/45 bg-cyan-900/20 p-4 shadow-[0_0_38px_rgba(34,211,238,0.3)] md:col-span-2 ${changedClassById(action.id)}`
-                      : `rounded-2xl border border-white/15 bg-white/5 p-4 ${changedClassById(action.id)}`
-                  }
-                  onPrimaryCtaClick={() => {
-                    void trackActionEvent({
-                      userId,
-                      actionId: action.id,
-                      eventType: "click",
-                    });
-                  }}
-                  onSecondaryCtaClick={() => {
-                    void trackActionEvent({
-                      userId,
-                      actionId: action.id,
-                      eventType: "click",
-                    });
-                  }}
-                  onGuideCtaClick={() => {
-                    void trackActionEvent({
-                      userId,
-                      actionId: action.id,
-                      eventType: "click",
-                    });
-                  }}
-                  footerActions={
-                    <MarkTaskDoneButton
-                      userId={userId}
-                      actionId={action.id}
-                      markDoneLabel={t.dashboard.actionMarkDone}
-                    />
-                  }
-                />
-              );
-            })}
-          </div>
-        </section>
-
-        {historyActions.length > 0 ? (
-          <section className="rounded-3xl border border-white/10 bg-slate-950/50 p-5 opacity-80 shadow-[0_0_30px_rgba(15,23,42,0.35)] backdrop-blur-2xl">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-sm font-semibold tracking-wide text-slate-100">
-                  Completed &amp; Automated
-                </h2>
-                <p className="mt-1 text-xs text-slate-400">Already handled for you</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setHistoryOpen((v) => !v)}
-                className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-300 transition hover:border-white/25 hover:bg-white/10"
-                title="Show completed and auto-resolved steps"
-              >
-                {historyOpen ? "Hide" : "Show"}
-              </button>
-            </div>
-            {historyOpen ? (
-              <div className="mt-4 grid gap-2 md:grid-cols-3">
-                {historyActions.map((action) => (
-                  <DashboardActionCard
-                    key={action.id}
-                    t={t}
-                    action={action}
-                    variant="history"
-                    className="rounded-2xl border border-white/10 bg-white/5 p-3"
-                  />
-                ))}
-              </div>
-            ) : null}
-          </section>
-        ) : null}
-
-        <section className="grid gap-6 md:grid-cols-3">
-          <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-950/70 p-5 shadow-[0_0_40px_rgba(56,189,248,0.25)] backdrop-blur-2xl md:col-span-2">
-            <div className="pointer-events-none absolute inset-px rounded-[22px] bg-gradient-to-br from-emerald-500/15 via-transparent to-indigo-500/20" />
-            <div className="relative flex flex-col gap-2">
-              <h2 className="text-sm font-semibold tracking-wide text-slate-100">
-                {t.dashboard.dnaSnapshotTitle}
-              </h2>
-              <p className="text-xs text-slate-400">
-                {t.dashboard.dnaSnapshotDesc}
-              </p>
-              <div className="mt-4 grid gap-3 text-xs text-slate-300 sm:grid-cols-4">
-                <div className="rounded-2xl border border-emerald-400/30 bg-emerald-900/20 px-3 py-2">
-                  <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-emerald-300/80">
-                    {t.dashboard.familyLabel}
-                  </div>
-                  <div className="mt-1 text-xs font-semibold">
-                    {getFamilyLabel(dna.inputs.family_status, t)}
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-cyan-400/30 bg-cyan-900/20 px-3 py-2">
-                  <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-cyan-300/80">
-                    {t.dashboard.workModeLabel}
-                  </div>
-                  <div className="mt-1 text-xs font-semibold">
-                    {getEmploymentLabel(dna.inputs.employment_type, t)}
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-indigo-400/30 bg-indigo-900/30 px-3 py-2">
-                  <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-indigo-300/80">
-                    {t.dashboard.languageLabel}
-                  </div>
-                  <div className="mt-1 text-xs font-semibold">
-                    {formatMessage(t.dashboard.dnaLanguageCourseLine, {
-                      level: getLanguageLabel(dna.inputs.language_level, t),
-                    })}
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-fuchsia-400/30 bg-fuchsia-900/20 px-3 py-2">
-                  <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-fuchsia-300/80">
-                    {t.dashboard.focusLabel}
-                  </div>
-                  <div className="mt-1 flex flex-wrap gap-1 text-[11px]">
-                    {dna.inputs.goals.map((g) => (
-                      <span
-                        key={g}
-                        className="rounded-full bg-fuchsia-500/15 px-2 py-0.5 text-fuchsia-100/90 ring-1 ring-fuchsia-400/40"
-                      >
-                        {getGoalLabel(g, t)}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
+            {/* Modules (kept intact) */}
+            <div className="grid grid-cols-1 gap-6">
+              {injectModuleDict(children, t)}
             </div>
           </div>
-
-          <aside className="flex flex-col gap-3">
-            <div className="rounded-3xl border border-white/10 bg-slate-950/80 p-4 shadow-[0_0_30px_rgba(129,140,248,0.35)] backdrop-blur-2xl">
-              <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-slate-400">
-                {t.dashboard.statusLabel}
-              </div>
-              <div className="mt-1 text-xs font-semibold text-indigo-200">
-                {t.dashboard.statusLocked}
-              </div>
-              <div className="mt-2 text-[11px] text-slate-400">
-                {t.dashboard.statusDesc}
-              </div>
-            </div>
-          </aside>
         </section>
-
-        <section className="grid grid-cols-1 gap-6">
-          {injectModuleDict(children, t)}
-        </section>
-        </div>
       </div>
     </main>
   );
@@ -530,7 +569,7 @@ function MarkTaskDoneButton({
       type="button"
       onClick={onDone}
       disabled={loading}
-      className="inline-flex rounded-lg border border-white/20 bg-white/5 px-2.5 py-1.5 text-[11px] font-semibold text-slate-300 transition hover:border-white/35 hover:bg-white/10 disabled:opacity-50"
+      className="inline-flex rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-slate-700 shadow-sm transition duration-150 ease-out hover:bg-slate-50 active:scale-[0.98] motion-reduce:transition-none disabled:opacity-50"
     >
       {loading ? "…" : markDoneLabel}
     </button>
