@@ -69,6 +69,9 @@ export type DashboardAction = {
   /** True when resolver marks the step blocked by DAG prerequisites. */
   isBlockedByStepState?: boolean;
   blockedByStepIds?: string[];
+  /** Step-state applicability (safe to ignore in UI). */
+  isApplicable?: boolean;
+  applicabilityReason?: "criteria_not_met" | "missing_data" | "unknown" | "already_satisfied";
   /** Server-resolved i18n label for a compact process badge. */
   stepProcessBadge?: string;
   /** Secondary line (e.g. blocked hint or proof-backed note). */

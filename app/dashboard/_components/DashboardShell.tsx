@@ -24,8 +24,10 @@ import {
   getLanguageLabel,
 } from "@/lib/i18n/labels";
 import type { DashboardAction } from "@/lib/dashboard/get-dashboard-actions";
+import { getActionExplanation } from "@/lib/dashboard/get-action-explanation";
 import { trackActionEvent } from "@/lib/vaylo/action-tracking";
 import { useStepStateRealtime } from "@/lib/vaylo/realtime/use-step-state-realtime";
+import DashboardActionCard from "./DashboardActionCard";
 
 type Props = {
   dna: ProfileDNA;
@@ -33,6 +35,8 @@ type Props = {
   userId: string;
   /** Fully resolved on the server (`get-dashboard-actions` + `UserState`). */
   actions: DashboardAction[];
+  /** Presentation-only: completed/auto-resolved step timeline. */
+  historyActions: DashboardAction[];
   /** Server-resolved copy for the priority badge (no client DNA branching). */
   activePriorityLabel: string;
   /** Server-resolved `actionSituationSummary` line. */
@@ -58,6 +62,7 @@ export default function DashboardShell({
   locale,
   userId,
   actions,
+  historyActions,
   activePriorityLabel,
   situationSummaryLine,
   t,
@@ -65,8 +70,10 @@ export default function DashboardShell({
 }: Props) {
   const router = useRouter();
   const [liveActions, setLiveActions] = useState<DashboardAction[]>(actions);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const prevByIdRef = useRef<Map<string, DashboardAction>>(new Map());
   const [changedIds, setChangedIds] = useState<Set<string>>(new Set());
+  const [debugExplain, setDebugExplain] = useState(false);
 
   useEffect(() => {
     setLiveActions(actions);
@@ -169,149 +176,123 @@ export default function DashboardShell({
               </p>
               <p className="mt-1 text-[11px] text-slate-500">{situationSummaryLine}</p>
             </div>
+            {process.env.NODE_ENV === "development" ? (
+              <button
+                type="button"
+                onClick={() => setDebugExplain((v) => !v)}
+                className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-300 transition hover:border-white/25 hover:bg-white/10"
+                title="Dev only: logs step reasoning to console"
+              >
+                Explain: {debugExplain ? "on" : "off"}
+              </button>
+            ) : null}
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-3">
             {liveActions.map((action, idx) => {
               const whyLines = action.reasons;
+              const explanation = getActionExplanation(action);
+              if (debugExplain && process.env.NODE_ENV === "development") {
+                // Console-only: keep UI minimal.
+                // eslint-disable-next-line no-console
+                console.info("[dashboard] action explanation", {
+                  actionId: action.id,
+                  stepId: action.knowledgeStepId,
+                  stepStatus: action.stepStatus,
+                  applicabilityReason: action.applicabilityReason,
+                  blockedByStepIds: action.blockedByStepIds,
+                  explanation,
+                });
+              }
+
+              const humanizeStepId = (id: string) =>
+                id
+                  .replace(/[-_]+/g, " ")
+                  .replace(/\b\w/g, (m) => m.toUpperCase());
+
+              const requiresTooltip =
+                explanation.type === "dependency" && (action.blockedByStepIds?.length ?? 0) > 0
+                  ? `Requires: ${(action.blockedByStepIds ?? []).map(humanizeStepId).join(", ")}`
+                  : undefined;
               return (
-                <article
+                <DashboardActionCard
                   key={action.id}
+                  t={t}
+                  action={action}
+                  variant="main"
+                  index={idx}
+                  headerLabel={idx === 0 ? t.dashboard.highestPriorityLabel : t.dashboard.nextLabel}
                   className={
                     idx === 0
                       ? `rounded-2xl border border-cyan-400/45 bg-cyan-900/20 p-4 shadow-[0_0_38px_rgba(34,211,238,0.3)] md:col-span-2 ${changedClassById(action.id)}`
                       : `rounded-2xl border border-white/15 bg-white/5 p-4 ${changedClassById(action.id)}`
                   }
-                >
-                  <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400">
-                    {idx === 0
-                      ? t.dashboard.highestPriorityLabel
-                      : t.dashboard.nextLabel}
-                  </div>
-                  <h3 className="mt-2 text-sm font-semibold text-slate-100">
-                    {action.title}
-                  </h3>
-                  {action.stepProcessBadge ? (
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <span
-                        className={
-                          action.stepSource === "proof" && action.stepStatus === "verified"
-                            ? "rounded-full border border-emerald-500/35 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-200/95"
-                            : "rounded-full border border-white/20 bg-white/5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-300"
-                        }
-                      >
-                        {action.stepProcessBadge}
-                      </span>
-                      {action.isAutomatedBySystem ? (
-                        <span
-                          title={`${t.dashboard.autoByVayloTooltip}${
-                            typeof action.automationConfidence === "number"
-                              ? ` — Confidence: ${Math.round(action.automationConfidence * 100)}%`
-                              : ""
-                          }`}
-                          className="rounded-full border border-emerald-400/35 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-200/95 shadow-[0_0_18px_rgba(52,211,153,0.12)]"
-                        >
-                          {t.dashboard.autoByVaylo}
-                        </span>
-                      ) : null}
-                    </div>
-                  ) : null}
-                  {action.stepProcessSubtle ? (
-                    <p className="mt-1 text-[10px] leading-snug text-slate-500">
-                      {action.stepProcessSubtle}
-                    </p>
-                  ) : null}
-                  {action.recommendedNextHint ? (
-                    <p className="mt-1 text-[10px] font-medium text-emerald-400/90">
-                      {action.recommendedNextHint}
-                    </p>
-                  ) : null}
-                  {action.processingHint ? (
-                    <p className="mt-1 text-[10px] font-medium text-indigo-300/85">
-                      {action.processingHint}
-                    </p>
-                  ) : null}
-                  <p className="mt-1 text-xs text-slate-300">{action.description}</p>
-                  {action.stepDetails ? (
-                    <div className="mt-2 rounded-lg border border-white/10 bg-slate-900/40 px-3 py-2">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-300/90">
-                        {action.stepDetails.title}
-                      </p>
-                      {action.stepDetails.hint ? (
-                        <p className="mt-1 text-[11px] leading-snug text-slate-400">
-                          {action.stepDetails.hint}
-                        </p>
-                      ) : null}
-                    </div>
-                  ) : null}
-                  {whyLines.length > 0 ? (
-                    <ul className="mt-2 list-disc space-y-1 pl-4 text-[11px] leading-snug text-slate-500">
-                      {whyLines.map((line, li) => (
-                        <li key={`${action.id}-why-${li}`}>{line}</li>
-                      ))}
-                    </ul>
-                  ) : null}
-                  {action.nudges?.length ? (
-                    <div className="mt-2 grid gap-1 text-[11px] leading-snug text-slate-400/90">
-                      {action.nudges.slice(0, 2).map((n, ni) => (
-                        <div key={`${action.id}-nudge-${ni}`}>{n}</div>
-                      ))}
-                    </div>
-                  ) : null}
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <Link
-                      href={action.href}
-                      onClick={() => {
-                        void trackActionEvent({
-                          userId,
-                          actionId: action.id,
-                          eventType: "click",
-                        });
-                      }}
-                      className="inline-flex rounded-lg border border-cyan-400/45 bg-cyan-500/20 px-3 py-1.5 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-500/30"
-                    >
-                      {action.cta}
-                    </Link>
-                    {action.uploadDocumentHref ? (
-                      <Link
-                        href={action.uploadDocumentHref}
-                        onClick={() => {
-                          void trackActionEvent({
-                            userId,
-                            actionId: action.id,
-                            eventType: "click",
-                          });
-                        }}
-                        className="inline-flex rounded-lg border border-amber-400/40 bg-amber-500/15 px-3 py-1.5 text-xs font-semibold text-amber-100 transition hover:bg-amber-500/25"
-                      >
-                        {t.dashboard.actionUploadDocumentCta}
-                      </Link>
-                    ) : null}
-                    {action.guideHref ? (
-                      <Link
-                        href={action.guideHref}
-                        onClick={() => {
-                          void trackActionEvent({
-                            userId,
-                            actionId: action.id,
-                            eventType: "click",
-                          });
-                        }}
-                        className="inline-flex rounded-lg border border-indigo-400/40 bg-indigo-500/15 px-3 py-1.5 text-xs font-semibold text-indigo-100 transition hover:bg-indigo-500/25"
-                      >
-                        {t.dashboard.actionViewGuideCta}
-                      </Link>
-                    ) : null}
+                  onPrimaryCtaClick={() => {
+                    void trackActionEvent({
+                      userId,
+                      actionId: action.id,
+                      eventType: "click",
+                    });
+                  }}
+                  onSecondaryCtaClick={() => {
+                    void trackActionEvent({
+                      userId,
+                      actionId: action.id,
+                      eventType: "click",
+                    });
+                  }}
+                  onGuideCtaClick={() => {
+                    void trackActionEvent({
+                      userId,
+                      actionId: action.id,
+                      eventType: "click",
+                    });
+                  }}
+                  footerActions={
                     <MarkTaskDoneButton
                       userId={userId}
                       actionId={action.id}
                       markDoneLabel={t.dashboard.actionMarkDone}
                     />
-                  </div>
-                </article>
+                  }
+                />
               );
             })}
           </div>
         </section>
+
+        {historyActions.length > 0 ? (
+          <section className="rounded-3xl border border-white/10 bg-slate-950/50 p-5 opacity-80 shadow-[0_0_30px_rgba(15,23,42,0.35)] backdrop-blur-2xl">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-semibold tracking-wide text-slate-100">
+                  Completed &amp; Automated
+                </h2>
+                <p className="mt-1 text-xs text-slate-400">Already handled for you</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setHistoryOpen((v) => !v)}
+                className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-300 transition hover:border-white/25 hover:bg-white/10"
+                title="Show completed and auto-resolved steps"
+              >
+                {historyOpen ? "Hide" : "Show"}
+              </button>
+            </div>
+            {historyOpen ? (
+              <div className="mt-4 grid gap-2 md:grid-cols-3">
+                {historyActions.map((action) => (
+                  <DashboardActionCard
+                    key={action.id}
+                    t={t}
+                    action={action}
+                    variant="history"
+                    className="rounded-2xl border border-white/10 bg-white/5 p-3"
+                  />
+                ))}
+              </div>
+            ) : null}
+          </section>
+        ) : null}
 
         <section className="grid gap-6 md:grid-cols-3">
           <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-950/70 p-5 shadow-[0_0_40px_rgba(56,189,248,0.25)] backdrop-blur-2xl md:col-span-2">

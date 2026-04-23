@@ -19,6 +19,8 @@ type Props = {
   userState: UserState;
   /** From `loadUserStateContext` to avoid resolving actions twice. */
   dashboardActions?: DashboardAction[];
+  /** Presentation-only: completed/auto-resolved step timeline (does not affect Top 3). */
+  historyActions?: DashboardAction[];
   /** When refetching actions inside the provider, keeps step-state alignment. */
   stepState?: GetUserStepStateResult;
   locale: Locale;
@@ -32,6 +34,7 @@ export default async function DashboardDataProvider({
   userId,
   userState,
   dashboardActions: dashboardActionsProp,
+  historyActions: historyActionsProp,
   stepState,
   locale,
   t,
@@ -75,6 +78,7 @@ export default async function DashboardDataProvider({
       locale={locale}
       userId={userId}
       actions={actions}
+      historyActions={historyActionsProp ?? []}
       activePriorityLabel={activePriorityLabel}
       situationSummaryLine={situationSummaryLine}
       t={t}

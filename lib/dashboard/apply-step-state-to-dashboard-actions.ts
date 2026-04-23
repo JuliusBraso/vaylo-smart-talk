@@ -107,6 +107,8 @@ export function applyStepStateToDashboardActions(
       stepSource: resolved.source,
       isBlockedByStepState: isBlocked,
       ...(blockedBy.length > 0 ? { blockedByStepIds: blockedBy } : {}),
+      isApplicable: resolved.isApplicable,
+      ...(resolved.applicabilityReason ? { applicabilityReason: resolved.applicabilityReason } : {}),
       stepProcessBadge: badge,
       ...(subtle ? { stepProcessSubtle: subtle } : {}),
       ...(inferredAutomation ? { isAutomatedBySystem: true } : {}),

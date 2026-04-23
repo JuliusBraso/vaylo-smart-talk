@@ -27,7 +27,7 @@ export default async function DashboardPage() {
   }
 
   const t = await getResolvedDict(locale);
-  const { userState, dashboardActions, stepState } = await loadUserStateContext({
+  const { userState, dashboardActions, historyActions, stepState } = await loadUserStateContext({
     supabase,
     userId: user.id,
     t,
@@ -108,6 +108,7 @@ export default async function DashboardPage() {
       userId={user.id}
       userState={userState}
       dashboardActions={dashboardActions}
+      historyActions={historyActions}
       stepState={stepState}
       locale={locale}
       t={t}

@@ -13,6 +13,7 @@ type Props = {
   locale: Locale;
   userId: string;
   actions: DashboardAction[];
+  historyActions: DashboardAction[];
   /** Server-resolved header copy (no client-side DNA branching for priority / summary). */
   activePriorityLabel: string;
   situationSummaryLine: string;
@@ -30,6 +31,7 @@ export default function DashboardClientWrapper({
   locale,
   userId,
   actions,
+  historyActions,
   activePriorityLabel,
   situationSummaryLine,
   t,
@@ -41,6 +43,7 @@ export default function DashboardClientWrapper({
       locale={locale}
       userId={userId}
       actions={actions}
+      historyActions={historyActions}
       activePriorityLabel={activePriorityLabel}
       situationSummaryLine={situationSummaryLine}
       t={t}

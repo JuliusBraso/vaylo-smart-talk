@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { DashboardAction } from "@/lib/dashboard/get-dashboard-actions";
 import { getDashboardActionsFromState } from "@/lib/dashboard/get-dashboard-actions-from-state";
+import { getDashboardHistoryActions } from "@/lib/dashboard/get-dashboard-history-actions";
 import type { Dict } from "@/lib/i18n";
 import { getUserState } from "./get-user-state";
 import type { UserState } from "./types";
@@ -15,6 +16,8 @@ export type LoadedUserStateContext = {
   userState: UserState;
   /** Empty when `userState.identity.dna` is null (caller should redirect to onboarding). */
   dashboardActions: DashboardAction[];
+  /** Presentation-only: completed/auto-resolved step timeline (does not affect Top 3). */
+  historyActions: DashboardAction[];
   /**
    * Resolved per-step state (foundation for future step-driven dashboard/workflows).
    * Always computed from the knowledge graph + progress + proof + persisted rows.
@@ -43,5 +46,12 @@ export async function loadUserStateContext(params: {
         })
       : [];
 
-  return { userState, dashboardActions, stepState };
+  const historyActions = await getDashboardHistoryActions({
+    supabase,
+    stepState,
+    t,
+    limit: 8,
+  });
+
+  return { userState, dashboardActions, historyActions, stepState };
 }
