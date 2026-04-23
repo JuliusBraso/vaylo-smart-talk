@@ -35,6 +35,8 @@ export type ResolvedUserStepState = {
   actionId: string | null;
   /** True when the step applies to this user's situation (eligibility rules passed). */
   isApplicable: boolean;
+  /** Why we believe the step is or isn't applicable (used for safe branching decisions). */
+  applicabilityReason?: "criteria_not_met" | "missing_data" | "unknown";
   status: UserStepStatus;
   source: UserStepSource;
   /**
@@ -49,7 +51,7 @@ export type ResolvedUserStepState = {
     /** Eligibility rules from `knowledge_steps.eligibility_criteria` matched against user state. */
     eligibility?: {
       applicable: boolean;
-      reason?: "criteria_not_met";
+      reason?: "criteria_not_met" | "missing_data" | "unknown";
     };
     persisted?: {
       status: UserStepStatus;

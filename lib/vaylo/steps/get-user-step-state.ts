@@ -117,15 +117,13 @@ export async function getUserStepState(params: {
 
   function evaluateEligibility(
     criteria: unknown,
-  ): { applicable: boolean; reason?: string } {
+  ): { applicable: boolean; reason?: "criteria_not_met" | "missing_data" | "unknown" } {
     if (criteria == null) return { applicable: true };
     if (typeof criteria !== "object" || Array.isArray(criteria)) {
-      return { applicable: true };
+      // Malformed rules: do not skip; treat as unknown -> keep blocked downstream.
+      return { applicable: false, reason: "unknown" };
     }
-    if (!dnaInputs) {
-      // No DNA/userState available: safest is to treat as applicable (do not hide steps).
-      return { applicable: true };
-    }
+    if (!dnaInputs) return { applicable: false, reason: "missing_data" };
 
     const ctx: Record<string, string | null> = {
       employment_type: dnaInputs.employment_type ?? null,
@@ -137,6 +135,8 @@ export async function getUserStepState(params: {
 
     for (const [field, raw] of Object.entries(c)) {
       const current = ctx[field] ?? null;
+      // Criteria references a field we don't have -> cannot decide safely.
+      if (current == null) return { applicable: false, reason: "missing_data" };
 
       // Back-compat: simple array means "in".
       if (Array.isArray(raw)) {
@@ -164,16 +164,20 @@ export async function getUserStepState(params: {
         }
         if ("equals" in o) {
           const want = typeof o.equals === "string" ? o.equals : null;
-          if (!want || !current || current !== want) return { applicable: false, reason: "criteria_not_met" };
+          if (!want) return { applicable: false, reason: "unknown" };
+          if (!current || current !== want) return { applicable: false, reason: "criteria_not_met" };
           continue;
         }
         if ("in" in o) {
           const allowed = Array.isArray(o.in) ? (o.in.filter((x) => typeof x === "string") as string[]) : [];
+          if (Array.isArray(o.in) && allowed.length === 0) return { applicable: false, reason: "unknown" };
           if (allowed.length > 0 && (!current || !allowed.includes(current))) {
             return { applicable: false, reason: "criteria_not_met" };
           }
           continue;
         }
+        // Unknown operator object: do not skip.
+        return { applicable: false, reason: "unknown" };
       }
     }
 
@@ -283,13 +287,16 @@ export async function getUserStepState(params: {
         ? status
         : status === "verified" || status === "completed" || status === "in_progress"
           ? status
-          : "not_applicable";
+          : eligibility.reason === "criteria_not_met"
+            ? "not_applicable"
+            : "blocked";
 
     if (process.env.NODE_ENV === "development") {
-      console.info("[step-state] branching applied", {
+      console.info("[step-state] branching decision", {
         stepId: s.id,
         status: finalStatus,
         isApplicable: eligibility.applicable,
+        reason: eligibility.reason,
       });
     }
 
@@ -299,6 +306,7 @@ export async function getUserStepState(params: {
       slug: s.slug,
       actionId: s.action_id,
       isApplicable: eligibility.applicable,
+      ...(eligibility.applicable ? {} : { applicabilityReason: eligibility.reason ?? "unknown" }),
       status: finalStatus,
       source: persisted?.source ?? sourceForDerivedStatus(status, { proof: hasConfirmedProof, legacyProgress: hasLegacyCompletedAction }),
       evidence: {
@@ -306,7 +314,7 @@ export async function getUserStepState(params: {
         hasLegacyCompletedAction,
         dependencyStepIds: depsForStep,
         blockedByStepIds: [],
-        ...(eligibility.applicable ? {} : { eligibility: { applicable: false, reason: "criteria_not_met" as const } }),
+        ...(eligibility.applicable ? {} : { eligibility: { applicable: false, reason: eligibility.reason ?? "unknown" } }),
         ...(persisted
           ? {
               persisted: {
@@ -346,11 +354,11 @@ export async function getUserStepState(params: {
         blockedBy.push(depId);
         continue;
       }
-      if (
-        dep.status !== "completed" &&
-        dep.status !== "verified" &&
-        dep.status !== "not_applicable"
-      ) {
+      const depSatisfied =
+        dep.status === "completed" ||
+        dep.status === "verified" ||
+        (dep.status === "not_applicable" && dep.applicabilityReason === "criteria_not_met");
+      if (!depSatisfied) {
         blockedBy.push(depId);
       }
     }
