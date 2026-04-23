@@ -32,7 +32,7 @@ function stepStateWith(
   }
   return {
     steps: full,
-    summary: { totalSteps: 0, blocked: 0, eligible: 0, in_progress: 0, completed: 0, verified: 0 },
+    summary: { totalSteps: 0, blocked: 0, eligible: 0, in_progress: 0, completed: 0, verified: 0, not_applicable: 0 },
   };
 }
 

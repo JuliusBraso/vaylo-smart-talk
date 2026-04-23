@@ -3,7 +3,8 @@ export type UserStepStatus =
   | "eligible"
   | "in_progress"
   | "completed"
-  | "verified";
+  | "verified"
+  | "not_applicable";
 
 export type UserStepSource = "system" | "manual" | "proof" | "legacy_progress";
 
@@ -69,6 +70,7 @@ export type GetUserStepStateResult = {
     in_progress: number;
     completed: number;
     verified: number;
+    not_applicable: number;
   };
 };
 

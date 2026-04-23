@@ -35,6 +35,10 @@ export async function writeStepTransition(
   }
 
   const { supabase, userId, stepId, nextStatus, source, actionId, documentId, notes } = input;
+  if (nextStatus === "not_applicable") {
+    // DB constraint does not currently allow persisting this status.
+    return { ok: false, error: "unsupported_status_not_persisted" };
+  }
 
   const { data: existingRow, error: readErr } = await supabase
     .from("user_step_state")

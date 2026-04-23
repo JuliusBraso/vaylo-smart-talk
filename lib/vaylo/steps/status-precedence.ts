@@ -1,6 +1,6 @@
 import type { UserStepStatus } from "./types";
 
-/** Canonical: verified > completed > in_progress > eligible > blocked */
+/** Canonical: verified > completed > in_progress > eligible > blocked > not_applicable */
 export function statusRank(s: UserStepStatus): number {
   switch (s) {
     case "verified":
@@ -13,6 +13,8 @@ export function statusRank(s: UserStepStatus): number {
       return 2;
     case "blocked":
       return 1;
+    case "not_applicable":
+      return 0;
   }
 }
 

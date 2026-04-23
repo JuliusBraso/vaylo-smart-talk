@@ -172,5 +172,6 @@ export async function getDashboardActionsFromState(params: {
 
   const enriched = await enrichActionsWithKnowledge({ supabase, actions, t });
   const withStep = applyStepStateToDashboardActions(enriched, stepState, t);
-  return attachDocumentJobProcessingHints({ supabase, userId, actions: withStep, t });
+  const filtered = withStep.filter((a) => a.stepStatus !== "not_applicable");
+  return attachDocumentJobProcessingHints({ supabase, userId, actions: filtered, t });
 }

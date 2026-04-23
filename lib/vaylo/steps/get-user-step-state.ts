@@ -278,13 +278,28 @@ export async function getUserStepState(params: {
       });
     }
 
+    const finalStatus: UserStepStatus =
+      eligibility.applicable
+        ? status
+        : status === "verified" || status === "completed" || status === "in_progress"
+          ? status
+          : "not_applicable";
+
+    if (process.env.NODE_ENV === "development") {
+      console.info("[step-state] branching applied", {
+        stepId: s.id,
+        status: finalStatus,
+        isApplicable: eligibility.applicable,
+      });
+    }
+
     resolved[s.id] = {
       stepId: s.id,
       topicId: s.topic_id,
       slug: s.slug,
       actionId: s.action_id,
       isApplicable: eligibility.applicable,
-      status: eligibility.applicable ? status : chooseStrongerStatus(status, "blocked"),
+      status: finalStatus,
       source: persisted?.source ?? sourceForDerivedStatus(status, { proof: hasConfirmedProof, legacyProgress: hasLegacyCompletedAction }),
       evidence: {
         hasConfirmedProof,
@@ -312,7 +327,8 @@ export async function getUserStepState(params: {
     if (
       step.status === "verified" ||
       step.status === "completed" ||
-      step.status === "in_progress"
+      step.status === "in_progress" ||
+      step.status === "not_applicable"
     ) {
       continue;
     }
@@ -330,18 +346,15 @@ export async function getUserStepState(params: {
         blockedBy.push(depId);
         continue;
       }
-      if (dep.status !== "completed" && dep.status !== "verified") {
+      if (
+        dep.status !== "completed" &&
+        dep.status !== "verified" &&
+        dep.status !== "not_applicable"
+      ) {
         blockedBy.push(depId);
       }
     }
     step.evidence.blockedByStepIds = blockedBy.sort();
-    if (step.isApplicable === false) {
-      // Eligibility failure forces blocked, but we still compute DAG blockers for consistency/inspection.
-      step.status = "blocked";
-      step.source = step.source ?? "system";
-      continue;
-    }
-
     if (blockedBy.length === 0) {
       step.status = "eligible";
       step.source = step.source ?? "system";
@@ -358,6 +371,7 @@ export async function getUserStepState(params: {
     in_progress: 0,
     completed: 0,
     verified: 0,
+    not_applicable: 0,
   };
   for (const s of Object.values(resolved)) {
     summary[s.status] += 1;

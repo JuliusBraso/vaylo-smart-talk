@@ -25,6 +25,9 @@ function badgeCopy(
     case "completed":
       badge = d.stepProcessCompleted;
       break;
+    case "not_applicable":
+      badge = d.stepProcessNotApplicable;
+      break;
     case "eligible":
       badge = d.stepProcessEligible;
       break;

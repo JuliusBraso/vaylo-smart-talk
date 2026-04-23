@@ -29,6 +29,9 @@ export function dashboardNextStepSlotRank(
     return 37;
   }
   switch (resolved.status) {
+    case "not_applicable":
+      // Never prefer in Top 3; used only as last-resort filler if nothing else exists.
+      return 999;
     case "eligible":
       return 10;
     case "in_progress":
@@ -58,8 +61,21 @@ export function selectStepFirstNonCriticalFromWide<T extends { id: string }>(
     return { result: [], changedFromScorerBaseline: false };
   }
 
-  const indexById = new Map(wide.map((a, i) => [a.id, i]));
-  const sorted = [...wide].sort((a, b) => {
+  const notApplicableIds = new Set<string>();
+  for (const a of wide) {
+    const catalogId = mapDashboardActionToKnowledgeCatalogActionId(a.id);
+    const stepId = catalogActionToStepId.get(catalogId);
+    if (!stepId) continue;
+    const st = stepState.steps[stepId]?.status;
+    if (st === "not_applicable") {
+      notApplicableIds.add(a.id);
+    }
+  }
+  const candidates = wide.filter((a) => !notApplicableIds.has(a.id));
+  const baseForSort = candidates.length > 0 ? candidates : wide;
+
+  const indexById = new Map(baseForSort.map((a, i) => [a.id, i]));
+  const sorted = [...baseForSort].sort((a, b) => {
     const ra = dashboardNextStepSlotRank(a, catalogActionToStepId, stepState);
     const rb = dashboardNextStepSlotRank(b, catalogActionToStepId, stepState);
     if (ra !== rb) return ra - rb;
