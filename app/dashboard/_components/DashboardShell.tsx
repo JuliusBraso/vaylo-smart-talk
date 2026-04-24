@@ -184,10 +184,11 @@ export default function DashboardShell({
               style={{
                 background:
                   appliedAtmosphere.id === "night"
-                    ? "rgba(2,6,23,0.08)"
-                    : "rgba(255,255,255,0.10)",
+                    ? "rgba(2,6,23,0.06)"
+                    : "rgba(255,255,255,0.07)",
               }}
             />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-transparent" />
             <div
               className="absolute inset-0 opacity-[0.08]"
               style={{
@@ -234,13 +235,13 @@ export default function DashboardShell({
                 <p className="relative text-xs font-semibold uppercase tracking-[0.22em] text-white/85 drop-shadow-[0_2px_10px_rgba(15,23,42,0.35)]">
                   VAYLO CONTROL CENTER
                 </p>
-                <h1 className="relative mt-3 text-4xl font-bold leading-tight tracking-tight text-white drop-shadow-[0_2px_10px_rgba(15,23,42,0.35)] md:text-5xl">
+                <h1 className="relative mt-3 text-4xl font-bold leading-tight tracking-tight text-white drop-shadow-[0_4px_20px_rgba(0,0,0,0.35)] md:text-5xl">
                   Dobrý deň, Martin! 👋
                 </h1>
-                <p className="relative mt-3 text-base text-white/90 drop-shadow-[0_2px_10px_rgba(15,23,42,0.35)]">
+                <p className="relative mt-3 text-base text-white/85 drop-shadow-[0_2px_10px_rgba(15,23,42,0.35)]">
                   Čo by sme dnes mali vybaviť?
                 </p>
-                <p className="relative mt-4 max-w-xl text-sm text-white/80 drop-shadow-[0_2px_10px_rgba(15,23,42,0.35)]">
+                <p className="relative mt-4 max-w-xl text-sm text-white/75 drop-shadow-[0_2px_10px_rgba(15,23,42,0.35)]">
                   {t.dashboard.intro}
                 </p>
 
@@ -342,7 +343,7 @@ export default function DashboardShell({
                             onClick={() => router.push(`/assistant?q=${encodeURIComponent(q)}`)}
                             title={q}
                             aria-label={q}
-                            className={`group relative flex w-full items-center justify-between gap-3 overflow-hidden rounded-2xl border px-4 py-3 text-left shadow-sm transition-all duration-150 before:absolute before:left-0 before:top-0 before:h-full before:w-1 before:bg-blue-400 before:opacity-0 before:transition-opacity hover:border-blue-200 hover:bg-blue-50 hover:shadow-md hover:before:opacity-100 active:scale-[0.98] ${
+                            className={`group relative flex w-full items-center justify-between gap-3 overflow-hidden rounded-2xl border px-4 py-3 text-left shadow-sm transition-all duration-150 ease-out before:absolute before:left-0 before:top-0 before:h-full before:w-1 before:bg-blue-400 before:opacity-0 before:transition-opacity hover:border-blue-200 hover:bg-blue-50 hover:shadow-md hover:before:opacity-100 active:scale-[0.98] ${
                               qi === 0
                                 ? "border-blue-200 bg-blue-50/70"
                                 : "border-slate-200 bg-white"

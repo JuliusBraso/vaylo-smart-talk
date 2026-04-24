@@ -167,7 +167,7 @@ export default function ProfileEditor() {
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
       <div className="mx-auto max-w-xl px-6 py-12">
-        <div className="overflow-hidden rounded-[2rem] border border-white/60 bg-white shadow-[0_30px_80px_-25px_rgba(15,23,42,0.25)] backdrop-blur-sm">
+        <div className="overflow-hidden rounded-[2rem] border border-white/60 bg-white shadow-[0_30px_80px_-25px_rgba(15,23,42,0.25)] backdrop-blur-sm transition-all duration-200 ease-out hover:shadow-[0_35px_90px_-25px_rgba(15,23,42,0.28)]">
           <div className="border-b border-slate-200/70 bg-white px-8 py-8">
             <div className="space-y-3">
               <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
@@ -210,7 +210,7 @@ export default function ProfileEditor() {
                             key={o.value}
                             type="button"
                             onClick={() => setFamilyStatus(o.value)}
-                            className={`relative block w-full rounded-2xl border px-5 py-5 text-left transition-all duration-150 ${
+                            className={`relative block w-full rounded-2xl border px-5 py-5 text-left transition-all duration-200 ease-out motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-md ${
                               active
                                 ? "border-blue-300 bg-blue-50 shadow-sm"
                                 : "border-slate-200 bg-white hover:bg-blue-50"
@@ -233,14 +233,14 @@ export default function ProfileEditor() {
                     <div className="flex gap-2">
                       <Link
                         href={ROUTES.dashboard}
-                        className="inline-flex h-12 flex-1 items-center justify-center rounded-xl border border-slate-200 bg-white px-6 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-[0.98]"
+                        className="inline-flex h-12 flex-1 items-center justify-center rounded-xl border border-slate-200 bg-white px-6 text-sm font-semibold text-slate-600 shadow-sm transition-all duration-200 ease-out hover:bg-slate-50 motion-safe:hover:scale-[1.01] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 focus-visible:ring-offset-2"
                       >
                         {t.dashboard.cancel}
                       </Link>
                       <button
                         type="button"
                         onClick={handleNext}
-                        className="inline-flex h-12 flex-1 items-center justify-center rounded-xl bg-blue-600 px-6 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700 hover:shadow-lg active:scale-[0.98]"
+                        className="inline-flex h-12 flex-1 items-center justify-center rounded-xl bg-blue-600 px-6 text-sm font-semibold text-white shadow-md transition-all duration-200 ease-out hover:bg-blue-700 hover:shadow-lg motion-safe:hover:scale-[1.01] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 focus-visible:ring-offset-2"
                       >
                         {t.onboarding.continue}
                       </button>

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useT } from "../../lib/i18n/useT";
-import LanguageSwitcher from "./LanguageSwitcher";
 
 function Icon(props: { name: "home" | "tasks" | "history" | "docs" | "user" | "settings" }) {
   const common = "h-5 w-5";
@@ -186,13 +185,13 @@ export default function Menu() {
               <Link
                 key={it.href}
                 href={it.href}
-                className={`sidenav-link group ${active ? "active" : ""}`}
+                className={`sidenav-link group transition-all duration-200 ease-out motion-safe:hover:translate-x-0.5 ${active ? "active" : ""}`}
               >
                 <span
                   className={
                     active
                       ? "flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-blue-600 transition-all"
-                      : "flex h-8 w-8 items-center justify-center rounded-xl bg-slate-50 text-slate-400 transition-all group-hover:bg-blue-50 group-hover:text-blue-600"
+                      : "flex h-8 w-8 items-center justify-center rounded-xl bg-slate-100/70 text-slate-400 transition-all group-hover:bg-blue-100 group-hover:text-blue-600"
                   }
                   aria-hidden
                 >
@@ -239,7 +238,7 @@ export default function Menu() {
           </div>
         </div>
 
-        <div className="sidebar-footer">
+        <div className="sidebar-footer border-t border-slate-200/60 pt-4">
           <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
             <div className="flex items-center gap-3">
               <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-sm font-bold text-slate-700">
@@ -251,8 +250,6 @@ export default function Menu() {
               </div>
             </div>
           </div>
-
-          <LanguageSwitcher />
           <span className="versionpill">v0.1</span>
         </div>
       </div>

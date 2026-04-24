@@ -282,7 +282,7 @@ export default function RefineProfile() {
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
       <div className="mx-auto max-w-3xl px-6 py-12">
-        <div className="overflow-hidden rounded-[2rem] border border-white/60 bg-white shadow-[0_30px_80px_-25px_rgba(15,23,42,0.25)] backdrop-blur-sm">
+        <div className="overflow-hidden rounded-[2rem] border border-white/60 bg-white shadow-[0_30px_80px_-25px_rgba(15,23,42,0.25)] backdrop-blur-sm transition-all duration-200 ease-out hover:shadow-[0_35px_90px_-25px_rgba(15,23,42,0.28)]">
           <div className="border-b border-slate-200/70 bg-white px-8 py-8">
             <div className="space-y-2">
               <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">

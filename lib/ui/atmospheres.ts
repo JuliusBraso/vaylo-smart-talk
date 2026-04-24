@@ -25,8 +25,9 @@ export const ATMOSPHERES: Record<AtmosphereId, Atmosphere> = {
   sunset: {
     id: "sunset",
     label: "Sunset",
+    // Warm, emotional, high-saturation mode.
     wallpaper:
-      "radial-gradient(circle at 25% 20%, rgba(251,146,60,0.38), transparent 32%), radial-gradient(circle at 75% 30%, rgba(59,130,246,0.22), transparent 38%), linear-gradient(135deg, #fff7ed 0%, #eff6ff 48%, #f8fafc 100%)",
+      "radial-gradient(circle at 25% 18%, rgba(251,146,60,0.65), transparent 42%), radial-gradient(circle at 70% 28%, rgba(236,72,153,0.48), transparent 44%), radial-gradient(circle at 60% 90%, rgba(147,51,234,0.26), transparent 55%), linear-gradient(135deg, rgb(251,146,60) 0%, rgb(236,72,153) 45%, rgb(147,51,234) 100%)",
     wallpaperOverlay:
       "linear-gradient(180deg, rgba(255,255,255,0.28) 0%, rgba(255,255,255,0.55) 60%, rgba(255,255,255,1) 100%)",
     wallpaperVignette:
@@ -42,8 +43,9 @@ export const ATMOSPHERES: Record<AtmosphereId, Atmosphere> = {
   alpine: {
     id: "alpine",
     label: "Alpine",
+    // Cool, mountainous mode with fog.
     wallpaper:
-      "radial-gradient(circle at 70% 25%, rgba(56,189,248,0.28), transparent 35%), radial-gradient(circle at 35% 55%, rgba(148,163,184,0.22), transparent 42%), linear-gradient(135deg, #f8fafc 0%, #e0f2fe 45%, #f1f5f9 100%)",
+      "radial-gradient(circle at 45% 35%, rgba(255,255,255,0.20), transparent 46%), radial-gradient(circle at 55% 40%, rgba(45,212,191,0.18), transparent 55%), radial-gradient(circle at 50% 70%, rgba(226,232,240,0.55), transparent 60%), linear-gradient(135deg, rgb(51,65,85) 0%, rgb(17,94,89) 52%, rgb(15,23,42) 100%)",
     wallpaperOverlay:
       "linear-gradient(180deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.60) 60%, rgba(255,255,255,1) 100%)",
     wallpaperVignette:
@@ -59,8 +61,9 @@ export const ATMOSPHERES: Record<AtmosphereId, Atmosphere> = {
   night: {
     id: "night",
     label: "Night",
+    // Deep navy mode (distinct from full dark UI).
     wallpaper:
-      "radial-gradient(circle at 70% 25%, rgba(96,165,250,0.32), transparent 35%), radial-gradient(circle at 35% 55%, rgba(168,85,247,0.18), transparent 40%), linear-gradient(135deg, #172554 0%, #1e1b4b 55%, #0f172a 100%)",
+      "radial-gradient(circle at 60% 18%, rgba(99,102,241,0.26), transparent 45%), radial-gradient(circle at 35% 55%, rgba(56,189,248,0.14), transparent 52%), linear-gradient(135deg, rgb(15,23,42) 0%, rgb(49,46,129) 55%, rgb(2,6,23) 100%)",
     wallpaperOverlay: "rgba(2,6,23,0.10)",
     wallpaperVignette:
       "radial-gradient(circle at center, transparent 40%, rgba(2,6,23,0.35) 100%)",
@@ -75,8 +78,8 @@ export const ATMOSPHERES: Record<AtmosphereId, Atmosphere> = {
   minimal: {
     id: "minimal",
     label: "Minimal",
-    wallpaper:
-      "radial-gradient(circle at 35% 20%, rgba(191,219,254,0.25), transparent 35%), linear-gradient(135deg, #ffffff 0%, #f8fafc 50%, #eef2ff 100%)",
+    // Clean mode: almost no gradients.
+    wallpaper: "linear-gradient(180deg, rgb(241,245,249) 0%, rgb(241,245,249) 100%)",
     wallpaperOverlay:
       "linear-gradient(180deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.70) 60%, rgba(255,255,255,1) 100%)",
     wallpaperVignette:

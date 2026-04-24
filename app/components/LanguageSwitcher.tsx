@@ -77,7 +77,7 @@ export default function LanguageSwitcher() {
   return (
     <div ref={rootRef} className="languageSwitcher">
       <div className="languageSwitcherRow">
-        <span className="muted">Language</span>
+        <span className="text-slate-500 text-sm mb-1">Language</span>
         <div className="languageSwitcherControl">
           <button
             type="button"
