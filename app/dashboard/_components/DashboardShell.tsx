@@ -179,7 +179,7 @@ export default function DashboardShell({
             className="absolute inset-0"
             style={{
               backdropFilter: `blur(${Math.max(10, Math.round(appliedAtmosphere.blur * 0.7))}px)`,
-              filter: "saturate(0.92) brightness(1.10)",
+              filter: "saturate(0.96) brightness(1.10)",
             }}
           />
           <div
@@ -211,7 +211,7 @@ export default function DashboardShell({
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
                     {t.dashboard.controlCenter}
                   </p>
-                <h1 className="mt-2 text-[34px] font-semibold leading-snug text-slate-900 md:text-5xl">
+                <h1 className="mt-2 text-[34px] font-bold leading-snug text-slate-900 md:text-5xl">
                   Čo dnes potrebujeme vybaviť?
                 </h1>
                 <p className="mt-4 text-sm text-slate-600">
@@ -246,8 +246,8 @@ export default function DashboardShell({
                   </div>
 
                   {/* Floating support cards (bridge hero -> base) */}
-                  <div className="relative z-20 mt-8 grid gap-5 sm:grid-cols-2">
-                    <div className={`${surface("secondaryCard", { hover: true })} bg-white/90 p-6 translate-y-6 md:translate-y-10 shadow-xl`}>
+                  <div className="relative z-10 mt-8 grid gap-5 sm:grid-cols-2">
+                    <div className={`${surface("secondaryCard", { hover: true })} bg-white/90 p-6 translate-y-2 md:translate-y-6 shadow-xl`}>
                       <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                         Recent documents
                       </div>
@@ -265,7 +265,7 @@ export default function DashboardShell({
                       </Link>
                     </div>
 
-                    <div className={`${surface("secondaryCard", { hover: true })} bg-white/90 p-6 translate-y-6 md:translate-y-10 shadow-xl`}>
+                    <div className={`${surface("secondaryCard", { hover: true })} bg-white/90 p-6 translate-y-2 md:translate-y-6 shadow-xl`}>
                       <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                         Help & questions
                       </div>
@@ -302,7 +302,7 @@ export default function DashboardShell({
 
               {/* RIGHT: floating status / vibe (floats as a companion block) */}
               <div className="mt-8 flex justify-start md:mt-0 md:justify-end lg:absolute lg:right-0 lg:top-0">
-                <div className="flex w-full max-w-sm flex-col items-end gap-3">
+                <div className="relative z-20 flex w-full max-w-sm flex-col items-end gap-3">
                   <div className="relative" onClick={(e) => e.stopPropagation()}>
                     <button
                       type="button"
@@ -372,7 +372,7 @@ export default function DashboardShell({
                   </div>
 
                   <div
-                    className={`${surface("elevatedCard", { hover: true })} w-full border-t-2 border-indigo-200 p-7 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.2)] lg:scale-[1.02]`}
+                    className={`${surface("elevatedCard", { hover: true })} relative z-20 w-full border-t-2 border-indigo-200 p-7 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.2)] lg:scale-[1.02]`}
                   >
                     <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                       {t.dashboard.activePriority}

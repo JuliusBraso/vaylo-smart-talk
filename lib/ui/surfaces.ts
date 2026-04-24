@@ -18,29 +18,29 @@ export const SURFACES: Record<SurfaceId, SurfaceTokens> = {
   },
   elevatedCard: {
     base:
-      "rounded-[22px] border border-slate-200 bg-white shadow-sm transition duration-150 ease-out will-change-transform motion-reduce:transition-none",
+      "rounded-3xl border border-slate-200 bg-white shadow-[0_20px_50px_-12px_rgba(0,0,0,0.08)] transition duration-150 ease-out will-change-transform motion-reduce:transition-none",
     hover:
-      "hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md motion-reduce:hover:translate-y-0",
+      "hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.10)] motion-reduce:hover:translate-y-0",
   },
   secondaryCard: {
     base:
-      "rounded-[22px] border border-slate-200 bg-white shadow-sm transition duration-150 ease-out will-change-transform motion-reduce:transition-none",
+      "rounded-2xl border border-slate-200 bg-white shadow-[0_20px_50px_-12px_rgba(0,0,0,0.08)] transition duration-150 ease-out will-change-transform motion-reduce:transition-none",
     hover:
-      "hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md motion-reduce:hover:translate-y-0",
+      "hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.10)] motion-reduce:hover:translate-y-0",
   },
   subtlePanel: {
     base:
-      "rounded-[26px] border border-slate-200 bg-white shadow-[0_14px_40px_rgba(15,23,42,0.08)]",
+      "rounded-[18px] border border-slate-200 bg-white shadow-[0_20px_50px_-12px_rgba(0,0,0,0.08)]",
   },
   historyCard: {
     base:
-      "rounded-[20px] border border-slate-200 bg-white shadow-[0_10px_22px_rgba(15,23,42,0.06)] ring-1 ring-black/5 transition duration-150 ease-out motion-reduce:transition-none",
+      "rounded-[20px] border border-slate-200 bg-white shadow-[0_20px_50px_-12px_rgba(0,0,0,0.08)] ring-1 ring-black/5 transition duration-150 ease-out motion-reduce:transition-none",
     hover:
-      "hover:border-slate-300 hover:shadow-[0_14px_30px_rgba(15,23,42,0.10)]",
+      "hover:border-slate-300 hover:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.10)]",
   },
   sidebarPanel: {
     base:
-      "rounded-[26px] border border-slate-200 bg-white shadow-[0_14px_40px_rgba(15,23,42,0.08)]",
+      "rounded-[26px] border border-slate-200 bg-white shadow-[0_20px_50px_-12px_rgba(0,0,0,0.08)]",
   },
 };
 
