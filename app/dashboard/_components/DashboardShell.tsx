@@ -160,30 +160,42 @@ export default function DashboardShell({
       className="relative min-h-screen flex-1 min-w-0 overflow-x-hidden bg-slate-50 text-slate-900"
       data-locale={locale}
     >
-      <div className="mx-4 my-3 overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_30px_120px_-50px_rgba(15,23,42,0.22)] lg:mx-6 lg:my-4">
+      <div className="mx-4 my-3 overflow-hidden rounded-[2.5rem] border border-slate-200 bg-white shadow-[0_30px_120px_-50px_rgba(15,23,42,0.22)] lg:mx-6 lg:my-4">
       <div className="relative" onClick={() => setVibeOpen(false)}>
         {/* Page canvas: Hero background as a layer (not a panel). */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-[520px]" style={heroVars}>
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-[520px]"
+          style={{
+            ...heroVars,
+            WebkitMaskImage:
+              "linear-gradient(to bottom, rgba(0,0,0,1) 80%, rgba(0,0,0,0) 100%)",
+            maskImage:
+              "linear-gradient(to bottom, rgba(0,0,0,1) 80%, rgba(0,0,0,0) 100%)",
+          }}
+        >
           <div
             className="absolute inset-0 transition-opacity duration-500"
             style={{ background: appliedAtmosphere.wallpaper }}
           />
-          <div className="absolute inset-0 transition-opacity duration-500" style={{ background: appliedAtmosphere.wallpaperOverlay ?? "rgba(255,255,255,0.35)" }} />
           <div
-            className="absolute inset-0 opacity-80"
+            className="absolute inset-0 transition-opacity duration-500"
+            style={{
+              background:
+                appliedAtmosphere.id === "night"
+                  ? "rgba(2,6,23,0.08)"
+                  : "rgba(255,255,255,0.10)",
+            }}
+          />
+          <div
+            className="absolute inset-0 opacity-[0.08]"
             style={{
               background:
                 appliedAtmosphere.wallpaperVignette ??
                 "radial-gradient(circle at center, transparent 45%, rgba(15,23,42,0.10) 100%)",
             }}
           />
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                "linear-gradient(180deg, rgba(255,255,255,0.94) 0%, rgba(255,255,255,0.80) 55%, rgba(255,255,255,1) 100%)",
-            }}
-          />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.35),transparent_40%)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.08),rgba(255,255,255,0.14))]" />
           <div
             className="absolute inset-0"
             style={{
@@ -208,29 +220,30 @@ export default function DashboardShell({
         </div>
 
         {/* ZONE A — HERO CANVAS (scenic mockup style). */}
-        <section className="relative">
+        <section className="relative overflow-hidden rounded-[2.5rem]">
           <div
-            className={`relative z-10 px-6 pt-16 pb-0 sm:px-8 lg:px-12 transition duration-300 ease-out motion-reduce:transition-none ${
+            className={`relative z-10 px-6 pt-[72px] pb-0 sm:px-8 lg:px-12 transition duration-300 ease-out motion-reduce:transition-none ${
               heroMounted ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"
             }`}
           >
             <div className="relative" style={{ minHeight: 560 }}>
               {/* LEFT: greeting + input */}
-              <div className="max-w-2xl">
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/80">
+              <div className="relative max-w-2xl">
+                <div className="pointer-events-none absolute -inset-x-6 -inset-y-6 rounded-[2rem] bg-gradient-to-r from-slate-900/25 via-slate-900/10 to-transparent" />
+                <p className="relative text-xs font-semibold uppercase tracking-[0.22em] text-white/85 drop-shadow-[0_2px_10px_rgba(15,23,42,0.35)]">
                   VAYLO CONTROL CENTER
                 </p>
-                <h1 className="mt-3 text-4xl font-bold leading-tight tracking-tight text-white md:text-5xl">
+                <h1 className="relative mt-3 text-4xl font-bold leading-tight tracking-tight text-white drop-shadow-[0_2px_10px_rgba(15,23,42,0.35)] md:text-5xl">
                   Dobrý deň, Martin! 👋
                 </h1>
-                <p className="mt-3 text-base text-white/85">
+                <p className="relative mt-3 text-base text-white/90 drop-shadow-[0_2px_10px_rgba(15,23,42,0.35)]">
                   Čo by sme dnes mali vybaviť?
                 </p>
-                <p className="mt-4 max-w-xl text-sm text-white/70">
+                <p className="relative mt-4 max-w-xl text-sm text-white/80 drop-shadow-[0_2px_10px_rgba(15,23,42,0.35)]">
                   {t.dashboard.intro}
                 </p>
 
-                <div className="mt-8 max-w-3xl rounded-[2rem] border border-white/30 bg-white p-6 shadow-[0_25px_70px_-25px_rgba(15,23,42,0.35)]">
+                <div className="relative mt-9 max-w-3xl rounded-3xl border border-white/70 bg-white px-6 py-4 shadow-[0_24px_70px_-24px_rgba(15,23,42,0.42),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-xl transition-all duration-150 hover:shadow-[0_28px_78px_-26px_rgba(15,23,42,0.46),inset_0_1px_0_rgba(255,255,255,0.75)] focus-within:ring-2 focus-within:ring-blue-200">
                   <div className="flex items-center gap-3">
                     <input
                       value={heroQuery}
@@ -241,7 +254,7 @@ export default function DashboardShell({
                         router.push(q ? `/assistant?q=${encodeURIComponent(q)}` : "/assistant");
                       }}
                       placeholder="Opíšte, čo potrebujete vybaviť..."
-                      className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 shadow-sm outline-none transition focus:border-blue-200 focus:ring-4 focus:ring-blue-100"
+                      className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 shadow-sm outline-none transition focus:border-blue-200"
                       aria-label="Ask Vaylo"
                     />
                     <button
@@ -250,7 +263,7 @@ export default function DashboardShell({
                         const q = heroQuery.trim();
                         router.push(q ? `/assistant?q=${encodeURIComponent(q)}` : "/assistant");
                       }}
-                      className="inline-flex h-12 shrink-0 items-center justify-center rounded-2xl bg-blue-600 px-5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-500 hover:scale-[1.02] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-200"
+                      className="inline-flex h-12 shrink-0 items-center justify-center rounded-2xl bg-blue-600 px-5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-500 hover:scale-[1.02] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200"
                     >
                       <span className="sr-only">Send</span>
                       <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden>
@@ -263,7 +276,7 @@ export default function DashboardShell({
                   <div className="mt-4 flex items-center justify-between gap-3 text-sm text-slate-600">
                     <button
                       type="button"
-                      className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+                      className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98]"
                       title="Add"
                     >
                       <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden>
@@ -273,7 +286,7 @@ export default function DashboardShell({
                     </button>
                     <button
                       type="button"
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50"
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98]"
                       title="Mic"
                       aria-label="Mic"
                     >
@@ -289,7 +302,7 @@ export default function DashboardShell({
                   {/* Floating support cards (bridge hero -> base) */}
                   <div className="relative z-10 mt-8 grid gap-5 sm:grid-cols-2">
                     <div
-                      className="rounded-[1.75rem] border border-white/70 bg-white/95 p-6 shadow-[0_28px_80px_-28px_rgba(15,23,42,0.35)] transition-all duration-200 hover:shadow-[0_32px_90px_-30px_rgba(15,23,42,0.42)]"
+                      className="rounded-[1.75rem] border border-white/40 bg-white/95 p-6 shadow-[0_32px_64px_-15px_rgba(0,0,0,0.08)] transition-all duration-200 hover:shadow-[0_36px_80px_-18px_rgba(15,23,42,0.16)]"
                     >
                       <div className="text-sm font-semibold text-slate-900">Nedávne dokumenty</div>
                       <div className="mt-4 grid gap-2 text-sm text-slate-700">
@@ -312,7 +325,7 @@ export default function DashboardShell({
                     </div>
 
                     <div
-                      className="rounded-[1.75rem] border border-white/70 bg-white/95 p-6 shadow-[0_28px_80px_-28px_rgba(15,23,42,0.35)] transition-all duration-200 hover:shadow-[0_32px_90px_-30px_rgba(15,23,42,0.42)]"
+                      className="rounded-[1.75rem] border border-white/40 bg-white/95 p-6 shadow-[0_32px_64px_-15px_rgba(0,0,0,0.08)] transition-all duration-200 hover:shadow-[0_36px_80px_-18px_rgba(15,23,42,0.16)]"
                     >
                       <div className="text-sm font-semibold text-slate-900">Ako vám môžem pomôcť?</div>
                       <div className="mt-4 grid gap-2 text-sm text-slate-700">
@@ -321,12 +334,18 @@ export default function DashboardShell({
                           "Ako funguje daňové číslo v Nemecku?",
                           "Mám nárok na Kindergeld?",
                           "Ako si vybrať zdravotné poistenie?",
-                        ].map((q) => (
+                        ].map((q, qi) => (
                           <button
                             key={q}
                             type="button"
                             onClick={() => router.push(`/assistant?q=${encodeURIComponent(q)}`)}
-                            className="group flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left transition-all hover:border-blue-200 hover:bg-blue-50 hover:shadow-sm"
+                            title={q}
+                            aria-label={q}
+                            className={`group relative flex w-full items-center justify-between gap-3 overflow-hidden rounded-2xl border px-4 py-3 text-left shadow-sm transition-all duration-150 before:absolute before:left-0 before:top-0 before:h-full before:w-1 before:bg-blue-400 before:opacity-0 before:transition-opacity hover:border-blue-200 hover:bg-blue-50 hover:shadow-md hover:before:opacity-100 active:scale-[0.98] ${
+                              qi === 0
+                                ? "border-blue-200 bg-blue-50/70"
+                                : "border-slate-200 bg-white"
+                            }`}
                           >
                             <span className="text-sm text-slate-700">{q}</span>
                             <span
@@ -402,12 +421,12 @@ export default function DashboardShell({
                   </div>
 
                   {/* Right vibe panel (mockup) */}
-                  <div className="hidden w-full rounded-[1.75rem] border border-white/25 bg-white/15 p-4 text-white shadow-[0_30px_80px_-24px_rgba(15,23,42,0.22)] backdrop-blur-xl lg:block">
-                    <div className="text-sm font-semibold">Pozadie</div>
-                    <div className="mt-1 text-xs text-white/75">
+                  <div className="hidden w-full rounded-[1.75rem] border border-slate-200 bg-white/85 p-4 text-slate-900 shadow-[0_30px_80px_-24px_rgba(15,23,42,0.22)] backdrop-blur-xl lg:block">
+                    <div className="text-sm font-semibold text-slate-900">Pozadie</div>
+                    <div className="mt-1 text-xs text-slate-600">
                       Vyberte si pozadie, ktoré vás inšpiruje.
                     </div>
-                    <div className="mt-4 grid gap-2">
+                    <div className="mt-4 grid gap-3">
                       {ATMOSPHERE_ORDER.map((id) => {
                         const a = getAtmosphereById(id)!;
                         const active = a.id === appliedAtmosphere.id;
@@ -435,14 +454,14 @@ export default function DashboardShell({
                             }}
                             className={
                               active
-                                ? "flex w-full items-center gap-2 rounded-2xl border border-blue-200/60 bg-blue-500/25 px-3 py-2 text-left text-sm font-semibold text-white"
-                                : "flex w-full items-center gap-2 rounded-2xl border border-white/15 bg-white/10 px-3 py-2 text-left text-sm font-semibold text-white/90 transition hover:bg-white/15"
+                                ? "flex w-full items-center gap-2 rounded-2xl border border-blue-100 bg-blue-100 px-3 py-2 text-left text-sm font-semibold text-blue-700"
+                                : "flex w-full items-center gap-2 rounded-2xl border border-slate-200 bg-white/70 px-3 py-2 text-left text-sm font-semibold text-slate-700 transition hover:bg-blue-50"
                             }
                           >
-                            <span className="h-8 w-10 rounded-xl border border-white/20" style={{ background: a.gradient }} />
+                            <span className="h-8 w-10 rounded-xl border border-slate-200" style={{ background: a.gradient }} />
                             <span className="flex-1">{label}</span>
                             {active ? (
-                              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-bold">
+                              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
                                 ✓
                               </span>
                             ) : null}
@@ -453,9 +472,9 @@ export default function DashboardShell({
                   </div>
 
                   <div
-                    className={`${surface("elevatedCard", { hover: true })} relative z-20 w-full rounded-3xl border border-slate-200/80 bg-white/90 p-7 shadow-[0_30px_80px_-24px_rgba(15,23,42,0.22)] lg:scale-[1.02]`}
+                    className={`${surface("elevatedCard", { hover: true })} relative z-20 w-full rounded-3xl border border-white/70 bg-white p-7 shadow-[0_30px_80px_-25px_rgba(15,23,42,0.40)] lg:scale-[1.02]`}
                   >
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
                       {t.dashboard.activePriority}
                     </div>
                     <div className="mt-2 text-base font-semibold text-slate-900">
@@ -484,7 +503,7 @@ export default function DashboardShell({
                           block: "start",
                         });
                       }}
-                      className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-2xl bg-blue-600 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-500 hover:scale-[1.02] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-200"
+                      className="mt-5 inline-flex h-12 w-full items-center justify-center rounded-2xl bg-blue-600 text-sm font-semibold text-white shadow-md transition-all hover:bg-blue-500 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-200"
                     >
                       Pokračovať
                     </button>

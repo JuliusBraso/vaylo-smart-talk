@@ -137,9 +137,11 @@ export default function Menu() {
 
   if (!mounted) return null;
 
+  const normalizePath = (path: string) => path.replace(/\/$/, "");
+  const current = normalizePath(pathname);
   const isActive = (href: string) => {
-    if (href === "/dashboard") return pathname === "/dashboard";
-    return pathname.startsWith(href);
+    const normalized = normalizePath(href);
+    return normalized === "/dashboard" ? current === "/dashboard" : current === normalized;
   };
 
   const items: Array<{
@@ -189,8 +191,8 @@ export default function Menu() {
                 <span
                   className={
                     active
-                      ? "flex h-8 w-8 items-center justify-center rounded-xl bg-blue-100 text-blue-600 transition-all"
-                      : "flex h-8 w-8 items-center justify-center rounded-xl bg-transparent text-slate-500 transition-all group-hover:bg-blue-100 group-hover:text-blue-600"
+                      ? "flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-blue-600 transition-all"
+                      : "flex h-8 w-8 items-center justify-center rounded-xl bg-slate-50 text-slate-400 transition-all group-hover:bg-blue-50 group-hover:text-blue-600"
                   }
                   aria-hidden
                 >
@@ -212,20 +214,20 @@ export default function Menu() {
         </nav>
 
         <div className="mt-2 grid gap-3">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="text-sm font-semibold text-slate-900">Váš profil</div>
             <div className="mt-3 grid gap-2 text-xs">
               <div className="flex items-center justify-between gap-3">
                 <span className="text-slate-500">Zamestnanie</span>
-                <span className="font-semibold text-slate-800">Zamestnanec</span>
+                <span className="font-medium text-slate-800">Zamestnanec</span>
               </div>
               <div className="flex items-center justify-between gap-3">
                 <span className="text-slate-500">Rodinný stav</span>
-                <span className="font-semibold text-slate-800">S deťmi</span>
+                <span className="font-medium text-slate-800">S deťmi</span>
               </div>
               <div className="flex items-center justify-between gap-3">
                 <span className="text-slate-500">Registrácia</span>
-                <span className="font-semibold text-slate-800">Berlin, Nemecko</span>
+                <span className="font-medium text-slate-800">Berlin, Nemecko</span>
               </div>
             </div>
             <Link

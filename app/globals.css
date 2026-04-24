@@ -61,8 +61,9 @@ a { color: inherit; }
 .app-sidebar {
   width: 260px;
   flex-shrink: 0;
-  border-right: 1px solid rgba(226, 232, 240, 1);
+  border-right: 1px solid rgba(226, 232, 240, 0.60);
   background: rgba(255, 255, 255, 1);
+  box-shadow: 4px 0 20px -10px rgba(15, 23, 42, 0.08);
 }
 
 .sidebar-inner {
@@ -130,7 +131,9 @@ a { color: inherit; }
 }
 
 .sidenav-link:hover {
-  background: rgba(255, 255, 255, 0.60);
+  background: rgb(239, 246, 255); /* blue-50 */
+  border: 1px solid rgba(191, 219, 254, 1);
+  color: rgba(37, 99, 235, 1);
   box-shadow: 0 10px 18px rgba(15, 23, 42, 0.06);
   transform: translateY(-1px);
 }

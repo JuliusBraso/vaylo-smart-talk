@@ -60,9 +60,8 @@ export const ATMOSPHERES: Record<AtmosphereId, Atmosphere> = {
     id: "night",
     label: "Night",
     wallpaper:
-      "radial-gradient(circle at 70% 25%, rgba(59,130,246,0.25), transparent 35%), radial-gradient(circle at 35% 55%, rgba(168,85,247,0.14), transparent 40%), linear-gradient(135deg, #0f172a 0%, #172554 55%, #020617 100%)",
-    wallpaperOverlay:
-      "linear-gradient(180deg, rgba(2,6,23,0.18) 0%, rgba(2,6,23,0.26) 55%, rgba(255,255,255,1) 100%)",
+      "radial-gradient(circle at 70% 25%, rgba(96,165,250,0.32), transparent 35%), radial-gradient(circle at 35% 55%, rgba(168,85,247,0.18), transparent 40%), linear-gradient(135deg, #172554 0%, #1e1b4b 55%, #0f172a 100%)",
+    wallpaperOverlay: "rgba(2,6,23,0.10)",
     wallpaperVignette:
       "radial-gradient(circle at center, transparent 40%, rgba(2,6,23,0.35) 100%)",
     gradient:
