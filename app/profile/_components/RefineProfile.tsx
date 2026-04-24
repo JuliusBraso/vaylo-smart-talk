@@ -125,15 +125,15 @@ export default function RefineProfile() {
                 onClick={() => setValue(o.v)}
                 className={`relative block w-full rounded-2xl border px-5 py-4 text-left transition-all duration-200 ${
                   active
-                    ? "border-blue-500 bg-blue-500/15 shadow-lg"
-                    : "border-white/15 bg-white/5 hover:border-white/30 hover:bg-white/10"
+                    ? "border-indigo-200 bg-indigo-50 shadow-sm"
+                    : "border-slate-200 bg-white hover:bg-slate-50"
                 }`}
               >
                 <div className="pr-8">
-                  <div className="text-sm font-semibold text-white">{o.label}</div>
+                  <div className="text-sm font-semibold text-slate-900">{o.label}</div>
                 </div>
                 {active ? (
-                  <div className="absolute right-4 top-4 text-blue-400 text-lg font-bold">
+                  <div className="absolute right-4 top-4 text-indigo-600 text-lg font-bold">
                     ✓
                   </div>
                 ) : null}
@@ -162,15 +162,15 @@ export default function RefineProfile() {
               onClick={() => setJobSearchUrgency(o.v)}
               className={`relative block w-full rounded-2xl border px-5 py-4 text-left transition-all duration-200 ${
                 active
-                  ? "border-blue-500 bg-blue-500/15 shadow-lg"
-                  : "border-white/15 bg-white/5 hover:border-white/30 hover:bg-white/10"
+                  ? "border-indigo-200 bg-indigo-50 shadow-sm"
+                  : "border-slate-200 bg-white hover:bg-slate-50"
               }`}
             >
               <div className="pr-8">
-                <div className="text-sm font-semibold text-white">{o.label}</div>
+                <div className="text-sm font-semibold text-slate-900">{o.label}</div>
               </div>
               {active ? (
-                <div className="absolute right-4 top-4 text-blue-400 text-lg font-bold">
+                <div className="absolute right-4 top-4 text-indigo-600 text-lg font-bold">
                   ✓
                 </div>
               ) : null}
@@ -280,28 +280,28 @@ export default function RefineProfile() {
   if (!mounted) return null;
 
   return (
-    <main className="min-h-screen bg-slate-950/95 text-slate-50">
-      <div className="max-w-3xl mx-auto px-6 py-12">
-        <div className="rounded-3xl border border-white/10 bg-slate-900/80 shadow-[0_40px_120px_rgba(15,23,42,1)] backdrop-blur-2xl">
-          <div className="border-b border-white/10 bg-slate-950/80 px-6 py-6">
+    <main className="min-h-screen bg-white text-slate-900">
+      <div className="mx-auto max-w-3xl px-6 py-12">
+        <div className="rounded-3xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-200 bg-slate-50 px-6 py-6">
             <div className="space-y-2">
-              <h1 className="text-3xl font-bold tracking-tight text-white">
+              <h1 className="text-3xl font-bold tracking-tight text-slate-900">
                 {t.dashboard.refineProfileTitle}
               </h1>
-              <p className="text-slate-400">{t.dashboard.refineProfileDesc}</p>
+              <p className="text-slate-600">{t.dashboard.refineProfileDesc}</p>
             </div>
           </div>
 
           <div className="space-y-6 px-6 py-6">
             {loading ? (
-              <div className="text-sm text-slate-300">{t.documents.loading}</div>
+              <div className="text-sm text-slate-600">{t.documents.loading}</div>
             ) : (
               <>
-                <section className="rounded-2xl border border-white/10 bg-slate-950/60 p-5">
-                  <h2 className="text-sm font-semibold text-white">
+                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <h2 className="text-sm font-semibold text-slate-900">
                     {t.dashboard.refineSectionFamilyTitle}
                   </h2>
-                  <p className="mt-1 text-xs text-slate-300">
+                  <p className="mt-1 text-xs text-slate-600">
                     {t.dashboard.refineSectionFamilyDesc}
                   </p>
                   {yesNoCards(
@@ -318,11 +318,11 @@ export default function RefineProfile() {
                   )}
                 </section>
 
-                <section className="rounded-2xl border border-white/10 bg-slate-950/60 p-5">
-                  <h2 className="text-sm font-semibold text-white">
+                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <h2 className="text-sm font-semibold text-slate-900">
                     {t.dashboard.refineSectionWorkTitle}
                   </h2>
-                  <p className="mt-1 text-xs text-slate-300">
+                  <p className="mt-1 text-xs text-slate-600">
                     {t.dashboard.refineSectionWorkDesc}
                   </p>
                   {yesNoCards(
@@ -333,18 +333,18 @@ export default function RefineProfile() {
                   )}
                   {yesNoCards(hasCv, setHasCv, t.dashboard.refineYesHasCv, t.dashboard.refineNoHasCv)}
                   <div className="mt-3">
-                    <div className="text-xs font-semibold text-slate-200">
+                    <div className="text-xs font-semibold text-slate-700">
                       {t.dashboard.refineJobUrgencyLabel}
                     </div>
                     {urgencyCards}
                   </div>
                 </section>
 
-                <section className="rounded-2xl border border-white/10 bg-slate-950/60 p-5">
-                  <h2 className="text-sm font-semibold text-white">
+                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <h2 className="text-sm font-semibold text-slate-900">
                     {t.dashboard.refineSectionDocsTitle}
                   </h2>
-                  <p className="mt-1 text-xs text-slate-300">
+                  <p className="mt-1 text-xs text-slate-600">
                     {t.dashboard.refineSectionDocsDesc}
                   </p>
                   {yesNoCards(
@@ -367,11 +367,11 @@ export default function RefineProfile() {
                   )}
                 </section>
 
-                <section className="rounded-2xl border border-white/10 bg-slate-950/60 p-5">
-                  <h2 className="text-sm font-semibold text-white">
+                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <h2 className="text-sm font-semibold text-slate-900">
                     {t.dashboard.refineSectionFocusTitle}
                   </h2>
-                  <p className="mt-1 text-xs text-slate-300">
+                  <p className="mt-1 text-xs text-slate-600">
                     {t.dashboard.refineSectionFocusDesc}
                   </p>
                   <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -390,15 +390,15 @@ export default function RefineProfile() {
                           onClick={() => toggleGoal(o.v)}
                           className={`relative block w-full rounded-2xl border px-5 py-4 text-left transition-all duration-200 ${
                             active
-                              ? "border-blue-500 bg-blue-500/15 shadow-lg"
-                              : "border-white/15 bg-white/5 hover:border-white/30 hover:bg-white/10"
+                              ? "border-indigo-200 bg-indigo-50 shadow-sm"
+                              : "border-slate-200 bg-white hover:bg-slate-50"
                           }`}
                         >
                           <div className="pr-8">
-                            <div className="text-sm font-semibold text-white">{o.label}</div>
+                            <div className="text-sm font-semibold text-slate-900">{o.label}</div>
                           </div>
                           {active ? (
-                            <div className="absolute right-4 top-4 text-blue-400 text-lg font-bold">
+                            <div className="absolute right-4 top-4 text-indigo-600 text-lg font-bold">
                               ✓
                             </div>
                           ) : null}
@@ -411,7 +411,7 @@ export default function RefineProfile() {
                 <div className="flex gap-2">
                   <Link
                     href={ROUTES.dashboard}
-                    className="inline-flex flex-1 items-center justify-center rounded-2xl border border-white/15 bg-white/5 px-4 py-2.5 text-xs font-semibold text-slate-200"
+                    className="inline-flex flex-1 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                   >
                     {t.dashboard.cancel}
                   </Link>
@@ -419,7 +419,7 @@ export default function RefineProfile() {
                     type="button"
                     disabled={!canSave}
                     onClick={handleSave}
-                    className="inline-flex flex-1 items-center justify-center rounded-2xl bg-emerald-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex flex-1 items-center justify-center rounded-2xl bg-indigo-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {saving ? t.dashboard.saving : t.dashboard.saveChanges}
                   </button>

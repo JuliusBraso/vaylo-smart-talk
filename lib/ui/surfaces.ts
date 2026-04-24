@@ -18,15 +18,15 @@ export const SURFACES: Record<SurfaceId, SurfaceTokens> = {
   },
   elevatedCard: {
     base:
-      "rounded-[22px] border border-slate-200 bg-white shadow-[0_14px_36px_rgba(15,23,42,0.11)] ring-1 ring-black/5 transition duration-150 ease-out will-change-transform motion-reduce:transition-none",
+      "rounded-[22px] border border-slate-200 bg-white shadow-sm transition duration-150 ease-out will-change-transform motion-reduce:transition-none",
     hover:
-      "hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_22px_60px_rgba(15,23,42,0.17)] motion-reduce:hover:translate-y-0",
+      "hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md motion-reduce:hover:translate-y-0",
   },
   secondaryCard: {
     base:
-      "rounded-[22px] border border-slate-200 bg-white shadow-[0_12px_28px_rgba(15,23,42,0.09)] ring-1 ring-black/5 transition duration-150 ease-out will-change-transform motion-reduce:transition-none",
+      "rounded-[22px] border border-slate-200 bg-white shadow-sm transition duration-150 ease-out will-change-transform motion-reduce:transition-none",
     hover:
-      "hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_20px_52px_rgba(15,23,42,0.15)] motion-reduce:hover:translate-y-0",
+      "hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md motion-reduce:hover:translate-y-0",
   },
   subtlePanel: {
     base:

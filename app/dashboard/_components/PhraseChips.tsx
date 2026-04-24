@@ -23,25 +23,22 @@ function getToneStyles(tone: NonNullable<Props["tone"]>) {
   switch (tone) {
     case "emerald":
       return {
-        borderColor: "rgba(16,185,129,0.55)",
-        background: "rgba(16,185,129,0.10)",
-        color: "rgba(236,253,245,0.96)",
-        boxShadow: "0 0 14px rgba(16,185,129,0.35)",
+        borderColor: "rgba(226,232,240,1)",
+        background: "rgba(248,250,252,1)",
+        boxShadow: "0 10px 24px rgba(15,23,42,0.06)",
       };
     case "cyan":
       return {
-        borderColor: "rgba(34,211,238,0.60)",
-        background: "rgba(34,211,238,0.10)",
-        color: "rgba(236,254,255,0.96)",
-        boxShadow: "0 0 14px rgba(34,211,238,0.35)",
+        borderColor: "rgba(226,232,240,1)",
+        background: "rgba(248,250,252,1)",
+        boxShadow: "0 10px 24px rgba(15,23,42,0.06)",
       };
     case "indigo":
     default:
       return {
-        borderColor: "rgba(99,102,241,0.60)",
-        background: "rgba(99,102,241,0.10)",
-        color: "rgba(238,242,255,0.96)",
-        boxShadow: "0 0 14px rgba(99,102,241,0.35)",
+        borderColor: "rgba(226,232,240,1)",
+        background: "rgba(248,250,252,1)",
+        boxShadow: "0 10px 24px rgba(15,23,42,0.06)",
       };
   }
 }
@@ -107,7 +104,7 @@ export default function PhraseChips({
                 fontWeight: 700,
                 fontSize: 17,
                 lineHeight: 1.25,
-                color: "rgba(255,255,255,0.96)",
+                color: "rgba(15,23,42,0.96)",
               }}
             >
               {row.de}
@@ -116,7 +113,7 @@ export default function PhraseChips({
               style={{
                 fontSize: 14,
                 lineHeight: 1.35,
-                color: "rgba(255,255,255,0.72)",
+                color: "rgba(71,85,105,1)",
               }}
             >
               {phraseSecondary(row, locale)}
@@ -137,13 +134,13 @@ export default function PhraseChips({
               padding: "8px 10px",
               border: favoriteSet.has(row.id)
                 ? "1px solid rgba(250,204,21,0.55)"
-                : "1px solid rgba(255,255,255,0.15)",
+                : "1px solid rgba(226,232,240,1)",
               background: favoriteSet.has(row.id)
                 ? "rgba(250,204,21,0.16)"
-                : "rgba(15,23,42,0.92)",
+                : "rgba(255,255,255,1)",
               color: favoriteSet.has(row.id)
                 ? "rgba(254,240,138,0.98)"
-                : "rgba(255,255,255,0.92)",
+                : "rgba(15,23,42,0.92)",
               fontWeight: 700,
               fontSize: 14,
               cursor: "pointer",
@@ -161,9 +158,9 @@ export default function PhraseChips({
               flexShrink: 0,
               borderRadius: 8,
               padding: "8px 12px",
-              border: "1px solid rgba(255,255,255,0.15)",
-              background: "rgba(15,23,42,0.92)",
-              color: "rgba(255,255,255,0.92)",
+              border: "1px solid rgba(226,232,240,1)",
+              background: "rgba(255,255,255,1)",
+              color: "rgba(15,23,42,0.92)",
               fontWeight: 700,
               fontSize: 12,
               cursor: "pointer",

@@ -165,24 +165,24 @@ export default function ProfileEditor() {
   if (!mounted) return null;
 
   return (
-    <main className="min-h-screen bg-slate-950/95 text-slate-50">
-      <div className="max-w-xl mx-auto px-6 py-12">
-        <div className="rounded-3xl border border-white/10 bg-slate-900/80 shadow-[0_40px_120px_rgba(15,23,42,1)] backdrop-blur-2xl">
-          <div className="border-b border-white/10 bg-slate-950/80 px-6 py-6">
+    <main className="min-h-screen bg-white text-slate-900">
+      <div className="mx-auto max-w-xl px-6 py-12">
+        <div className="rounded-3xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-200 bg-slate-50 px-6 py-6">
             <div className="space-y-3">
-              <h1 className="text-3xl font-bold tracking-tight text-white">
+              <h1 className="text-3xl font-bold tracking-tight text-slate-900">
                 {t.dashboard.editProfileTitle}
               </h1>
-              <p className="text-slate-400">{t.dashboard.editProfileDesc}</p>
+              <p className="text-slate-600">{t.dashboard.editProfileDesc}</p>
             </div>
           </div>
 
           <div className="space-y-8 px-6 py-6">
             <div className="space-y-2">
               <p className="text-xs text-slate-500 uppercase tracking-wide">{stepText}</p>
-              <div className="w-full h-1 bg-slate-800 rounded-full mb-6">
+              <div className="mb-6 h-1 w-full rounded-full bg-slate-200">
                 <div
-                  className="h-1 bg-blue-500 rounded-full transition-all duration-200"
+                  className="h-1 rounded-full bg-indigo-600 transition-all duration-200"
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -194,7 +194,7 @@ export default function ProfileEditor() {
               <div className="space-y-6">
                 {currentStep === "family" && (
                   <section className="space-y-4">
-                    <h2 className="text-sm font-semibold text-slate-50">
+                    <h2 className="text-sm font-semibold text-slate-900">
                       {t.onboarding.questionFamily}
                     </h2>
                     <div className="mt-4 grid gap-4 max-w-xl">
@@ -212,17 +212,17 @@ export default function ProfileEditor() {
                             onClick={() => setFamilyStatus(o.value)}
                             className={`relative block w-full rounded-2xl border px-5 py-5 text-left transition-all duration-200 ${
                               active
-                                ? "border-blue-500 bg-blue-500/15 shadow-lg"
-                                : "border-white/15 bg-white/5 hover:border-white/30 hover:bg-white/10"
+                                ? "border-indigo-200 bg-indigo-50 shadow-sm"
+                                : "border-slate-200 bg-white hover:bg-slate-50"
                             }`}
                           >
                             <div className="pr-8">
-                              <div className="text-base font-semibold text-white">
+                              <div className="text-base font-semibold text-slate-900">
                                 {o.label}
                               </div>
                             </div>
                             {active ? (
-                              <div className="absolute right-4 top-4 text-blue-400 text-lg font-bold">
+                              <div className="absolute right-4 top-4 text-indigo-600 text-lg font-bold">
                                 ✓
                               </div>
                             ) : null}
@@ -233,7 +233,7 @@ export default function ProfileEditor() {
                     <div className="flex gap-2">
                       <Link
                         href={ROUTES.dashboard}
-                        className="inline-flex flex-1 items-center justify-center rounded-2xl border border-white/15 bg-white/5 px-4 py-2.5 text-xs font-semibold text-slate-200"
+                        className="inline-flex flex-1 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                       >
                         {t.dashboard.cancel}
                       </Link>

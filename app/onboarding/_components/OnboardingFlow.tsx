@@ -180,15 +180,15 @@ export default function OnboardingFlow({ t }: Props) {
   if (!mounted) return null;
 
   return (
-    <main className="min-h-screen bg-slate-950/95 text-slate-50">
-      <div className="max-w-xl mx-auto px-6 py-12">
-        <div className="rounded-3xl border border-white/10 bg-slate-900/80 shadow-[0_40px_120px_rgba(15,23,42,1)] backdrop-blur-2xl">
+    <main className="min-h-screen bg-white text-slate-900">
+      <div className="mx-auto max-w-xl px-6 py-12">
+        <div className="rounded-3xl border border-slate-200 bg-white shadow-sm">
           {/* Header */}
-          <div className="border-b border-white/10 bg-slate-950/80 px-6 py-6">
+          <div className="border-b border-slate-200 bg-slate-50 px-6 py-6">
             <div className="space-y-3">
-              <h1 className="text-4xl font-bold tracking-tight text-white">{title}</h1>
-              <p className="text-slate-400 text-lg mt-2">{subtitle}</p>
-              <p className="max-w-2xl text-xs text-slate-400">{description}</p>
+              <h1 className="text-4xl font-bold tracking-tight text-slate-900">{title}</h1>
+              <p className="mt-2 text-lg text-slate-600">{subtitle}</p>
+              <p className="max-w-2xl text-xs text-slate-500">{description}</p>
             </div>
           </div>
 
@@ -199,9 +199,9 @@ export default function OnboardingFlow({ t }: Props) {
               <p className="text-xs text-slate-500 uppercase tracking-wide">
                 {stepText}
               </p>
-              <div className="w-full h-1 bg-slate-800 rounded-full mb-6">
+              <div className="mb-6 h-1 w-full rounded-full bg-slate-200">
                 <div
-                  className="h-1 bg-blue-500 rounded-full transition-all duration-200"
+                  className="h-1 rounded-full bg-indigo-600 transition-all duration-200"
                   style={{ width: currentStep === "family" ? "25%" : `${progress}%` }}
                 />
               </div>
@@ -213,7 +213,7 @@ export default function OnboardingFlow({ t }: Props) {
               {currentStep === "family" && (
                 <section className="space-y-6">
                   <div className="space-y-2">
-                    <h2 className="text-sm font-semibold text-slate-50">
+                    <h2 className="text-sm font-semibold text-slate-900">
                       {t.onboarding.questionFamily}
                     </h2>
                   </div>
@@ -227,18 +227,18 @@ export default function OnboardingFlow({ t }: Props) {
                           onClick={() => handleFamilyChange(option.value)}
                           className={`relative block w-full rounded-2xl border px-5 py-5 text-left transition-all duration-200 ${
                             active
-                              ? "border-blue-500 bg-blue-500/15 shadow-lg"
-                              : "border-white/15 bg-white/5 hover:border-white/30 hover:bg-white/10"
+                              ? "border-indigo-200 bg-indigo-50 shadow-sm"
+                              : "border-slate-200 bg-white hover:bg-slate-50"
                           }`}
                         >
                           <div className="pr-8">
-                            <div className="text-base font-semibold text-white">
+                            <div className="text-base font-semibold text-slate-900">
                               {option.label}
                             </div>
                           </div>
 
                           {active ? (
-                            <div className="absolute right-4 top-4 text-blue-400 text-lg font-bold">
+                            <div className="absolute right-4 top-4 text-indigo-600 text-lg font-bold">
                               ✓
                             </div>
                           ) : null}

@@ -92,8 +92,8 @@ export default function DashboardActionCard(props: {
         className ??
         `${surface(index === 0 ? "elevatedCard" : "secondaryCard", { hover: true })} ${
           index === 0
-            ? "p-5 border-indigo-200 shadow-[0_16px_44px_rgba(15,23,42,0.13)]"
-            : "p-4"
+            ? "p-6 border-indigo-200 shadow-[0_16px_44px_rgba(15,23,42,0.13)]"
+            : "p-6"
         }`
       }
     >

@@ -19,31 +19,31 @@ const TONE_STYLES: Record<
   }
 > = {
   indigo: {
-    border: "border-indigo-400/40",
-    bg: "bg-slate-950/70",
-    title: "text-indigo-100",
-    subtitle: "text-indigo-200/75",
+    border: "border-slate-100",
+    bg: "bg-slate-50",
+    title: "text-slate-800",
+    subtitle: "text-slate-600",
     trigger:
-      "border-indigo-400/50 bg-indigo-950/50 text-indigo-100 hover:bg-indigo-900/40",
-    iconWrap: "bg-indigo-500/20 text-indigo-200 ring-indigo-400/50",
+      "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+    iconWrap: "bg-indigo-50 text-indigo-700 ring-indigo-200",
   },
   emerald: {
-    border: "border-emerald-400/40",
-    bg: "bg-slate-950/70",
-    title: "text-emerald-100",
-    subtitle: "text-emerald-200/75",
+    border: "border-slate-100",
+    bg: "bg-slate-50",
+    title: "text-slate-800",
+    subtitle: "text-slate-600",
     trigger:
-      "border-emerald-400/50 bg-emerald-950/50 text-emerald-100 hover:bg-emerald-900/40",
-    iconWrap: "bg-emerald-500/20 text-emerald-200 ring-emerald-400/50",
+      "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+    iconWrap: "bg-indigo-50 text-indigo-700 ring-indigo-200",
   },
   cyan: {
-    border: "border-cyan-400/40",
-    bg: "bg-slate-950/70",
-    title: "text-cyan-100",
-    subtitle: "text-cyan-200/75",
+    border: "border-slate-100",
+    bg: "bg-slate-50",
+    title: "text-slate-800",
+    subtitle: "text-slate-600",
     trigger:
-      "border-cyan-400/50 bg-cyan-950/50 text-cyan-100 hover:bg-cyan-900/40",
-    iconWrap: "bg-cyan-500/20 text-cyan-200 ring-cyan-400/50",
+      "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+    iconWrap: "bg-indigo-50 text-indigo-700 ring-indigo-200",
   },
 };
 

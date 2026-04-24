@@ -167,11 +167,12 @@ export default function DashboardShell({
             className="absolute inset-0 transition-opacity duration-500"
             style={{ background: "var(--vaylo-atmosphere-gradient)" }}
           />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.6),transparent_60%)]" />
           <div
             className="absolute inset-0"
             style={{
               background:
-                "linear-gradient(180deg, rgba(255,255,255,0.88) 0%, rgba(255,255,255,0.80) 46%, rgba(248,250,252,1) 100%)",
+                "linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.78) 55%, rgba(255,255,255,1) 100%)",
             }}
           />
           <div
@@ -210,9 +211,9 @@ export default function DashboardShell({
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
                     {t.dashboard.controlCenter}
                   </p>
-                  <h1 className="mt-2 text-[34px] font-semibold tracking-tight text-slate-900 md:text-5xl">
-                    {t.dashboard.operationsCockpit}
-                  </h1>
+                <h1 className="mt-2 text-[34px] font-semibold leading-snug text-slate-900 md:text-5xl">
+                  Čo dnes potrebujeme vybaviť?
+                </h1>
                 <p className="mt-4 text-sm text-slate-600">
                     {t.dashboard.intro}
                   </p>
@@ -246,7 +247,7 @@ export default function DashboardShell({
 
                   {/* Floating support cards (bridge hero -> base) */}
                   <div className="relative z-20 mt-8 grid gap-5 sm:grid-cols-2">
-                    <div className={`${surface("secondaryCard", { hover: true })} p-6 translate-y-10 md:translate-y-14`}>
+                    <div className={`${surface("secondaryCard", { hover: true })} bg-white/90 p-6 translate-y-6 md:translate-y-10 shadow-xl`}>
                       <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                         Recent documents
                       </div>
@@ -264,7 +265,7 @@ export default function DashboardShell({
                       </Link>
                     </div>
 
-                    <div className={`${surface("secondaryCard", { hover: true })} p-6 translate-y-10 md:translate-y-14`}>
+                    <div className={`${surface("secondaryCard", { hover: true })} bg-white/90 p-6 translate-y-6 md:translate-y-10 shadow-xl`}>
                       <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                         Help & questions
                       </div>
@@ -370,7 +371,9 @@ export default function DashboardShell({
                     ) : null}
                   </div>
 
-                  <div className={`${surface("elevatedCard", { hover: true })} w-full p-5 shadow-[0_18px_50px_rgba(15,23,42,0.14)]`}>
+                  <div
+                    className={`${surface("elevatedCard", { hover: true })} w-full border-t-2 border-indigo-200 p-7 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.2)] lg:scale-[1.02]`}
+                  >
                     <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                       {t.dashboard.activePriority}
                     </div>
@@ -400,7 +403,7 @@ export default function DashboardShell({
 
         {/* ZONE B: Clean base (tasks + history) */}
         <section className="relative z-10 -mt-16 pb-12">
-          <div className="bg-white/85 pt-14">
+          <div className="bg-white pt-14">
             <div className="flex flex-col gap-10 px-6 pb-12 sm:px-8 lg:px-12">
               <div className="mx-auto w-full max-w-6xl">
                 {/* Top tasks */}
@@ -458,7 +461,7 @@ export default function DashboardShell({
                               ? t.dashboard.highestPriorityLabel
                               : t.dashboard.nextLabel
                           }
-                          className={changedClassById(action.id)}
+                          className={changedClassById(action.id) || undefined}
                           onPrimaryCtaClick={() => {
                             void trackActionEvent({
                               userId,

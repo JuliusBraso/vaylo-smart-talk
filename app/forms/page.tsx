@@ -7,51 +7,53 @@ export default async function Page() {
   const forms = getForms();
 
   return (
-    <main className="container">
-      <div className="card">
-        <div className="cardHeader">
-          <div className="cardTitle">{t.nav.forms}</div>
-          <div className="cardSub muted">{t.forms.shellSubtitle}</div>
-        </div>
+    <main className="min-h-[calc(100vh-64px)] bg-white">
+      <div className="mx-auto w-full max-w-5xl px-4 py-10">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="mb-5">
+            <div className="text-base font-semibold text-slate-900">{t.nav.forms}</div>
+            <div className="mt-1 text-sm text-slate-600">{t.forms.shellSubtitle}</div>
+          </div>
 
-        <div style={{ display: "grid", gap: 12 }}>
-          {forms.map((form) => {
-            const copy = getFormCatalogCopy(form.id, t);
-            return (
-            <div key={form.id} className="card">
-              <div className="cardHeader">
-                <div>
-                  <div className="cardTitle" style={{ fontSize: 18 }}>
-                    {copy.title}
+          <div className="grid gap-4">
+            {forms.map((form) => {
+              const copy = getFormCatalogCopy(form.id, t);
+              return (
+                <div
+                  key={form.id}
+                  className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-[15px] font-semibold text-slate-900">
+                        {copy.title}
+                      </div>
+                      <div className="mt-1 text-sm text-slate-600">
+                        {copy.shortDescription}
+                      </div>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                      {t.categoryLabels[form.category]}
+                    </span>
                   </div>
-                  <div className="cardSub muted">{copy.shortDescription}</div>
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                      {form.authority ?? t.forms.unknownAuthority}
+                    </span>
+                  </div>
+
+                  <Link
+                    href={`/forms/${form.slug}`}
+                    className="mt-4 inline-flex h-10 items-center justify-center rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-200/70"
+                    style={{ textDecoration: "none" }}
+                  >
+                    {t.forms.openForm}
+                  </Link>
                 </div>
-                <span className="badgeSmall">{t.categoryLabels[form.category]}</span>
-              </div>
-
-              <div
-                style={{
-                  display: "flex",
-                  gap: 8,
-                  flexWrap: "wrap",
-                  marginBottom: 10,
-                }}
-              >
-                <span className="badgeSmall">
-                  {form.authority ?? t.forms.unknownAuthority}
-                </span>
-              </div>
-
-              <Link
-                href={`/forms/${form.slug}`}
-                className="pill"
-                style={{ textDecoration: "none", display: "inline-flex" }}
-              >
-                {t.forms.openForm}
-              </Link>
-            </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
     </main>

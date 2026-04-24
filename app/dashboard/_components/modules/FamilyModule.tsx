@@ -23,24 +23,23 @@ export default function FamilyModule({ dna, t, smartPhrases }: FamilyModuleProps
     toClientPhrases([...content.family, ...content.bureaucracy]);
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-indigo-400/40 bg-slate-950/80 p-4 text-sm text-slate-100 shadow-[0_0_36px_rgba(79,70,229,0.55)] backdrop-blur-2xl">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_0_100%,rgba(129,140,248,0.28),transparent_55%),radial-gradient(circle_at_100%_0,rgba(236,72,153,0.25),transparent_55%)]" />
-      <div className="relative flex flex-col gap-3">
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-800 shadow-sm">
+      <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-indigo-200">
+          <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-700">
             {t.dashboard.familyModuleTitle}
           </h2>
-          <span className="rounded-full bg-indigo-500/20 px-2 py-0.5 text-[10px] font-medium text-indigo-100 ring-1 ring-indigo-400/60">
+          <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-700 ring-1 ring-indigo-200">
             {t.dashboard.familyModuleBadge}
           </span>
         </div>
 
-        <p className="text-[11px] text-indigo-100/85">
+        <p className="text-[11px] text-slate-600">
           {t.dashboard.familyModuleIntro}
         </p>
 
-        <div className="mt-1 rounded-2xl border border-indigo-400/50 bg-indigo-900/40 px-3 py-2 text-[11px] text-indigo-50">
-          <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-indigo-200/80">
+        <div className="mt-1 rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2 text-[11px] text-slate-700">
+          <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-600">
             {t.dashboard.familyImmediateFocus}
           </div>
           <ul className="mt-1 space-y-1.5">
@@ -60,8 +59,8 @@ export default function FamilyModule({ dna, t, smartPhrases }: FamilyModuleProps
           </ul>
         </div>
 
-        <div className="mt-1 rounded-2xl border border-fuchsia-400/40 bg-fuchsia-900/30 px-3 py-2 text-[11px] text-fuchsia-50">
-          <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-fuchsia-200/85">
+        <div className="mt-1 rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2 text-[11px] text-slate-700">
+          <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-600">
             {t.dashboard.familyComingNext}
           </div>
           <p className="mt-1">
