@@ -31,6 +31,8 @@ import DashboardActionCard from "./DashboardActionCard";
 import { ATMOSPHERE_ORDER, getAtmosphereById, type AtmosphereId } from "@/lib/ui/atmospheres";
 import { getDefaultAtmosphereFromDna } from "@/lib/ui/get-default-atmosphere-from-dna";
 import { surface } from "@/lib/ui/surfaces";
+import type { RegionConfig } from "@/lib/vaylo/region/types";
+import { getRegionVisual, type RegionVisualVariant } from "@/lib/vaylo/region/get-region-visual";
 
 type Props = {
   dna: ProfileDNA;
@@ -40,6 +42,8 @@ type Props = {
   actions: DashboardAction[];
   /** Presentation-only: completed/auto-resolved step timeline. */
   historyActions: DashboardAction[];
+  /** Optional region identity foundation (safe when null). */
+  regionConfig?: RegionConfig | null;
   /** Server-resolved copy for the priority badge (no client DNA branching). */
   activePriorityLabel: string;
   /** Server-resolved `actionSituationSummary` line. */
@@ -66,6 +70,7 @@ export default function DashboardShell({
   userId,
   actions,
   historyActions,
+  regionConfig,
   activePriorityLabel,
   situationSummaryLine,
   t,
@@ -99,6 +104,24 @@ export default function DashboardShell({
     const fromDna = getAtmosphereById(getDefaultAtmosphereFromDna(dna));
     return fromDna ?? getAtmosphereById("minimal")!;
   }, [dna, selectedAtmosphereId]);
+
+  const mappedRegionVariant = useMemo<RegionVisualVariant>(() => {
+    switch (appliedAtmosphere.id) {
+      case "sunset":
+        return "sunset";
+      case "alpine":
+        return "alpine";
+      case "night":
+        return "night";
+      case "minimal":
+      default:
+        return "minimal";
+    }
+  }, [appliedAtmosphere.id]);
+
+  const regionVisual = useMemo(() => {
+    return getRegionVisual(regionConfig ?? null, mappedRegionVariant);
+  }, [regionConfig, mappedRegionVariant]);
 
   const heroVars = useMemo(() => {
     return {
@@ -177,15 +200,18 @@ export default function DashboardShell({
           >
             <div
               className="absolute inset-0 transition-opacity duration-500"
-              style={{ background: appliedAtmosphere.wallpaper }}
+              style={{
+                backgroundImage: `${regionVisual?.wallpaper ?? appliedAtmosphere.wallpaper}, radial-gradient(circle at 20% 30%, rgba(255,255,255,0.08), transparent 40%)`,
+              }}
             />
             <div
               className="absolute inset-0 transition-opacity duration-500"
               style={{
                 background:
-                  appliedAtmosphere.id === "night"
+                  regionVisual?.overlay ??
+                  (appliedAtmosphere.id === "night"
                     ? "rgba(2,6,23,0.06)"
-                    : "rgba(255,255,255,0.07)",
+                    : "rgba(255,255,255,0.07)"),
               }}
             />
             <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-transparent" />
@@ -235,6 +261,11 @@ export default function DashboardShell({
                 <p className="relative text-xs font-semibold uppercase tracking-[0.22em] text-white/85 drop-shadow-[0_2px_10px_rgba(15,23,42,0.35)]">
                   VAYLO CONTROL CENTER
                 </p>
+                {regionConfig?.label ? (
+                  <p className="relative mt-2 text-xs uppercase tracking-[0.18em] text-white/70 drop-shadow-[0_2px_10px_rgba(15,23,42,0.35)]">
+                    Prostredie: {regionConfig.label}
+                  </p>
+                ) : null}
                 <h1 className="relative mt-3 text-4xl font-bold leading-tight tracking-tight text-white drop-shadow-[0_4px_20px_rgba(0,0,0,0.35)] md:text-5xl">
                   Dobrý deň, Martin! 👋
                 </h1>

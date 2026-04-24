@@ -9,6 +9,7 @@ import {
   getLanguageLabel,
 } from "@/lib/i18n/labels";
 import type { UserState } from "@/lib/vaylo/state/types";
+import type { RegionConfig } from "@/lib/vaylo/region/types";
 import type { GetUserStepStateResult } from "@/lib/vaylo/steps/types";
 import DashboardClientWrapper from "./DashboardClientWrapper";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -41,6 +42,7 @@ export default async function DashboardDataProvider({
   children,
 }: Props) {
   const dna = userState.identity.dna;
+  const regionConfig: RegionConfig | null | undefined = userState.regionConfig;
 
   if (!dna) {
     throw new Error("DashboardDataProvider: missing DNA after dashboard gate");
@@ -79,6 +81,7 @@ export default async function DashboardDataProvider({
       userId={userId}
       actions={actions}
       historyActions={historyActionsProp ?? []}
+      regionConfig={regionConfig ?? null}
       activePriorityLabel={activePriorityLabel}
       situationSummaryLine={situationSummaryLine}
       t={t}
