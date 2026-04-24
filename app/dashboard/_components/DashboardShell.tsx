@@ -157,12 +157,12 @@ export default function DashboardShell({
 
   return (
     <main
-      className="min-h-screen bg-slate-50 text-slate-900"
+      className="relative flex-1 min-w-0 overflow-x-hidden bg-slate-50 text-slate-900"
       data-locale={locale}
     >
       <div className="relative" onClick={() => setVibeOpen(false)}>
         {/* Page canvas: Hero background as a layer (not a panel). */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-[520px]" style={heroVars}>
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-[460px]" style={heroVars}>
           <div
             className="absolute inset-0 transition-opacity duration-500"
             style={{ background: "var(--vaylo-atmosphere-gradient)" }}
@@ -198,14 +198,13 @@ export default function DashboardShell({
         </div>
 
         {/* ZONE A — HERO CANVAS (full-width composition, internal readable widths only). */}
-        <section className="relative pt-10">
-          <div className="px-4 sm:px-6 lg:px-10">
-            <div
-              className={`relative grid gap-8 md:grid-cols-[1.25fr_0.75fr] md:gap-10 transition duration-300 ease-out motion-reduce:transition-none ${
-                heroMounted ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"
-              }`}
-              style={{ minHeight: 480 }}
-            >
+        <section className="relative">
+          <div
+            className={`relative z-10 px-6 pt-16 pb-0 sm:px-8 lg:px-12 transition duration-300 ease-out motion-reduce:transition-none ${
+              heroMounted ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"
+            }`}
+          >
+            <div className="relative" style={{ minHeight: 480 }}>
               {/* LEFT: greeting + input */}
               <div className="max-w-2xl">
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
@@ -245,9 +244,9 @@ export default function DashboardShell({
                     </button>
                   </div>
 
-                  {/* Floating support cards (overlap into Zone B) */}
-                  <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                    <div className={`${surface("secondaryCard", { hover: true })} p-4 translate-y-6`}>
+                  {/* Floating support cards (bridge hero -> base) */}
+                  <div className="relative z-20 mt-8 grid gap-5 sm:grid-cols-2">
+                    <div className={`${surface("secondaryCard", { hover: true })} p-5 translate-y-10 md:translate-y-14`}>
                       <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                         Recent documents
                       </div>
@@ -265,7 +264,7 @@ export default function DashboardShell({
                       </Link>
                     </div>
 
-                    <div className={`${surface("secondaryCard", { hover: true })} p-4 translate-y-6`}>
+                    <div className={`${surface("secondaryCard", { hover: true })} p-5 translate-y-10 md:translate-y-14`}>
                       <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                         Help & questions
                       </div>
@@ -300,8 +299,9 @@ export default function DashboardShell({
                   </div>
                 </div>
 
-              {/* RIGHT: floating status / vibe */}
-              <div className="flex flex-col items-end gap-3">
+              {/* RIGHT: floating status / vibe (floats as a companion block) */}
+              <div className="mt-8 flex justify-start md:mt-0 md:justify-end lg:absolute lg:right-0 lg:top-0">
+                <div className="flex w-full max-w-sm flex-col items-end gap-3">
                   <div className="relative" onClick={(e) => e.stopPropagation()}>
                     <button
                       type="button"
@@ -370,7 +370,7 @@ export default function DashboardShell({
                     ) : null}
                   </div>
 
-                  <div className={`${surface("elevatedCard", { hover: true })} w-full max-w-xs p-5`}>
+                  <div className={`${surface("elevatedCard", { hover: true })} w-full p-5 shadow-[0_18px_50px_rgba(15,23,42,0.14)]`}>
                     <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                       {t.dashboard.activePriority}
                     </div>
@@ -392,137 +392,150 @@ export default function DashboardShell({
                       </div>
                     </div>
                   </div>
+                </div>
               </div>
             </div>
           </div>
         </section>
 
         {/* ZONE B: Clean base (tasks + history) */}
-        <section className="relative z-10 -mt-10 pb-12">
-          <div className="flex flex-col gap-8 px-4 sm:px-6 lg:px-10">
-            <div className="mx-auto w-full max-w-6xl">
-              {/* Top tasks */}
-              <div>
-              <div className="mb-4 flex items-end justify-between gap-4">
+        <section className="relative z-10 -mt-16 pb-12">
+          <div className="bg-white/85 pt-14">
+            <div className="flex flex-col gap-10 px-6 pb-12 sm:px-8 lg:px-12">
+              <div className="mx-auto w-full max-w-6xl">
+                {/* Top tasks */}
                 <div>
-                  <h2 className="text-base font-semibold tracking-tight text-slate-900">
-                    {t.dashboard.nextActionsTitle}
-                  </h2>
-                  <p className="mt-1 text-sm text-slate-600">{t.dashboard.nextActionsDesc}</p>
-                  <p className="mt-1 text-xs text-slate-500">{situationSummaryLine}</p>
-                </div>
-                {process.env.NODE_ENV === "development" ? (
-                  <button
-                    type="button"
-                    onClick={() => setDebugExplain((v) => !v)}
-                    className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600 shadow-sm transition hover:bg-slate-50"
-                    title="Dev only: logs step reasoning to console"
-                  >
-                    Explain: {debugExplain ? "on" : "off"}
-                  </button>
-                ) : null}
-              </div>
-
-              <div className="grid gap-5 md:grid-cols-3">
-                {liveActions.map((action, idx) => {
-                  const whyLines = action.reasons;
-                  const explanation = getActionExplanation(action);
-                  if (debugExplain && process.env.NODE_ENV === "development") {
-                    // eslint-disable-next-line no-console
-                    console.info("[dashboard] action explanation", {
-                      actionId: action.id,
-                      stepId: action.knowledgeStepId,
-                      stepStatus: action.stepStatus,
-                      applicabilityReason: action.applicabilityReason,
-                      blockedByStepIds: action.blockedByStepIds,
-                      explanation,
-                      whyLines,
-                    });
-                  }
-
-                  return (
-                    <DashboardActionCard
-                      key={action.id}
-                      t={t}
-                      action={action}
-                      variant="main"
-                      index={idx}
-                      headerLabel={idx === 0 ? t.dashboard.highestPriorityLabel : t.dashboard.nextLabel}
-                      className={changedClassById(action.id)}
-                      onPrimaryCtaClick={() => {
-                        void trackActionEvent({
-                          userId,
-                          actionId: action.id,
-                          eventType: "click",
-                        });
-                      }}
-                      onSecondaryCtaClick={() => {
-                        void trackActionEvent({
-                          userId,
-                          actionId: action.id,
-                          eventType: "click",
-                        });
-                      }}
-                      onGuideCtaClick={() => {
-                        void trackActionEvent({
-                          userId,
-                          actionId: action.id,
-                          eventType: "click",
-                        });
-                      }}
-                      footerActions={
-                        <MarkTaskDoneButton
-                          userId={userId}
-                          actionId={action.id}
-                          markDoneLabel={t.dashboard.actionMarkDone}
-                        />
-                      }
-                    />
-                  );
-                })}
-              </div>
-              </div>
-
-              {/* History */}
-              {historyActions.length > 0 ? (
-                <div className={`${surface("subtlePanel")} p-6`}>
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-base font-semibold tracking-tight text-slate-900">
-                      Completed &amp; Automated
-                    </h2>
-                    <p className="mt-1 text-sm text-slate-600">Already handled for you</p>
+                  <div className="mb-4 flex items-end justify-between gap-4">
+                    <div>
+                      <h2 className="text-base font-semibold tracking-tight text-slate-900">
+                        {t.dashboard.nextActionsTitle}
+                      </h2>
+                      <p className="mt-1 text-sm text-slate-600">
+                        {t.dashboard.nextActionsDesc}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {situationSummaryLine}
+                      </p>
+                    </div>
+                    {process.env.NODE_ENV === "development" ? (
+                      <button
+                        type="button"
+                        onClick={() => setDebugExplain((v) => !v)}
+                        className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600 shadow-sm transition hover:bg-slate-50"
+                        title="Dev only: logs step reasoning to console"
+                      >
+                        Explain: {debugExplain ? "on" : "off"}
+                      </button>
+                    ) : null}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setHistoryOpen((v) => !v)}
-                    className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600 shadow-sm transition hover:bg-slate-50"
-                    title="Show completed and auto-resolved steps"
-                  >
-                    {historyOpen ? "Hide" : "Show"}
-                  </button>
-                </div>
-                {historyOpen ? (
-                  <div className="mt-4 border-t border-slate-200/70 pt-4">
-                    <div className="grid gap-3 md:grid-cols-3">
-                      {historyActions.map((action) => (
+
+                  <div className="grid gap-5 md:grid-cols-3">
+                    {liveActions.map((action, idx) => {
+                      const whyLines = action.reasons;
+                      const explanation = getActionExplanation(action);
+                      if (debugExplain && process.env.NODE_ENV === "development") {
+                        // eslint-disable-next-line no-console
+                        console.info("[dashboard] action explanation", {
+                          actionId: action.id,
+                          stepId: action.knowledgeStepId,
+                          stepStatus: action.stepStatus,
+                          applicabilityReason: action.applicabilityReason,
+                          blockedByStepIds: action.blockedByStepIds,
+                          explanation,
+                          whyLines,
+                        });
+                      }
+
+                      return (
                         <DashboardActionCard
                           key={action.id}
                           t={t}
                           action={action}
-                          variant="history"
-                          className={`${surface("historyCard", { hover: true })} p-3`}
+                          variant="main"
+                          index={idx}
+                          headerLabel={
+                            idx === 0
+                              ? t.dashboard.highestPriorityLabel
+                              : t.dashboard.nextLabel
+                          }
+                          className={changedClassById(action.id)}
+                          onPrimaryCtaClick={() => {
+                            void trackActionEvent({
+                              userId,
+                              actionId: action.id,
+                              eventType: "click",
+                            });
+                          }}
+                          onSecondaryCtaClick={() => {
+                            void trackActionEvent({
+                              userId,
+                              actionId: action.id,
+                              eventType: "click",
+                            });
+                          }}
+                          onGuideCtaClick={() => {
+                            void trackActionEvent({
+                              userId,
+                              actionId: action.id,
+                              eventType: "click",
+                            });
+                          }}
+                          footerActions={
+                            <MarkTaskDoneButton
+                              userId={userId}
+                              actionId={action.id}
+                              markDoneLabel={t.dashboard.actionMarkDone}
+                            />
+                          }
                         />
-                      ))}
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* History */}
+                {historyActions.length > 0 ? (
+                  <div className={`${surface("subtlePanel")} mt-10 p-6`}>
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <h2 className="text-base font-semibold tracking-tight text-slate-900">
+                          Completed &amp; Automated
+                        </h2>
+                        <p className="mt-1 text-sm text-slate-600">
+                          Already handled for you
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setHistoryOpen((v) => !v)}
+                        className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600 shadow-sm transition hover:bg-slate-50"
+                        title="Show completed and auto-resolved steps"
+                      >
+                        {historyOpen ? "Hide" : "Show"}
+                      </button>
                     </div>
+                    {historyOpen ? (
+                      <div className="mt-4 border-t border-slate-200/70 pt-4">
+                        <div className="grid gap-3 md:grid-cols-3">
+                          {historyActions.map((action) => (
+                            <DashboardActionCard
+                              key={action.id}
+                              t={t}
+                              action={action}
+                              variant="history"
+                              className={`${surface("historyCard", { hover: true })} p-3`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
-                </div>
-              ) : null}
 
-              {/* Modules (kept intact) */}
-              <div className="grid grid-cols-1 gap-6">
-                {injectModuleDict(children, t)}
+                {/* Modules (kept intact) */}
+                <div className="grid grid-cols-1 gap-6">
+                  {injectModuleDict(children, t)}
+                </div>
               </div>
             </div>
           </div>

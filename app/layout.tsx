@@ -28,7 +28,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           <div className="app-shell">
             <Menu />
             <div className="app-main">
-              <div className="container">{children}</div>
+              {children}
             </div>
           </div>
         </LocaleProvider>
