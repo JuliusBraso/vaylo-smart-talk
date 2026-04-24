@@ -171,28 +171,28 @@ export default function DashboardShell({
             className="absolute inset-0"
             style={{
               background:
-                "linear-gradient(180deg, rgba(255,255,255,0.90) 0%, rgba(255,255,255,0.84) 44%, rgba(248,250,252,1) 100%)",
+                "linear-gradient(180deg, rgba(255,255,255,0.88) 0%, rgba(255,255,255,0.80) 46%, rgba(248,250,252,1) 100%)",
             }}
           />
           <div
             className="absolute inset-0"
             style={{
               backdropFilter: `blur(${Math.max(10, Math.round(appliedAtmosphere.blur * 0.7))}px)`,
-              filter: "saturate(0.82) brightness(1.08)",
+              filter: "saturate(0.92) brightness(1.10)",
             }}
           />
           <div
-            className="absolute -left-24 top-[-180px] h-[560px] w-[820px] rounded-full blur-3xl opacity-35"
+            className="absolute -left-24 top-[-180px] h-[560px] w-[820px] rounded-full blur-3xl opacity-40"
             style={{
               background:
-                "radial-gradient(circle at 30% 35%, color-mix(in srgb, var(--vaylo-atmosphere-accent) 12%, transparent) 0%, transparent 62%)",
+                "radial-gradient(circle at 30% 35%, color-mix(in srgb, var(--vaylo-atmosphere-accent) 14%, transparent) 0%, transparent 62%)",
             }}
           />
           <div
-            className="absolute -right-48 top-[-240px] h-[560px] w-[820px] rounded-full blur-3xl opacity-25"
+            className="absolute -right-48 top-[-240px] h-[560px] w-[820px] rounded-full blur-3xl opacity-30"
             style={{
               background:
-                "radial-gradient(circle at 55% 35%, color-mix(in srgb, var(--vaylo-atmosphere-accent) 9%, transparent) 0%, transparent 65%)",
+                "radial-gradient(circle at 55% 35%, color-mix(in srgb, var(--vaylo-atmosphere-accent) 11%, transparent) 0%, transparent 65%)",
             }}
           />
         </div>
@@ -213,11 +213,11 @@ export default function DashboardShell({
                   <h1 className="mt-2 text-[34px] font-semibold tracking-tight text-slate-900 md:text-5xl">
                     {t.dashboard.operationsCockpit}
                   </h1>
-                  <p className="mt-3 text-sm text-slate-600">
+                <p className="mt-4 text-sm text-slate-600">
                     {t.dashboard.intro}
                   </p>
 
-                  <div className="mt-6 flex items-center gap-2">
+                <div className="mt-7 flex items-center gap-2">
                     <div className="flex-1">
                       <input
                         value={heroQuery}
@@ -228,7 +228,7 @@ export default function DashboardShell({
                           router.push(q ? `/assistant?q=${encodeURIComponent(q)}` : "/assistant");
                         }}
                         placeholder="Ask Vaylo…"
-                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-[0_14px_34px_rgba(15,23,42,0.12)] placeholder:text-slate-400 transition duration-150 ease-out focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:shadow-[0_20px_52px_rgba(15,23,42,0.16)] motion-reduce:transition-none"
+                    className="w-full rounded-[22px] border border-slate-200 bg-white px-5 py-3.5 text-sm text-slate-900 shadow-[0_18px_44px_rgba(15,23,42,0.12)] placeholder:text-slate-400 transition duration-150 ease-out focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:shadow-[0_24px_70px_rgba(15,23,42,0.16)] motion-reduce:transition-none"
                         aria-label="Ask Vaylo"
                       />
                     </div>
@@ -238,7 +238,7 @@ export default function DashboardShell({
                         const q = heroQuery.trim();
                         router.push(q ? `/assistant?q=${encodeURIComponent(q)}` : "/assistant");
                       }}
-                      className="inline-flex shrink-0 items-center justify-center rounded-2xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-[0_10px_22px_rgba(15,23,42,0.10)] transition duration-150 ease-out hover:bg-indigo-700 active:scale-[0.98] motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                  className="inline-flex shrink-0 items-center justify-center rounded-[22px] bg-indigo-600 px-4 py-3.5 text-sm font-semibold text-white shadow-[0_14px_34px_rgba(15,23,42,0.12)] transition duration-150 ease-out hover:bg-indigo-700 active:scale-[0.98] motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                     >
                       Go
                     </button>
@@ -246,7 +246,7 @@ export default function DashboardShell({
 
                   {/* Floating support cards (bridge hero -> base) */}
                   <div className="relative z-20 mt-8 grid gap-5 sm:grid-cols-2">
-                    <div className={`${surface("secondaryCard", { hover: true })} p-5 translate-y-10 md:translate-y-14`}>
+                    <div className={`${surface("secondaryCard", { hover: true })} p-6 translate-y-10 md:translate-y-14`}>
                       <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                         Recent documents
                       </div>
@@ -264,7 +264,7 @@ export default function DashboardShell({
                       </Link>
                     </div>
 
-                    <div className={`${surface("secondaryCard", { hover: true })} p-5 translate-y-10 md:translate-y-14`}>
+                    <div className={`${surface("secondaryCard", { hover: true })} p-6 translate-y-10 md:translate-y-14`}>
                       <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                         Help & questions
                       </div>

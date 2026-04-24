@@ -92,7 +92,7 @@ export default function DashboardActionCard(props: {
         className ??
         `${surface(index === 0 ? "elevatedCard" : "secondaryCard", { hover: true })} ${
           index === 0
-            ? "p-5 border-indigo-200 shadow-[0_14px_34px_rgba(15,23,42,0.12)]"
+            ? "p-5 border-indigo-200 shadow-[0_16px_44px_rgba(15,23,42,0.13)]"
             : "p-4"
         }`
       }
@@ -200,7 +200,7 @@ export default function DashboardActionCard(props: {
         <Link
           href={action.href}
           onClick={onPrimaryCtaClick}
-          className="inline-flex rounded-lg border border-indigo-200 bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition duration-150 ease-out hover:bg-indigo-700 active:scale-[0.98] motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+          className="inline-flex rounded-lg border border-indigo-200 bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition duration-150 ease-out hover:bg-indigo-700 active:scale-[0.98] motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
         >
           {action.cta}
         </Link>
