@@ -6,6 +6,126 @@ import { usePathname } from "next/navigation";
 import { useT } from "../../lib/i18n/useT";
 import LanguageSwitcher from "./LanguageSwitcher";
 
+function Icon(props: { name: "home" | "tasks" | "history" | "docs" | "user" | "settings" }) {
+  const common = "h-5 w-5";
+  switch (props.name) {
+    case "home":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" className={common} aria-hidden>
+          <path
+            d="M4 10.5 12 4l8 6.5V20a1.5 1.5 0 0 1-1.5 1.5H5.5A1.5 1.5 0 0 1 4 20v-9.5Z"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M9.5 21.5v-6.2A1.3 1.3 0 0 1 10.8 14h2.4a1.3 1.3 0 0 1 1.3 1.3v6.2"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            strokeLinecap="round"
+          />
+        </svg>
+      );
+    case "tasks":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" className={common} aria-hidden>
+          <path
+            d="M7.5 6.7h12M7.5 12h12M7.5 17.3h12"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            strokeLinecap="round"
+          />
+          <path
+            d="M4.8 6.7h.4M4.8 12h.4M4.8 17.3h.4"
+            stroke="currentColor"
+            strokeWidth="3"
+            strokeLinecap="round"
+          />
+        </svg>
+      );
+    case "history":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" className={common} aria-hidden>
+          <path
+            d="M7.5 7.5a7.5 7.5 0 1 1-2.2 5.3"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            strokeLinecap="round"
+          />
+          <path
+            d="M4 7.8V4h3.8"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M12 8v4.2l3 1.8"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      );
+    case "docs":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" className={common} aria-hidden>
+          <path
+            d="M7 3.8h7.5L19 8.3V20A1.6 1.6 0 0 1 17.4 21.6H7A1.6 1.6 0 0 1 5.4 20V5.4A1.6 1.6 0 0 1 7 3.8Z"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M14.5 3.8V8.3H19"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M8 12h8M8 15.5h8"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            strokeLinecap="round"
+          />
+        </svg>
+      );
+    case "user":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" className={common} aria-hidden>
+          <path
+            d="M12 12.2a4.2 4.2 0 1 0-4.2-4.2 4.2 4.2 0 0 0 4.2 4.2Z"
+            stroke="currentColor"
+            strokeWidth="1.7"
+          />
+          <path
+            d="M5.8 20.2a6.2 6.2 0 0 1 12.4 0"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            strokeLinecap="round"
+          />
+        </svg>
+      );
+    case "settings":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" className={common} aria-hidden>
+          <path
+            d="M12 14.7a2.7 2.7 0 1 0-2.7-2.7 2.7 2.7 0 0 0 2.7 2.7Z"
+            stroke="currentColor"
+            strokeWidth="1.7"
+          />
+          <path
+            d="M19.3 12a7.6 7.6 0 0 0-.1-1l1.6-1.2-1.7-3-1.9.7a7.8 7.8 0 0 0-1.7-1L14.2 3H9.8L9.5 5.5a7.8 7.8 0 0 0-1.7 1l-1.9-.7-1.7 3L5.8 11a7.6 7.6 0 0 0 0 2l-1.6 1.2 1.7 3 1.9-.7a7.8 7.8 0 0 0 1.7 1L9.8 21h4.4l.3-2.5a7.8 7.8 0 0 0 1.7-1l1.9.7 1.7-3L19.2 13c.1-.3.1-.6.1-1Z"
+            stroke="currentColor"
+            strokeWidth="1.3"
+            strokeLinejoin="round"
+          />
+        </svg>
+      );
+  }
+}
+
 export default function Menu() {
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
@@ -17,66 +137,119 @@ export default function Menu() {
 
   if (!mounted) return null;
 
-  const isActive = (href: string) => pathname === href;
+  const isActive = (href: string) => {
+    if (href === "/dashboard") return pathname === "/dashboard";
+    return pathname.startsWith(href);
+  };
+
+  const items: Array<{
+    label: string;
+    href: string;
+    icon: Parameters<typeof Icon>[0]["name"];
+    activeMatch?: (path: string) => boolean;
+  }> = [
+    { label: "Domov", href: "/dashboard", icon: "home" },
+    { label: "Moje úlohy", href: "/dashboard#tasks", icon: "tasks", activeMatch: (p) => p === "/dashboard" },
+    { label: "História", href: "/dashboard#history", icon: "history", activeMatch: (p) => p === "/dashboard" },
+    { label: "Dokumenty", href: "/documents", icon: "docs" },
+    { label: "Profil", href: "/profile", icon: "user" },
+    { label: "Nastavenia", href: "/settings", icon: "settings" },
+  ];
 
   return (
     <aside className="app-sidebar" aria-label={t.nav.navigation ?? "Navigation"}>
       <div className="sidebar-inner">
         <div className="sidebar-brand">
           <div className="sidebar-brandRow">
-            <div className="sidebar-brandIcon" aria-hidden>
+            <div
+              className="sidebar-brandIcon"
+              aria-hidden
+              style={{
+                background:
+                  "radial-gradient(circle at 30% 30%, rgba(59,130,246,0.24), transparent 60%), rgba(15, 23, 42, 0.03)",
+              }}
+            >
               V
             </div>
-            <div className="brandTitle">Vaylo</div>
+            <div className="brandTitle" style={{ fontWeight: 900, fontSize: 20 }}>
+              Vaylo
+            </div>
           </div>
         </div>
 
-        <nav className="sidebar-nav">
-          <Link
-            className={`sidenav-link ${isActive("/dashboard") ? "active" : ""}`}
-            href="/dashboard"
-          >
-            {t.nav.dashboard}
-          </Link>
-          <Link
-            className={`sidenav-link ${isActive("/assistant") ? "active" : ""}`}
-            href="/assistant"
-          >
-            {t.nav.assistant}
-          </Link>
-          <Link
-            className={`sidenav-link ${isActive("/letters") ? "active" : ""}`}
-            href="/letters"
-          >
-            {t.nav.letters}
-          </Link>
-          <Link
-            className={`sidenav-link ${isActive("/forms") ? "active" : ""}`}
-            href="/forms"
-          >
-            {t.nav.forms}
-          </Link>
-          <Link
-            className={`sidenav-link ${isActive("/guides") ? "active" : ""}`}
-            href="/guides"
-          >
-            {t.nav.guides}
-          </Link>
-          <Link
-            className={`sidenav-link ${isActive("/documents") ? "active" : ""}`}
-            href="/documents"
-          >
-            {t.nav.documents}
-          </Link>
-          <Link
-            className={`sidenav-link ${isActive("/premium") ? "active" : ""}`}
-            href="/premium"
-          >
-            {t.nav.premium}
-          </Link>
+        <nav className="sidebar-nav" aria-label="Primary">
+          {items.map((it) => {
+            const active = it.activeMatch ? it.activeMatch(pathname) : isActive(it.href);
+            return (
+              <Link
+                key={it.href}
+                href={it.href}
+                className={`sidenav-link group ${active ? "active" : ""}`}
+              >
+                <span
+                  className={
+                    active
+                      ? "flex h-8 w-8 items-center justify-center rounded-xl bg-blue-100 text-blue-600 transition-all"
+                      : "flex h-8 w-8 items-center justify-center rounded-xl bg-transparent text-slate-500 transition-all group-hover:bg-blue-100 group-hover:text-blue-600"
+                  }
+                  aria-hidden
+                >
+                  <Icon name={it.icon} />
+                </span>
+                <span
+                  className={
+                    active
+                      ? "text-blue-600 transition-all"
+                      : "text-slate-700 transition-all group-hover:text-blue-600"
+                  }
+                  style={{ flex: 1, minWidth: 0 }}
+                >
+                  {it.label}
+                </span>
+              </Link>
+            );
+          })}
         </nav>
 
+        <div className="mt-2 grid gap-3">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="text-sm font-semibold text-slate-900">Váš profil</div>
+            <div className="mt-3 grid gap-2 text-xs">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-slate-500">Zamestnanie</span>
+                <span className="font-semibold text-slate-800">Zamestnanec</span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-slate-500">Rodinný stav</span>
+                <span className="font-semibold text-slate-800">S deťmi</span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-slate-500">Registrácia</span>
+                <span className="font-semibold text-slate-800">Berlin, Nemecko</span>
+              </div>
+            </div>
+            <Link
+              href="/profile/edit"
+              className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+            >
+              Upraviť profil
+            </Link>
+          </div>
+        </div>
+
         <div className="sidebar-footer">
+          <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-sm font-bold text-slate-700">
+                M
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div className="text-xs font-semibold text-slate-900">martin@example.com</div>
+                <div className="text-[11px] text-slate-500">Personal</div>
+              </div>
+            </div>
+          </div>
+
           <LanguageSwitcher />
           <span className="versionpill">v0.1</span>
         </div>

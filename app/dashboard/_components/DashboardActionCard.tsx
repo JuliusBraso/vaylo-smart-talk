@@ -25,6 +25,7 @@ export default function DashboardActionCard(props: {
   onSecondaryCtaClick?: () => void;
   onGuideCtaClick?: () => void;
   footerActions?: ReactNode;
+  onCardClick?: (action: DashboardAction) => void;
 }) {
   const {
     t,
@@ -37,6 +38,7 @@ export default function DashboardActionCard(props: {
     onSecondaryCtaClick,
     onGuideCtaClick,
     footerActions,
+    onCardClick,
   } = props;
 
   const explanation = getActionExplanation(action);
@@ -58,7 +60,14 @@ export default function DashboardActionCard(props: {
       action.stepStatus === "not_applicable" && action.applicabilityReason === "already_satisfied";
 
     return (
-      <article className={className ?? `${surface("historyCard", { hover: true })} p-3`}>
+      <article
+        className={`${className ?? `${surface("historyCard", { hover: true })} p-3`} cursor-pointer`}
+        onClick={() => {
+          // eslint-disable-next-line no-console
+          console.log("history item", action.id);
+          onCardClick?.(action);
+        }}
+      >
         <div className="flex items-start justify-between gap-2">
           <div>
             <h3 className="text-xs font-semibold text-slate-900">
@@ -86,6 +95,17 @@ export default function DashboardActionCard(props: {
     );
   }
 
+  const CircleCta = () => (
+    <span
+      className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-blue-600 text-white shadow-sm transition-all hover:bg-blue-500 hover:scale-105 active:scale-[0.98]"
+      aria-hidden
+    >
+      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
+        <path d="M10 7l5 5-5 5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </span>
+  );
+
   return (
     <article
       className={
@@ -96,6 +116,14 @@ export default function DashboardActionCard(props: {
             : "p-6"
         }`
       }
+      onClick={(e) => {
+        const target = e.target as HTMLElement | null;
+        if (target?.closest("a,button")) return;
+        // eslint-disable-next-line no-console
+        console.log(action.id);
+        onCardClick?.(action);
+      }}
+      style={{ cursor: "pointer" }}
     >
       {headerLabel ? (
         <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-500">
@@ -196,13 +224,26 @@ export default function DashboardActionCard(props: {
         </div>
       ) : null}
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href={action.href}
+            onClick={onPrimaryCtaClick}
+            className="inline-flex items-center gap-2 text-xs font-semibold text-blue-600 hover:text-blue-700"
+          >
+            {action.cta}
+            <span aria-hidden>›</span>
+          </Link>
+        </div>
+
         <Link
           href={action.href}
           onClick={onPrimaryCtaClick}
-          className="inline-flex rounded-lg border border-indigo-200 bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition duration-150 ease-out hover:bg-indigo-700 active:scale-[0.98] motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-200 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+          className="inline-flex"
+          aria-label={action.cta}
+          title={action.cta}
         >
-          {action.cta}
+          <CircleCta />
         </Link>
         {action.uploadDocumentHref ? (
           <Link

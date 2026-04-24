@@ -157,22 +157,31 @@ export default function DashboardShell({
 
   return (
     <main
-      className="relative flex-1 min-w-0 overflow-x-hidden bg-slate-50 text-slate-900"
+      className="relative min-h-screen flex-1 min-w-0 overflow-x-hidden bg-slate-50 text-slate-900"
       data-locale={locale}
     >
+      <div className="mx-4 my-3 overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_30px_120px_-50px_rgba(15,23,42,0.22)] lg:mx-6 lg:my-4">
       <div className="relative" onClick={() => setVibeOpen(false)}>
         {/* Page canvas: Hero background as a layer (not a panel). */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-[460px]" style={heroVars}>
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-[520px]" style={heroVars}>
           <div
             className="absolute inset-0 transition-opacity duration-500"
-            style={{ background: "var(--vaylo-atmosphere-gradient)" }}
+            style={{ background: appliedAtmosphere.wallpaper }}
           />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.6),transparent_60%)]" />
+          <div className="absolute inset-0 transition-opacity duration-500" style={{ background: appliedAtmosphere.wallpaperOverlay ?? "rgba(255,255,255,0.35)" }} />
+          <div
+            className="absolute inset-0 opacity-80"
+            style={{
+              background:
+                appliedAtmosphere.wallpaperVignette ??
+                "radial-gradient(circle at center, transparent 45%, rgba(15,23,42,0.10) 100%)",
+            }}
+          />
           <div
             className="absolute inset-0"
             style={{
               background:
-                "linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.78) 55%, rgba(255,255,255,1) 100%)",
+                "linear-gradient(180deg, rgba(255,255,255,0.94) 0%, rgba(255,255,255,0.80) 55%, rgba(255,255,255,1) 100%)",
             }}
           />
           <div
@@ -198,88 +207,142 @@ export default function DashboardShell({
           />
         </div>
 
-        {/* ZONE A — HERO CANVAS (full-width composition, internal readable widths only). */}
+        {/* ZONE A — HERO CANVAS (scenic mockup style). */}
         <section className="relative">
           <div
             className={`relative z-10 px-6 pt-16 pb-0 sm:px-8 lg:px-12 transition duration-300 ease-out motion-reduce:transition-none ${
               heroMounted ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"
             }`}
           >
-            <div className="relative" style={{ minHeight: 480 }}>
+            <div className="relative" style={{ minHeight: 560 }}>
               {/* LEFT: greeting + input */}
               <div className="max-w-2xl">
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                    {t.dashboard.controlCenter}
-                  </p>
-                <h1 className="mt-2 text-[34px] font-bold leading-snug text-slate-900 md:text-5xl">
-                  Čo dnes potrebujeme vybaviť?
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/80">
+                  VAYLO CONTROL CENTER
+                </p>
+                <h1 className="mt-3 text-4xl font-bold leading-tight tracking-tight text-white md:text-5xl">
+                  Dobrý deň, Martin! 👋
                 </h1>
-                <p className="mt-4 text-sm text-slate-600">
-                    {t.dashboard.intro}
-                  </p>
+                <p className="mt-3 text-base text-white/85">
+                  Čo by sme dnes mali vybaviť?
+                </p>
+                <p className="mt-4 max-w-xl text-sm text-white/70">
+                  {t.dashboard.intro}
+                </p>
 
-                <div className="mt-7 flex items-center gap-2">
-                    <div className="flex-1">
-                      <input
-                        value={heroQuery}
-                        onChange={(e) => setHeroQuery(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key !== "Enter") return;
-                          const q = heroQuery.trim();
-                          router.push(q ? `/assistant?q=${encodeURIComponent(q)}` : "/assistant");
-                        }}
-                        placeholder="Ask Vaylo…"
-                    className="w-full rounded-[22px] border border-slate-200 bg-white px-5 py-3.5 text-sm text-slate-900 shadow-[0_18px_44px_rgba(15,23,42,0.12)] placeholder:text-slate-400 transition duration-150 ease-out focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:shadow-[0_24px_70px_rgba(15,23,42,0.16)] motion-reduce:transition-none"
-                        aria-label="Ask Vaylo"
-                      />
-                    </div>
+                <div className="mt-8 max-w-3xl rounded-[2rem] border border-white/30 bg-white p-6 shadow-[0_25px_70px_-25px_rgba(15,23,42,0.35)]">
+                  <div className="flex items-center gap-3">
+                    <input
+                      value={heroQuery}
+                      onChange={(e) => setHeroQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key !== "Enter") return;
+                        const q = heroQuery.trim();
+                        router.push(q ? `/assistant?q=${encodeURIComponent(q)}` : "/assistant");
+                      }}
+                      placeholder="Opíšte, čo potrebujete vybaviť..."
+                      className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 shadow-sm outline-none transition focus:border-blue-200 focus:ring-4 focus:ring-blue-100"
+                      aria-label="Ask Vaylo"
+                    />
                     <button
                       type="button"
                       onClick={() => {
                         const q = heroQuery.trim();
                         router.push(q ? `/assistant?q=${encodeURIComponent(q)}` : "/assistant");
                       }}
-                  className="inline-flex shrink-0 items-center justify-center rounded-[22px] bg-indigo-600 px-4 py-3.5 text-sm font-semibold text-white shadow-[0_14px_34px_rgba(15,23,42,0.12)] transition duration-150 ease-out hover:bg-indigo-700 active:scale-[0.98] motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-100 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                      className="inline-flex h-12 shrink-0 items-center justify-center rounded-2xl bg-blue-600 px-5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-500 hover:scale-[1.02] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-200"
                     >
-                      Go
+                      <span className="sr-only">Send</span>
+                      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden>
+                        <path d="M5 12h13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                        <path d="M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
                     </button>
                   </div>
 
+                  <div className="mt-4 flex items-center justify-between gap-3 text-sm text-slate-600">
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+                      title="Add"
+                    >
+                      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden>
+                        <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                      </svg>
+                      Smart režim
+                    </button>
+                    <button
+                      type="button"
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50"
+                      title="Mic"
+                      aria-label="Mic"
+                    >
+                      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden>
+                        <path d="M12 14a3 3 0 0 0 3-3V7a3 3 0 0 0-6 0v4a3 3 0 0 0 3 3Z" stroke="currentColor" strokeWidth="1.8" />
+                        <path d="M19 11a7 7 0 0 1-14 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                        <path d="M12 18v3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
                   {/* Floating support cards (bridge hero -> base) */}
                   <div className="relative z-10 mt-8 grid gap-5 sm:grid-cols-2">
-                    <div className={`${surface("secondaryCard", { hover: true })} bg-white/90 p-6 translate-y-2 md:translate-y-6 shadow-xl`}>
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                        Recent documents
+                    <div
+                      className="rounded-[1.75rem] border border-white/70 bg-white/95 p-6 shadow-[0_28px_80px_-28px_rgba(15,23,42,0.35)] transition-all duration-200 hover:shadow-[0_32px_90px_-30px_rgba(15,23,42,0.42)]"
+                    >
+                      <div className="text-sm font-semibold text-slate-900">Nedávne dokumenty</div>
+                      <div className="mt-4 grid gap-2 text-sm text-slate-700">
+                        {["Meldebestätigung.pdf", "Arbeitsvertrag.pdf", "Krankenversicherung.pdf"].map((name) => (
+                          <div key={name} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white text-slate-500 shadow-sm" aria-hidden>
+                              📄
+                            </span>
+                            <span className="min-w-0 flex-1 truncate font-medium">{name}</span>
+                          </div>
+                        ))}
                       </div>
-                      <div className="mt-2 text-sm font-semibold text-slate-900">
-                        Upload or review what you already have
-                      </div>
-                      <p className="mt-1 text-xs text-slate-600">
-                        Vaylo uses your documents to verify steps.
-                      </p>
                       <Link
                         href="/documents"
-                        className="mt-3 inline-flex rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition duration-150 hover:bg-slate-50 active:scale-[0.98] motion-reduce:transition-none"
+                        className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-700"
                       >
-                        Open documents
+                        Zobraziť všetky dokumenty
+                        <span aria-hidden>›</span>
                       </Link>
                     </div>
 
-                    <div className={`${surface("secondaryCard", { hover: true })} bg-white/90 p-6 translate-y-2 md:translate-y-6 shadow-xl`}>
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                        Help & questions
+                    <div
+                      className="rounded-[1.75rem] border border-white/70 bg-white/95 p-6 shadow-[0_28px_80px_-28px_rgba(15,23,42,0.35)] transition-all duration-200 hover:shadow-[0_32px_90px_-30px_rgba(15,23,42,0.42)]"
+                    >
+                      <div className="text-sm font-semibold text-slate-900">Ako vám môžem pomôcť?</div>
+                      <div className="mt-4 grid gap-2 text-sm text-slate-700">
+                        {[
+                          "Aké doklady potrebujem na Anmeldung?",
+                          "Ako funguje daňové číslo v Nemecku?",
+                          "Mám nárok na Kindergeld?",
+                          "Ako si vybrať zdravotné poistenie?",
+                        ].map((q) => (
+                          <button
+                            key={q}
+                            type="button"
+                            onClick={() => router.push(`/assistant?q=${encodeURIComponent(q)}`)}
+                            className="group flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left transition-all hover:border-blue-200 hover:bg-blue-50 hover:shadow-sm"
+                          >
+                            <span className="text-sm text-slate-700">{q}</span>
+                            <span
+                              className="text-slate-400 transition-all group-hover:translate-x-0.5 group-hover:text-blue-500"
+                              aria-hidden
+                            >
+                              ›
+                            </span>
+                          </button>
+                        ))}
                       </div>
-                      <div className="mt-2 text-sm font-semibold text-slate-900">
-                        Ask anything about your next steps
-                      </div>
-                      <p className="mt-1 text-xs text-slate-600">
-                        Get clear guidance without digging through forms.
-                      </p>
                       <Link
                         href="/assistant"
-                        className="mt-3 inline-flex rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition duration-150 hover:bg-slate-50 active:scale-[0.98] motion-reduce:transition-none"
+                        className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-700"
                       >
-                        Ask Vaylo
+                        Ďalšie otázky <span aria-hidden>›</span>
                       </Link>
                     </div>
                   </div>
@@ -303,76 +366,94 @@ export default function DashboardShell({
               {/* RIGHT: floating status / vibe (floats as a companion block) */}
               <div className="mt-8 flex justify-start md:mt-0 md:justify-end lg:absolute lg:right-0 lg:top-0">
                 <div className="relative z-20 flex w-full max-w-sm flex-col items-end gap-3">
-                  <div className="relative" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      type="button"
-                      onClick={() => setVibeOpen((v) => !v)}
-                      className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-700 shadow-sm transition duration-150 hover:bg-slate-50 active:scale-[0.98] motion-reduce:transition-none"
-                      title="Vibe"
-                    >
-                      <span
-                        className="inline-block h-2 w-2 rounded-full"
-                        style={{ background: "var(--vaylo-atmosphere-accent)" }}
-                      />
-                      Vibe
-                    </button>
-                    {vibeOpen ? (
-                      <div className={`absolute right-0 z-20 mt-2 w-56 overflow-hidden ${surface("heroGlass")}`}>
-                        <div className="p-2">
-                          {ATMOSPHERE_ORDER.map((id) => {
-                            const a = getAtmosphereById(id)!;
-                            const active = a.id === appliedAtmosphere.id;
-                            return (
-                              <button
-                                key={a.id}
-                                type="button"
-                                onClick={() => {
-                                  try {
-                                    window.localStorage.setItem("vaylo_atmosphere", a.id);
-                                  } catch {
-                                    // ignore
-                                  }
-                                  setSelectedAtmosphereId(a.id);
-                                  setVibeOpen(false);
-                                }}
-                                className={
-                                  active
-                                    ? "flex w-full items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-2 py-2 text-left text-xs font-semibold text-indigo-900"
-                                    : "flex w-full items-center gap-2 rounded-xl border border-slate-200 bg-white px-2 py-2 text-left text-xs font-semibold text-slate-800 transition duration-150 hover:bg-slate-50 active:scale-[0.99] motion-reduce:transition-none"
-                                }
-                              >
-                                <span
-                                  className="h-8 w-10 rounded-lg border border-slate-200"
-                                  style={{ background: a.gradient }}
-                                />
-                                <span className="flex-1">{a.label}</span>
-                                {active ? <span className="text-[10px] text-indigo-700">On</span> : null}
-                              </button>
-                            );
-                          })}
+                  {/* Decorative hero icon buttons */}
+                  <div className="flex items-center gap-2">
+                    {[
+                      { label: "Bell", path: "M12 22a2.4 2.4 0 0 0 2.4-2.4H9.6A2.4 2.4 0 0 0 12 22Z M18 16v-5a6 6 0 1 0-12 0v5l-2 2h16l-2-2Z" },
+                      { label: "Activity", path: "M4 12h4l2-6 4 12 2-6h4" },
+                      { label: "Settings", path: "M12 14.7a2.7 2.7 0 1 0-2.7-2.7 2.7 2.7 0 0 0 2.7 2.7Z" },
+                    ].map((i) => (
+                      <button
+                        key={i.label}
+                        type="button"
+                        onClick={() => {
+                          if (i.label === "Bell") {
+                            // eslint-disable-next-line no-console
+                            console.log("notifications clicked");
+                            return;
+                          }
+                          if (i.label === "Settings") {
+                            router.push("/settings");
+                            return;
+                          }
+                          document.getElementById("tasks")?.scrollIntoView({
+                            behavior: "smooth",
+                            block: "start",
+                          });
+                        }}
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-md transition hover:bg-white/25"
+                        aria-label={i.label}
+                      >
+                        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden>
+                          <path d={i.path} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Right vibe panel (mockup) */}
+                  <div className="hidden w-full rounded-[1.75rem] border border-white/25 bg-white/15 p-4 text-white shadow-[0_30px_80px_-24px_rgba(15,23,42,0.22)] backdrop-blur-xl lg:block">
+                    <div className="text-sm font-semibold">Pozadie</div>
+                    <div className="mt-1 text-xs text-white/75">
+                      Vyberte si pozadie, ktoré vás inšpiruje.
+                    </div>
+                    <div className="mt-4 grid gap-2">
+                      {ATMOSPHERE_ORDER.map((id) => {
+                        const a = getAtmosphereById(id)!;
+                        const active = a.id === appliedAtmosphere.id;
+                        const label =
+                          a.id === "alpine"
+                            ? "Hory"
+                            : a.id === "sunset"
+                              ? "Sunset"
+                              : a.id === "night"
+                                ? "Tmavé"
+                                : a.id === "minimal"
+                                  ? "Minimal"
+                                  : a.label;
+                        return (
                           <button
+                            key={a.id}
                             type="button"
                             onClick={() => {
                               try {
-                                window.localStorage.removeItem("vaylo_atmosphere");
+                                window.localStorage.setItem("vaylo_atmosphere", a.id);
                               } catch {
                                 // ignore
                               }
-                              setSelectedAtmosphereId(null);
-                              setVibeOpen(false);
+                              setSelectedAtmosphereId(a.id);
                             }}
-                            className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-2 py-2 text-left text-[11px] font-semibold text-slate-700 transition duration-150 hover:bg-slate-50 active:scale-[0.99] motion-reduce:transition-none"
-                            title="Use DNA default"
+                            className={
+                              active
+                                ? "flex w-full items-center gap-2 rounded-2xl border border-blue-200/60 bg-blue-500/25 px-3 py-2 text-left text-sm font-semibold text-white"
+                                : "flex w-full items-center gap-2 rounded-2xl border border-white/15 bg-white/10 px-3 py-2 text-left text-sm font-semibold text-white/90 transition hover:bg-white/15"
+                            }
                           >
-                            Use suggested default
+                            <span className="h-8 w-10 rounded-xl border border-white/20" style={{ background: a.gradient }} />
+                            <span className="flex-1">{label}</span>
+                            {active ? (
+                              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-bold">
+                                ✓
+                              </span>
+                            ) : null}
                           </button>
-                        </div>
-                      </div>
-                    ) : null}
+                        );
+                      })}
+                    </div>
                   </div>
 
                   <div
-                    className={`${surface("elevatedCard", { hover: true })} relative z-20 w-full border-t-2 border-indigo-200 p-7 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.2)] lg:scale-[1.02]`}
+                    className={`${surface("elevatedCard", { hover: true })} relative z-20 w-full rounded-3xl border border-slate-200/80 bg-white/90 p-7 shadow-[0_30px_80px_-24px_rgba(15,23,42,0.22)] lg:scale-[1.02]`}
                   >
                     <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                       {t.dashboard.activePriority}
@@ -394,6 +475,19 @@ export default function DashboardShell({
                         {t.dashboard.statusDesc}
                       </div>
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        document.getElementById("tasks")?.scrollIntoView({
+                          behavior: "smooth",
+                          block: "start",
+                        });
+                      }}
+                      className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-2xl bg-blue-600 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-500 hover:scale-[1.02] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-200"
+                    >
+                      Pokračovať
+                    </button>
                   </div>
                 </div>
               </div>
@@ -403,15 +497,15 @@ export default function DashboardShell({
 
         {/* ZONE B: Clean base (tasks + history) */}
         <section className="relative z-10 -mt-16 pb-12">
-          <div className="bg-white pt-14">
+          <div className="bg-white pt-16">
             <div className="flex flex-col gap-10 px-6 pb-12 sm:px-8 lg:px-12">
               <div className="mx-auto w-full max-w-6xl">
                 {/* Top tasks */}
-                <div>
-                  <div className="mb-4 flex items-end justify-between gap-4">
+                <div id="tasks">
+                  <div className="mb-6 flex items-end justify-between gap-4">
                     <div>
-                      <h2 className="text-base font-semibold tracking-tight text-slate-900">
-                        {t.dashboard.nextActionsTitle}
+                      <h2 className="text-lg font-bold tracking-tight text-slate-900">
+                        Vaše najdôležitejšie úlohy
                       </h2>
                       <p className="mt-1 text-sm text-slate-600">
                         {t.dashboard.nextActionsDesc}
@@ -420,16 +514,24 @@ export default function DashboardShell({
                         {situationSummaryLine}
                       </p>
                     </div>
-                    {process.env.NODE_ENV === "development" ? (
-                      <button
-                        type="button"
-                        onClick={() => setDebugExplain((v) => !v)}
-                        className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600 shadow-sm transition hover:bg-slate-50"
-                        title="Dev only: logs step reasoning to console"
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href="/dashboard"
+                        className="inline-flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-700"
                       >
-                        Explain: {debugExplain ? "on" : "off"}
-                      </button>
-                    ) : null}
+                        Zobraziť všetky úlohy <span aria-hidden>›</span>
+                      </Link>
+                      {process.env.NODE_ENV === "development" ? (
+                        <button
+                          type="button"
+                          onClick={() => setDebugExplain((v) => !v)}
+                          className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600 shadow-sm transition hover:bg-slate-50"
+                          title="Dev only: logs step reasoning to console"
+                        >
+                          Explain: {debugExplain ? "on" : "off"}
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
 
                   <div className="grid gap-5 md:grid-cols-3">
@@ -498,14 +600,14 @@ export default function DashboardShell({
 
                 {/* History */}
                 {historyActions.length > 0 ? (
-                  <div className={`${surface("subtlePanel")} mt-10 p-6`}>
+                  <div id="history" className={`${surface("subtlePanel")} mt-10 p-6`}>
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <h2 className="text-base font-semibold tracking-tight text-slate-900">
                           Completed &amp; Automated
                         </h2>
                         <p className="mt-1 text-sm text-slate-600">
-                          Already handled for you
+                          Už sme to vybavili za vás.
                         </p>
                       </div>
                       <button
@@ -539,10 +641,16 @@ export default function DashboardShell({
                 <div className="grid grid-cols-1 gap-6">
                   {injectModuleDict(children, t)}
                 </div>
+
+                <div className="mt-10 flex items-center justify-center gap-2 text-xs text-slate-500">
+                  <span aria-hidden>🔒</span>
+                  <span>Vaylo chráni vaše dáta. Viac o bezpečnosti.</span>
+                </div>
               </div>
             </div>
           </div>
         </section>
+      </div>
       </div>
     </main>
   );
