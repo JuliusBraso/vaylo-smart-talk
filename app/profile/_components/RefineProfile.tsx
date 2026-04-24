@@ -280,19 +280,19 @@ export default function RefineProfile() {
   if (!mounted) return null;
 
   return (
-    <main className="min-h-screen bg-white text-slate-900">
+    <main className="min-h-screen bg-slate-50 text-slate-900">
       <div className="mx-auto max-w-3xl px-6 py-12">
-        <div className="rounded-3xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-200 bg-slate-50 px-6 py-6">
+        <div className="overflow-hidden rounded-[2rem] border border-white/60 bg-white shadow-[0_30px_80px_-25px_rgba(15,23,42,0.25)] backdrop-blur-sm">
+          <div className="border-b border-slate-200/70 bg-white px-8 py-8">
             <div className="space-y-2">
-              <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+              <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
                 {t.dashboard.refineProfileTitle}
               </h1>
-              <p className="text-slate-600">{t.dashboard.refineProfileDesc}</p>
+              <p className="text-slate-500">{t.dashboard.refineProfileDesc}</p>
             </div>
           </div>
 
-          <div className="space-y-6 px-6 py-6">
+          <div className="space-y-6 px-8 py-8">
             {loading ? (
               <div className="text-sm text-slate-600">{t.documents.loading}</div>
             ) : (

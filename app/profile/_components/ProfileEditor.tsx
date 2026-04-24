@@ -165,31 +165,31 @@ export default function ProfileEditor() {
   if (!mounted) return null;
 
   return (
-    <main className="min-h-screen bg-white text-slate-900">
+    <main className="min-h-screen bg-slate-50 text-slate-900">
       <div className="mx-auto max-w-xl px-6 py-12">
-        <div className="rounded-3xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-200 bg-slate-50 px-6 py-6">
+        <div className="overflow-hidden rounded-[2rem] border border-white/60 bg-white shadow-[0_30px_80px_-25px_rgba(15,23,42,0.25)] backdrop-blur-sm">
+          <div className="border-b border-slate-200/70 bg-white px-8 py-8">
             <div className="space-y-3">
-              <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+              <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
                 {t.dashboard.editProfileTitle}
               </h1>
-              <p className="text-slate-600">{t.dashboard.editProfileDesc}</p>
+              <p className="text-slate-500">{t.dashboard.editProfileDesc}</p>
             </div>
           </div>
 
-          <div className="space-y-8 px-6 py-6">
+          <div className="space-y-6 px-8 py-8">
             <div className="space-y-2">
               <p className="text-xs text-slate-500 uppercase tracking-wide">{stepText}</p>
-              <div className="mb-6 h-1 w-full rounded-full bg-slate-200">
+              <div className="mb-6 h-1.5 w-full rounded-full bg-slate-200">
                 <div
-                  className="h-1 rounded-full bg-indigo-600 transition-all duration-200"
+                  className="h-1.5 rounded-full bg-indigo-500 transition-all duration-200"
                   style={{ width: `${progress}%` }}
                 />
               </div>
             </div>
 
             {loading ? (
-              <div className="text-sm text-slate-300">{t.documents.loading}</div>
+              <div className="text-sm text-slate-600">{t.documents.loading}</div>
             ) : (
               <div className="space-y-6">
                 {currentStep === "family" && (
@@ -197,7 +197,7 @@ export default function ProfileEditor() {
                     <h2 className="text-sm font-semibold text-slate-900">
                       {t.onboarding.questionFamily}
                     </h2>
-                    <div className="mt-4 grid gap-4 max-w-xl">
+                    <div className="mt-4 grid max-w-xl gap-4">
                       {(
                         ["single", "family", "children"] as const
                       ).map((value) => ({
@@ -210,10 +210,10 @@ export default function ProfileEditor() {
                             key={o.value}
                             type="button"
                             onClick={() => setFamilyStatus(o.value)}
-                            className={`relative block w-full rounded-2xl border px-5 py-5 text-left transition-all duration-200 ${
+                            className={`relative block w-full rounded-2xl border px-5 py-5 text-left transition-all duration-150 ${
                               active
-                                ? "border-indigo-200 bg-indigo-50 shadow-sm"
-                                : "border-slate-200 bg-white hover:bg-slate-50"
+                                ? "border-blue-300 bg-blue-50 shadow-sm"
+                                : "border-slate-200 bg-white hover:bg-blue-50"
                             }`}
                           >
                             <div className="pr-8">
@@ -222,7 +222,7 @@ export default function ProfileEditor() {
                               </div>
                             </div>
                             {active ? (
-                              <div className="absolute right-4 top-4 text-indigo-600 text-lg font-bold">
+                              <div className="absolute right-4 top-4 text-blue-600 text-lg font-bold">
                                 ✓
                               </div>
                             ) : null}
@@ -233,14 +233,14 @@ export default function ProfileEditor() {
                     <div className="flex gap-2">
                       <Link
                         href={ROUTES.dashboard}
-                        className="inline-flex flex-1 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                        className="inline-flex h-12 flex-1 items-center justify-center rounded-xl border border-slate-200 bg-white px-6 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-[0.98]"
                       >
                         {t.dashboard.cancel}
                       </Link>
                       <button
                         type="button"
                         onClick={handleNext}
-                        className="inline-flex flex-1 items-center justify-center rounded-2xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-blue-700"
+                        className="inline-flex h-12 flex-1 items-center justify-center rounded-xl bg-blue-600 px-6 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700 hover:shadow-lg active:scale-[0.98]"
                       >
                         {t.onboarding.continue}
                       </button>
@@ -251,12 +251,12 @@ export default function ProfileEditor() {
                 {currentStep === "employment" && (
                   <section className="space-y-4">
                     <div className="space-y-2">
-                      <h2 className="text-sm font-semibold text-slate-50">
+                      <h2 className="text-sm font-semibold text-slate-900">
                         {t.onboarding.employmentTitle}
                       </h2>
-                      <p className="text-xs text-slate-300">{t.onboarding.employmentDesc}</p>
+                      <p className="text-xs text-slate-500">{t.onboarding.employmentDesc}</p>
                     </div>
-                    <div className="mt-4 grid gap-4 max-w-xl">
+                    <div className="mt-4 grid max-w-xl gap-4">
                       {(
                         ["employee", "freelancer", "job_seeker"] as const
                       ).map((value) => ({
@@ -269,19 +269,19 @@ export default function ProfileEditor() {
                             key={o.value}
                             type="button"
                             onClick={() => setEmploymentType(o.value)}
-                            className={`relative block w-full rounded-2xl border px-5 py-5 text-left transition-all duration-200 ${
+                            className={`relative block w-full rounded-2xl border px-5 py-5 text-left transition-all duration-150 ${
                               active
-                                ? "border-blue-500 bg-blue-500/15 shadow-lg"
-                                : "border-white/15 bg-white/5 hover:border-white/30 hover:bg-white/10"
+                                ? "border-blue-300 bg-blue-50 shadow-sm"
+                                : "border-slate-200 bg-white hover:bg-blue-50"
                             }`}
                           >
                             <div className="pr-8">
-                              <div className="text-base font-semibold text-white">
+                              <div className="text-base font-semibold text-slate-900">
                                 {o.label}
                               </div>
                             </div>
                             {active ? (
-                              <div className="absolute right-4 top-4 text-blue-400 text-lg font-bold">
+                              <div className="absolute right-4 top-4 text-blue-600 text-lg font-bold">
                                 ✓
                               </div>
                             ) : null}
@@ -293,14 +293,14 @@ export default function ProfileEditor() {
                       <button
                         type="button"
                         onClick={handleBack}
-                        className="inline-flex flex-1 items-center justify-center rounded-2xl border border-white/15 bg-white/5 px-4 py-2.5 text-xs font-semibold text-slate-200"
+                        className="inline-flex h-12 flex-1 items-center justify-center rounded-xl border border-slate-200 bg-white px-6 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-[0.98]"
                       >
                         {t.onboarding.back}
                       </button>
                       <button
                         type="button"
                         onClick={handleNext}
-                        className="inline-flex flex-1 items-center justify-center rounded-2xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-blue-700"
+                        className="inline-flex h-12 flex-1 items-center justify-center rounded-xl bg-blue-600 px-6 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700 hover:shadow-lg active:scale-[0.98]"
                       >
                         {t.onboarding.continue}
                       </button>
@@ -311,12 +311,12 @@ export default function ProfileEditor() {
                 {currentStep === "freelancerFollowup" && (
                   <section className="space-y-4">
                     <div className="space-y-2">
-                      <h2 className="text-sm font-semibold text-slate-50">
+                      <h2 className="text-sm font-semibold text-slate-900">
                         {t.onboarding.freelanceSetupTitle}
                       </h2>
-                      <p className="text-xs text-slate-300">{t.onboarding.freelanceSetupDesc}</p>
+                      <p className="text-xs text-slate-500">{t.onboarding.freelanceSetupDesc}</p>
                     </div>
-                    <div className="mt-4 grid gap-4 max-w-xl">
+                    <div className="mt-4 grid max-w-xl gap-4">
                       {(
                         [
                           { value: true, label: t.onboarding.yesRegularly },
@@ -329,19 +329,19 @@ export default function ProfileEditor() {
                             key={String(o.value)}
                             type="button"
                             onClick={() => setFreelancerInvoicesDE(o.value)}
-                            className={`relative block w-full rounded-2xl border px-5 py-5 text-left transition-all duration-200 ${
+                            className={`relative block w-full rounded-2xl border px-5 py-5 text-left transition-all duration-150 ${
                               active
-                                ? "border-blue-500 bg-blue-500/15 shadow-lg"
-                                : "border-white/15 bg-white/5 hover:border-white/30 hover:bg-white/10"
+                                ? "border-blue-300 bg-blue-50 shadow-sm"
+                                : "border-slate-200 bg-white hover:bg-blue-50"
                             }`}
                           >
                             <div className="pr-8">
-                              <div className="text-base font-semibold text-white">
+                              <div className="text-base font-semibold text-slate-900">
                                 {o.label}
                               </div>
                             </div>
                             {active ? (
-                              <div className="absolute right-4 top-4 text-blue-400 text-lg font-bold">
+                              <div className="absolute right-4 top-4 text-blue-600 text-lg font-bold">
                                 ✓
                               </div>
                             ) : null}
@@ -353,14 +353,14 @@ export default function ProfileEditor() {
                       <button
                         type="button"
                         onClick={handleBack}
-                        className="inline-flex flex-1 items-center justify-center rounded-2xl border border-white/15 bg-white/5 px-4 py-2.5 text-xs font-semibold text-slate-200"
+                        className="inline-flex h-12 flex-1 items-center justify-center rounded-xl border border-slate-200 bg-white px-6 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-[0.98]"
                       >
                         {t.onboarding.back}
                       </button>
                       <button
                         type="button"
                         onClick={handleNext}
-                        className="inline-flex flex-1 items-center justify-center rounded-2xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-blue-700"
+                        className="inline-flex h-12 flex-1 items-center justify-center rounded-xl bg-blue-600 px-6 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700 hover:shadow-lg active:scale-[0.98]"
                       >
                         {t.onboarding.continue}
                       </button>
@@ -371,12 +371,12 @@ export default function ProfileEditor() {
                 {currentStep === "jobSeekerFollowup" && (
                   <section className="space-y-4">
                     <div className="space-y-2">
-                      <h2 className="text-sm font-semibold text-slate-50">
+                      <h2 className="text-sm font-semibold text-slate-900">
                         {t.onboarding.jobUrgencyTitle}
                       </h2>
-                      <p className="text-xs text-slate-300">{t.onboarding.jobUrgencyDesc}</p>
+                      <p className="text-xs text-slate-500">{t.onboarding.jobUrgencyDesc}</p>
                     </div>
-                    <div className="mt-4 grid gap-4 max-w-xl">
+                    <div className="mt-4 grid max-w-xl gap-4">
                       {(
                         [
                           { value: "relaxed", label: t.onboarding.jobUrgencyRelaxed },
@@ -389,19 +389,19 @@ export default function ProfileEditor() {
                             key={o.value}
                             type="button"
                             onClick={() => setJobSeekerUrgency(o.value)}
-                            className={`relative block w-full rounded-2xl border px-5 py-5 text-left transition-all duration-200 ${
+                            className={`relative block w-full rounded-2xl border px-5 py-5 text-left transition-all duration-150 ${
                               active
-                                ? "border-blue-500 bg-blue-500/15 shadow-lg"
-                                : "border-white/15 bg-white/5 hover:border-white/30 hover:bg-white/10"
+                                ? "border-blue-300 bg-blue-50 shadow-sm"
+                                : "border-slate-200 bg-white hover:bg-blue-50"
                             }`}
                           >
                             <div className="pr-8">
-                              <div className="text-base font-semibold text-white">
+                              <div className="text-base font-semibold text-slate-900">
                                 {o.label}
                               </div>
                             </div>
                             {active ? (
-                              <div className="absolute right-4 top-4 text-blue-400 text-lg font-bold">
+                              <div className="absolute right-4 top-4 text-blue-600 text-lg font-bold">
                                 ✓
                               </div>
                             ) : null}
@@ -413,14 +413,14 @@ export default function ProfileEditor() {
                       <button
                         type="button"
                         onClick={handleBack}
-                        className="inline-flex flex-1 items-center justify-center rounded-2xl border border-white/15 bg-white/5 px-4 py-2.5 text-xs font-semibold text-slate-200"
+                        className="inline-flex h-12 flex-1 items-center justify-center rounded-xl border border-slate-200 bg-white px-6 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-[0.98]"
                       >
                         {t.onboarding.back}
                       </button>
                       <button
                         type="button"
                         onClick={handleNext}
-                        className="inline-flex flex-1 items-center justify-center rounded-2xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-blue-700"
+                        className="inline-flex h-12 flex-1 items-center justify-center rounded-xl bg-blue-600 px-6 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700 hover:shadow-lg active:scale-[0.98]"
                       >
                         {t.onboarding.continue}
                       </button>
@@ -431,10 +431,10 @@ export default function ProfileEditor() {
                 {currentStep === "language" && (
                   <section className="space-y-4">
                     <div className="space-y-2">
-                      <h2 className="text-sm font-semibold text-slate-50">
+                      <h2 className="text-sm font-semibold text-slate-900">
                         {t.onboarding.languageTitle}
                       </h2>
-                      <p className="text-xs text-slate-300">{t.onboarding.languageDesc}</p>
+                      <p className="text-xs text-slate-500">{t.onboarding.languageDesc}</p>
                     </div>
                     <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                       {languageLevels.map((L) => {
@@ -444,19 +444,19 @@ export default function ProfileEditor() {
                             key={L}
                             type="button"
                             onClick={() => setLanguageLevel(L)}
-                            className={`relative block w-full rounded-2xl border px-5 py-4 text-left transition-all duration-200 ${
+                            className={`relative block w-full rounded-2xl border px-5 py-4 text-left transition-all duration-150 ${
                               active
-                                ? "border-blue-500 bg-blue-500/15 shadow-lg"
-                                : "border-white/15 bg-white/5 hover:border-white/30 hover:bg-white/10"
+                                ? "border-blue-300 bg-blue-50 shadow-sm"
+                                : "border-slate-200 bg-white hover:bg-blue-50"
                             }`}
                           >
                             <div className="pr-8">
-                              <div className="text-base font-semibold text-white">
+                              <div className="text-base font-semibold text-slate-900">
                                 {getLanguageLabel(L, t)}
                               </div>
                             </div>
                             {active ? (
-                              <div className="absolute right-4 top-4 text-blue-400 text-lg font-bold">
+                              <div className="absolute right-4 top-4 text-blue-600 text-lg font-bold">
                                 ✓
                               </div>
                             ) : null}
@@ -468,14 +468,14 @@ export default function ProfileEditor() {
                       <button
                         type="button"
                         onClick={handleBack}
-                        className="inline-flex flex-1 items-center justify-center rounded-2xl border border-white/15 bg-white/5 px-4 py-2.5 text-xs font-semibold text-slate-200"
+                        className="inline-flex h-12 flex-1 items-center justify-center rounded-xl border border-slate-200 bg-white px-6 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-[0.98]"
                       >
                         {t.onboarding.back}
                       </button>
                       <button
                         type="button"
                         onClick={handleNext}
-                        className="inline-flex flex-1 items-center justify-center rounded-2xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-blue-700"
+                        className="inline-flex h-12 flex-1 items-center justify-center rounded-xl bg-blue-600 px-6 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700 hover:shadow-lg active:scale-[0.98]"
                       >
                         {t.onboarding.continue}
                       </button>
@@ -486,12 +486,12 @@ export default function ProfileEditor() {
                 {currentStep === "goals" && (
                   <section className="space-y-4">
                     <div className="space-y-2">
-                      <h2 className="text-sm font-semibold text-slate-50">
+                      <h2 className="text-sm font-semibold text-slate-900">
                         {t.onboarding.goalsTitle}
                       </h2>
-                      <p className="text-xs text-slate-300">{t.onboarding.goalsDesc}</p>
+                      <p className="text-xs text-slate-500">{t.onboarding.goalsDesc}</p>
                     </div>
-                    <div className="mt-4 grid gap-4 max-w-xl">
+                    <div className="mt-4 grid max-w-xl gap-4">
                       {(
                         ["bureaucracy", "job", "orientation"] as const
                       ).map((value) => ({
@@ -504,19 +504,19 @@ export default function ProfileEditor() {
                             key={o.value}
                             type="button"
                             onClick={() => toggleGoal(o.value)}
-                            className={`relative block w-full rounded-2xl border px-5 py-5 text-left transition-all duration-200 ${
+                            className={`relative block w-full rounded-2xl border px-5 py-5 text-left transition-all duration-150 ${
                               active
-                                ? "border-blue-500 bg-blue-500/15 shadow-lg"
-                                : "border-white/15 bg-white/5 hover:border-white/30 hover:bg-white/10"
+                                ? "border-blue-300 bg-blue-50 shadow-sm"
+                                : "border-slate-200 bg-white hover:bg-blue-50"
                             }`}
                           >
                             <div className="pr-8">
-                              <div className="text-base font-semibold text-white">
+                              <div className="text-base font-semibold text-slate-900">
                                 {o.label}
                               </div>
                             </div>
                             {active ? (
-                              <div className="absolute right-4 top-4 text-blue-400 text-lg font-bold">
+                              <div className="absolute right-4 top-4 text-blue-600 text-lg font-bold">
                                 ✓
                               </div>
                             ) : null}
@@ -528,7 +528,7 @@ export default function ProfileEditor() {
                       <button
                         type="button"
                         onClick={handleBack}
-                        className="inline-flex flex-1 items-center justify-center rounded-2xl border border-white/15 bg-white/5 px-4 py-2.5 text-xs font-semibold text-slate-200"
+                        className="inline-flex h-12 flex-1 items-center justify-center rounded-xl border border-slate-200 bg-white px-6 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-[0.98]"
                       >
                         {t.onboarding.back}
                       </button>
@@ -536,7 +536,7 @@ export default function ProfileEditor() {
                         type="button"
                         disabled={!canSave}
                         onClick={handleSave}
-                        className="inline-flex flex-1 items-center justify-center rounded-2xl bg-emerald-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="inline-flex h-12 flex-1 items-center justify-center rounded-xl bg-blue-600 px-6 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700 hover:shadow-lg active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {saving ? t.dashboard.saving : t.dashboard.saveChanges}
                       </button>

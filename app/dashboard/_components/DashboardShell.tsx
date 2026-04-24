@@ -162,65 +162,66 @@ export default function DashboardShell({
     >
       <div className="mx-4 my-3 overflow-hidden rounded-[2.5rem] border border-slate-200 bg-white shadow-[0_30px_120px_-50px_rgba(15,23,42,0.22)] lg:mx-6 lg:my-4">
       <div className="relative" onClick={() => setVibeOpen(false)}>
-        {/* Page canvas: Hero background as a layer (not a panel). */}
-        <div
-          className="pointer-events-none absolute inset-x-0 top-0 h-[520px]"
-          style={{
-            ...heroVars,
-            WebkitMaskImage:
-              "linear-gradient(to bottom, rgba(0,0,0,1) 80%, rgba(0,0,0,0) 100%)",
-            maskImage:
-              "linear-gradient(to bottom, rgba(0,0,0,1) 80%, rgba(0,0,0,0) 100%)",
-          }}
-        >
-          <div
-            className="absolute inset-0 transition-opacity duration-500"
-            style={{ background: appliedAtmosphere.wallpaper }}
-          />
-          <div
-            className="absolute inset-0 transition-opacity duration-500"
-            style={{
-              background:
-                appliedAtmosphere.id === "night"
-                  ? "rgba(2,6,23,0.08)"
-                  : "rgba(255,255,255,0.10)",
-            }}
-          />
-          <div
-            className="absolute inset-0 opacity-[0.08]"
-            style={{
-              background:
-                appliedAtmosphere.wallpaperVignette ??
-                "radial-gradient(circle at center, transparent 45%, rgba(15,23,42,0.10) 100%)",
-            }}
-          />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.35),transparent_40%)]" />
-          <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.08),rgba(255,255,255,0.14))]" />
-          <div
-            className="absolute inset-0"
-            style={{
-              backdropFilter: `blur(${Math.max(10, Math.round(appliedAtmosphere.blur * 0.7))}px)`,
-              filter: "saturate(0.96) brightness(1.10)",
-            }}
-          />
-          <div
-            className="absolute -left-24 top-[-180px] h-[560px] w-[820px] rounded-full blur-3xl opacity-40"
-            style={{
-              background:
-                "radial-gradient(circle at 30% 35%, color-mix(in srgb, var(--vaylo-atmosphere-accent) 14%, transparent) 0%, transparent 62%)",
-            }}
-          />
-          <div
-            className="absolute -right-48 top-[-240px] h-[560px] w-[820px] rounded-full blur-3xl opacity-30"
-            style={{
-              background:
-                "radial-gradient(circle at 55% 35%, color-mix(in srgb, var(--vaylo-atmosphere-accent) 11%, transparent) 0%, transparent 65%)",
-            }}
-          />
-        </div>
-
         {/* ZONE A — HERO CANVAS (scenic mockup style). */}
-        <section className="relative overflow-hidden rounded-[2.5rem]">
+        <div className="relative overflow-hidden rounded-[2.5rem] isolate">
+          {/* Hero background as a clipped layer (prevents corner bleed). */}
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 h-[520px]"
+            style={{
+              ...heroVars,
+              WebkitMaskImage:
+                "linear-gradient(to bottom, rgba(0,0,0,1) 80%, rgba(0,0,0,0) 100%)",
+              maskImage:
+                "linear-gradient(to bottom, rgba(0,0,0,1) 80%, rgba(0,0,0,0) 100%)",
+            }}
+          >
+            <div
+              className="absolute inset-0 transition-opacity duration-500"
+              style={{ background: appliedAtmosphere.wallpaper }}
+            />
+            <div
+              className="absolute inset-0 transition-opacity duration-500"
+              style={{
+                background:
+                  appliedAtmosphere.id === "night"
+                    ? "rgba(2,6,23,0.08)"
+                    : "rgba(255,255,255,0.10)",
+              }}
+            />
+            <div
+              className="absolute inset-0 opacity-[0.08]"
+              style={{
+                background:
+                  appliedAtmosphere.wallpaperVignette ??
+                  "radial-gradient(circle at center, transparent 45%, rgba(15,23,42,0.10) 100%)",
+              }}
+            />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.35),transparent_40%)]" />
+            <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.08),rgba(255,255,255,0.14))]" />
+            <div
+              className="absolute inset-0"
+              style={{
+                backdropFilter: `blur(${Math.max(10, Math.round(appliedAtmosphere.blur * 0.7))}px)`,
+                filter: "saturate(0.96) brightness(1.10)",
+              }}
+            />
+            <div
+              className="absolute -left-24 top-[-180px] h-[560px] w-[820px] rounded-full blur-3xl opacity-40"
+              style={{
+                background:
+                  "radial-gradient(circle at 30% 35%, color-mix(in srgb, var(--vaylo-atmosphere-accent) 14%, transparent) 0%, transparent 62%)",
+              }}
+            />
+            <div
+              className="absolute -right-48 top-[-240px] h-[560px] w-[820px] rounded-full blur-3xl opacity-30"
+              style={{
+                background:
+                  "radial-gradient(circle at 55% 35%, color-mix(in srgb, var(--vaylo-atmosphere-accent) 11%, transparent) 0%, transparent 65%)",
+              }}
+            />
+          </div>
+
+          <section className="relative">
           <div
             className={`relative z-10 px-6 pt-[72px] pb-0 sm:px-8 lg:px-12 transition duration-300 ease-out motion-reduce:transition-none ${
               heroMounted ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"
@@ -513,6 +514,7 @@ export default function DashboardShell({
             </div>
           </div>
         </section>
+        </div>
 
         {/* ZONE B: Clean base (tasks + history) */}
         <section className="relative z-10 -mt-16 pb-12">
