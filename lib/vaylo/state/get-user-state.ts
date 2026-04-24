@@ -4,6 +4,8 @@ import type { ProfileDNA } from "@/lib/dna/types";
 import { getUserBehaviorSignals } from "@/lib/dashboard/get-user-behavior-signals";
 import type { LiveSituation } from "@/lib/vaylo/live-situation";
 import { getLiveSituationFromProfile } from "@/lib/vaylo/live-situation";
+import { detectRegionFromCity } from "@/lib/vaylo/region/detect-region";
+import { getRegionConfig } from "@/lib/vaylo/region/region-config";
 import {
   isBankAccountCriticalGap,
   isHealthInsuranceMissing,
@@ -177,6 +179,45 @@ export async function getUserState(params: {
     profile = (data as Record<string, unknown> | null) ?? null;
   }
 
+  // --- Region identity (best-effort, future-safe) ---
+  // These columns may not exist on older schemas; fetch them only in a guarded way.
+  try {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("region, city")
+      .eq("id", userId)
+      .maybeSingle();
+    if (!error && data && profile) {
+      profile = { ...profile, ...(data as Record<string, unknown>) };
+    } else if (!error && data && !profile) {
+      profile = (data as Record<string, unknown>) ?? null;
+    }
+  } catch {
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("region")
+        .eq("id", userId)
+        .maybeSingle();
+      if (!error && data && profile) {
+        profile = { ...profile, ...(data as Record<string, unknown>) };
+      } else if (!error && data && !profile) {
+        profile = (data as Record<string, unknown>) ?? null;
+      }
+    } catch {
+      // ignore (backward-compatible)
+    }
+  }
+
+  const profileRegion = typeof profile?.region === "string" ? profile.region : null;
+  const profileCity =
+    typeof (profile as { city?: unknown } | null)?.city === "string"
+      ? ((profile as { city?: string | null }).city ?? null)
+      : null;
+
+  const resolvedRegion = profileRegion ?? detectRegionFromCity(profileCity);
+  const regionConfig = getRegionConfig(resolvedRegion);
+
   const liveSituation = getLiveSituationFromProfile(profile);
   const behavior = await getUserBehaviorSignals(supabase, userId);
 
@@ -236,6 +277,8 @@ export async function getUserState(params: {
     dna != null ? buildDerivedBlockers(liveSituation, dna) : [];
 
   const userState: UserState = {
+    region: resolvedRegion,
+    regionConfig,
     identity: {
       dna,
       familyStatus: identityFromDna?.family_status ?? null,

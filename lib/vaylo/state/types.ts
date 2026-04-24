@@ -1,5 +1,6 @@
 import type { ProfileDNA } from "@/lib/dna/types";
 import type { LiveSituation } from "@/lib/vaylo/live-situation";
+import type { RegionConfig } from "@/lib/vaylo/region/types";
 
 /**
  * Minimal profile scalars surfaced for reality + drift detection.
@@ -25,6 +26,13 @@ export type UserStateProfileFlags = {
  * `behavior.timeDecayBoost` uses `Record` (not `Map`) so the shape stays JSON-serializable if needed later.
  */
 export type UserState = {
+  /**
+   * Optional region identity (future foundation; safe when absent).
+   * Note: kept as loose `string` to avoid hard coupling to profile input constraints.
+   */
+  region?: string | null;
+  regionConfig?: RegionConfig | null;
+
   identity: {
     dna: ProfileDNA | null;
     familyStatus?: string | null;
