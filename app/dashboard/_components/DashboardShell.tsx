@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation";
 import type { ProfileDNA } from "@/lib/dna/types";
 import type { Dict, Locale } from "@/lib/i18n";
 import { formatMessage } from "@/lib/i18n/format";
+import { getMissingI18nKeys } from "@/lib/i18n/missing-key-registry";
 import {
   getEmploymentLabel,
   getFamilyLabel,
@@ -96,6 +97,7 @@ export default function DashboardShell({
   const [selectedAtmosphereId, setSelectedAtmosphereId] = useState<AtmosphereId | null>(null);
   const [heroMounted, setHeroMounted] = useState(false);
   const [heroQuery, setHeroQuery] = useState("");
+  const lastMissingI18nLogRef = useRef<string>("");
 
   useEffect(() => {
     setHeroMounted(true);
@@ -214,6 +216,16 @@ export default function DashboardShell({
       dnaVersion: userState.identity.dna?.version ?? null,
     });
   }, [liveActions.length, locale, primaryAction, t.dashboard, userState.identity.dna?.version]);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "development") return;
+    const missingKeys = getMissingI18nKeys();
+    if (missingKeys.length === 0) return;
+    const signature = missingKeys.join("|");
+    if (signature === lastMissingI18nLogRef.current) return;
+    lastMissingI18nLogRef.current = signature;
+    console.info("[i18n:missing_keys]", missingKeys);
+  }, [liveActions, historyActions, primaryActionTitle, primaryActionDescription]);
 
   const refreshDashboard = useCallback(async () => {
     try {
