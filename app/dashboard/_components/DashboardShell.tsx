@@ -34,11 +34,11 @@ import { trackActionEvent } from "@/lib/vaylo/action-tracking";
 import { useStepStateRealtime } from "@/lib/vaylo/realtime/use-step-state-realtime";
 import type { UserState } from "@/lib/vaylo/state/types";
 import DashboardActionCard from "./DashboardActionCard";
-import { ATMOSPHERE_ORDER, getAtmosphereById, type AtmosphereId } from "@/lib/ui/atmospheres";
+import { getAtmosphereById } from "@/lib/ui/atmospheres";
 import { getDefaultAtmosphereFromDna } from "@/lib/ui/get-default-atmosphere-from-dna";
 import { surface } from "@/lib/ui/surfaces";
 import type { RegionConfig } from "@/lib/vaylo/region/types";
-import { getRegionVisual, type RegionVisualVariant } from "@/lib/vaylo/region/get-region-visual";
+import { getRegionVisual } from "@/lib/vaylo/region/get-region-visual";
 import { getRegionImage } from "@/lib/vaylo/region/get-region-image";
 
 type Props = {
@@ -126,55 +126,29 @@ export default function DashboardShell({
   const prevByIdRef = useRef<Map<string, DashboardAction>>(new Map());
   const [changedIds, setChangedIds] = useState<Set<string>>(new Set());
   const [debugExplain, setDebugExplain] = useState(false);
-  const [vibeOpen, setVibeOpen] = useState(false);
-  const [isVibePanelOpen, setIsVibePanelOpen] = useState(false);
-  const [selectedAtmosphereId, setSelectedAtmosphereId] = useState<AtmosphereId | null>(null);
   const [heroMounted, setHeroMounted] = useState(false);
   const [heroQuery, setHeroQuery] = useState("");
   const lastMissingI18nLogRef = useRef<string>("");
 
   useEffect(() => {
     setHeroMounted(true);
-    try {
-      const raw = window.localStorage.getItem("vaylo_atmosphere");
-      const parsed = typeof raw === "string" ? raw.trim() : "";
-      setSelectedAtmosphereId((getAtmosphereById(parsed)?.id as AtmosphereId | undefined) ?? null);
-    } catch {
-      // localStorage is best-effort; ignore failures.
-    }
   }, []);
 
   const appliedAtmosphere = useMemo(() => {
-    const fromUser = selectedAtmosphereId ? getAtmosphereById(selectedAtmosphereId) : null;
-    if (fromUser) return fromUser;
     const fromDna = getAtmosphereById(getDefaultAtmosphereFromDna(dna));
     return fromDna ?? getAtmosphereById("minimal")!;
-  }, [dna, selectedAtmosphereId]);
-
-  const mappedRegionVariant = useMemo<RegionVisualVariant>(() => {
-    switch (appliedAtmosphere.id) {
-      case "sunset":
-        return "sunset";
-      case "alpine":
-        return "alpine";
-      case "night":
-        return "night";
-      case "minimal":
-      default:
-        return "minimal";
-    }
-  }, [appliedAtmosphere.id]);
+  }, [dna]);
 
   const regionVisual = useMemo(() => {
-    return getRegionVisual(regionConfig ?? null, mappedRegionVariant);
-  }, [regionConfig, mappedRegionVariant]);
+    return getRegionVisual(regionConfig ?? null, "minimal");
+  }, [regionConfig]);
 
   // Production note:
   // Region background images should be at least 1920x1080.
   // 1024px images will look soft when stretched inside the large hero.
   const imagePath = useMemo(() => {
-    return getRegionImage(regionConfig?.id, mappedRegionVariant);
-  }, [regionConfig?.id, mappedRegionVariant]);
+    return getRegionImage(regionConfig?.id);
+  }, [regionConfig?.id]);
   const hasImage = Boolean(imagePath);
 
   const heroVars = useMemo(() => {
@@ -375,7 +349,7 @@ export default function DashboardShell({
       data-locale={locale}
     >
       <div className="mx-4 my-3 overflow-hidden rounded-[2.5rem] border border-slate-200 bg-white shadow-[0_30px_120px_-50px_rgba(15,23,42,0.22)] lg:mx-6 lg:my-4">
-      <div className="relative" onClick={() => setVibeOpen(false)}>
+      <div className="relative">
         {/* ZONE A — HERO CANVAS (scenic mockup style). */}
         <div className="relative overflow-hidden rounded-[2.5rem] isolate">
           {/* Hero background as a clipped layer (prevents corner bleed). */}
@@ -621,17 +595,12 @@ export default function DashboardShell({
                     {[
                       { id: "bell", label: t.dashboard.notificationsLabel, path: "M12 22a2.4 2.4 0 0 0 2.4-2.4H9.6A2.4 2.4 0 0 0 12 22Z M18 16v-5a6 6 0 1 0-12 0v5l-2 2h16l-2-2Z" },
                       { id: "activity", label: t.dashboard.activityLabel, path: "M4 12h4l2-6 4 12 2-6h4" },
-                      { id: "background", label: t.dashboard.backgroundTitle, path: "M4.5 6.5A2.5 2.5 0 0 1 7 4h10a2.5 2.5 0 0 1 2.5 2.5v11A2.5 2.5 0 0 1 17 20H7a2.5 2.5 0 0 1-2.5-2.5v-11Z M7 16l3.2-3.2a1.4 1.4 0 0 1 2 0l1.1 1.1 1.8-1.8a1.4 1.4 0 0 1 2 0L19.5 14.5 M8.5 8.5h.01" },
                       { id: "settings", label: t.nav.settings, path: "M12 14.7a2.7 2.7 0 1 0-2.7-2.7 2.7 2.7 0 0 0 2.7 2.7Z" },
                     ].map((i) => (
                       <button
                         key={i.label}
                         type="button"
                         onClick={() => {
-                          if (i.id === "background") {
-                            setIsVibePanelOpen((value) => !value);
-                            return;
-                          }
                           if (i.id === "bell") {
                             // eslint-disable-next-line no-console
                             console.log("notifications clicked");
@@ -646,9 +615,7 @@ export default function DashboardShell({
                             block: "start",
                           });
                         }}
-                        className={`inline-flex h-11 w-11 items-center justify-center rounded-full text-white backdrop-blur-sm transition hover:bg-white/25 ${
-                          i.id === "background" && isVibePanelOpen ? "bg-white/25" : "bg-white/20"
-                        }`}
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm transition hover:bg-white/25"
                         aria-label={i.label}
                         title={i.label}
                       >
@@ -658,59 +625,6 @@ export default function DashboardShell({
                       </button>
                     ))}
                   </div>
-
-                  {/* Right vibe panel (mockup) */}
-                  {isVibePanelOpen ? (
-                  <div className="hidden w-full rounded-[1.75rem] border border-slate-200 bg-white/85 p-4 text-slate-900 shadow-[0_30px_80px_-24px_rgba(15,23,42,0.22)] backdrop-blur-sm lg:block">
-                    <div className="text-sm font-semibold text-slate-900">{t.dashboard.backgroundTitle}</div>
-                    <div className="mt-1 text-xs text-slate-600">
-                      {t.dashboard.backgroundDescription}
-                    </div>
-                    <div className="mt-4 grid gap-3">
-                      {ATMOSPHERE_ORDER.map((id) => {
-                        const a = getAtmosphereById(id)!;
-                        const active = a.id === appliedAtmosphere.id;
-                        const label =
-                          a.id === "alpine"
-                            ? t.dashboard.vibeAlpine
-                            : a.id === "sunset"
-                              ? t.dashboard.vibeSunset
-                              : a.id === "night"
-                                ? t.dashboard.vibeNight
-                                : a.id === "minimal"
-                                  ? t.dashboard.vibeMinimal
-                                  : a.label;
-                        return (
-                          <button
-                            key={a.id}
-                            type="button"
-                            onClick={() => {
-                              try {
-                                window.localStorage.setItem("vaylo_atmosphere", a.id);
-                              } catch {
-                                // ignore
-                              }
-                              setSelectedAtmosphereId(a.id);
-                            }}
-                            className={
-                              active
-                                ? "flex w-full items-center gap-2 rounded-2xl border border-blue-100 bg-blue-100 px-3 py-2 text-left text-sm font-semibold text-blue-700"
-                                : "flex w-full items-center gap-2 rounded-2xl border border-slate-200 bg-white/70 px-3 py-2 text-left text-sm font-semibold text-slate-700 transition hover:bg-blue-50"
-                            }
-                          >
-                            <span className="h-8 w-10 rounded-xl border border-slate-200" style={{ background: a.gradient }} />
-                            <span className="flex-1">{label}</span>
-                            {active ? (
-                              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
-                                ✓
-                              </span>
-                            ) : null}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  ) : null}
 
                 </div>
               </div>
