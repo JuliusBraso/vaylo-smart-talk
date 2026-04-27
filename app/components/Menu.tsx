@@ -4,6 +4,15 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useT } from "../../lib/i18n/useT";
+import { getEmploymentLabel, getFamilyLabel } from "@/lib/i18n/labels";
+import { supabase } from "@/lib/supabase";
+
+type SidebarProfile = {
+  employmentType: string | null;
+  familyStatus: string | null;
+  hasAddressRegistration: boolean | null;
+  email: string | null;
+};
 
 function Icon(props: { name: "home" | "tasks" | "history" | "docs" | "user" | "settings" }) {
   const common = "h-5 w-5";
@@ -127,11 +136,53 @@ function Icon(props: { name: "home" | "tasks" | "history" | "docs" | "user" | "s
 
 export default function Menu() {
   const [mounted, setMounted] = useState(false);
+  const [profile, setProfile] = useState<SidebarProfile | null>(null);
   const pathname = usePathname();
   const { t } = useT();
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadProfile() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        if (!cancelled) setProfile(null);
+        return;
+      }
+
+      const { data } = await supabase
+        .from("profiles")
+        .select("employment_type, family_status, has_address_registration")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (cancelled) return;
+      setProfile({
+        employmentType:
+          typeof data?.employment_type === "string"
+            ? data.employment_type
+            : null,
+        familyStatus:
+          typeof data?.family_status === "string" ? data.family_status : null,
+        hasAddressRegistration:
+          typeof data?.has_address_registration === "boolean"
+            ? data.has_address_registration
+            : null,
+        email: user.email ?? null,
+      });
+    }
+
+    void loadProfile();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (!mounted) return null;
@@ -156,6 +207,17 @@ export default function Menu() {
     { label: t.nav.profile, href: "/profile", icon: "user" },
     { label: t.nav.settings, href: "/settings", icon: "settings" },
   ];
+
+  const profileEmployment = getEmploymentLabel(profile?.employmentType, t) || t.common.unknown;
+  const profileFamily = getFamilyLabel(profile?.familyStatus, t) || t.common.unknown;
+  const registrationStatus =
+    profile?.hasAddressRegistration === true
+      ? t.dashboard.stepProcessCompleted
+      : profile?.hasAddressRegistration === false
+        ? t.dashboard.stepProcessEligible
+        : t.common.unknown;
+  const profileInitial = (profile?.email?.trim().charAt(0) || "V").toUpperCase();
+  const profileSubtitle = profile?.email ?? t.settings.personal;
 
   return (
     <aside className="app-sidebar" aria-label={t.nav.navigation ?? "Navigation"}>
@@ -218,15 +280,15 @@ export default function Menu() {
             <div className="mt-3 grid gap-2 text-xs">
               <div className="flex items-center justify-between gap-3">
                 <span className="text-slate-500">{t.dashboard.workModeLabel}</span>
-                <span className="font-medium text-slate-800">{t.common.unknown}</span>
+                <span className="font-medium text-slate-800">{profileEmployment}</span>
               </div>
               <div className="flex items-center justify-between gap-3">
                 <span className="text-slate-500">{t.dashboard.familyLabel}</span>
-                <span className="font-medium text-slate-800">{t.common.unknown}</span>
+                <span className="font-medium text-slate-800">{profileFamily}</span>
               </div>
               <div className="flex items-center justify-between gap-3">
                 <span className="text-slate-500">{t.dashboard.registrationLabel}</span>
-                <span className="font-medium text-slate-800">{t.common.unknown}</span>
+                <span className="font-medium text-slate-800">{registrationStatus}</span>
               </div>
             </div>
             <Link
@@ -242,11 +304,11 @@ export default function Menu() {
           <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
             <div className="flex items-center gap-3">
               <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-sm font-bold text-slate-700">
-                M
+                {profileInitial}
               </div>
               <div style={{ minWidth: 0 }}>
                 <div className="text-xs font-semibold text-slate-900">{t.dashboard.profileCardTitle}</div>
-                <div className="text-[11px] text-slate-500">{t.settings.personal}</div>
+                <div className="truncate text-[11px] text-slate-500">{profileSubtitle}</div>
               </div>
             </div>
           </div>

@@ -99,12 +99,12 @@ async function attachDocumentJobProcessingHints(params: {
       .filter((id): id is string => typeof id === "string" && id.length > 0);
     if (eligibleStepIds.length === 0) return actions;
 
-    // Minimal job lookup: any queued/running doc job for this user.
+    // Minimal job lookup: any in-flight document intelligence job for this user.
     const { data: jobs, error: jobsErr } = await supabase
       .from("document_intelligence_jobs")
       .select("document_id, status")
       .eq("user_id", userId)
-      .in("status", ["queued", "running"])
+      .in("status", ["queued", "running", "pending", "processing"])
       .limit(50);
     if (jobsErr) {
       const msg = String((jobsErr as { message?: unknown })?.message ?? "");
@@ -187,7 +187,9 @@ async function attachDocumentJobProcessingHints(params: {
       warnDocJobHintsUnavailableOnce("missing document_intelligence_jobs table");
       return params.actions;
     }
-    console.error("[dashboard] doc job hints ERROR", err);
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[dashboard] doc job hints unavailable", err);
+    }
     return params.actions;
   }
 }

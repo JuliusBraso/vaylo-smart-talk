@@ -73,6 +73,40 @@ function injectModuleDict(children: ReactNode, dict: Dict): ReactNode {
   });
 }
 
+function getDashboardAuditIssues(actions: DashboardAction[], t: Dict): string[] {
+  const issues: string[] = [];
+
+  if (actions.length === 0) {
+    issues.push("empty_dashboard_actions");
+  }
+
+  actions.forEach((action) => {
+    const title = resolveDashboardActionTitle(t, action);
+    const description = resolveDashboardActionDescription(t, action);
+    if (!title || title === "…") {
+      issues.push(`missing_title:${action.id}`);
+    }
+    if (!description && !action.stepDetails?.descriptionKey && !action.description) {
+      issues.push(`missing_description:${action.id}`);
+    }
+    if (!action.href || action.href.trim().length === 0) {
+      issues.push(`missing_href:${action.id}`);
+    }
+    if (!action.cta || action.cta.trim().length === 0) {
+      issues.push(`missing_cta:${action.id}`);
+    }
+    if (
+      action.id.startsWith("step:") &&
+      action.knowledgeStepId &&
+      action.id !== `step:${action.knowledgeStepId}`
+    ) {
+      issues.push(`mismatched_step_action:${action.id}:${action.knowledgeStepId}`);
+    }
+  });
+
+  return issues;
+}
+
 export default function DashboardShell({
   dna,
   locale,
@@ -172,12 +206,23 @@ export default function DashboardShell({
     ? resolveDashboardActionDescription(t, primaryAction)
     : t.dashboard.statusLocked;
 
-  const recentDocumentLabels = useMemo(() => {
+  const auditIssues = useMemo(
+    () => getDashboardAuditIssues(liveActions, t),
+    [liveActions, t],
+  );
+
+  const recentDocumentItems = useMemo(() => {
     const docs = userState.reality.documents.recentDocuments;
     if (docs.length > 0) {
-      return docs.map((doc) => doc.fileName ?? doc.mimeType ?? t.documents.untitled);
+      return docs.map((doc) => ({
+        id: doc.id,
+        label: doc.fileName ?? doc.mimeType ?? t.documents.untitled,
+      }));
     }
-    return userState.reality.documents.recentDocumentTypes.map((type) => type);
+    return userState.reality.documents.recentDocumentTypes.map((type) => ({
+      id: type,
+      label: type,
+    }));
   }, [t.documents.untitled, userState.reality.documents.recentDocumentTypes, userState.reality.documents.recentDocuments]);
 
   const helpQuestions = useMemo(
@@ -216,6 +261,25 @@ export default function DashboardShell({
       dnaVersion: userState.identity.dna?.version ?? null,
     });
   }, [liveActions.length, locale, primaryAction, t.dashboard, userState.identity.dna?.version]);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "development") return;
+    console.info("[dashboard:audit]", {
+      actions: liveActions.length,
+      primaryAction: primaryAction?.id ?? null,
+      hasUserState: Boolean(userState),
+      hasDNA: Boolean(userState?.identity.dna),
+      locale,
+    });
+    if (!primaryAction || auditIssues.length > 0) {
+      console.warn("[dashboard:audit:issues]", {
+        issues: !primaryAction
+          ? ["null_primary_action", ...auditIssues]
+          : auditIssues,
+      });
+    }
+  }, [auditIssues, liveActions.length, locale, primaryAction, userState]);
+
 
   useEffect(() => {
     if (process.env.NODE_ENV !== "development") return;
@@ -474,12 +538,12 @@ export default function DashboardShell({
                     >
                       <div className="text-sm font-semibold text-slate-900">{t.dashboard.recentDocumentsTitle}</div>
                       <div className="mt-4 grid gap-2 text-sm text-slate-700">
-                        {recentDocumentLabels.length > 0 ? recentDocumentLabels.map((name) => (
-                          <div key={name} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                        {recentDocumentItems.length > 0 ? recentDocumentItems.map((doc) => (
+                          <div key={doc.id} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
                             <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white text-slate-500 shadow-sm" aria-hidden>
                               📄
                             </span>
-                            <span className="min-w-0 flex-1 truncate font-medium">{name}</span>
+                            <span className="min-w-0 flex-1 truncate font-medium">{doc.label}</span>
                           </div>
                         )) : (
                           <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-xs text-slate-500">
@@ -767,7 +831,7 @@ export default function DashboardShell({
                           {t.dashboard.historyTitle}
                         </h2>
                         <p className="mt-1 text-sm text-slate-600">
-                          Už sme to vybavili za vás.
+                          {t.dashboard.historyToggleTitle}
                         </p>
                       </div>
                       <button

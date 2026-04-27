@@ -25,6 +25,8 @@ type ProgressRow = { action_id: string };
 
 type VerificationRow = { step_id: string; status: string; document_id?: string | null };
 
+let hasLoggedDependencyGroupFallbackInfo = false;
+
 function sourceForDerivedStatus(s: UserStepStatus, opts: { proof: boolean; legacyProgress: boolean }): UserStepSource {
   if (s === "verified" && opts.proof) return "proof";
   if (s === "completed" && opts.legacyProgress) return "legacy_progress";
@@ -68,8 +70,14 @@ export async function getUserStepState(params: {
     if (error) throw error;
     depsRaw = data as unknown[] | null;
   } catch (err) {
-    if (process.env.NODE_ENV === "development") {
-      console.warn("[step-state] dependency_group unavailable, using legacy AND dependencies only");
+    if (
+      process.env.NODE_ENV === "development" &&
+      !hasLoggedDependencyGroupFallbackInfo
+    ) {
+      hasLoggedDependencyGroupFallbackInfo = true;
+      console.info(
+        "[step-state] dependency_group unavailable; using legacy AND dependencies only",
+      );
     }
     const { data, error } = await supabase
       .from("knowledge_step_dependencies")
