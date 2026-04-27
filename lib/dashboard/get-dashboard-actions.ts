@@ -33,7 +33,7 @@ import type {
 
 export type DashboardRelatedDocument = {
   documentTypeId: string;
-  title: string;
+  titleKey: string | null;
   linkType: DocumentTypeStepLinkType;
 };
 
@@ -55,8 +55,12 @@ export type DashboardAction = {
    * `mapDashboardActionToKnowledgeCatalogActionId` + DB lookup (no topic/document mappings here).
    */
   knowledgeStepId?: string;
-  /** Server-resolved step copy for presentation (from knowledge layer keys). */
-  stepDetails?: { title: string; hint: string | null };
+  /** Knowledge-layer copy references for presentation; UI resolves these keys per active locale. */
+  stepDetails?: {
+    titleKey: string;
+    descriptionKey: string | null;
+    hintKey?: string | null;
+  };
   /** Document types linked to this step (`document_type_step_links` + `document_types`). */
   relatedDocuments?: DashboardRelatedDocument[];
   /** When set, deep-link to a guide that matches this bureaucratic step. */

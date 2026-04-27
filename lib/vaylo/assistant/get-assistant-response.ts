@@ -1,6 +1,7 @@
 import type { Dict } from "@/lib/i18n";
 import { formatMessage } from "@/lib/i18n/format";
 import type { DashboardAction } from "@/lib/dashboard/get-dashboard-actions";
+import { resolveDashboardActionTitle } from "@/lib/dashboard/resolve-dashboard-action-copy";
 import { getGuideForAction } from "@/lib/vaylo/guides";
 import {
   findActionByCanonicalId,
@@ -105,12 +106,13 @@ export function getAssistantResponse(params: {
     const lines: string[] = [];
     lines.push(t.chat.recommendIntro);
     for (const a of top) {
+      const title = resolveDashboardActionTitle(t, a);
       const line = a.reasons?.[0]
         ? formatMessage(t.chat.whatLineWithReason, {
-            title: a.title,
+            title,
             reason: a.reasons[0],
           })
-        : formatMessage(t.chat.whatLineTitleOnly, { title: a.title });
+        : formatMessage(t.chat.whatLineTitleOnly, { title });
       lines.push(line);
     }
     return { text: lines.join("\n"), actionId: top[0]?.id };
@@ -141,16 +143,17 @@ export function getAssistantResponse(params: {
     return {
       text: formatMessage(t.chat.noGuideLine, {
         prefix: t.chat.noGuidePrefix,
-        title: chosen.title,
+        title: resolveDashboardActionTitle(t, chosen),
       }),
       actionId: chosen.id,
     };
   }
+  const chosenTitle = resolveDashboardActionTitle(t, chosen);
   const lines: string[] = [];
   lines.push(
     formatMessage(t.chat.howToLine, {
       prefix: t.chat.howToPrefix,
-      title: chosen.title,
+      title: chosenTitle,
     })
   );
   guide.forEach((s, i) =>

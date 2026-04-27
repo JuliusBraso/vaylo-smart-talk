@@ -25,6 +25,10 @@ import {
 } from "@/lib/i18n/labels";
 import type { DashboardAction } from "@/lib/dashboard/get-dashboard-actions";
 import { getActionExplanation } from "@/lib/dashboard/get-action-explanation";
+import {
+  resolveDashboardActionDescription,
+  resolveDashboardActionTitle,
+} from "@/lib/dashboard/resolve-dashboard-action-copy";
 import { trackActionEvent } from "@/lib/vaylo/action-tracking";
 import { useStepStateRealtime } from "@/lib/vaylo/realtime/use-step-state-realtime";
 import type { UserState } from "@/lib/vaylo/state/types";
@@ -159,6 +163,12 @@ export default function DashboardShell({
   }, [changedIds]);
 
   const primaryAction = liveActions[0] ?? null;
+  const primaryActionTitle = primaryAction
+    ? resolveDashboardActionTitle(t, primaryAction)
+    : activePriorityLabel;
+  const primaryActionDescription = primaryAction
+    ? resolveDashboardActionDescription(t, primaryAction)
+    : t.dashboard.statusLocked;
 
   const recentDocumentLabels = useMemo(() => {
     const docs = userState.reality.documents.recentDocuments;
@@ -247,7 +257,7 @@ export default function DashboardShell({
         {t.dashboard.activePriority}
       </div>
       <div className="mt-2 text-base font-semibold text-slate-900">
-        {primaryAction?.stepDetails?.title ?? primaryAction?.title ?? activePriorityLabel}
+        {primaryActionTitle}
       </div>
       <div className="mt-2 text-xs text-slate-600">
         {identitySummary.length > 0
@@ -259,7 +269,7 @@ export default function DashboardShell({
           {primaryAction?.stepProcessBadge ?? t.dashboard.statusLabel}
         </div>
         <div className="mt-1 text-sm font-semibold text-slate-900">
-          {primaryAction?.description ?? t.dashboard.statusLocked}
+          {primaryActionDescription}
         </div>
         <div className="mt-1 text-[11px] text-slate-600">
           {primaryAction?.reasons?.[0] ?? primaryAction?.stepProcessSubtle ?? t.dashboard.statusDesc}

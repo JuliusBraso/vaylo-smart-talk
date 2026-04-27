@@ -5,18 +5,6 @@ import type {
 } from "@/lib/dashboard/get-dashboard-actions";
 import type { Dict } from "@/lib/i18n";
 import type { DocumentTypeStepLinkType } from "@/lib/vaylo/knowledge/types";
-import { resolveKnowledgeDictString } from "@/lib/dashboard/resolve-knowledge-dict-string";
-
-function warnMissingStepTitleTranslation(params: {
-  stepId: string;
-  titleKey: string | null | undefined;
-}) {
-  if (process.env.NODE_ENV !== "development") return;
-  console.warn("[i18n] Missing step title translation:", {
-    stepId: params.stepId,
-    titleKey: params.titleKey ?? null,
-  });
-}
 
 function guideHrefForStep(params: {
   stepId: string;
@@ -38,7 +26,7 @@ export async function enrichActionsWithKnowledge(params: {
   actions: DashboardAction[];
   t: Dict;
 }): Promise<DashboardAction[]> {
-  const { supabase, actions, t } = params;
+  const { supabase, actions } = params;
   const stepIds = [
     ...new Set(
       actions
@@ -126,18 +114,6 @@ export async function enrichActionsWithKnowledge(params: {
       return action;
     }
 
-    const translatedTitle = resolveKnowledgeDictString(t, step.title_key);
-    if (!translatedTitle) {
-      warnMissingStepTitleTranslation({
-        stepId: step.id,
-        titleKey: step.title_key,
-      });
-    }
-    const title = translatedTitle ?? action.title;
-    const hint =
-      resolveKnowledgeDictString(t, step.description_key ?? undefined) ??
-      null;
-
     const rawLinks = linksByStep.get(sid) ?? [];
     const relatedDocuments: DashboardRelatedDocument[] = [];
     for (const raw of rawLinks) {
@@ -151,13 +127,9 @@ export async function enrichActionsWithKnowledge(params: {
       if (linkType !== "required" && linkType !== "proof" && linkType !== "supporting") {
         continue;
       }
-      const docTitle =
-        (dt?.title_key
-          ? resolveKnowledgeDictString(t, dt.title_key)
-          : null) ?? row.document_type_id;
       relatedDocuments.push({
         documentTypeId: row.document_type_id,
-        title: docTitle,
+        titleKey: dt?.title_key ?? null,
         linkType,
       });
     }
@@ -177,9 +149,11 @@ export async function enrichActionsWithKnowledge(params: {
 
     return {
       ...action,
-      title,
-      description: hint ?? action.description,
-      stepDetails: { title, hint },
+      stepDetails: {
+        titleKey: step.title_key,
+        descriptionKey: step.description_key,
+        hintKey: step.description_key,
+      },
       relatedDocuments: relatedDocuments.length > 0 ? relatedDocuments : undefined,
       guideHref: guideHref ?? undefined,
       uploadDocumentHref,

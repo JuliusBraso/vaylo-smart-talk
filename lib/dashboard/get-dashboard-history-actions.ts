@@ -2,7 +2,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Dict } from "@/lib/i18n";
 import type { DashboardAction } from "@/lib/dashboard/get-dashboard-actions";
 import type { GetUserStepStateResult } from "@/lib/vaylo/steps/types";
-import { resolveKnowledgeDictString } from "@/lib/dashboard/resolve-knowledge-dict-string";
 
 function humanizeStepId(id: string): string {
   return id.replace(/[-_]+/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
@@ -14,7 +13,7 @@ export async function getDashboardHistoryActions(params: {
   t: Dict;
   limit?: number;
 }): Promise<DashboardAction[]> {
-  const { supabase, stepState, t } = params;
+  const { supabase, stepState } = params;
   const limit = params.limit ?? 8;
 
   const candidates = Object.values(stepState.steps).filter((s) => {
@@ -69,12 +68,7 @@ export async function getDashboardHistoryActions(params: {
 
   return limited.map((s) => {
     const meta = metaById.get(s.stepId);
-    const stepTitle =
-      (meta?.title_key ? resolveKnowledgeDictString(t, meta.title_key) : null) ??
-      humanizeStepId(s.stepId);
-    const stepHint =
-      (meta?.description_key ? resolveKnowledgeDictString(t, meta.description_key) : null) ??
-      null;
+    const stepTitle = humanizeStepId(s.stepId);
 
     return {
       id: `history:${s.stepId}`,
@@ -85,7 +79,15 @@ export async function getDashboardHistoryActions(params: {
       priority: "medium",
       cta: "",
       knowledgeStepId: s.stepId,
-      stepDetails: { title: stepTitle, hint: stepHint },
+      ...(meta?.title_key
+        ? {
+            stepDetails: {
+              titleKey: meta.title_key,
+              descriptionKey: meta.description_key,
+              hintKey: meta.description_key,
+            },
+          }
+        : {}),
       stepStatus: s.status,
       stepSource: s.source,
       isApplicable: s.isApplicable,
