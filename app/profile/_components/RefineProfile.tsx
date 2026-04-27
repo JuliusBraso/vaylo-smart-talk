@@ -9,6 +9,13 @@ import { calculateVayloDNA } from "@/lib/vaylo/dna-engine";
 import { getMyProfile } from "@/lib/profile";
 import { ROUTES } from "@/lib/routes";
 import type { Goal } from "@/lib/dna/types";
+import { GERMAN_REGIONS, REGION_CONFIG } from "@/lib/vaylo/region/region-config";
+
+type RegistrationStatus =
+  | "unknown"
+  | "not_registered"
+  | "appointment_booked"
+  | "registered";
 
 type OptBool = boolean | null;
 
@@ -42,6 +49,11 @@ export default function RefineProfile() {
   const [jobSearchUrgency, setJobSearchUrgency] = useState<
     "relaxed" | "urgent" | null
   >(null);
+  const [bundesland, setBundesland] = useState<string>("");
+  const [city, setCity] = useState<string>("");
+  const [postalCode, setPostalCode] = useState<string>("");
+  const [registrationStatus, setRegistrationStatus] =
+    useState<RegistrationStatus | "">("");
 
   // Keep core inputs for DNA recomputation (not presented as “DNA”)
   const [familyStatus, setFamilyStatus] = useState<string | null>(null);
@@ -86,6 +98,23 @@ export default function RefineProfile() {
           typeof p.language_level === "string" ? p.language_level : null
         );
         setGoals((profile?.goals as Goal[]) ?? []);
+        setBundesland(
+          typeof p.bundesland === "string"
+            ? p.bundesland
+            : typeof p.region === "string"
+              ? p.region
+              : "",
+        );
+        setCity(typeof p.city === "string" ? p.city : "");
+        setPostalCode(typeof p.postal_code === "string" ? p.postal_code : "");
+        setRegistrationStatus(
+          p.registration_status === "unknown" ||
+            p.registration_status === "not_registered" ||
+            p.registration_status === "appointment_booked" ||
+            p.registration_status === "registered"
+            ? p.registration_status
+            : "",
+        );
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -208,6 +237,12 @@ export default function RefineProfile() {
       if (jobSearchUrgency === "urgent" || jobSearchUrgency === "relaxed") {
         payload.job_search_urgency = jobSearchUrgency;
       }
+      payload.country = "DE";
+      payload.bundesland = bundesland.trim().length > 0 ? bundesland.trim() : null;
+      payload.city = city.trim().length > 0 ? city.trim() : null;
+      payload.postal_code =
+        postalCode.trim().length > 0 ? postalCode.trim() : null;
+      payload.registration_status = registrationStatus || null;
 
       // Recompute DNA if core inputs are present.
       if (familyStatus && employmentType && languageLevel && goals.length > 0) {
@@ -262,6 +297,8 @@ export default function RefineProfile() {
       setSaving(false);
     }
   }, [
+    bundesland,
+    city,
     childrenSchoolAge,
     employmentType,
     familyStatus,
@@ -275,6 +312,8 @@ export default function RefineProfile() {
     registeredArbeitsagentur,
     router,
     languageLevel,
+    postalCode,
+    registrationStatus,
   ]);
 
   if (!mounted) return null;
@@ -297,6 +336,102 @@ export default function RefineProfile() {
               <div className="text-sm text-slate-600">{t.documents.loading}</div>
             ) : (
               <>
+                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <h2 className="text-sm font-semibold text-slate-900">
+                    Location (Germany)
+                  </h2>
+                  <p className="mt-1 text-xs text-slate-600">
+                    Keep your location updated for regional guidance and authority routing.
+                  </p>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <div className="sm:col-span-2">
+                      <label className="mb-1 block text-xs font-medium text-slate-600">
+                        Country
+                      </label>
+                      <input
+                        value="DE"
+                        readOnly
+                        className="h-10 w-full rounded-xl border border-slate-200 bg-slate-100 px-3 text-sm text-slate-700"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label
+                        htmlFor="refine-bundesland"
+                        className="mb-1 block text-xs font-medium text-slate-600"
+                      >
+                        Bundesland
+                      </label>
+                      <select
+                        id="refine-bundesland"
+                        value={bundesland}
+                        onChange={(e) => setBundesland(e.target.value)}
+                        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900"
+                      >
+                        <option value="">Select Bundesland</option>
+                        {GERMAN_REGIONS.map((regionId) => (
+                          <option key={regionId} value={regionId}>
+                            {REGION_CONFIG[regionId].germanLabel}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="refine-city"
+                        className="mb-1 block text-xs font-medium text-slate-600"
+                      >
+                        City
+                      </label>
+                      <input
+                        id="refine-city"
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900"
+                        placeholder="e.g. Berlin"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="refine-postal-code"
+                        className="mb-1 block text-xs font-medium text-slate-600"
+                      >
+                        Postal code
+                      </label>
+                      <input
+                        id="refine-postal-code"
+                        value={postalCode}
+                        onChange={(e) => setPostalCode(e.target.value)}
+                        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900"
+                        placeholder="e.g. 10115"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label
+                        htmlFor="refine-registration-status"
+                        className="mb-1 block text-xs font-medium text-slate-600"
+                      >
+                        Registration status
+                      </label>
+                      <select
+                        id="refine-registration-status"
+                        value={registrationStatus}
+                        onChange={(e) =>
+                          setRegistrationStatus(
+                            e.target.value as RegistrationStatus | "",
+                          )
+                        }
+                        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900"
+                      >
+                        <option value="">Select status</option>
+                        <option value="unknown">unknown</option>
+                        <option value="not_registered">not_registered</option>
+                        <option value="appointment_booked">appointment_booked</option>
+                        <option value="registered">registered</option>
+                      </select>
+                    </div>
+                  </div>
+                </section>
+
                 <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                   <h2 className="text-sm font-semibold text-slate-900">
                     {t.dashboard.refineSectionFamilyTitle}

@@ -184,7 +184,7 @@ export async function getUserState(params: {
   try {
     const { data, error } = await supabase
       .from("profiles")
-      .select("region, city")
+      .select("country, bundesland, region, city, postal_code, registration_status")
       .eq("id", userId)
       .maybeSingle();
     if (!error && data && profile) {
@@ -209,13 +209,39 @@ export async function getUserState(params: {
     }
   }
 
+  const profileCountry =
+    typeof profile?.country === "string" && profile.country.trim().length > 0
+      ? profile.country
+      : "DE";
+  const profileBundesland =
+    typeof (profile as { bundesland?: unknown } | null)?.bundesland === "string"
+      ? ((profile as { bundesland?: string | null }).bundesland ?? null)
+      : null;
   const profileRegion = typeof profile?.region === "string" ? profile.region : null;
   const profileCity =
     typeof (profile as { city?: unknown } | null)?.city === "string"
       ? ((profile as { city?: string | null }).city ?? null)
       : null;
+  const profilePostalCode =
+    typeof (profile as { postal_code?: unknown } | null)?.postal_code === "string"
+      ? ((profile as { postal_code?: string | null }).postal_code ?? null)
+      : null;
+  const profileRegistrationStatus =
+    ((): "unknown" | "not_registered" | "appointment_booked" | "registered" | null => {
+      const raw = (profile as { registration_status?: unknown } | null)?.registration_status;
+      if (
+        raw === "unknown" ||
+        raw === "not_registered" ||
+        raw === "appointment_booked" ||
+        raw === "registered"
+      ) {
+        return raw;
+      }
+      return null;
+    })();
 
-  const resolvedRegion = profileRegion ?? detectRegionFromCity(profileCity);
+  const resolvedRegion =
+    profileBundesland ?? profileRegion ?? detectRegionFromCity(profileCity);
   const regionConfig = getRegionConfig(resolvedRegion);
 
   const liveSituation = getLiveSituationFromProfile(profile);
@@ -293,6 +319,14 @@ export async function getUserState(params: {
   const userState: UserState = {
     region: resolvedRegion,
     regionConfig,
+    location: {
+      country: profileCountry,
+      bundesland: profileBundesland ?? profileRegion ?? null,
+      regionFallback: profileRegion,
+      city: profileCity,
+      postalCode: profilePostalCode,
+      registrationStatus: profileRegistrationStatus,
+    },
     identity: {
       dna,
       familyStatus: identityFromDna?.family_status ?? null,

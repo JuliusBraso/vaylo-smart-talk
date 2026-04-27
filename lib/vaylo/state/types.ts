@@ -38,6 +38,22 @@ export type UserState = {
    */
   region?: string | null;
   regionConfig?: RegionConfig | null;
+  /** Profile location read model (future region-aware intelligence foundation). */
+  location?: {
+    country: string;
+    /** Canonical profile field; when absent we may temporarily bridge from legacy `region`. */
+    bundesland: string | null;
+    /** Legacy `profiles.region` value kept for compatibility/migration visibility. */
+    regionFallback: string | null;
+    city: string | null;
+    postalCode: string | null;
+    registrationStatus:
+      | "unknown"
+      | "not_registered"
+      | "appointment_booked"
+      | "registered"
+      | null;
+  };
 
   identity: {
     dna: ProfileDNA | null;

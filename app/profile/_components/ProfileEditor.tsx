@@ -21,6 +21,13 @@ import type {
 import { calculateVayloDNA } from "@/lib/vaylo/dna-engine";
 import { getMyProfile, upsertMyProfile } from "@/lib/profile";
 import { ROUTES } from "@/lib/routes";
+import { GERMAN_REGIONS, REGION_CONFIG } from "@/lib/vaylo/region/region-config";
+
+type RegistrationStatus =
+  | "unknown"
+  | "not_registered"
+  | "appointment_booked"
+  | "registered";
 
 type StepId =
   | "family"
@@ -45,6 +52,11 @@ export default function ProfileEditor() {
   );
   const [languageLevel, setLanguageLevel] = useState<LanguageLevel | null>(null);
   const [goals, setGoals] = useState<Goal[]>([]);
+  const [bundesland, setBundesland] = useState<string>("");
+  const [city, setCity] = useState<string>("");
+  const [postalCode, setPostalCode] = useState<string>("");
+  const [registrationStatus, setRegistrationStatus] =
+    useState<RegistrationStatus | "">("");
 
   // Followups (currently not persisted; used only to guide the flow)
   const [freelancerInvoicesDE, setFreelancerInvoicesDE] = useState<
@@ -73,6 +85,25 @@ export default function ProfileEditor() {
         setEmploymentType(profile?.employment_type ?? "employee");
         setLanguageLevel(profile?.language_level ?? "A2");
         setGoals(profile?.goals ?? []);
+        setBundesland(
+          typeof profile?.bundesland === "string"
+            ? profile.bundesland
+            : typeof profile?.region === "string"
+              ? profile.region
+              : "",
+        );
+        setCity(typeof profile?.city === "string" ? profile.city : "");
+        setPostalCode(
+          typeof profile?.postal_code === "string" ? profile.postal_code : "",
+        );
+        setRegistrationStatus(
+          profile?.registration_status === "unknown" ||
+            profile?.registration_status === "not_registered" ||
+            profile?.registration_status === "appointment_booked" ||
+            profile?.registration_status === "registered"
+            ? profile.registration_status
+            : "",
+        );
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -149,6 +180,11 @@ export default function ProfileEditor() {
         goals,
         dna,
         dna_updated_at: now,
+        country: "DE",
+        bundesland: bundesland.trim().length > 0 ? bundesland.trim() : null,
+        city: city.trim().length > 0 ? city.trim() : null,
+        postal_code: postalCode.trim().length > 0 ? postalCode.trim() : null,
+        registration_status: registrationStatus || null,
       });
 
       if (!error) {
@@ -160,7 +196,17 @@ export default function ProfileEditor() {
     } finally {
       setSaving(false);
     }
-  }, [employmentType, familyStatus, goals, languageLevel, router]);
+  }, [
+    bundesland,
+    city,
+    employmentType,
+    familyStatus,
+    goals,
+    languageLevel,
+    postalCode,
+    registrationStatus,
+    router,
+  ]);
 
   if (!mounted) return null;
 
@@ -523,6 +569,100 @@ export default function ProfileEditor() {
                           </button>
                         );
                       })}
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-700">
+                        Location (Germany)
+                      </h3>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                        <div className="sm:col-span-2">
+                          <label className="mb-1 block text-xs font-medium text-slate-600">
+                            Country
+                          </label>
+                          <input
+                            value="DE"
+                            readOnly
+                            className="h-10 w-full rounded-xl border border-slate-200 bg-slate-100 px-3 text-sm text-slate-700"
+                          />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label
+                            htmlFor="profile-bundesland"
+                            className="mb-1 block text-xs font-medium text-slate-600"
+                          >
+                            Bundesland
+                          </label>
+                          <select
+                            id="profile-bundesland"
+                            value={bundesland}
+                            onChange={(e) => setBundesland(e.target.value)}
+                            className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900"
+                          >
+                            <option value="">Select Bundesland</option>
+                            {GERMAN_REGIONS.map((regionId) => (
+                              <option key={regionId} value={regionId}>
+                                {REGION_CONFIG[regionId].germanLabel}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label
+                            htmlFor="profile-city"
+                            className="mb-1 block text-xs font-medium text-slate-600"
+                          >
+                            City
+                          </label>
+                          <input
+                            id="profile-city"
+                            value={city}
+                            onChange={(e) => setCity(e.target.value)}
+                            className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900"
+                            placeholder="e.g. Berlin"
+                          />
+                        </div>
+                        <div>
+                          <label
+                            htmlFor="profile-postal-code"
+                            className="mb-1 block text-xs font-medium text-slate-600"
+                          >
+                            Postal code
+                          </label>
+                          <input
+                            id="profile-postal-code"
+                            value={postalCode}
+                            onChange={(e) => setPostalCode(e.target.value)}
+                            className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900"
+                            placeholder="e.g. 10115"
+                          />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label
+                            htmlFor="profile-registration-status"
+                            className="mb-1 block text-xs font-medium text-slate-600"
+                          >
+                            Registration status
+                          </label>
+                          <select
+                            id="profile-registration-status"
+                            value={registrationStatus}
+                            onChange={(e) =>
+                              setRegistrationStatus(
+                                e.target.value as RegistrationStatus | "",
+                              )
+                            }
+                            className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900"
+                          >
+                            <option value="">Select status</option>
+                            <option value="unknown">unknown</option>
+                            <option value="not_registered">not_registered</option>
+                            <option value="appointment_booked">
+                              appointment_booked
+                            </option>
+                            <option value="registered">registered</option>
+                          </select>
+                        </div>
+                      </div>
                     </div>
                     <div className="flex gap-2">
                       <button
