@@ -1042,6 +1042,28 @@ const ro = {
     "topics.residency.description": "Anmeldung, cod fiscal și pași de bază.",
     "topics.health_insurance.title": "Asigurare de sănătate",
     "topics.health_insurance.description": "Alegerea casei și dovada membrului.",
+    "topics.relocation_basics.title": "Pași de bază după mutare",
+    "topics.relocation_basics.description":
+      "Înregistrare, cod fiscal, cont bancar și asigurare pentru începutul în Germania.",
+    "steps.relocation_basics.anmeldung.title": "Înregistrează adresa (Anmeldung)",
+    "steps.relocation_basics.tax_id.title": "Primește codul fiscal (Steuer-ID)",
+    "steps.relocation_basics.health_insurance.title": "Rezolvă asigurarea de sănătate",
+    "steps.relocation_basics.health_insurance_public.title":
+      "Rezolvă asigurarea publică de sănătate",
+    "steps.relocation_basics.health_insurance_private.title":
+      "Rezolvă asigurarea privată de sănătate",
+    "steps.relocation_basics.bank_account.title": "Deschide un cont bancar german",
+    "steps.relocation_basics.tax_office_visit.title": "Contactează Finanzamt",
+    "steps.identity_verification.passport.title": "Pregătește pașaportul",
+    "steps.identity_verification.eu_identity_card.title": "Pregătește cartea de identitate UE",
+    "steps.identity_verification.identity_verification.title": "Verifică identitatea",
+    "steps.family_benefits.kindergeld.title": "Aplică pentru Kindergeld",
+    "steps.family_benefits.elterngeld.title": "Aplică pentru Elterngeld",
+    "steps.financial_setup.public_health_insurance.title":
+      "Alege asigurarea publică de sănătate",
+    "steps.financial_setup.private_health_insurance.title":
+      "Alege asigurarea privată de sănătate",
+    "steps.financial_setup.social_security_number.title": "Primește numărul de asigurare socială",
     "steps.residency.anmeldung.title": "Înregistrare adresă (Anmeldung)",
     "steps.residency.anmeldung.description":
       "Înregistrează adresa la Bürgeramt — necesar pentru bancă, cod fiscal și altele.",

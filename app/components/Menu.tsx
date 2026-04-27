@@ -149,12 +149,12 @@ export default function Menu() {
     icon: Parameters<typeof Icon>[0]["name"];
     activeMatch?: (path: string) => boolean;
   }> = [
-    { label: "Domov", href: "/dashboard", icon: "home" },
-    { label: "Moje úlohy", href: "/dashboard#tasks", icon: "tasks", activeMatch: (p) => p === "/dashboard" },
-    { label: "História", href: "/dashboard#history", icon: "history", activeMatch: (p) => p === "/dashboard" },
-    { label: "Dokumenty", href: "/documents", icon: "docs" },
-    { label: "Profil", href: "/profile", icon: "user" },
-    { label: "Nastavenia", href: "/settings", icon: "settings" },
+    { label: t.nav.home, href: "/dashboard", icon: "home" },
+    { label: t.nav.tasks, href: "/dashboard#tasks", icon: "tasks", activeMatch: (p) => p === "/dashboard" },
+    { label: t.nav.history, href: "/dashboard#history", icon: "history", activeMatch: (p) => p === "/dashboard" },
+    { label: t.nav.documents, href: "/documents", icon: "docs" },
+    { label: t.nav.profile, href: "/profile", icon: "user" },
+    { label: t.nav.settings, href: "/settings", icon: "settings" },
   ];
 
   return (
@@ -214,26 +214,26 @@ export default function Menu() {
 
         <div className="mt-2 grid gap-3">
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="text-sm font-semibold text-slate-900">Váš profil</div>
+            <div className="text-sm font-semibold text-slate-900">{t.dashboard.profileCardTitle}</div>
             <div className="mt-3 grid gap-2 text-xs">
               <div className="flex items-center justify-between gap-3">
-                <span className="text-slate-500">Zamestnanie</span>
-                <span className="font-medium text-slate-800">Zamestnanec</span>
+                <span className="text-slate-500">{t.dashboard.workModeLabel}</span>
+                <span className="font-medium text-slate-800">{t.common.unknown}</span>
               </div>
               <div className="flex items-center justify-between gap-3">
-                <span className="text-slate-500">Rodinný stav</span>
-                <span className="font-medium text-slate-800">S deťmi</span>
+                <span className="text-slate-500">{t.dashboard.familyLabel}</span>
+                <span className="font-medium text-slate-800">{t.common.unknown}</span>
               </div>
               <div className="flex items-center justify-between gap-3">
-                <span className="text-slate-500">Registrácia</span>
-                <span className="font-medium text-slate-800">Berlin, Nemecko</span>
+                <span className="text-slate-500">{t.dashboard.registrationLabel}</span>
+                <span className="font-medium text-slate-800">{t.common.unknown}</span>
               </div>
             </div>
             <Link
               href="/profile/edit"
               className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
             >
-              Upraviť profil
+              {t.dashboard.editProfile}
             </Link>
           </div>
         </div>
@@ -245,8 +245,8 @@ export default function Menu() {
                 M
               </div>
               <div style={{ minWidth: 0 }}>
-                <div className="text-xs font-semibold text-slate-900">martin@example.com</div>
-                <div className="text-[11px] text-slate-500">Personal</div>
+                <div className="text-xs font-semibold text-slate-900">{t.dashboard.profileCardTitle}</div>
+                <div className="text-[11px] text-slate-500">{t.settings.personal}</div>
               </div>
             </div>
           </div>

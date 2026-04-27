@@ -1040,6 +1040,28 @@ const cs = {
     "topics.residency.description": "Anmeldung, daňové ID a základní kroky v Německu.",
     "topics.health_insurance.title": "Zdravotní pojištění",
     "topics.health_insurance.description": "Výběr pojišťovny a potvrzení členství.",
+    "topics.relocation_basics.title": "První kroky po příjezdu",
+    "topics.relocation_basics.description":
+      "Registrace, daňové ID, účet a pojištění pro začátek v Německu.",
+    "steps.relocation_basics.anmeldung.title": "Zaregistrujte adresu (Anmeldung)",
+    "steps.relocation_basics.tax_id.title": "Získejte daňové číslo (Steuer-ID)",
+    "steps.relocation_basics.health_insurance.title": "Zařiďte zdravotní pojištění",
+    "steps.relocation_basics.health_insurance_public.title":
+      "Zařiďte veřejné zdravotní pojištění",
+    "steps.relocation_basics.health_insurance_private.title":
+      "Zařiďte soukromé zdravotní pojištění",
+    "steps.relocation_basics.bank_account.title": "Otevřete německý bankovní účet",
+    "steps.relocation_basics.tax_office_visit.title": "Kontaktujte Finanzamt",
+    "steps.identity_verification.passport.title": "Připravte cestovní pas",
+    "steps.identity_verification.eu_identity_card.title": "Připravte občanský průkaz EU",
+    "steps.identity_verification.identity_verification.title": "Ověřte totožnost",
+    "steps.family_benefits.kindergeld.title": "Požádejte o Kindergeld",
+    "steps.family_benefits.elterngeld.title": "Požádejte o Elterngeld",
+    "steps.financial_setup.public_health_insurance.title":
+      "Vyberte veřejné zdravotní pojištění",
+    "steps.financial_setup.private_health_insurance.title":
+      "Vyberte soukromé zdravotní pojištění",
+    "steps.financial_setup.social_security_number.title": "Získejte číslo sociálního pojištění",
     "steps.residency.anmeldung.title": "Hlášení adresy (Anmeldung)",
     "steps.residency.anmeldung.description":
       "Nahlaste adresu na Bürgeramt — nutné pro banku, daňové ID a další kroky.",

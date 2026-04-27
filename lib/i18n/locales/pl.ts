@@ -1041,6 +1041,28 @@ const pl = {
     "topics.residency.description": "Anmeldung, NIP podatkowy i podstawowe kroki.",
     "topics.health_insurance.title": "Ubezpieczenie zdrowotne",
     "topics.health_insurance.description": "Wybór kasy i potwierdzenie członkostwa.",
+    "topics.relocation_basics.title": "Pierwsze kroki po przeprowadzce",
+    "topics.relocation_basics.description":
+      "Meldunek, numer podatkowy, konto i ubezpieczenie na start w Niemczech.",
+    "steps.relocation_basics.anmeldung.title": "Zgłoś adres (Anmeldung)",
+    "steps.relocation_basics.tax_id.title": "Otrzymaj numer podatkowy (Steuer-ID)",
+    "steps.relocation_basics.health_insurance.title": "Załatw ubezpieczenie zdrowotne",
+    "steps.relocation_basics.health_insurance_public.title":
+      "Załatw publiczne ubezpieczenie zdrowotne",
+    "steps.relocation_basics.health_insurance_private.title":
+      "Załatw prywatne ubezpieczenie zdrowotne",
+    "steps.relocation_basics.bank_account.title": "Otwórz niemieckie konto bankowe",
+    "steps.relocation_basics.tax_office_visit.title": "Skontaktuj się z Finanzamt",
+    "steps.identity_verification.passport.title": "Przygotuj paszport",
+    "steps.identity_verification.eu_identity_card.title": "Przygotuj dowód osobisty UE",
+    "steps.identity_verification.identity_verification.title": "Potwierdź tożsamość",
+    "steps.family_benefits.kindergeld.title": "Złóż wniosek o Kindergeld",
+    "steps.family_benefits.elterngeld.title": "Złóż wniosek o Elterngeld",
+    "steps.financial_setup.public_health_insurance.title":
+      "Wybierz publiczne ubezpieczenie zdrowotne",
+    "steps.financial_setup.private_health_insurance.title":
+      "Wybierz prywatne ubezpieczenie zdrowotne",
+    "steps.financial_setup.social_security_number.title": "Otrzymaj numer ubezpieczenia społecznego",
     "steps.residency.anmeldung.title": "Zgłoszenie adresu (Anmeldung)",
     "steps.residency.anmeldung.description":
       "Zamelduj adres w Bürgeramt — potrzebne do banku, podatku i wielu spraw.",

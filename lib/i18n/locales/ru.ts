@@ -1042,6 +1042,28 @@ const ru = {
     "topics.residency.description": "Anmeldung, налоговый номер и базовые шаги.",
     "topics.health_insurance.title": "Медицинская страховка",
     "topics.health_insurance.description": "Выбор кассы и подтверждение членства.",
+    "topics.relocation_basics.title": "Первые шаги после переезда",
+    "topics.relocation_basics.description":
+      "Регистрация, налоговый номер, банковский счёт и страховка для старта в Германии.",
+    "steps.relocation_basics.anmeldung.title": "Зарегистрируйте адрес (Anmeldung)",
+    "steps.relocation_basics.tax_id.title": "Получите налоговый номер (Steuer-ID)",
+    "steps.relocation_basics.health_insurance.title": "Оформите медицинскую страховку",
+    "steps.relocation_basics.health_insurance_public.title":
+      "Оформите государственную медицинскую страховку",
+    "steps.relocation_basics.health_insurance_private.title":
+      "Оформите частную медицинскую страховку",
+    "steps.relocation_basics.bank_account.title": "Откройте немецкий банковский счёт",
+    "steps.relocation_basics.tax_office_visit.title": "Свяжитесь с Finanzamt",
+    "steps.identity_verification.passport.title": "Подготовьте паспорт",
+    "steps.identity_verification.eu_identity_card.title": "Подготовьте удостоверение личности ЕС",
+    "steps.identity_verification.identity_verification.title": "Подтвердите личность",
+    "steps.family_benefits.kindergeld.title": "Подайте заявление на Kindergeld",
+    "steps.family_benefits.elterngeld.title": "Подайте заявление на Elterngeld",
+    "steps.financial_setup.public_health_insurance.title":
+      "Выберите государственную медицинскую страховку",
+    "steps.financial_setup.private_health_insurance.title":
+      "Выберите частную медицинскую страховку",
+    "steps.financial_setup.social_security_number.title": "Получите номер социального страхования",
     "steps.residency.anmeldung.title": "Регистрация адреса (Anmeldung)",
     "steps.residency.anmeldung.description":
       "Зарегистрируйте адрес в Bürgeramt — нужно для банка, налога и многого другого.",

@@ -1042,6 +1042,28 @@ const bg = {
     "topics.residency.description": "Anmeldung, данъчен номер и основни стъпки.",
     "topics.health_insurance.title": "Здравно осигуряване",
     "topics.health_insurance.description": "Избор на каса и доказателство за членство.",
+    "topics.relocation_basics.title": "Първи стъпки след преместване",
+    "topics.relocation_basics.description":
+      "Регистрация, данъчен номер, банкова сметка и осигуряване за старт в Германия.",
+    "steps.relocation_basics.anmeldung.title": "Регистрирайте адреса си (Anmeldung)",
+    "steps.relocation_basics.tax_id.title": "Получете данъчен номер (Steuer-ID)",
+    "steps.relocation_basics.health_insurance.title": "Уредете здравното осигуряване",
+    "steps.relocation_basics.health_insurance_public.title":
+      "Уредете общественото здравно осигуряване",
+    "steps.relocation_basics.health_insurance_private.title":
+      "Уредете частното здравно осигуряване",
+    "steps.relocation_basics.bank_account.title": "Отворете немска банкова сметка",
+    "steps.relocation_basics.tax_office_visit.title": "Свържете се с Finanzamt",
+    "steps.identity_verification.passport.title": "Подгответе паспорта си",
+    "steps.identity_verification.eu_identity_card.title": "Подгответе личната карта от ЕС",
+    "steps.identity_verification.identity_verification.title": "Потвърдете самоличността си",
+    "steps.family_benefits.kindergeld.title": "Кандидатствайте за Kindergeld",
+    "steps.family_benefits.elterngeld.title": "Кандидатствайте за Elterngeld",
+    "steps.financial_setup.public_health_insurance.title":
+      "Изберете обществено здравно осигуряване",
+    "steps.financial_setup.private_health_insurance.title":
+      "Изберете частно здравно осигуряване",
+    "steps.financial_setup.social_security_number.title": "Получете социалноосигурителен номер",
     "steps.residency.anmeldung.title": "Регистрация на адрес (Anmeldung)",
     "steps.residency.anmeldung.description":
       "Регистрирайте адреса си в Bürgeramt — необходимо за банка, данък и още.",

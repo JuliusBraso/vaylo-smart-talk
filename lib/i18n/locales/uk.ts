@@ -1042,6 +1042,28 @@ const uk = {
     "topics.residency.description": "Anmeldung, податковий номер і базові кроки.",
     "topics.health_insurance.title": "Медичне страхування",
     "topics.health_insurance.description": "Вибір каси та підтвердження членства.",
+    "topics.relocation_basics.title": "Перші кроки після переїзду",
+    "topics.relocation_basics.description":
+      "Реєстрація, податковий номер, банківський рахунок і страхування для старту в Німеччині.",
+    "steps.relocation_basics.anmeldung.title": "Зареєструйте адресу (Anmeldung)",
+    "steps.relocation_basics.tax_id.title": "Отримайте податковий номер (Steuer-ID)",
+    "steps.relocation_basics.health_insurance.title": "Оформіть медичне страхування",
+    "steps.relocation_basics.health_insurance_public.title":
+      "Оформіть державне медичне страхування",
+    "steps.relocation_basics.health_insurance_private.title":
+      "Оформіть приватне медичне страхування",
+    "steps.relocation_basics.bank_account.title": "Відкрийте німецький банківський рахунок",
+    "steps.relocation_basics.tax_office_visit.title": "Зв'яжіться з Finanzamt",
+    "steps.identity_verification.passport.title": "Підготуйте паспорт",
+    "steps.identity_verification.eu_identity_card.title": "Підготуйте посвідчення особи ЄС",
+    "steps.identity_verification.identity_verification.title": "Підтвердьте особу",
+    "steps.family_benefits.kindergeld.title": "Подайте заяву на Kindergeld",
+    "steps.family_benefits.elterngeld.title": "Подайте заяву на Elterngeld",
+    "steps.financial_setup.public_health_insurance.title":
+      "Оберіть державне медичне страхування",
+    "steps.financial_setup.private_health_insurance.title":
+      "Оберіть приватне медичне страхування",
+    "steps.financial_setup.social_security_number.title": "Отримайте номер соціального страхування",
     "steps.residency.anmeldung.title": "Реєстрація адреси (Anmeldung)",
     "steps.residency.anmeldung.description":
       "Зареєструйте адресу в Bürgeramt — потрібно для банку, податку й іншого.",

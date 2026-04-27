@@ -6,6 +6,7 @@ import type { ProfileDNA } from "@/lib/dna/types";
 import type { Dict, Locale } from "@/lib/i18n";
 import type { DashboardAction } from "@/lib/dashboard/get-dashboard-actions";
 import type { RegionConfig } from "@/lib/vaylo/region/types";
+import type { UserState } from "@/lib/vaylo/state/types";
 
 const DashboardShell = dynamic(() => import("./DashboardShell"), { ssr: false });
 
@@ -15,6 +16,7 @@ type Props = {
   userId: string;
   actions: DashboardAction[];
   historyActions: DashboardAction[];
+  userState: UserState;
   regionConfig?: RegionConfig | null;
   /** Server-resolved header copy (no client-side DNA branching for priority / summary). */
   activePriorityLabel: string;
@@ -34,6 +36,7 @@ export default function DashboardClientWrapper({
   userId,
   actions,
   historyActions,
+  userState,
   regionConfig,
   activePriorityLabel,
   situationSummaryLine,
@@ -47,6 +50,7 @@ export default function DashboardClientWrapper({
       userId={userId}
       actions={actions}
       historyActions={historyActions}
+      userState={userState}
       regionConfig={regionConfig}
       activePriorityLabel={activePriorityLabel}
       situationSummaryLine={situationSummaryLine}

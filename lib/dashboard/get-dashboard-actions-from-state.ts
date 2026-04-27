@@ -5,7 +5,7 @@ import { enrichActionsWithKnowledge } from "@/lib/dashboard/enrich-actions-with-
 import { getDashboardActions } from "@/lib/dashboard/get-dashboard-actions";
 import type { DashboardAction } from "@/lib/dashboard/get-dashboard-actions";
 import type { UserState } from "@/lib/vaylo/state/types";
-import type { GetUserStepStateResult } from "@/lib/vaylo/steps/types";
+import type { GetUserStepStateResult, ResolvedUserStepState } from "@/lib/vaylo/steps/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 const dashboardCompatWarned = new Set<string>();
@@ -26,6 +26,64 @@ function isCompatUnavailableErrorMessage(msg: string): boolean {
     m.includes("unknown column") ||
     m.includes("column") && m.includes("does not exist")
   );
+}
+
+function isActionableStepStatus(status: string): boolean {
+  return ["eligible", "ready"].includes(status);
+}
+
+function stepFallbackTitle(step: ResolvedUserStepState): string {
+  return step.slug
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function buildActionsFromEligibleSteps(params: {
+  stepState: GetUserStepStateResult | undefined;
+  existingActions: DashboardAction[];
+  t: Dict;
+}): DashboardAction[] {
+  const { stepState, existingActions, t } = params;
+  if (!stepState) return [];
+
+  const representedStepIds = new Set(
+    existingActions
+      .map((action) => action.knowledgeStepId)
+      .filter((id): id is string => typeof id === "string" && id.length > 0),
+  );
+  const representedActionIds = new Set(existingActions.map((action) => action.id));
+
+  return Object.values(stepState.steps)
+    .filter((step) => {
+      if (!isActionableStepStatus(step.status)) return false;
+      if (step.isApplicable !== true) return false;
+      if (representedStepIds.has(step.stepId)) return false;
+      if (step.actionId && representedActionIds.has(step.actionId)) return false;
+      return true;
+    })
+    .map((step): DashboardAction => {
+      const id = step.actionId ?? `step:${step.stepId}`;
+      return {
+        id,
+        title: stepFallbackTitle(step),
+        description: t.dashboard.stepProcessEligible,
+        reasons:
+          step.evidence.blockedByStepIds.length > 0
+            ? [t.dashboard.stepProcessBlockedHint]
+            : [t.dashboard.stepRecommendedNext],
+        href: `/dashboard?step=${encodeURIComponent(step.stepId)}`,
+        priority: "medium",
+        cta: t.dashboard.actionCtaStart,
+        knowledgeStepId: step.stepId,
+        stepStatus: step.status,
+        stepSource: step.source,
+        isApplicable: step.isApplicable,
+        ...(step.applicabilityReason ? { applicabilityReason: step.applicabilityReason } : {}),
+        recommendedNextHint: t.dashboard.stepRecommendedNext,
+      };
+    });
 }
 
 async function attachDocumentJobProcessingHints(params: {
@@ -170,8 +228,48 @@ export async function getDashboardActionsFromState(params: {
     stepState,
   });
 
+  if (process.env.NODE_ENV === "development") {
+    console.debug("[dashboard:pipeline] raw action input", {
+      inputStepsCount: stepState ? Object.keys(stepState.steps).length : 0,
+      legacyActionsCount: actions.length,
+      eligibleApplicableStepsCount: stepState
+        ? Object.values(stepState.steps).filter(
+            (step) => isActionableStepStatus(step.status) && step.isApplicable === true,
+          ).length
+        : 0,
+    });
+  }
+
   const enriched = await enrichActionsWithKnowledge({ supabase, actions, t });
   const withStep = applyStepStateToDashboardActions(enriched, stepState, t);
   const filtered = withStep.filter((a) => a.stepStatus !== "not_applicable");
-  return attachDocumentJobProcessingHints({ supabase, userId, actions: filtered, t });
+  const fallbackStepActions = buildActionsFromEligibleSteps({
+    stepState,
+    existingActions: filtered,
+    t,
+  });
+  const enrichedFallback =
+    fallbackStepActions.length > 0
+      ? applyStepStateToDashboardActions(
+          await enrichActionsWithKnowledge({ supabase, actions: fallbackStepActions, t }),
+          stepState,
+          t,
+        )
+      : [];
+  const finalActions = [...filtered, ...enrichedFallback].filter(
+    (a) => a.stepStatus !== "not_applicable",
+  );
+
+  if (process.env.NODE_ENV === "development") {
+    console.debug("[dashboard:pipeline] action output", {
+      filteredActionsCount: filtered.length,
+      fallbackEligibleActionsCount: fallbackStepActions.length,
+      finalActionsCount: finalActions.length,
+      primaryAction: finalActions[0]
+        ? { id: finalActions[0].id, title: finalActions[0].title }
+        : null,
+    });
+  }
+
+  return attachDocumentJobProcessingHints({ supabase, userId, actions: finalActions, t });
 }

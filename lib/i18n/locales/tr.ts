@@ -1042,6 +1042,26 @@ const tr = {
     "topics.residency.description": "Anmeldung, vergi numarası ve temel adımlar.",
     "topics.health_insurance.title": "Sağlık sigortası",
     "topics.health_insurance.description": "Kasa seçimi ve üyelik kanıtı.",
+    "topics.relocation_basics.title": "Taşınma sonrası temel adımlar",
+    "topics.relocation_basics.description":
+      "Almanya'da başlangıç için kayıt, vergi numarası, banka hesabı ve sigorta.",
+    "steps.relocation_basics.anmeldung.title": "Adresinizi kaydedin (Anmeldung)",
+    "steps.relocation_basics.tax_id.title": "Vergi numaranızı (Steuer-ID) alın",
+    "steps.relocation_basics.health_insurance.title": "Sağlık sigortasını ayarlayın",
+    "steps.relocation_basics.health_insurance_public.title":
+      "Kamu sağlık sigortasını ayarlayın",
+    "steps.relocation_basics.health_insurance_private.title":
+      "Özel sağlık sigortasını ayarlayın",
+    "steps.relocation_basics.bank_account.title": "Almanya'da banka hesabı açın",
+    "steps.relocation_basics.tax_office_visit.title": "Finanzamt ile iletişime geçin",
+    "steps.identity_verification.passport.title": "Pasaportunuzu hazırlayın",
+    "steps.identity_verification.eu_identity_card.title": "AB kimlik kartınızı hazırlayın",
+    "steps.identity_verification.identity_verification.title": "Kimliğinizi doğrulayın",
+    "steps.family_benefits.kindergeld.title": "Kindergeld başvurusu yapın",
+    "steps.family_benefits.elterngeld.title": "Elterngeld başvurusu yapın",
+    "steps.financial_setup.public_health_insurance.title": "Kamu sağlık sigortası seçin",
+    "steps.financial_setup.private_health_insurance.title": "Özel sağlık sigortası seçin",
+    "steps.financial_setup.social_security_number.title": "Sosyal güvenlik numaranızı alın",
     "steps.residency.anmeldung.title": "Adres kaydı (Anmeldung)",
     "steps.residency.anmeldung.description":
       "Adresinizi Bürgeramt’ta kaydedin — banka, vergi ve daha fazlası için gerekli.",

@@ -44,7 +44,7 @@ export default function DashboardActionCard(props: {
   const explanation = getActionExplanation(action);
   const requiresTooltip =
     explanation.type === "dependency" && (action.blockedByStepIds?.length ?? 0) > 0
-      ? `Requires: ${(action.blockedByStepIds ?? []).map(humanizeStepId).join(", ")}`
+      ? `${t.dashboard.requiresPrerequisites}: ${(action.blockedByStepIds ?? []).map(humanizeStepId).join(", ")}`
       : undefined;
 
   if (variant === "history") {
@@ -54,8 +54,8 @@ export default function DashboardActionCard(props: {
         : "✔";
     const tooltip =
       action.stepStatus === "not_applicable" && action.applicabilityReason === "already_satisfied"
-        ? "Automatically resolved based on your data"
-        : "Completed";
+        ? t.dashboard.autoResolvedTooltip
+        : t.dashboard.completedTooltip;
     const isAuto =
       action.stepStatus === "not_applicable" && action.applicabilityReason === "already_satisfied";
 
@@ -130,7 +130,9 @@ export default function DashboardActionCard(props: {
           {headerLabel}
         </div>
       ) : null}
-      <h3 className="mt-2 text-sm font-semibold text-slate-900">{action.title}</h3>
+      <h3 className="mt-2 text-sm font-semibold text-slate-900">
+        {action.stepDetails?.title ?? action.title}
+      </h3>
 
       {action.stepProcessBadge ? (
         <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -145,27 +147,27 @@ export default function DashboardActionCard(props: {
           </span>
           {explanation.type === "dependency" ? (
             <span
-              title={requiresTooltip ?? "Requires prerequisite steps"}
+              title={requiresTooltip ?? t.dashboard.requiresPrerequisites}
               className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-200 bg-white text-[10px] font-semibold text-slate-700"
-              aria-label="Blocked by prerequisites"
+              aria-label={t.dashboard.requiresPrerequisites}
             >
               🔒
             </span>
           ) : null}
           {explanation.type === "already_done" ? (
             <span
-              title="Already completed based on your data"
+              title={t.dashboard.alreadyCompletedTooltip}
               className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-emerald-300 bg-emerald-50 text-[10px] font-semibold text-emerald-800"
-              aria-label="Already completed"
+              aria-label={t.dashboard.alreadyCompletedTooltip}
             >
               ✓
             </span>
           ) : null}
           {explanation.type === "missing_info" ? (
             <span
-              title="Complete your profile to unlock"
+              title={t.dashboard.missingInfoTooltip}
               className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-amber-300 bg-amber-50 text-[10px] font-semibold text-amber-800"
-              aria-label="Missing info"
+              aria-label={t.dashboard.missingInfoTooltip}
             >
               ⚠
             </span>
@@ -174,7 +176,7 @@ export default function DashboardActionCard(props: {
             <span
               title={`${t.dashboard.autoByVayloTooltip}${
                 typeof action.automationConfidence === "number"
-                  ? ` — Confidence: ${Math.round(action.automationConfidence * 100)}%`
+                  ? ` — ${t.dashboard.confidence}: ${Math.round(action.automationConfidence * 100)}%`
                   : ""
               }`}
               className="rounded-full border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800"
@@ -195,7 +197,11 @@ export default function DashboardActionCard(props: {
         <p className="mt-1 text-[10px] font-medium text-indigo-700">{action.processingHint}</p>
       ) : null}
 
-      {action.description ? <p className="mt-1 text-xs text-slate-700">{action.description}</p> : null}
+      {(action.stepDetails?.hint ?? action.description) ? (
+        <p className="mt-1 text-xs text-slate-700">
+          {action.stepDetails?.hint ?? action.description}
+        </p>
+      ) : null}
 
       {action.stepDetails ? (
         <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">

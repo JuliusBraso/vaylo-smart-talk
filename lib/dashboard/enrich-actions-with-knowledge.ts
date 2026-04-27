@@ -7,6 +7,17 @@ import type { Dict } from "@/lib/i18n";
 import type { DocumentTypeStepLinkType } from "@/lib/vaylo/knowledge/types";
 import { resolveKnowledgeDictString } from "@/lib/dashboard/resolve-knowledge-dict-string";
 
+function warnMissingStepTitleTranslation(params: {
+  stepId: string;
+  titleKey: string | null | undefined;
+}) {
+  if (process.env.NODE_ENV !== "development") return;
+  console.warn("[i18n] Missing step title translation:", {
+    stepId: params.stepId,
+    titleKey: params.titleKey ?? null,
+  });
+}
+
 function guideHrefForStep(params: {
   stepId: string;
   topicId: string;
@@ -115,8 +126,14 @@ export async function enrichActionsWithKnowledge(params: {
       return action;
     }
 
-    const title =
-      resolveKnowledgeDictString(t, step.title_key) ?? action.title;
+    const translatedTitle = resolveKnowledgeDictString(t, step.title_key);
+    if (!translatedTitle) {
+      warnMissingStepTitleTranslation({
+        stepId: step.id,
+        titleKey: step.title_key,
+      });
+    }
+    const title = translatedTitle ?? action.title;
     const hint =
       resolveKnowledgeDictString(t, step.description_key ?? undefined) ??
       null;
@@ -160,6 +177,8 @@ export async function enrichActionsWithKnowledge(params: {
 
     return {
       ...action,
+      title,
+      description: hint ?? action.description,
       stepDetails: { title, hint },
       relatedDocuments: relatedDocuments.length > 0 ? relatedDocuments : undefined,
       guideHref: guideHref ?? undefined,

@@ -18,6 +18,12 @@ export type UserStateProfileFlags = {
   jobSearchUrgency?: string | null;
 };
 
+export type UserStateRecentDocument = {
+  id: string;
+  fileName: string | null;
+  mimeType: string | null;
+};
+
 /**
  * Canonical consolidated user state for decision layers (dashboard, phrases, tasks).
  * Single read model: identity vs reality vs progress vs behavior vs derived interpretation.
@@ -47,6 +53,7 @@ export type UserState = {
     documents: {
       total: number;
       recentDocumentTypes: string[];
+      recentDocuments: UserStateRecentDocument[];
       hasDocuments: boolean;
     };
   };

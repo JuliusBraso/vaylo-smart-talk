@@ -58,6 +58,17 @@ export default async function DashboardDataProvider({
       stepState,
     }));
 
+  if (process.env.NODE_ENV === "development") {
+    const primaryAction = actions[0];
+    console.info("[dashboard:data]", {
+      dashboardActionsLength: actions.length,
+      primaryAction: primaryAction
+        ? { id: primaryAction.id, title: primaryAction.title }
+        : null,
+      dnaVersion: userState.identity.dna?.version ?? null,
+    });
+  }
+
   const primaryGoal = dna.priority?.[0] ?? "orientation";
   const activePriorityLabel =
     primaryGoal === "job"
@@ -81,6 +92,7 @@ export default async function DashboardDataProvider({
       userId={userId}
       actions={actions}
       historyActions={historyActionsProp ?? []}
+      userState={userState}
       regionConfig={regionConfig ?? null}
       activePriorityLabel={activePriorityLabel}
       situationSummaryLine={situationSummaryLine}

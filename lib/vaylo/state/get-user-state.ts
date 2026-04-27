@@ -235,6 +235,7 @@ export async function getUserState(params: {
   //       populate `recentDocumentTypes` with semantic types instead of/in addition to mime_type.
   let documentsTotal = 0;
   let recentDocumentTypes: string[] = [];
+  let recentDocuments: UserState["reality"]["documents"]["recentDocuments"] = [];
   {
     const { count, error: countErr } = await supabase
       .from("user_documents")
@@ -247,19 +248,32 @@ export async function getUserState(params: {
 
     const { data: recentRows } = await supabase
       .from("user_documents")
-      .select("mime_type")
+      .select("id, file_name, mime_type")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(5);
 
     if (recentRows && recentRows.length > 0) {
       const types: string[] = [];
-      for (const row of recentRows as Array<{ mime_type?: unknown }>) {
+      const docs: UserState["reality"]["documents"]["recentDocuments"] = [];
+      for (const row of recentRows as Array<{
+        id?: unknown;
+        file_name?: unknown;
+        mime_type?: unknown;
+      }>) {
         if (typeof row.mime_type === "string" && row.mime_type.length > 0) {
           types.push(row.mime_type);
         }
+        if (typeof row.id === "string" && row.id.length > 0) {
+          docs.push({
+            id: row.id,
+            fileName: typeof row.file_name === "string" ? row.file_name : null,
+            mimeType: typeof row.mime_type === "string" ? row.mime_type : null,
+          });
+        }
       }
       recentDocumentTypes = types;
+      recentDocuments = docs;
     }
   }
 
@@ -292,6 +306,7 @@ export async function getUserState(params: {
       documents: {
         total: documentsTotal,
         recentDocumentTypes,
+        recentDocuments,
         hasDocuments: documentsTotal > 0,
       },
     },

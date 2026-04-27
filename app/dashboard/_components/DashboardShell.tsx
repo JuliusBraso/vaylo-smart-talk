@@ -27,12 +27,14 @@ import type { DashboardAction } from "@/lib/dashboard/get-dashboard-actions";
 import { getActionExplanation } from "@/lib/dashboard/get-action-explanation";
 import { trackActionEvent } from "@/lib/vaylo/action-tracking";
 import { useStepStateRealtime } from "@/lib/vaylo/realtime/use-step-state-realtime";
+import type { UserState } from "@/lib/vaylo/state/types";
 import DashboardActionCard from "./DashboardActionCard";
 import { ATMOSPHERE_ORDER, getAtmosphereById, type AtmosphereId } from "@/lib/ui/atmospheres";
 import { getDefaultAtmosphereFromDna } from "@/lib/ui/get-default-atmosphere-from-dna";
 import { surface } from "@/lib/ui/surfaces";
 import type { RegionConfig } from "@/lib/vaylo/region/types";
 import { getRegionVisual, type RegionVisualVariant } from "@/lib/vaylo/region/get-region-visual";
+import { getRegionImage } from "@/lib/vaylo/region/get-region-image";
 
 type Props = {
   dna: ProfileDNA;
@@ -42,6 +44,8 @@ type Props = {
   actions: DashboardAction[];
   /** Presentation-only: completed/auto-resolved step timeline. */
   historyActions: DashboardAction[];
+  /** Consolidated server state used for profile/document-driven dashboard copy. */
+  userState: UserState;
   /** Optional region identity foundation (safe when null). */
   regionConfig?: RegionConfig | null;
   /** Server-resolved copy for the priority badge (no client DNA branching). */
@@ -70,6 +74,7 @@ export default function DashboardShell({
   userId,
   actions,
   historyActions,
+  userState,
   regionConfig,
   activePriorityLabel,
   situationSummaryLine,
@@ -83,6 +88,7 @@ export default function DashboardShell({
   const [changedIds, setChangedIds] = useState<Set<string>>(new Set());
   const [debugExplain, setDebugExplain] = useState(false);
   const [vibeOpen, setVibeOpen] = useState(false);
+  const [isVibePanelOpen, setIsVibePanelOpen] = useState(false);
   const [selectedAtmosphereId, setSelectedAtmosphereId] = useState<AtmosphereId | null>(null);
   const [heroMounted, setHeroMounted] = useState(false);
   const [heroQuery, setHeroQuery] = useState("");
@@ -123,6 +129,14 @@ export default function DashboardShell({
     return getRegionVisual(regionConfig ?? null, mappedRegionVariant);
   }, [regionConfig, mappedRegionVariant]);
 
+  // Production note:
+  // Region background images should be at least 1920x1080.
+  // 1024px images will look soft when stretched inside the large hero.
+  const imagePath = useMemo(() => {
+    return getRegionImage(regionConfig?.id, mappedRegionVariant);
+  }, [regionConfig?.id, mappedRegionVariant]);
+  const hasImage = Boolean(imagePath);
+
   const heroVars = useMemo(() => {
     return {
       ["--vaylo-atmosphere-gradient" as string]: appliedAtmosphere.gradient,
@@ -143,6 +157,53 @@ export default function DashboardShell({
         ? "ring-2 ring-emerald-400/35 shadow-[0_0_28px_rgba(52,211,153,0.18)]"
         : "";
   }, [changedIds]);
+
+  const primaryAction = liveActions[0] ?? null;
+
+  const recentDocumentLabels = useMemo(() => {
+    const docs = userState.reality.documents.recentDocuments;
+    if (docs.length > 0) {
+      return docs.map((doc) => doc.fileName ?? doc.mimeType ?? t.documents.untitled);
+    }
+    return userState.reality.documents.recentDocumentTypes.map((type) => type);
+  }, [t.documents.untitled, userState.reality.documents.recentDocumentTypes, userState.reality.documents.recentDocuments]);
+
+  const helpQuestions = useMemo(
+    () => [
+      t.dashboard.helpQuestionAnmeldung,
+      t.dashboard.helpQuestionTaxId,
+      t.dashboard.helpQuestionKindergeld,
+      t.dashboard.helpQuestionHealthInsurance,
+    ],
+    [
+      t.dashboard.helpQuestionAnmeldung,
+      t.dashboard.helpQuestionHealthInsurance,
+      t.dashboard.helpQuestionKindergeld,
+      t.dashboard.helpQuestionTaxId,
+    ],
+  );
+
+  const identitySummary = useMemo(() => {
+    const inputs = userState.identity.dna?.inputs ?? dna.inputs;
+    return [
+      getEmploymentLabel(userState.identity.employmentType ?? inputs.employment_type, t),
+      getFamilyLabel(userState.identity.familyStatus ?? inputs.family_status, t),
+      regionConfig?.label ?? userState.regionConfig?.label ?? null,
+    ].filter((value): value is string => Boolean(value && value.trim()));
+  }, [dna.inputs, regionConfig?.label, t, userState.identity, userState.regionConfig?.label]);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "development") return;
+    console.debug("[dashboard:client]", {
+      locale,
+      hasDashboardDict: Boolean(t.dashboard),
+      dashboardActionsLength: liveActions.length,
+      primaryAction: primaryAction
+        ? { id: primaryAction.id, title: primaryAction.title }
+        : null,
+      dnaVersion: userState.identity.dna?.version ?? null,
+    });
+  }, [liveActions.length, locale, primaryAction, t.dashboard, userState.identity.dna?.version]);
 
   const refreshDashboard = useCallback(async () => {
     try {
@@ -178,6 +239,50 @@ export default function DashboardShell({
     debounceMs: 800,
   });
 
+  const priorityCard = (
+    <div
+      className={`${surface("elevatedCard", { hover: true })} relative z-20 w-full min-w-0 rounded-3xl border border-white/70 bg-white p-7 shadow-[0_30px_80px_-25px_rgba(15,23,42,0.40)] lg:scale-[1.02]`}
+    >
+      <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
+        {t.dashboard.activePriority}
+      </div>
+      <div className="mt-2 text-base font-semibold text-slate-900">
+        {primaryAction?.stepDetails?.title ?? primaryAction?.title ?? activePriorityLabel}
+      </div>
+      <div className="mt-2 text-xs text-slate-600">
+        {identitySummary.length > 0
+          ? identitySummary.join(" • ")
+          : `${t.dashboard.level} ${getLanguageLabel(dna.inputs.language_level, t)}`}
+      </div>
+      <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+          {primaryAction?.stepProcessBadge ?? t.dashboard.statusLabel}
+        </div>
+        <div className="mt-1 text-sm font-semibold text-slate-900">
+          {primaryAction?.description ?? t.dashboard.statusLocked}
+        </div>
+        <div className="mt-1 text-[11px] text-slate-600">
+          {primaryAction?.reasons?.[0] ?? primaryAction?.stepProcessSubtle ?? t.dashboard.statusDesc}
+        </div>
+      </div>
+
+      <Link
+        href={primaryAction?.href ?? "/dashboard#tasks"}
+        onClick={() => {
+          if (!primaryAction?.id) return;
+          void trackActionEvent({
+            userId,
+            actionId: primaryAction.id,
+            eventType: "click",
+          });
+        }}
+        className="mt-5 inline-flex h-12 w-full items-center justify-center rounded-2xl bg-blue-600 text-sm font-semibold text-white shadow-md transition-all hover:bg-blue-500 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-200"
+      >
+        {primaryAction?.cta ?? t.onboarding.continue}
+      </Link>
+    </div>
+  );
+
   return (
     <main
       className="relative min-h-screen flex-1 min-w-0 overflow-x-hidden bg-slate-50 text-slate-900"
@@ -201,20 +306,28 @@ export default function DashboardShell({
             <div
               className="absolute inset-0 transition-opacity duration-500"
               style={{
-                backgroundImage: `${regionVisual?.wallpaper ?? appliedAtmosphere.wallpaper}, radial-gradient(circle at 20% 30%, rgba(255,255,255,0.08), transparent 40%)`,
+                backgroundImage: hasImage
+                  ? `url(${imagePath}), ${regionVisual.wallpaper}`
+                  : regionVisual.wallpaper,
+                backgroundSize: "cover",
+                backgroundPosition: hasImage ? "center 30%" : "center",
+                backgroundRepeat: "no-repeat",
               }}
             />
             <div
               className="absolute inset-0 transition-opacity duration-500"
               style={{
                 background:
-                  regionVisual?.overlay ??
-                  (appliedAtmosphere.id === "night"
-                    ? "rgba(2,6,23,0.06)"
-                    : "rgba(255,255,255,0.07)"),
+                  hasImage
+                    ? "linear-gradient(to top, rgba(2,6,23,0.28), rgba(2,6,23,0.02))"
+                    : (regionVisual?.overlay ??
+                      (appliedAtmosphere.id === "night"
+                        ? "rgba(2,6,23,0.06)"
+                        : "rgba(255,255,255,0.07)")),
               }}
             />
             <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-transparent" />
+            <div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_60%,rgba(2,6,23,0.15))]" />
             <div
               className="absolute inset-0 opacity-[0.08]"
               style={{
@@ -226,26 +339,24 @@ export default function DashboardShell({
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.35),transparent_40%)]" />
             <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.08),rgba(255,255,255,0.14))]" />
             <div
-              className="absolute inset-0"
-              style={{
-                backdropFilter: `blur(${Math.max(10, Math.round(appliedAtmosphere.blur * 0.7))}px)`,
-                filter: "saturate(0.96) brightness(1.10)",
-              }}
-            />
-            <div
-              className="absolute -left-24 top-[-180px] h-[560px] w-[820px] rounded-full blur-3xl opacity-40"
+              className="absolute -left-24 top-[-180px] h-[560px] w-[820px] rounded-full opacity-40"
               style={{
                 background:
                   "radial-gradient(circle at 30% 35%, color-mix(in srgb, var(--vaylo-atmosphere-accent) 14%, transparent) 0%, transparent 62%)",
               }}
             />
             <div
-              className="absolute -right-48 top-[-240px] h-[560px] w-[820px] rounded-full blur-3xl opacity-30"
+              className="absolute -right-48 top-[-240px] h-[560px] w-[820px] rounded-full opacity-30"
               style={{
                 background:
                   "radial-gradient(circle at 55% 35%, color-mix(in srgb, var(--vaylo-atmosphere-accent) 11%, transparent) 0%, transparent 65%)",
               }}
             />
+            {hasImage ? (
+              <div className="absolute bottom-3 right-4 text-[10px] text-white/30 tracking-wide pointer-events-none">
+                AI generated
+              </div>
+            ) : null}
           </div>
 
           <section className="relative">
@@ -258,25 +369,25 @@ export default function DashboardShell({
               {/* LEFT: greeting + input */}
               <div className="relative max-w-2xl">
                 <div className="pointer-events-none absolute -inset-x-6 -inset-y-6 rounded-[2rem] bg-gradient-to-r from-slate-900/25 via-slate-900/10 to-transparent" />
-                <p className="relative text-xs font-semibold uppercase tracking-[0.22em] text-white/85 drop-shadow-[0_2px_10px_rgba(15,23,42,0.35)]">
-                  VAYLO CONTROL CENTER
+                <p className="relative text-xs font-semibold uppercase tracking-[0.22em] text-white/85 [text-shadow:0_2px_10px_rgba(0,0,0,0.55)]">
+                  {t.dashboard.controlCenter}
                 </p>
                 {regionConfig?.label ? (
-                  <p className="relative mt-2 text-xs uppercase tracking-[0.18em] text-white/70 drop-shadow-[0_2px_10px_rgba(15,23,42,0.35)]">
-                    Prostredie: {regionConfig.label}
+                  <p className="relative mt-2 text-xs uppercase tracking-[0.18em] text-white/70 [text-shadow:0_2px_10px_rgba(0,0,0,0.55)]">
+                    {formatMessage(t.dashboard.environmentLabel, { region: regionConfig.label })}
                   </p>
                 ) : null}
-                <h1 className="relative mt-3 text-4xl font-bold leading-tight tracking-tight text-white drop-shadow-[0_4px_20px_rgba(0,0,0,0.35)] md:text-5xl">
-                  Dobrý deň, Martin! 👋
+                <h1 className="relative mt-3 text-4xl font-bold leading-tight tracking-tight text-white [text-shadow:0_2px_10px_rgba(0,0,0,0.55)] md:text-5xl">
+                  {t.dashboard.heroGreeting}
                 </h1>
-                <p className="relative mt-3 text-base text-white/85 drop-shadow-[0_2px_10px_rgba(15,23,42,0.35)]">
-                  Čo by sme dnes mali vybaviť?
+                <p className="relative mt-3 text-base text-white/85 [text-shadow:0_2px_10px_rgba(0,0,0,0.55)]">
+                  {t.dashboard.heroQuestion}
                 </p>
-                <p className="relative mt-4 max-w-xl text-sm text-white/75 drop-shadow-[0_2px_10px_rgba(15,23,42,0.35)]">
+                <p className="relative mt-4 max-w-xl text-sm text-white/75 [text-shadow:0_2px_10px_rgba(0,0,0,0.55)]">
                   {t.dashboard.intro}
                 </p>
 
-                <div className="relative mt-9 max-w-3xl rounded-3xl border border-white/70 bg-white px-6 py-4 shadow-[0_24px_70px_-24px_rgba(15,23,42,0.42),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-xl transition-all duration-150 hover:shadow-[0_28px_78px_-26px_rgba(15,23,42,0.46),inset_0_1px_0_rgba(255,255,255,0.75)] focus-within:ring-2 focus-within:ring-blue-200">
+                <div className="relative mt-9 max-w-3xl rounded-3xl border border-white/70 bg-white/5 px-6 py-4 shadow-[0_24px_70px_-24px_rgba(15,23,42,0.42),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-[4px] transition-all duration-150 hover:shadow-[0_28px_78px_-26px_rgba(15,23,42,0.46),inset_0_1px_0_rgba(255,255,255,0.75)] focus-within:ring-2 focus-within:ring-blue-200">
                   <div className="flex items-center gap-3">
                     <input
                       value={heroQuery}
@@ -286,7 +397,7 @@ export default function DashboardShell({
                         const q = heroQuery.trim();
                         router.push(q ? `/assistant?q=${encodeURIComponent(q)}` : "/assistant");
                       }}
-                      placeholder="Opíšte, čo potrebujete vybaviť..."
+                      placeholder={t.dashboard.heroInputPlaceholder}
                       className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 shadow-sm outline-none transition focus:border-blue-200"
                       aria-label="Ask Vaylo"
                     />
@@ -298,7 +409,7 @@ export default function DashboardShell({
                       }}
                       className="inline-flex h-12 shrink-0 items-center justify-center rounded-2xl bg-blue-600 px-5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-500 hover:scale-[1.02] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200"
                     >
-                      <span className="sr-only">Send</span>
+                      <span className="sr-only">{t.assistant.send}</span>
                       <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden>
                         <path d="M5 12h13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                         <path d="M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -315,7 +426,7 @@ export default function DashboardShell({
                       <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden>
                         <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                       </svg>
-                      Smart režim
+                      {t.dashboard.smartMode}
                     </button>
                     <button
                       type="button"
@@ -331,43 +442,44 @@ export default function DashboardShell({
                     </button>
                   </div>
                 </div>
+              </div>
 
                   {/* Floating support cards (bridge hero -> base) */}
-                  <div className="relative z-10 mt-8 grid gap-5 sm:grid-cols-2">
+                  <section className="relative z-10 mt-8 w-full max-w-7xl mx-auto px-6">
+                  <div className="grid w-full grid-cols-1 gap-6 xl:grid-cols-3">
                     <div
-                      className="rounded-[1.75rem] border border-white/40 bg-white/95 p-6 shadow-[0_32px_64px_-15px_rgba(0,0,0,0.08)] transition-all duration-200 hover:shadow-[0_36px_80px_-18px_rgba(15,23,42,0.16)]"
+                      className="w-full min-w-0 rounded-[1.75rem] border border-white/40 bg-white/95 p-6 shadow-[0_32px_64px_-15px_rgba(0,0,0,0.08)] transition-all duration-200 hover:shadow-[0_36px_80px_-18px_rgba(15,23,42,0.16)]"
                     >
-                      <div className="text-sm font-semibold text-slate-900">Nedávne dokumenty</div>
+                      <div className="text-sm font-semibold text-slate-900">{t.dashboard.recentDocumentsTitle}</div>
                       <div className="mt-4 grid gap-2 text-sm text-slate-700">
-                        {["Meldebestätigung.pdf", "Arbeitsvertrag.pdf", "Krankenversicherung.pdf"].map((name) => (
+                        {recentDocumentLabels.length > 0 ? recentDocumentLabels.map((name) => (
                           <div key={name} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
                             <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white text-slate-500 shadow-sm" aria-hidden>
                               📄
                             </span>
                             <span className="min-w-0 flex-1 truncate font-medium">{name}</span>
                           </div>
-                        ))}
+                        )) : (
+                          <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-xs text-slate-500">
+                            {t.dashboard.noRecentDocuments}
+                          </div>
+                        )}
                       </div>
                       <Link
                         href="/documents"
                         className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-700"
                       >
-                        Zobraziť všetky dokumenty
+                        {t.dashboard.viewAllDocuments}
                         <span aria-hidden>›</span>
                       </Link>
                     </div>
 
                     <div
-                      className="rounded-[1.75rem] border border-white/40 bg-white/95 p-6 shadow-[0_32px_64px_-15px_rgba(0,0,0,0.08)] transition-all duration-200 hover:shadow-[0_36px_80px_-18px_rgba(15,23,42,0.16)]"
+                      className="w-full min-w-0 rounded-[1.75rem] border border-white/40 bg-white/95 p-6 shadow-[0_32px_64px_-15px_rgba(0,0,0,0.08)] transition-all duration-200 hover:shadow-[0_36px_80px_-18px_rgba(15,23,42,0.16)]"
                     >
-                      <div className="text-sm font-semibold text-slate-900">Ako vám môžem pomôcť?</div>
+                      <div className="text-sm font-semibold text-slate-900">{t.dashboard.helpTitle}</div>
                       <div className="mt-4 grid gap-2 text-sm text-slate-700">
-                        {[
-                          "Aké doklady potrebujem na Anmeldung?",
-                          "Ako funguje daňové číslo v Nemecku?",
-                          "Mám nárok na Kindergeld?",
-                          "Ako si vybrať zdravotné poistenie?",
-                        ].map((q, qi) => (
+                        {helpQuestions.map((q, qi) => (
                           <button
                             key={q}
                             type="button"
@@ -394,10 +506,12 @@ export default function DashboardShell({
                         href="/assistant"
                         className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-700"
                       >
-                        Ďalšie otázky <span aria-hidden>›</span>
+                        {t.dashboard.moreQuestions} <span aria-hidden>›</span>
                       </Link>
                     </div>
+                    {priorityCard}
                   </div>
+                  </section>
 
                   <div className="mt-10 flex flex-wrap items-center gap-2 text-xs">
                     <Link
@@ -413,28 +527,31 @@ export default function DashboardShell({
                       {t.dashboard.refineProfile}
                     </Link>
                   </div>
-                </div>
-
               {/* RIGHT: floating status / vibe (floats as a companion block) */}
               <div className="mt-8 flex justify-start md:mt-0 md:justify-end lg:absolute lg:right-0 lg:top-0">
                 <div className="relative z-20 flex w-full max-w-sm flex-col items-end gap-3">
                   {/* Decorative hero icon buttons */}
                   <div className="flex items-center gap-2">
                     {[
-                      { label: "Bell", path: "M12 22a2.4 2.4 0 0 0 2.4-2.4H9.6A2.4 2.4 0 0 0 12 22Z M18 16v-5a6 6 0 1 0-12 0v5l-2 2h16l-2-2Z" },
-                      { label: "Activity", path: "M4 12h4l2-6 4 12 2-6h4" },
-                      { label: "Settings", path: "M12 14.7a2.7 2.7 0 1 0-2.7-2.7 2.7 2.7 0 0 0 2.7 2.7Z" },
+                      { id: "bell", label: t.dashboard.notificationsLabel, path: "M12 22a2.4 2.4 0 0 0 2.4-2.4H9.6A2.4 2.4 0 0 0 12 22Z M18 16v-5a6 6 0 1 0-12 0v5l-2 2h16l-2-2Z" },
+                      { id: "activity", label: t.dashboard.activityLabel, path: "M4 12h4l2-6 4 12 2-6h4" },
+                      { id: "background", label: t.dashboard.backgroundTitle, path: "M4.5 6.5A2.5 2.5 0 0 1 7 4h10a2.5 2.5 0 0 1 2.5 2.5v11A2.5 2.5 0 0 1 17 20H7a2.5 2.5 0 0 1-2.5-2.5v-11Z M7 16l3.2-3.2a1.4 1.4 0 0 1 2 0l1.1 1.1 1.8-1.8a1.4 1.4 0 0 1 2 0L19.5 14.5 M8.5 8.5h.01" },
+                      { id: "settings", label: t.nav.settings, path: "M12 14.7a2.7 2.7 0 1 0-2.7-2.7 2.7 2.7 0 0 0 2.7 2.7Z" },
                     ].map((i) => (
                       <button
                         key={i.label}
                         type="button"
                         onClick={() => {
-                          if (i.label === "Bell") {
+                          if (i.id === "background") {
+                            setIsVibePanelOpen((value) => !value);
+                            return;
+                          }
+                          if (i.id === "bell") {
                             // eslint-disable-next-line no-console
                             console.log("notifications clicked");
                             return;
                           }
-                          if (i.label === "Settings") {
+                          if (i.id === "settings") {
                             router.push("/settings");
                             return;
                           }
@@ -443,8 +560,11 @@ export default function DashboardShell({
                             block: "start",
                           });
                         }}
-                        className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-md transition hover:bg-white/25"
+                        className={`inline-flex h-11 w-11 items-center justify-center rounded-full text-white backdrop-blur-sm transition hover:bg-white/25 ${
+                          i.id === "background" && isVibePanelOpen ? "bg-white/25" : "bg-white/20"
+                        }`}
                         aria-label={i.label}
+                        title={i.label}
                       >
                         <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden>
                           <path d={i.path} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
@@ -454,10 +574,11 @@ export default function DashboardShell({
                   </div>
 
                   {/* Right vibe panel (mockup) */}
-                  <div className="hidden w-full rounded-[1.75rem] border border-slate-200 bg-white/85 p-4 text-slate-900 shadow-[0_30px_80px_-24px_rgba(15,23,42,0.22)] backdrop-blur-xl lg:block">
-                    <div className="text-sm font-semibold text-slate-900">Pozadie</div>
+                  {isVibePanelOpen ? (
+                  <div className="hidden w-full rounded-[1.75rem] border border-slate-200 bg-white/85 p-4 text-slate-900 shadow-[0_30px_80px_-24px_rgba(15,23,42,0.22)] backdrop-blur-sm lg:block">
+                    <div className="text-sm font-semibold text-slate-900">{t.dashboard.backgroundTitle}</div>
                     <div className="mt-1 text-xs text-slate-600">
-                      Vyberte si pozadie, ktoré vás inšpiruje.
+                      {t.dashboard.backgroundDescription}
                     </div>
                     <div className="mt-4 grid gap-3">
                       {ATMOSPHERE_ORDER.map((id) => {
@@ -465,13 +586,13 @@ export default function DashboardShell({
                         const active = a.id === appliedAtmosphere.id;
                         const label =
                           a.id === "alpine"
-                            ? "Hory"
+                            ? t.dashboard.vibeAlpine
                             : a.id === "sunset"
-                              ? "Sunset"
+                              ? t.dashboard.vibeSunset
                               : a.id === "night"
-                                ? "Tmavé"
+                                ? t.dashboard.vibeNight
                                 : a.id === "minimal"
-                                  ? "Minimal"
+                                  ? t.dashboard.vibeMinimal
                                   : a.label;
                         return (
                           <button
@@ -503,44 +624,8 @@ export default function DashboardShell({
                       })}
                     </div>
                   </div>
+                  ) : null}
 
-                  <div
-                    className={`${surface("elevatedCard", { hover: true })} relative z-20 w-full rounded-3xl border border-white/70 bg-white p-7 shadow-[0_30px_80px_-25px_rgba(15,23,42,0.40)] lg:scale-[1.02]`}
-                  >
-                    <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
-                      {t.dashboard.activePriority}
-                    </div>
-                    <div className="mt-2 text-base font-semibold text-slate-900">
-                      {activePriorityLabel}
-                    </div>
-                    <div className="mt-2 text-xs text-slate-600">
-                      {t.dashboard.level} {getLanguageLabel(dna.inputs.language_level, t)}
-                    </div>
-                    <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                        {t.dashboard.statusLabel}
-                      </div>
-                      <div className="mt-1 text-sm font-semibold text-slate-900">
-                        {t.dashboard.statusLocked}
-                      </div>
-                      <div className="mt-1 text-[11px] text-slate-600">
-                        {t.dashboard.statusDesc}
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        document.getElementById("tasks")?.scrollIntoView({
-                          behavior: "smooth",
-                          block: "start",
-                        });
-                      }}
-                      className="mt-5 inline-flex h-12 w-full items-center justify-center rounded-2xl bg-blue-600 text-sm font-semibold text-white shadow-md transition-all hover:bg-blue-500 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-200"
-                    >
-                      Pokračovať
-                    </button>
-                  </div>
                 </div>
               </div>
             </div>
@@ -558,7 +643,7 @@ export default function DashboardShell({
                   <div className="mb-6 flex items-end justify-between gap-4">
                     <div>
                       <h2 className="text-lg font-bold tracking-tight text-slate-900">
-                        Vaše najdôležitejšie úlohy
+                        {t.dashboard.importantTasksTitle}
                       </h2>
                       <p className="mt-1 text-sm text-slate-600">
                         {t.dashboard.nextActionsDesc}
@@ -572,7 +657,7 @@ export default function DashboardShell({
                         href="/dashboard"
                         className="inline-flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-700"
                       >
-                        Zobraziť všetky úlohy <span aria-hidden>›</span>
+                        {t.dashboard.viewAllTasks} <span aria-hidden>›</span>
                       </Link>
                       {process.env.NODE_ENV === "development" ? (
                         <button
@@ -657,7 +742,7 @@ export default function DashboardShell({
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <h2 className="text-base font-semibold tracking-tight text-slate-900">
-                          Completed &amp; Automated
+                          {t.dashboard.historyTitle}
                         </h2>
                         <p className="mt-1 text-sm text-slate-600">
                           Už sme to vybavili za vás.
@@ -667,9 +752,9 @@ export default function DashboardShell({
                         type="button"
                         onClick={() => setHistoryOpen((v) => !v)}
                         className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600 shadow-sm transition hover:bg-slate-50"
-                        title="Show completed and auto-resolved steps"
+                        title={t.dashboard.historyToggleTitle}
                       >
-                        {historyOpen ? "Hide" : "Show"}
+                        {historyOpen ? t.dashboard.hide : t.dashboard.show}
                       </button>
                     </div>
                     {historyOpen ? (
@@ -697,7 +782,7 @@ export default function DashboardShell({
 
                 <div className="mt-10 flex items-center justify-center gap-2 text-xs text-slate-500">
                   <span aria-hidden>🔒</span>
-                  <span>Vaylo chráni vaše dáta. Viac o bezpečnosti.</span>
+                  <span>{t.dashboard.privacyNote}</span>
                 </div>
               </div>
             </div>
