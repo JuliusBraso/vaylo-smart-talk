@@ -34,15 +34,61 @@ export async function markActionCompleted(
   actionId: string
 ): Promise<{ error: Error | null }> {
   const now = new Date().toISOString();
+  const payload = {
+    user_id: userId,
+    action_id: actionId,
+    status: "completed" satisfies ProgressStatus,
+    completed_at: now,
+  };
+
   const { error } = await supabase.from("user_progress").upsert(
-    {
-      user_id: userId,
-      action_id: actionId,
-      status: "completed" satisfies ProgressStatus,
-      completed_at: now,
-    },
+    payload,
     { onConflict: "user_id,action_id" }
   );
 
-  return { error: error ?? null };
+  if (!error) {
+    return { error: null };
+  }
+
+  const maybeCode = (error as { code?: string }).code;
+  if (maybeCode !== "42P10") {
+    return { error };
+  }
+
+  // Fallback path for environments where unique constraint wasn't applied yet.
+  if (process.env.NODE_ENV !== "production") {
+    console.warn(
+      "[Vaylo][progress] upsert conflict target unavailable; using update/insert fallback"
+    );
+  }
+
+  const { data: updatedRows, error: updateError } = await supabase
+    .from("user_progress")
+    .update({
+      status: "completed" satisfies ProgressStatus,
+      completed_at: now,
+    })
+    .eq("user_id", userId)
+    .eq("action_id", actionId)
+    .select("user_id")
+    .limit(1);
+
+  if (updateError) {
+    return { error: updateError };
+  }
+
+  if ((updatedRows ?? []).length > 0) {
+    return { error: null };
+  }
+
+  const { error: insertError } = await supabase
+    .from("user_progress")
+    .insert(payload);
+
+  // Concurrent insert/update should still be treated as idempotent success.
+  if ((insertError as { code?: string } | null)?.code === "23505") {
+    return { error: null };
+  }
+
+  return { error: insertError ?? null };
 }

@@ -37,12 +37,29 @@ export async function POST(req: NextRequest) {
 
   const { error } = await markActionCompleted(supabase, userId, actionId);
   if (error) {
-    console.error("[Vaylo][progress] markActionCompleted failed", {
-      userId,
-      actionId,
-      error,
-    });
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[Vaylo][progress] markActionCompleted failed", {
+        userId,
+        actionId,
+        error,
+      });
+    } else {
+      console.error("[Vaylo][progress] markActionCompleted failed", {
+        userId,
+        actionId,
+        message: error.message,
+      });
+    }
+    return NextResponse.json(
+      {
+        error: "Failed to mark action completed",
+        details:
+          process.env.NODE_ENV !== "production"
+            ? error.message
+            : "Internal server error",
+      },
+      { status: 500 }
+    );
   }
 
   try {
