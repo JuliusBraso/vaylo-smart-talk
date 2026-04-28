@@ -379,7 +379,7 @@ export default function DashboardShell({
               <div className="absolute inset-0 bg-gradient-to-r from-slate-950/65 via-slate-950/25 to-transparent" />
               <div className="absolute inset-0 bg-slate-900/10" />
             </div>
-            <div className="absolute inset-0 bg-gradient-to-t from-white/30 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-white/20 to-transparent" />
             <div
               className="absolute -left-24 top-[-180px] h-[560px] w-[820px] rounded-full opacity-40"
               style={{
@@ -409,7 +409,7 @@ export default function DashboardShell({
           >
             <div className="relative" style={{ minHeight: 560 }}>
               {/* LEFT: greeting + input */}
-              <div className="relative max-w-2xl">
+              <div className="relative max-w-2xl shadow-[0_8px_40px_rgba(0,0,0,0.25)]">
                 <div className="pointer-events-none absolute -inset-x-6 -inset-y-6 rounded-[2rem] bg-gradient-to-r from-slate-900/25 via-slate-900/10 to-transparent" />
                 <p className="relative text-xs font-semibold uppercase tracking-[0.22em] text-white/85 [text-shadow:0_2px_10px_rgba(0,0,0,0.55)]">
                   {t.dashboard.controlCenter}
@@ -429,7 +429,7 @@ export default function DashboardShell({
                   {t.dashboard.intro}
                 </p>
 
-                <div className="relative mt-9 max-w-3xl rounded-3xl border border-white/70 bg-white/5 px-6 py-4 shadow-[0_24px_70px_-24px_rgba(15,23,42,0.42),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-[4px] transition-all duration-150 hover:shadow-[0_28px_78px_-26px_rgba(15,23,42,0.46),inset_0_1px_0_rgba(255,255,255,0.75)] focus-within:ring-2 focus-within:ring-blue-200">
+                <div className="relative mt-9 max-w-3xl rounded-3xl border border-white/70 bg-white/15 px-6 py-4 shadow-[0_24px_70px_-24px_rgba(15,23,42,0.42),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-lg transition-all duration-150 hover:shadow-[0_28px_78px_-26px_rgba(15,23,42,0.46),inset_0_1px_0_rgba(255,255,255,0.75)] focus-within:ring-2 focus-within:ring-blue-200">
                   <div className="flex items-center gap-3">
                     <input
                       value={heroQuery}
