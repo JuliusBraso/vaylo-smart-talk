@@ -374,12 +374,12 @@ export default function DashboardShell({
                 src={imagePath}
                 alt=""
                 aria-hidden="true"
-                className="h-full w-full object-cover"
+                className="h-full w-full object-cover brightness-[0.95] contrast-[1.05]"
               />
-              <div className="absolute inset-0 bg-gradient-to-r from-slate-950/60 via-slate-950/20 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-r from-slate-950/65 via-slate-950/25 to-transparent" />
               <div className="absolute inset-0 bg-slate-900/10" />
             </div>
-            <div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_60%,rgba(2,6,23,0.15))]" />
+            <div className="absolute inset-0 bg-gradient-to-t from-white/30 to-transparent" />
             <div
               className="absolute -left-24 top-[-180px] h-[560px] w-[820px] rounded-full opacity-40"
               style={{
