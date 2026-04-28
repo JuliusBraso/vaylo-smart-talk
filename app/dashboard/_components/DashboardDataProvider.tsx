@@ -11,6 +11,8 @@ import {
 import type { UserState } from "@/lib/vaylo/state/types";
 import type { RegionConfig } from "@/lib/vaylo/region/types";
 import type { GetUserStepStateResult } from "@/lib/vaylo/steps/types";
+import { getAvailableRegionImageSlugs } from "@/lib/vaylo/region/get-available-region-images.server";
+import { getRegionImage } from "@/lib/vaylo/region/get-region-image";
 import DashboardClientWrapper from "./DashboardClientWrapper";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -84,6 +86,11 @@ export default async function DashboardDataProvider({
     goal: getGoalLabel(dna.inputs.goals[0] ?? "orientation", t),
     language: getLanguageLabel(dna.inputs.language_level, t),
   });
+  const availableRegionImageSlugs = getAvailableRegionImageSlugs();
+  const regionImagePath = getRegionImage(
+    userState.location?.bundesland ?? userState.regionConfig?.id ?? userState.region,
+    availableRegionImageSlugs,
+  );
 
   return (
     <DashboardClientWrapper
@@ -94,6 +101,7 @@ export default async function DashboardDataProvider({
       historyActions={historyActionsProp ?? []}
       userState={userState}
       regionConfig={regionConfig ?? null}
+      regionImagePath={regionImagePath}
       activePriorityLabel={activePriorityLabel}
       situationSummaryLine={situationSummaryLine}
       t={t}

@@ -19,12 +19,6 @@ const SUPPORTED_REGION_SLUGS = new Set<string>([
 
 const DEFAULT_REGION_IMAGE_PATH = "/backgrounds/regions/default.jpg";
 
-/**
- * Keep this list aligned with physical files in `public/backgrounds/regions`.
- * Any slug missing here falls back to `default.jpg` to prevent 404s.
- */
-const AVAILABLE_REGION_IMAGE_SLUGS = new Set<string>(["default"]);
-
 const REGION_ALIAS_MAP: Record<string, string> = {
   nrw: "nordrhein-westfalen",
   "baden wurttemberg": "baden-wuerttemberg",
@@ -46,9 +40,12 @@ function normalizeRegionSlug(value?: string | null): string | null {
   return SUPPORTED_REGION_SLUGS.has(aliased) ? aliased : null;
 }
 
-export function getRegionImage(regionOrBundesland?: string | null): string {
+export function getRegionImage(
+  regionOrBundesland?: string | null,
+  availableSlugs: Set<string> = new Set(["default"]),
+): string {
   const slug = normalizeRegionSlug(regionOrBundesland);
-  if (slug && AVAILABLE_REGION_IMAGE_SLUGS.has(slug)) {
+  if (slug && availableSlugs.has(slug)) {
     return `/backgrounds/regions/${slug}.jpg`;
   }
   return DEFAULT_REGION_IMAGE_PATH;

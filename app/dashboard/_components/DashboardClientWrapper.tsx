@@ -18,6 +18,7 @@ type Props = {
   historyActions: DashboardAction[];
   userState: UserState;
   regionConfig?: RegionConfig | null;
+  regionImagePath: string;
   /** Server-resolved header copy (no client-side DNA branching for priority / summary). */
   activePriorityLabel: string;
   situationSummaryLine: string;
@@ -38,6 +39,7 @@ export default function DashboardClientWrapper({
   historyActions,
   userState,
   regionConfig,
+  regionImagePath,
   activePriorityLabel,
   situationSummaryLine,
   t,
@@ -52,6 +54,7 @@ export default function DashboardClientWrapper({
       historyActions={historyActions}
       userState={userState}
       regionConfig={regionConfig}
+      regionImagePath={regionImagePath}
       activePriorityLabel={activePriorityLabel}
       situationSummaryLine={situationSummaryLine}
       t={t}

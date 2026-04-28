@@ -39,7 +39,6 @@ import { getDefaultAtmosphereFromDna } from "@/lib/ui/get-default-atmosphere-fro
 import { surface } from "@/lib/ui/surfaces";
 import type { RegionConfig } from "@/lib/vaylo/region/types";
 import { getRegionVisual } from "@/lib/vaylo/region/get-region-visual";
-import { getRegionImage } from "@/lib/vaylo/region/get-region-image";
 
 type Props = {
   dna: ProfileDNA;
@@ -53,6 +52,8 @@ type Props = {
   userState: UserState;
   /** Optional region identity foundation (safe when null). */
   regionConfig?: RegionConfig | null;
+  /** Server-resolved region hero image path. */
+  regionImagePath: string;
   /** Server-resolved copy for the priority badge (no client DNA branching). */
   activePriorityLabel: string;
   /** Server-resolved `actionSituationSummary` line. */
@@ -115,6 +116,7 @@ export default function DashboardShell({
   historyActions,
   userState,
   regionConfig,
+  regionImagePath,
   activePriorityLabel,
   situationSummaryLine,
   t,
@@ -147,8 +149,8 @@ export default function DashboardShell({
   // Region background images should be at least 1920x1080.
   // 1024px images will look soft when stretched inside the large hero.
   const imagePath = useMemo(() => {
-    return getRegionImage(regionConfig?.id);
-  }, [regionConfig?.id]);
+    return regionImagePath?.trim() || "/backgrounds/regions/default.jpg";
+  }, [regionImagePath]);
   const hasImage = Boolean(imagePath);
 
   const heroVars = useMemo(() => {
