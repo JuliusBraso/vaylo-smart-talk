@@ -303,45 +303,59 @@ export default function DashboardShell({
 
   const priorityCard = (
     <div
-      className={`${surface("elevatedCard", { hover: true })} relative z-20 w-full min-w-0 rounded-[2rem] border border-white/80 bg-white/90 p-8 shadow-[0_30px_90px_rgba(15,23,42,0.18)] backdrop-blur-xl transition-shadow hover:shadow-[0_35px_100px_rgba(15,23,42,0.22)] lg:scale-[1.02]`}
+      className={`${surface("elevatedCard", { hover: true })} relative z-20 w-full min-w-0 overflow-hidden rounded-[2rem] border border-white/80 bg-white/90 p-8 shadow-[0_30px_90px_rgba(15,23,42,0.18)] backdrop-blur-xl ring-1 ring-blue-500/20 transition-shadow hover:shadow-[0_35px_100px_rgba(15,23,42,0.22)] lg:scale-[1.02]`}
     >
-      <div className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">
-        {t.dashboard.activePriority}
-      </div>
-      <div className="mt-2 text-lg font-semibold text-slate-950">
-        {primaryActionTitle}
-      </div>
-      <div className="mt-2 text-sm leading-6 text-slate-600">
-        {identitySummary.length > 0
-          ? identitySummary.join(" • ")
-          : `${t.dashboard.level} ${getLanguageLabel(dna.inputs.language_level, t)}`}
-      </div>
-      <div className="mt-4 rounded-2xl border border-slate-200/70 bg-slate-50/70 p-4 shadow-sm">
-        <div className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">
-          {primaryAction?.stepProcessBadge ?? t.dashboard.statusLabel}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-blue-500/40 to-transparent"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-blue-500/10 blur-2xl"
+      />
+      <div className="relative z-10">
+        <div className="flex items-center text-xs font-bold uppercase tracking-[0.22em] text-slate-500">
+          <span
+            className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(37,99,235,0.65)]"
+            aria-hidden="true"
+          />
+          {t.dashboard.activePriority}
         </div>
-        <div className="mt-1 text-lg font-semibold text-slate-950">
-          {primaryActionDescription}
+        <div className="mt-2 text-lg font-semibold text-slate-950">
+          {primaryActionTitle}
         </div>
-        <div className="mt-1 text-sm leading-6 text-slate-600">
-          {primaryAction?.reasons?.[0] ?? primaryAction?.stepProcessSubtle ?? t.dashboard.statusDesc}
+        <div className="mt-2 text-sm leading-6 text-slate-600">
+          {identitySummary.length > 0
+            ? identitySummary.join(" • ")
+            : `${t.dashboard.level} ${getLanguageLabel(dna.inputs.language_level, t)}`}
         </div>
-      </div>
+        <div className="mt-4 rounded-2xl border border-slate-200/50 bg-slate-50/50 p-4 shadow-sm">
+          <div className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">
+            {primaryAction?.stepProcessBadge ?? t.dashboard.statusLabel}
+          </div>
+          <div className="mt-1 text-lg font-semibold text-slate-950">
+            {primaryActionDescription}
+          </div>
+          <div className="mt-1 text-sm leading-6 text-slate-600">
+            {primaryAction?.reasons?.[0] ?? primaryAction?.stepProcessSubtle ?? t.dashboard.statusDesc}
+          </div>
+        </div>
 
-      <Link
-        href={primaryAction?.href ?? "/dashboard#tasks"}
-        onClick={() => {
-          if (!primaryAction?.id) return;
-          void trackActionEvent({
-            userId,
-            actionId: primaryAction.id,
-            eventType: "click",
-          });
-        }}
-        className="mt-5 inline-flex h-12 w-full items-center justify-center rounded-2xl bg-blue-600 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(37,99,235,0.30)] transition hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-200"
-      >
-        {primaryAction?.cta ?? t.onboarding.continue}
-      </Link>
+        <Link
+          href={primaryAction?.href ?? "/dashboard#tasks"}
+          onClick={() => {
+            if (!primaryAction?.id) return;
+            void trackActionEvent({
+              userId,
+              actionId: primaryAction.id,
+              eventType: "click",
+            });
+          }}
+          className="mt-5 inline-flex h-12 w-full items-center justify-center rounded-2xl bg-blue-600 text-sm font-semibold text-white shadow-[0_14px_36px_rgba(37,99,235,0.38)] transition-all hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-[0_18px_46px_rgba(37,99,235,0.48)] active:translate-y-0 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-200"
+        >
+          {primaryAction?.cta ?? t.onboarding.continue}
+        </Link>
+      </div>
     </div>
   );
 
@@ -490,19 +504,19 @@ export default function DashboardShell({
                   <section className="relative z-10 mt-8 w-full max-w-7xl mx-auto px-6">
                   <div className="grid w-full grid-cols-1 gap-6 xl:grid-cols-3">
                     <div
-                      className="w-full min-w-0 rounded-[2rem] border border-white/70 bg-white/80 p-7 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur-xl transition-shadow hover:shadow-[0_24px_70px_rgba(15,23,42,0.14)]"
+                      className="w-full min-w-0 rounded-[2rem] border border-white/60 bg-white/75 p-7 shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-xl transition-shadow hover:shadow-[0_24px_70px_rgba(15,23,42,0.14)]"
                     >
                       <div className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">{t.dashboard.recentDocumentsTitle}</div>
                       <div className="mt-4 grid gap-5 text-sm text-slate-700">
                         {recentDocumentItems.length > 0 ? recentDocumentItems.map((doc) => (
-                          <div key={doc.id} className="flex items-center gap-3 rounded-2xl border border-slate-200/70 bg-slate-50/70 p-4 shadow-sm">
+                          <div key={doc.id} className="flex items-center gap-3 rounded-2xl border border-slate-200/50 bg-slate-50/50 p-4 shadow-sm">
                             <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white text-slate-500 shadow-sm" aria-hidden>
                               📄
                             </span>
                             <span className="min-w-0 flex-1 truncate font-medium">{doc.label}</span>
                           </div>
                         )) : (
-                          <div className="rounded-2xl border border-dashed border-slate-200/70 bg-slate-50/70 p-4 text-sm leading-6 text-slate-600 shadow-sm">
+                          <div className="rounded-2xl border border-dashed border-slate-200/50 bg-slate-50/50 p-4 text-sm leading-6 text-slate-600 shadow-sm">
                             {t.dashboard.noRecentDocuments}
                           </div>
                         )}
@@ -517,7 +531,7 @@ export default function DashboardShell({
                     </div>
 
                     <div
-                      className="w-full min-w-0 rounded-[2rem] border border-white/70 bg-white/80 p-7 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur-xl transition-shadow hover:shadow-[0_24px_70px_rgba(15,23,42,0.14)]"
+                      className="w-full min-w-0 rounded-[2rem] border border-white/60 bg-white/75 p-7 shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-xl transition-shadow hover:shadow-[0_24px_70px_rgba(15,23,42,0.14)]"
                     >
                       <div className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">{t.dashboard.helpTitle}</div>
                       <div className="mt-4 grid gap-5 text-sm text-slate-700">
@@ -528,9 +542,9 @@ export default function DashboardShell({
                             onClick={() => router.push(`/assistant?q=${encodeURIComponent(q)}`)}
                             title={q}
                             aria-label={q}
-                            className={`group relative flex w-full items-center justify-between gap-3 overflow-hidden rounded-2xl border border-slate-200 bg-white/80 p-4 text-left shadow-sm transition before:absolute before:left-0 before:top-0 before:h-full before:w-1 before:bg-blue-400 before:opacity-0 before:transition-opacity hover:bg-slate-50 hover:before:opacity-100 ${
+                            className={`group relative flex w-full items-center justify-between gap-3 overflow-hidden rounded-2xl border border-slate-200/50 bg-slate-50/50 p-4 text-left shadow-sm transition before:absolute before:left-0 before:top-0 before:h-full before:w-1 before:bg-blue-400 before:opacity-0 before:transition-opacity hover:bg-slate-50 hover:before:opacity-100 ${
                               qi === 0
-                                ? "border-blue-200 bg-blue-50/70"
+                                ? "border-blue-200/50 bg-blue-50/40"
                                 : ""
                             }`}
                           >

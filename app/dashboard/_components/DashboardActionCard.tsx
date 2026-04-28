@@ -105,7 +105,7 @@ export default function DashboardActionCard(props: {
 
   const CircleCta = () => (
     <span
-      className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-[0_12px_30px_rgba(37,99,235,0.30)] transition hover:bg-blue-700"
+      className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-[0_14px_36px_rgba(37,99,235,0.38)] transition-all hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-[0_18px_46px_rgba(37,99,235,0.48)] active:translate-y-0"
       aria-hidden
     >
       <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
@@ -120,8 +120,8 @@ export default function DashboardActionCard(props: {
         className ??
         `${surface(index === 0 ? "elevatedCard" : "secondaryCard", { hover: true })} ${
           index === 0
-            ? "rounded-[2rem] border border-white/80 bg-white/90 p-8 shadow-[0_30px_90px_rgba(15,23,42,0.18)] backdrop-blur-xl transition-shadow hover:shadow-[0_35px_100px_rgba(15,23,42,0.22)]"
-            : "rounded-[2rem] border border-white/70 bg-white/80 p-7 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur-xl transition-shadow hover:shadow-[0_24px_70px_rgba(15,23,42,0.14)]"
+            ? "relative overflow-hidden rounded-[2rem] border border-white/80 bg-white/90 p-8 shadow-[0_30px_90px_rgba(15,23,42,0.18)] backdrop-blur-xl ring-1 ring-blue-500/20 transition-shadow hover:shadow-[0_35px_100px_rgba(15,23,42,0.22)]"
+            : "rounded-[2rem] border border-white/60 bg-white/75 p-7 shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-xl transition-shadow hover:shadow-[0_24px_70px_rgba(15,23,42,0.14)]"
         }`
       }
       onClick={(e) => {
@@ -133,8 +133,27 @@ export default function DashboardActionCard(props: {
       }}
       style={{ cursor: "pointer" }}
     >
+      {index === 0 ? (
+        <>
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-blue-500/40 to-transparent"
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-blue-500/10 blur-2xl"
+          />
+        </>
+      ) : null}
+      <div className={index === 0 ? "relative z-10" : undefined}>
       {headerLabel ? (
-        <div className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">
+        <div className="flex items-center text-xs font-bold uppercase tracking-[0.22em] text-slate-500">
+          {index === 0 ? (
+            <span
+              className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(37,99,235,0.65)]"
+              aria-hidden="true"
+            />
+          ) : null}
           {headerLabel}
         </div>
       ) : null}
@@ -212,7 +231,7 @@ export default function DashboardActionCard(props: {
       ) : null}
 
       {action.stepDetails ? (
-        <div className="mt-3 rounded-2xl border border-slate-200/70 bg-slate-50/70 p-4 shadow-sm">
+        <div className="mt-3 rounded-2xl border border-slate-200/50 bg-slate-50/50 p-4 shadow-sm">
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-700">
             {resolvedStepTitle}
           </p>
@@ -231,7 +250,7 @@ export default function DashboardActionCard(props: {
       ) : null}
 
       {action.nudges?.length ? (
-        <div className="mt-3 grid gap-2 text-sm leading-6 text-slate-600">
+        <div className="mt-3 grid gap-2 rounded-2xl border border-slate-200/50 bg-slate-50/50 p-4 text-sm leading-6 text-slate-600 shadow-sm">
           {action.nudges.slice(0, 2).map((n, ni) => (
             <div key={`${action.id}-nudge-${ni}`}>{n}</div>
           ))}
@@ -278,6 +297,7 @@ export default function DashboardActionCard(props: {
           </Link>
         ) : null}
         {footerActions}
+      </div>
       </div>
     </article>
   );
