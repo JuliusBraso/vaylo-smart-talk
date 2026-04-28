@@ -367,39 +367,19 @@ export default function DashboardShell({
           >
             <div
               className="absolute inset-0 transition-opacity duration-500"
-              style={{
-                backgroundImage: hasImage
-                  ? `url(${imagePath}), ${regionVisual.wallpaper}`
-                  : regionVisual.wallpaper,
-                backgroundSize: "cover",
-                backgroundPosition: hasImage ? "center 30%" : "center",
-                backgroundRepeat: "no-repeat",
-              }}
+              style={{ background: regionVisual.wallpaper }}
             />
-            <div
-              className="absolute inset-0 transition-opacity duration-500"
-              style={{
-                background:
-                  hasImage
-                    ? "linear-gradient(to top, rgba(2,6,23,0.28), rgba(2,6,23,0.02))"
-                    : (regionVisual?.overlay ??
-                      (appliedAtmosphere.id === "night"
-                        ? "rgba(2,6,23,0.06)"
-                        : "rgba(255,255,255,0.07)")),
-              }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-transparent" />
+            <div className="absolute inset-0 transition-opacity duration-500">
+              <img
+                src={imagePath}
+                alt=""
+                aria-hidden="true"
+                className="h-full w-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-slate-950/60 via-slate-950/20 to-transparent" />
+              <div className="absolute inset-0 bg-slate-900/10" />
+            </div>
             <div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_60%,rgba(2,6,23,0.15))]" />
-            <div
-              className="absolute inset-0 opacity-[0.08]"
-              style={{
-                background:
-                  appliedAtmosphere.wallpaperVignette ??
-                  "radial-gradient(circle at center, transparent 45%, rgba(15,23,42,0.10) 100%)",
-              }}
-            />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.35),transparent_40%)]" />
-            <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.08),rgba(255,255,255,0.14))]" />
             <div
               className="absolute -left-24 top-[-180px] h-[560px] w-[820px] rounded-full opacity-40"
               style={{
