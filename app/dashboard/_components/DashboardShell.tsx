@@ -303,27 +303,27 @@ export default function DashboardShell({
 
   const priorityCard = (
     <div
-      className={`${surface("elevatedCard", { hover: true })} relative z-20 w-full min-w-0 rounded-3xl border border-white/70 bg-white p-7 shadow-[0_30px_80px_-25px_rgba(15,23,42,0.40)] lg:scale-[1.02]`}
+      className={`${surface("elevatedCard", { hover: true })} relative z-20 w-full min-w-0 rounded-[2rem] border border-white/80 bg-white/90 p-8 shadow-[0_30px_90px_rgba(15,23,42,0.18)] backdrop-blur-xl transition-shadow hover:shadow-[0_35px_100px_rgba(15,23,42,0.22)] lg:scale-[1.02]`}
     >
-      <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
+      <div className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">
         {t.dashboard.activePriority}
       </div>
-      <div className="mt-2 text-base font-semibold text-slate-900">
+      <div className="mt-2 text-lg font-semibold text-slate-950">
         {primaryActionTitle}
       </div>
-      <div className="mt-2 text-xs text-slate-600">
+      <div className="mt-2 text-sm leading-6 text-slate-600">
         {identitySummary.length > 0
           ? identitySummary.join(" • ")
           : `${t.dashboard.level} ${getLanguageLabel(dna.inputs.language_level, t)}`}
       </div>
-      <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
-        <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+      <div className="mt-4 rounded-2xl border border-slate-200/70 bg-slate-50/70 p-4 shadow-sm">
+        <div className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">
           {primaryAction?.stepProcessBadge ?? t.dashboard.statusLabel}
         </div>
-        <div className="mt-1 text-sm font-semibold text-slate-900">
+        <div className="mt-1 text-lg font-semibold text-slate-950">
           {primaryActionDescription}
         </div>
-        <div className="mt-1 text-[11px] text-slate-600">
+        <div className="mt-1 text-sm leading-6 text-slate-600">
           {primaryAction?.reasons?.[0] ?? primaryAction?.stepProcessSubtle ?? t.dashboard.statusDesc}
         </div>
       </div>
@@ -338,7 +338,7 @@ export default function DashboardShell({
             eventType: "click",
           });
         }}
-        className="mt-5 inline-flex h-12 w-full items-center justify-center rounded-2xl bg-blue-600 text-sm font-semibold text-white shadow-md transition-all hover:bg-blue-500 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-200"
+        className="mt-5 inline-flex h-12 w-full items-center justify-center rounded-2xl bg-blue-600 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(37,99,235,0.30)] transition hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-200"
       >
         {primaryAction?.cta ?? t.onboarding.continue}
       </Link>
@@ -490,26 +490,26 @@ export default function DashboardShell({
                   <section className="relative z-10 mt-8 w-full max-w-7xl mx-auto px-6">
                   <div className="grid w-full grid-cols-1 gap-6 xl:grid-cols-3">
                     <div
-                      className="w-full min-w-0 rounded-[1.75rem] border border-white/40 bg-white/95 p-6 shadow-[0_32px_64px_-15px_rgba(0,0,0,0.08)] transition-all duration-200 hover:shadow-[0_36px_80px_-18px_rgba(15,23,42,0.16)]"
+                      className="w-full min-w-0 rounded-[2rem] border border-white/70 bg-white/80 p-7 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur-xl transition-shadow hover:shadow-[0_24px_70px_rgba(15,23,42,0.14)]"
                     >
-                      <div className="text-sm font-semibold text-slate-900">{t.dashboard.recentDocumentsTitle}</div>
-                      <div className="mt-4 grid gap-2 text-sm text-slate-700">
+                      <div className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">{t.dashboard.recentDocumentsTitle}</div>
+                      <div className="mt-4 grid gap-5 text-sm text-slate-700">
                         {recentDocumentItems.length > 0 ? recentDocumentItems.map((doc) => (
-                          <div key={doc.id} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                          <div key={doc.id} className="flex items-center gap-3 rounded-2xl border border-slate-200/70 bg-slate-50/70 p-4 shadow-sm">
                             <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white text-slate-500 shadow-sm" aria-hidden>
                               📄
                             </span>
                             <span className="min-w-0 flex-1 truncate font-medium">{doc.label}</span>
                           </div>
                         )) : (
-                          <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-xs text-slate-500">
+                          <div className="rounded-2xl border border-dashed border-slate-200/70 bg-slate-50/70 p-4 text-sm leading-6 text-slate-600 shadow-sm">
                             {t.dashboard.noRecentDocuments}
                           </div>
                         )}
                       </div>
                       <Link
                         href="/documents"
-                        className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-700"
+                        className="mt-4 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
                       >
                         {t.dashboard.viewAllDocuments}
                         <span aria-hidden>›</span>
@@ -517,10 +517,10 @@ export default function DashboardShell({
                     </div>
 
                     <div
-                      className="w-full min-w-0 rounded-[1.75rem] border border-white/40 bg-white/95 p-6 shadow-[0_32px_64px_-15px_rgba(0,0,0,0.08)] transition-all duration-200 hover:shadow-[0_36px_80px_-18px_rgba(15,23,42,0.16)]"
+                      className="w-full min-w-0 rounded-[2rem] border border-white/70 bg-white/80 p-7 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur-xl transition-shadow hover:shadow-[0_24px_70px_rgba(15,23,42,0.14)]"
                     >
-                      <div className="text-sm font-semibold text-slate-900">{t.dashboard.helpTitle}</div>
-                      <div className="mt-4 grid gap-2 text-sm text-slate-700">
+                      <div className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">{t.dashboard.helpTitle}</div>
+                      <div className="mt-4 grid gap-5 text-sm text-slate-700">
                         {helpQuestions.map((q, qi) => (
                           <button
                             key={q}
@@ -528,10 +528,10 @@ export default function DashboardShell({
                             onClick={() => router.push(`/assistant?q=${encodeURIComponent(q)}`)}
                             title={q}
                             aria-label={q}
-                            className={`group relative flex w-full items-center justify-between gap-3 overflow-hidden rounded-2xl border px-4 py-3 text-left shadow-sm transition-all duration-150 ease-out before:absolute before:left-0 before:top-0 before:h-full before:w-1 before:bg-blue-400 before:opacity-0 before:transition-opacity hover:border-blue-200 hover:bg-blue-50 hover:shadow-md hover:before:opacity-100 active:scale-[0.98] ${
+                            className={`group relative flex w-full items-center justify-between gap-3 overflow-hidden rounded-2xl border border-slate-200 bg-white/80 p-4 text-left shadow-sm transition before:absolute before:left-0 before:top-0 before:h-full before:w-1 before:bg-blue-400 before:opacity-0 before:transition-opacity hover:bg-slate-50 hover:before:opacity-100 ${
                               qi === 0
                                 ? "border-blue-200 bg-blue-50/70"
-                                : "border-slate-200 bg-white"
+                                : ""
                             }`}
                           >
                             <span className="text-sm text-slate-700">{q}</span>
@@ -546,7 +546,7 @@ export default function DashboardShell({
                       </div>
                       <Link
                         href="/assistant"
-                        className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-700"
+                        className="mt-4 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
                       >
                         {t.dashboard.moreQuestions} <span aria-hidden>›</span>
                       </Link>

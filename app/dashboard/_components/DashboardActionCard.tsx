@@ -105,7 +105,7 @@ export default function DashboardActionCard(props: {
 
   const CircleCta = () => (
     <span
-      className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-blue-600 text-white shadow-sm transition-all hover:bg-blue-500 hover:scale-105 active:scale-[0.98]"
+      className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-[0_12px_30px_rgba(37,99,235,0.30)] transition hover:bg-blue-700"
       aria-hidden
     >
       <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
@@ -120,8 +120,8 @@ export default function DashboardActionCard(props: {
         className ??
         `${surface(index === 0 ? "elevatedCard" : "secondaryCard", { hover: true })} ${
           index === 0
-            ? "p-6 border-indigo-200 shadow-[0_16px_44px_rgba(15,23,42,0.13)]"
-            : "p-6"
+            ? "rounded-[2rem] border border-white/80 bg-white/90 p-8 shadow-[0_30px_90px_rgba(15,23,42,0.18)] backdrop-blur-xl transition-shadow hover:shadow-[0_35px_100px_rgba(15,23,42,0.22)]"
+            : "rounded-[2rem] border border-white/70 bg-white/80 p-7 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur-xl transition-shadow hover:shadow-[0_24px_70px_rgba(15,23,42,0.14)]"
         }`
       }
       onClick={(e) => {
@@ -134,11 +134,11 @@ export default function DashboardActionCard(props: {
       style={{ cursor: "pointer" }}
     >
       {headerLabel ? (
-        <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-500">
+        <div className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">
           {headerLabel}
         </div>
       ) : null}
-      <h3 className="mt-2 text-sm font-semibold text-slate-900">
+      <h3 className="mt-2 text-lg font-semibold text-slate-950">
         {resolvedStepTitle}
       </h3>
 
@@ -196,34 +196,34 @@ export default function DashboardActionCard(props: {
       ) : null}
 
       {action.stepProcessSubtle ? (
-        <p className="mt-1 text-[10px] leading-snug text-slate-600">{action.stepProcessSubtle}</p>
+        <p className="mt-1 text-sm leading-6 text-slate-600">{action.stepProcessSubtle}</p>
       ) : null}
       {action.recommendedNextHint ? (
-        <p className="mt-1 text-[10px] font-medium text-emerald-700">{action.recommendedNextHint}</p>
+        <p className="mt-1 text-sm font-medium leading-6 text-emerald-700">{action.recommendedNextHint}</p>
       ) : null}
       {action.processingHint ? (
-        <p className="mt-1 text-[10px] font-medium text-indigo-700">{action.processingHint}</p>
+        <p className="mt-1 text-sm font-medium leading-6 text-indigo-700">{action.processingHint}</p>
       ) : null}
 
       {resolvedStepDescription ? (
-        <p className="mt-1 text-xs text-slate-700">
+        <p className="mt-1 text-sm leading-6 text-slate-600">
           {resolvedStepDescription}
         </p>
       ) : null}
 
       {action.stepDetails ? (
-        <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
+        <div className="mt-3 rounded-2xl border border-slate-200/70 bg-slate-50/70 p-4 shadow-sm">
+          <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-700">
             {resolvedStepTitle}
           </p>
           {resolvedStepHint ? (
-            <p className="mt-1 text-[11px] leading-snug text-slate-600">{resolvedStepHint}</p>
+            <p className="mt-2 text-sm leading-6 text-slate-600">{resolvedStepHint}</p>
           ) : null}
         </div>
       ) : null}
 
       {action.reasons.length > 0 ? (
-        <ul className="mt-2 list-disc space-y-1 pl-4 text-[11px] leading-snug text-slate-600">
+        <ul className="mt-3 list-disc space-y-1 pl-4 text-sm leading-6 text-slate-600">
           {action.reasons.map((line, li) => (
             <li key={`${action.id}-why-${li}`}>{line}</li>
           ))}
@@ -231,7 +231,7 @@ export default function DashboardActionCard(props: {
       ) : null}
 
       {action.nudges?.length ? (
-        <div className="mt-2 grid gap-1 text-[11px] leading-snug text-slate-600">
+        <div className="mt-3 grid gap-2 text-sm leading-6 text-slate-600">
           {action.nudges.slice(0, 2).map((n, ni) => (
             <div key={`${action.id}-nudge-${ni}`}>{n}</div>
           ))}
@@ -243,7 +243,7 @@ export default function DashboardActionCard(props: {
           <Link
             href={action.href}
             onClick={onPrimaryCtaClick}
-            className="inline-flex items-center gap-2 text-xs font-semibold text-blue-600 hover:text-blue-700"
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
           >
             {action.cta}
             <span aria-hidden>›</span>
@@ -263,7 +263,7 @@ export default function DashboardActionCard(props: {
           <Link
             href={action.uploadDocumentHref}
             onClick={onSecondaryCtaClick}
-            className="inline-flex rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition duration-150 ease-out hover:bg-slate-50 active:scale-[0.98] motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+            className="inline-flex rounded-xl border border-slate-200 bg-white/80 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
           >
             {t.dashboard.actionUploadDocumentCta}
           </Link>
@@ -272,7 +272,7 @@ export default function DashboardActionCard(props: {
           <Link
             href={action.guideHref}
             onClick={onGuideCtaClick}
-            className="inline-flex rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition duration-150 ease-out hover:bg-slate-50 active:scale-[0.98] motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+            className="inline-flex rounded-xl border border-slate-200 bg-white/80 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
           >
             {t.dashboard.actionViewGuideCta}
           </Link>
