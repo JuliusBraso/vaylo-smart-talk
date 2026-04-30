@@ -4,6 +4,7 @@ import { applyDocumentStepProofDecision } from "@/lib/vaylo/documents/confirm-st
 import { writeStepTransition } from "@/lib/vaylo/steps/write-step-transition";
 
 type Ctx = { params: Promise<{ id: string }> };
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function statusForError(code: string | undefined): number {
   switch (code) {
@@ -16,13 +17,18 @@ function statusForError(code: string | undefined): number {
       return 400;
     case "unauthorized":
       return 401;
+    case "internal_error":
+      return 500;
     default:
-      return 400;
+      return 500;
   }
 }
 
 export async function POST(req: NextRequest, context: Ctx) {
   const { id: documentId } = await context.params;
+  if (!UUID_RE.test(documentId)) {
+    return NextResponse.json({ error: "Invalid documentId" }, { status: 400 });
+  }
   const supabase = await createClient();
   const {
     data: { user },

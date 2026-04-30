@@ -135,17 +135,30 @@ export async function runDocumentIntelligenceWorkerOnce(params?: {
 
   console.info("[documents intelligence job START]", {
     jobId: job.id,
-    userId: job.user_id,
-    documentId: job.document_id,
     attempt: job.attempt_count,
   });
 
   try {
-    await processDocumentIntelligence({
+    const processing = await processDocumentIntelligence({
       supabase: admin,
       userId: job.user_id,
       documentId: job.document_id,
     });
+
+    if (!processing.ok) {
+      const msg = processing.errorMessage ?? processing.reason;
+      await markDocumentIntelligenceJobFailed({
+        supabase: admin,
+        jobId: job.id,
+        errorMessage: msg,
+        rescheduleInSeconds: 300,
+      });
+      console.error("[documents intelligence job FAIL]", {
+        jobId: job.id,
+        reason: processing.reason,
+      });
+      return { processed: true, jobId: job.id, ok: false };
+    }
 
     // Phase 4.0: safe auto-progression (never verified; completed only).
     try {

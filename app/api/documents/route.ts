@@ -1,6 +1,13 @@
 import { Buffer } from "node:buffer";
 import { NextRequest, NextResponse } from "next/server";
 import { after } from "next/server";
+import {
+  createRequestId,
+  internalErrorResponse,
+  logRouteError,
+  toErrorLike,
+} from "@/lib/api/safe-error-response";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { createClient } from "@/lib/supabase/server";
 import {
   addDocument,
@@ -29,10 +36,9 @@ export async function GET() {
     const documents = await getDocuments(supabase, user.id);
     return NextResponse.json({ documents });
   } catch (err) {
-    console.error("[documents API ERROR]", err);
-    const message =
-      err instanceof Error ? err.message : "Failed to list documents";
-    return NextResponse.json({ error: message }, { status: 500 });
+    const requestId = createRequestId();
+    logRouteError("[documents API GET]", requestId, err);
+    return internalErrorResponse({ requestId, status: 500, debugError: err });
   }
 }
 
@@ -74,7 +80,9 @@ export async function POST(request: NextRequest) {
     });
 
   if (upErr) {
-    return NextResponse.json({ error: upErr.message }, { status: 500 });
+    const requestId = createRequestId();
+    logRouteError("[documents API POST storage upload]", requestId, upErr);
+    return internalErrorResponse({ requestId, status: 500, debugError: upErr });
   }
 
   try {
@@ -86,20 +94,51 @@ export async function POST(request: NextRequest) {
       file.type || null,
     );
 
-    // Phase 3.7: durable enqueue. Upload must succeed even if worker is delayed.
+    // Durable enqueue (service role). Route remains auth-gated by current user.
     try {
-      const job = await enqueueDocumentIntelligenceJob({
-        supabase,
+      const enqueueClient = createServiceRoleClient();
+      if (!enqueueClient) {
+        throw new Error("service_role_not_configured");
+      }
+      await enqueueDocumentIntelligenceJob({
+        supabase: enqueueClient,
         userId: user.id,
         documentId: document.id,
       });
-      console.info("[documents intelligence enqueue]", {
-        documentId: document.id,
-        jobId: job?.id ?? null,
-        status: job?.status ?? null,
-      });
     } catch (err) {
-      console.error("[documents intelligence enqueue]", err);
+      const requestId = createRequestId();
+      logRouteError("[documents intelligence enqueue]", requestId, err);
+      // Consistent failure semantics: if enqueue fails, rollback uploaded doc.
+      try {
+        await deleteDocument(supabase, user.id, document.id);
+      } catch (rollbackErr) {
+        logRouteError("[documents intelligence enqueue rollback]", requestId, rollbackErr);
+      }
+      if (process.env.NODE_ENV !== "production") {
+        const e = toErrorLike(err);
+        return NextResponse.json(
+          {
+            ok: false,
+            error: "document_intelligence_enqueue_failed",
+            requestId,
+            debug: {
+              code: e.code ?? null,
+              message: e.message ?? null,
+              details: e.details ?? null,
+              hint: e.hint ?? null,
+            },
+          },
+          { status: 500 },
+        );
+      }
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "document_intelligence_enqueue_failed",
+          requestId,
+        },
+        { status: 500 },
+      );
     }
 
     // Best-effort worker kick; job row remains the durable source of truth.
@@ -113,15 +152,15 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ document });
   } catch (err) {
-    console.error("[documents API ERROR]", err);
+    const requestId = createRequestId();
+    logRouteError("[documents API POST]", requestId, err);
     // Core metadata insert failed; clean up storage.
     try {
       await supabase.storage.from(DOCUMENTS_BUCKET).remove([path]);
     } catch (cleanupErr) {
-      console.error("[documents POST postprocess ERROR]", cleanupErr);
+      logRouteError("[documents API POST cleanup]", requestId, cleanupErr);
     }
-    const message = err instanceof Error ? err.message : "Failed to save metadata";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return internalErrorResponse({ requestId, status: 500, debugError: err });
   }
 }
 
@@ -143,11 +182,12 @@ export async function DELETE(request: NextRequest) {
     await deleteDocument(supabase, user.id, id);
     return NextResponse.json({ ok: true });
   } catch (e) {
+    const requestId = createRequestId();
     const status = (e as Error & { status?: number }).status;
     if (status === 404) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
-    const message = e instanceof Error ? e.message : "Delete failed";
-    return NextResponse.json({ error: message }, { status: 500 });
+    logRouteError("[documents API DELETE]", requestId, e);
+    return internalErrorResponse({ requestId, status: 500, debugError: e });
   }
 }

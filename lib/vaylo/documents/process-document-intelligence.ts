@@ -9,11 +9,15 @@ import {
 import { extractDocumentTextFromBuffer } from "@/lib/vaylo/extract-document-text";
 import { runDocumentIntelligencePhase1 } from "@/lib/vaylo/documents/apply-document-intelligence";
 
+export type ProcessDocumentIntelligenceResult =
+  | { ok: true; skipped?: boolean; reason?: string }
+  | { ok: false; reason: string; errorMessage?: string };
+
 export async function processDocumentIntelligence(params: {
   supabase?: SupabaseClient;
   userId: string;
   documentId: string;
-}): Promise<void> {
+}): Promise<ProcessDocumentIntelligenceResult> {
   const { userId, documentId } = params;
   const admin = params.supabase ?? createServiceRoleClient();
   if (!admin) {
@@ -22,7 +26,7 @@ export async function processDocumentIntelligence(params: {
       documentId,
       reason: "no_service_role",
     });
-    return;
+    return { ok: false, reason: "no_service_role" };
   }
 
   try {
@@ -33,7 +37,7 @@ export async function processDocumentIntelligence(params: {
         documentId,
         reason: "not_found",
       });
-      return;
+      return { ok: false, reason: "not_found" };
     }
 
     // Idempotency guard: don't redo successful work.
@@ -44,7 +48,7 @@ export async function processDocumentIntelligence(params: {
         skipped: true,
         reason: "already_completed",
       });
-      return;
+      return { ok: true, skipped: true, reason: "already_completed" };
     }
 
     // Download file from Storage (admin bypasses RLS; we still scope by userId via file path).
@@ -56,7 +60,7 @@ export async function processDocumentIntelligence(params: {
         step: "storage_download",
         error: dl.error?.message ?? "download_failed",
       });
-      return;
+      return { ok: false, reason: "storage_download_failed", errorMessage: dl.error?.message };
     }
 
     const arr = await dl.data.arrayBuffer();
@@ -89,8 +93,14 @@ export async function processDocumentIntelligence(params: {
       fileName: doc.file_name ?? null,
       extractedText: extracted ?? null,
     });
+    return { ok: true };
   } catch (err) {
     console.error("[documents intelligence job ERROR]", { userId, documentId, err });
+    return {
+      ok: false,
+      reason: "pipeline_exception",
+      errorMessage: err instanceof Error ? err.message : "unknown_error",
+    };
   }
 }
 

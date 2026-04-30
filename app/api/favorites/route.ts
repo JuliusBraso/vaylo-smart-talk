@@ -1,4 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import {
+  createRequestId,
+  internalErrorResponse,
+  logRouteError,
+} from "@/lib/api/safe-error-response";
 import { createClient } from "@/lib/supabase/server";
 import { addFavorite, getFavorites, removeFavorite } from "@/lib/vaylo/favorites";
 
@@ -26,7 +31,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = (await req.json()) as { phraseId?: unknown };
+  let body: { phraseId?: unknown } = {};
+  try {
+    body = (await req.json()) as { phraseId?: unknown };
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
   const phraseId = typeof body.phraseId === "string" ? body.phraseId : "";
   if (!phraseId.trim()) {
     return NextResponse.json({ error: "Invalid phraseId" }, { status: 400 });
@@ -34,7 +44,9 @@ export async function POST(req: NextRequest) {
 
   const ok = await addFavorite(userId, phraseId);
   if (!ok) {
-    return NextResponse.json({ error: "Could not save favorite" }, { status: 500 });
+    const requestId = createRequestId();
+    logRouteError("[favorites POST]", requestId, "could_not_save_favorite");
+    return internalErrorResponse({ requestId, status: 500 });
   }
 
   return NextResponse.json({ ok: true });
@@ -46,7 +58,12 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = (await req.json()) as { phraseId?: unknown };
+  let body: { phraseId?: unknown } = {};
+  try {
+    body = (await req.json()) as { phraseId?: unknown };
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
   const phraseId = typeof body.phraseId === "string" ? body.phraseId : "";
   if (!phraseId.trim()) {
     return NextResponse.json({ error: "Invalid phraseId" }, { status: 400 });
@@ -54,10 +71,9 @@ export async function DELETE(req: NextRequest) {
 
   const ok = await removeFavorite(userId, phraseId);
   if (!ok) {
-    return NextResponse.json(
-      { error: "Could not remove favorite" },
-      { status: 500 }
-    );
+    const requestId = createRequestId();
+    logRouteError("[favorites DELETE]", requestId, "could_not_remove_favorite");
+    return internalErrorResponse({ requestId, status: 500 });
   }
 
   return NextResponse.json({ ok: true });

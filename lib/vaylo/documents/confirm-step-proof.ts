@@ -34,7 +34,18 @@ export async function applyDocumentStepProofDecision(params: {
   });
 
   if (error) {
-    return { ok: false, error: error.message };
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[proof decision rpc]", {
+        fn,
+        documentId,
+        stepId,
+        code: (error as { code?: string }).code ?? null,
+        message: error.message ?? null,
+        details: (error as { details?: string | null }).details ?? null,
+        hint: (error as { hint?: string | null }).hint ?? null,
+      });
+    }
+    return { ok: false, error: "internal_error" };
   }
 
   const parsed = parseRpcPayload(data);

@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getUserState } from "@/lib/vaylo/state/get-user-state";
 import { getUserStepState } from "@/lib/vaylo/steps/get-user-step-state";
@@ -7,11 +7,18 @@ import type { UserStepStatus } from "@/lib/vaylo/steps/types";
 
 export const runtime = "nodejs";
 
-export async function GET() {
+function hasInternalDebugSecret(req: NextRequest): boolean {
+  const expected = process.env.VAYLO_INTERNAL_DEBUG_SECRET ?? "";
+  const provided = req.headers.get("x-internal-debug-secret") ?? "";
+  return expected.length > 0 && provided === expected;
+}
+
+export async function GET(req: NextRequest) {
   const allow =
     process.env.NODE_ENV === "development" ||
-    process.env.I18N_STEP_STATE_DEBUG === "1" ||
-    process.env.VAYLO_STEP_STATE_DEBUG === "1";
+    ((process.env.I18N_STEP_STATE_DEBUG === "1" ||
+      process.env.VAYLO_STEP_STATE_DEBUG === "1") &&
+      hasInternalDebugSecret(req));
   if (!allow) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
