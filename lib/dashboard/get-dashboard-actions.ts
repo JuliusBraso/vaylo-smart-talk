@@ -31,6 +31,10 @@ import type {
   UserStepStatus,
 } from "@/lib/vaylo/steps/types";
 
+function isPreScoringActionableStepStatus(status: unknown): boolean {
+  return status === "eligible" || status === "in_progress" || status === "blocked";
+}
+
 export type DashboardRelatedDocument = {
   documentTypeId: string;
   titleKey: string | null;
@@ -700,9 +704,20 @@ function pickWideNonCriticalWithOptionalPromotion(
     stepState?: GetUserStepStateResult;
   },
 ): NextAction[] {
-  const wideCap = Math.min(WIDE_DASHBOARD_CANDIDATE_POOL_MAX, deduped.length);
+  const preScoringCandidates =
+    opts?.stepState
+      ? deduped.filter((action) => {
+          const catalogId = mapDashboardActionToKnowledgeCatalogActionId(action.id);
+          const stepId = opts.catalogActionToStepId.get(catalogId);
+          if (!stepId) return true;
+          const status = opts.stepState?.steps[stepId]?.status;
+          if (status == null) return true;
+          return isPreScoringActionableStepStatus(status);
+        })
+      : deduped;
+  const wideCap = Math.min(WIDE_DASHBOARD_CANDIDATE_POOL_MAX, preScoringCandidates.length);
   const wide = pickOrderedActionsUpTo(
-    deduped,
+    preScoringCandidates,
     dna,
     liveSituation,
     primaryRoute,
