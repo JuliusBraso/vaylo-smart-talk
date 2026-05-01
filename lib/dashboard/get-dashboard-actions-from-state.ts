@@ -29,7 +29,48 @@ function isCompatUnavailableErrorMessage(msg: string): boolean {
 }
 
 function isActionableStepStatus(status: string): boolean {
-  return ["eligible", "ready"].includes(status);
+  return ["eligible", "in_progress", "blocked", "ready"].includes(status);
+}
+
+function isAllowedDashboardStepStatus(status: string): boolean {
+  return status === "eligible" || status === "in_progress" || status === "blocked";
+}
+
+function isStepAlreadySatisfiedByReality(
+  step: Pick<ResolvedUserStepState, "stepId" | "slug" | "actionId">,
+  reality: {
+    hasHealthInsurance: boolean;
+    hasBankAccount: boolean;
+    hasSteuerId: boolean;
+    hasAddressRegistration: boolean;
+  },
+): boolean {
+  const keys = [step.stepId, step.slug, step.actionId]
+    .filter((v): v is string => typeof v === "string" && v.trim().length > 0)
+    .map((v) => v.toLowerCase().replace(/_/g, "-"));
+
+  const hasPattern = (patterns: readonly string[]) =>
+    keys.some((key) => patterns.some((pattern) => key.includes(pattern)));
+
+  if (
+    reality.hasHealthInsurance &&
+    hasPattern(["health", "insurance", "health-insurance", "critical-health"])
+  ) {
+    return true;
+  }
+  if (reality.hasBankAccount && hasPattern(["bank", "bank-account", "critical-bank"])) {
+    return true;
+  }
+  if (reality.hasSteuerId && hasPattern(["steuer", "tax", "tax-id"])) {
+    return true;
+  }
+  if (
+    reality.hasAddressRegistration &&
+    hasPattern(["anmeldung", "registration", "address-registration"])
+  ) {
+    return true;
+  }
+  return false;
 }
 
 function stepFallbackTitle(step: ResolvedUserStepState): string {
@@ -43,10 +84,34 @@ function stepFallbackTitle(step: ResolvedUserStepState): string {
 function buildActionsFromEligibleSteps(params: {
   stepState: GetUserStepStateResult | undefined;
   existingActions: DashboardAction[];
+  userState: UserState;
   t: Dict;
 }): DashboardAction[] {
-  const { stepState, existingActions, t } = params;
+  const { stepState, existingActions, userState, t } = params;
   if (!stepState) return [];
+  const reality = (userState.reality ?? {}) as Record<string, unknown>;
+  const profileFlags = reality.profileFlags as
+    | {
+        hasHealthInsurance?: boolean;
+        hasBankAccount?: boolean;
+        hasSteuerId?: boolean;
+        hasAddressRegistration?: boolean;
+      }
+    | undefined;
+  const realityState = {
+    hasHealthInsurance:
+      profileFlags?.hasHealthInsurance === true ||
+      reality.has_health_insurance === true,
+    hasBankAccount:
+      profileFlags?.hasBankAccount === true ||
+      reality.has_bank_account === true,
+    hasSteuerId:
+      profileFlags?.hasSteuerId === true ||
+      reality.has_steuer_id === true,
+    hasAddressRegistration:
+      profileFlags?.hasAddressRegistration === true ||
+      reality.has_address_registration === true,
+  };
 
   const representedStepIds = new Set(
     existingActions
@@ -58,6 +123,14 @@ function buildActionsFromEligibleSteps(params: {
   return Object.values(stepState.steps)
     .filter((step) => {
       if (!isActionableStepStatus(step.status)) return false;
+      if (
+        step.status === "not_applicable" ||
+        step.status === "completed" ||
+        step.status === "verified"
+      ) {
+        return false;
+      }
+      if (isStepAlreadySatisfiedByReality(step, realityState)) return false;
       if (step.isApplicable !== true) return false;
       if (representedStepIds.has(step.stepId)) return false;
       if (step.actionId && representedActionIds.has(step.actionId)) return false;
@@ -244,10 +317,13 @@ export async function getDashboardActionsFromState(params: {
 
   const enriched = await enrichActionsWithKnowledge({ supabase, actions, t });
   const withStep = applyStepStateToDashboardActions(enriched, stepState, t);
-  const filtered = withStep.filter((a) => a.stepStatus !== "not_applicable");
+  const filtered = withStep.filter(
+    (a) => !a.stepStatus || isAllowedDashboardStepStatus(a.stepStatus),
+  );
   const fallbackStepActions = buildActionsFromEligibleSteps({
     stepState,
     existingActions: filtered,
+    userState,
     t,
   });
   const enrichedFallback =
@@ -259,7 +335,7 @@ export async function getDashboardActionsFromState(params: {
         )
       : [];
   const finalActions = [...filtered, ...enrichedFallback].filter(
-    (a) => a.stepStatus !== "not_applicable",
+    (a) => !a.stepStatus || isAllowedDashboardStepStatus(a.stepStatus),
   );
 
   if (process.env.NODE_ENV === "development") {
