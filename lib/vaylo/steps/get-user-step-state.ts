@@ -1,6 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { UserState } from "@/lib/vaylo/state/types";
-import { resolveRealityFlags } from "@/lib/vaylo/state/resolve-reality-flags";
+import {
+  computeRealityModel,
+  type RealityModel,
+} from "@/lib/vaylo/state/compute-reality-model";
 import { chooseStrongerStatus } from "./status-precedence";
 import { evaluateGroupedDependencies } from "./dependency-groups";
 import {
@@ -51,6 +54,48 @@ function parsePersistedRow(row: unknown): UserStepStateRow | null {
     created_at: String(r.created_at ?? ""),
     updated_at: String(r.updated_at ?? ""),
   };
+}
+
+function isStepAlreadySatisfiedByReality(
+  step: Pick<KnowledgeStepRow, "id" | "slug" | "action_id">,
+  realityModel: RealityModel,
+): boolean {
+  const keys = [step.id, step.slug, step.action_id]
+    .filter((v): v is string => typeof v === "string" && v.trim().length > 0)
+    .map((v) => v.toLowerCase().replace(/_/g, "-"));
+
+  const matches = (patterns: readonly string[]) =>
+    keys.some((value) => patterns.some((pattern) => value === pattern || value.includes(pattern)));
+
+  const healthPatterns = [
+    "health-submit-membership",
+    "health-insurance",
+    "critical-health",
+    "insurance",
+  ] as const;
+  const bankPatterns = [
+    "bank-account-open",
+    "bank-account",
+    "critical-bank",
+  ] as const;
+  const steuerPatterns = [
+    "steuer-id-received",
+    "steuer-id",
+    "tax-id",
+    "steuer",
+    "tax",
+  ] as const;
+  const anmeldungPatterns = [
+    "anmeldung",
+    "address-registration",
+    "registration",
+  ] as const;
+
+  if (realityModel.hasHealthInsurance && matches(healthPatterns)) return true;
+  if (realityModel.hasBankAccount && matches(bankPatterns)) return true;
+  if (realityModel.hasSteuerId && matches(steuerPatterns)) return true;
+  if (realityModel.hasAnmeldung && matches(anmeldungPatterns)) return true;
+  return false;
 }
 
 export async function getUserStepState(params: {
@@ -157,9 +202,10 @@ export async function getUserStepState(params: {
       employment_type: dnaInputs.employment_type ?? null,
       family_status: dnaInputs.family_status ?? null,
       language_level: dnaInputs.language_level ?? null,
-      has_anmeldung: realityFlags.has_anmeldung,
-      has_health_insurance: realityFlags.has_health_insurance,
-      has_bank_account: realityFlags.has_bank_account,
+      has_anmeldung: realityModel.hasAnmeldung,
+      has_health_insurance: realityModel.hasHealthInsurance,
+      has_bank_account: realityModel.hasBankAccount,
+      has_steuer_id: realityModel.hasSteuerId,
     };
 
     const c = criteria as Record<string, unknown>;
@@ -303,17 +349,44 @@ export async function getUserStepState(params: {
     persistedByStep.set(parsed.step_id, parsed);
   }
 
-  // Reality flags: read-only derived state (no DB writes).
-  // We only trust strong outcomes here; eligibility must never depend on weaker statuses.
-  const realityFlags = resolveRealityFlags({
-    userState: params.userState,
-    stepOutcomes: {
-      anmeldung: verifiedByStep.has("anmeldung") ? "verified" : persistedByStep.get("anmeldung")?.status,
-      health_insurance: verifiedByStep.has("health_insurance")
-        ? "verified"
-        : persistedByStep.get("health_insurance")?.status,
-      bank_account: verifiedByStep.has("bank_account") ? "verified" : persistedByStep.get("bank_account")?.status,
+  // Build strong completion set (proof + persisted terminal statuses) for reality reconciliation.
+  const completedStepIds = new Set<string>();
+  for (const stepId of verifiedByStep.keys()) {
+    completedStepIds.add(stepId);
+  }
+  for (const row of persistedByStep.values()) {
+    if (row.status === "completed" || row.status === "verified") {
+      completedStepIds.add(row.step_id);
+    }
+  }
+
+  // Single source of truth for user reality used by eligibility context in step engine.
+  const reality = (params.userState?.reality ?? {}) as Record<string, unknown>;
+
+  const profileFlags = reality.profileFlags as
+    | {
+        hasHealthInsurance?: boolean;
+        hasBankAccount?: boolean;
+        hasSteuerId?: boolean;
+        hasAddressRegistration?: boolean;
+      }
+    | undefined;
+  const realityModel = computeRealityModel({
+    profile: {
+      has_health_insurance:
+        profileFlags?.hasHealthInsurance === true ||
+        reality.has_health_insurance === true,
+      has_bank_account:
+        profileFlags?.hasBankAccount === true ||
+        reality.has_bank_account === true,
+      has_steuer_id:
+        profileFlags?.hasSteuerId === true ||
+        reality.has_steuer_id === true,
+      has_address_registration:
+        profileFlags?.hasAddressRegistration === true ||
+        reality.has_address_registration === true,
     },
+    stepState: { completedStepIds },
   });
 
   // Resolve per-step status
@@ -342,6 +415,10 @@ export async function getUserStepState(params: {
     }
 
     const eligibility = evaluateEligibility(s.eligibility_criteria);
+    const alreadySatisfiedByReality = isStepAlreadySatisfiedByReality(s, realityModel);
+    const preserveTerminalOrActive =
+      status === "verified" || status === "completed" || status === "in_progress";
+    const forceAlreadySatisfied = alreadySatisfiedByReality && !preserveTerminalOrActive;
     if (process.env.NODE_ENV === "development" && s.eligibility_criteria != null) {
       console.info("[step-state] eligibility evaluated", {
         stepId: s.id,
@@ -350,8 +427,9 @@ export async function getUserStepState(params: {
       });
     }
 
-    const finalStatus: UserStepStatus =
-      eligibility.applicable
+    const finalStatus: UserStepStatus = forceAlreadySatisfied
+      ? "not_applicable"
+      : eligibility.applicable
         ? status
         : status === "verified" || status === "completed" || status === "in_progress"
           ? status
@@ -381,8 +459,12 @@ export async function getUserStepState(params: {
       topicId: s.topic_id,
       slug: s.slug,
       actionId: s.action_id,
-      isApplicable: eligibility.applicable,
-      ...(eligibility.applicable ? {} : { applicabilityReason: eligibility.reason ?? "unknown" }),
+      isApplicable: forceAlreadySatisfied ? false : eligibility.applicable,
+      ...(forceAlreadySatisfied
+        ? { applicabilityReason: "already_satisfied" as const }
+        : eligibility.applicable
+          ? {}
+          : { applicabilityReason: eligibility.reason ?? "unknown" }),
       status: finalStatus,
       source: persisted?.source ?? sourceForDerivedStatus(status, { proof: hasConfirmedProof, legacyProgress: hasLegacyCompletedAction }),
       evidence: {
@@ -390,7 +472,11 @@ export async function getUserStepState(params: {
         hasLegacyCompletedAction,
         dependencyStepIds: depsForStep,
         blockedByStepIds: [],
-        ...(eligibility.applicable ? {} : { eligibility: { applicable: false, reason: eligibility.reason ?? "unknown" } }),
+        ...(forceAlreadySatisfied
+          ? { eligibility: { applicable: false, reason: "already_satisfied" as const } }
+          : eligibility.applicable
+            ? {}
+            : { eligibility: { applicable: false, reason: eligibility.reason ?? "unknown" } }),
         ...(persisted
           ? {
               persisted: {
