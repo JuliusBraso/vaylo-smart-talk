@@ -699,6 +699,7 @@ function pickWideNonCriticalWithOptionalPromotion(
   need: number,
   dna: ProfileDNA,
   liveSituation: LiveSituation,
+  t: Dict,
   primaryRoute: string,
   secondaryRoute: string,
   behavior: {
@@ -721,6 +722,20 @@ function pickWideNonCriticalWithOptionalPromotion(
           return isPreScoringActionableStepStatus(status);
         })
       : deduped;
+  if (preScoringCandidates.length === 0 && deduped.length === 0 && opts?.stepState) {
+    const fallbackStep = Object.values(opts.stepState.steps).find(
+      (step) => step.status === "eligible" && step.isApplicable !== false
+    );
+    if (fallbackStep) {
+      preScoringCandidates.push({
+        id: `step:${fallbackStep.stepId}`,
+        title: fallbackStep.slug || fallbackStep.stepId,
+        desc: t.dashboard.stepRecommendedNext,
+        cta: t.dashboard.actionCtaOpen,
+        href: primaryRoute,
+      });
+    }
+  }
   const candidates =
     preScoringCandidates.length > 0
       ? preScoringCandidates
@@ -842,6 +857,7 @@ function buildNextActions(
       need,
       dna,
       liveSituation,
+      t,
       primaryRoute,
       secondaryRoute,
       behavior,
@@ -871,6 +887,7 @@ function buildNextActions(
     3,
     dna,
     liveSituation,
+    t,
     primaryRoute,
     secondaryRoute,
     behavior,
@@ -923,10 +940,16 @@ export async function getDashboardActions(params: {
     .map((a, idx) => {
     const href =
       a.href ?? (idx === 0 ? primaryRoute : getActionRoute(a.id, dna, secondaryRoute));
-    const copy = getActionCopy(a.id, href, t, liveSituation, dna);
+    const copy = a.id.startsWith("step:")
+      ? { title: a.title, desc: a.desc, cta: a.cta }
+      : getActionCopy(a.id, href, t, liveSituation, dna);
     const reasons = getActionExplanations(a.id, dna, liveSituation, t);
     const priority: DashboardAction["priority"] =
       a.id.startsWith("critical-") ? "critical" : idx === 0 ? "high" : "medium";
+    const fallbackStepId = a.id.startsWith("step:") ? a.id.slice("step:".length) : null;
+    const fallbackStep = fallbackStepId && params.stepState
+      ? params.stepState.steps[fallbackStepId]
+      : undefined;
 
       const nudges: string[] = [];
       const norm = normalizeBehaviorActionId(a.id);
@@ -953,9 +976,10 @@ export async function getDashboardActions(params: {
         ? params.stepState.steps[knowledgeStepId]
         : undefined;
     const showRecommendedNext =
-      !!stepResolved &&
-      stepResolved.status === "eligible" &&
-      !a.id.startsWith("critical-");
+      (!!stepResolved &&
+        stepResolved.status === "eligible" &&
+        !a.id.startsWith("critical-")) ||
+      (!!fallbackStep && fallbackStep.status === "eligible");
 
     return {
       id: a.id,
@@ -967,6 +991,18 @@ export async function getDashboardActions(params: {
         nudges: nudgesLimited.length > 0 ? nudgesLimited : undefined,
       cta: copy.cta,
       ...(knowledgeStepId ? { knowledgeStepId } : {}),
+      ...(fallbackStep
+        ? {
+            knowledgeStepId: fallbackStep.stepId,
+            stepStatus: fallbackStep.status,
+            stepSource: fallbackStep.source,
+            isBlockedByStepState: fallbackStep.status === "blocked",
+            blockedByStepIds: fallbackStep.evidence.blockedByStepIds,
+            isApplicable: fallbackStep.isApplicable,
+            applicabilityReason: fallbackStep.applicabilityReason,
+            isEligible: true,
+          }
+        : {}),
       ...(showRecommendedNext ? { recommendedNextHint: t.dashboard.stepRecommendedNext } : {}),
     };
   });
