@@ -135,6 +135,12 @@ function normalizeBehaviorActionId(actionId: string): string {
   }
 }
 
+function toReadableStepLabel(value: string): string {
+  const cleaned = value.replace(/[-_]+/g, " ").trim();
+  if (!cleaned) return "Step";
+  return cleaned.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 function collectCriticalBlockers(
   liveSituation: LiveSituation,
   dna: ProfileDNA
@@ -709,15 +715,19 @@ function pickWideNonCriticalWithOptionalPromotion(
       ? deduped.filter((action) => {
           const catalogId = mapDashboardActionToKnowledgeCatalogActionId(action.id);
           const stepId = opts.catalogActionToStepId.get(catalogId);
+          const status = stepId ? opts.stepState?.steps[stepId]?.status : undefined;
           if (!stepId) return true;
-          const status = opts.stepState?.steps[stepId]?.status;
           if (status == null) return true;
           return isPreScoringActionableStepStatus(status);
         })
       : deduped;
-  const wideCap = Math.min(WIDE_DASHBOARD_CANDIDATE_POOL_MAX, preScoringCandidates.length);
+  const candidates =
+    preScoringCandidates.length > 0
+      ? preScoringCandidates
+      : deduped;
+  const wideCap = Math.min(WIDE_DASHBOARD_CANDIDATE_POOL_MAX, candidates.length);
   const wide = pickOrderedActionsUpTo(
-    preScoringCandidates,
+    candidates,
     dna,
     liveSituation,
     primaryRoute,
@@ -908,7 +918,7 @@ export async function getDashboardActions(params: {
   );
 
   // Keep deterministic ordering from the existing picker/critical layer.
-  return nextActions
+  const finalActions = nextActions
     .filter((a) => !completedIds.has(normalizeBehaviorActionId(a.id)))
     .map((a, idx) => {
     const href =
@@ -960,5 +970,42 @@ export async function getDashboardActions(params: {
       ...(showRecommendedNext ? { recommendedNextHint: t.dashboard.stepRecommendedNext } : {}),
     };
   });
+  if (finalActions.length > 0 || !params.stepState) {
+    return finalActions;
+  }
+
+  const fallbackStepActions = Object.values(params.stepState.steps)
+    .filter(
+      (step) =>
+        step.isApplicable &&
+        (step.status === "eligible" || step.status === "in_progress" || step.status === "blocked")
+    )
+    .map((step, idx): DashboardAction => {
+      const dynamicTitle = (step as { title?: string | null }).title;
+      const title = toReadableStepLabel(
+        dynamicTitle?.trim() || step.slug || step.actionId || step.stepId
+      );
+      const fallbackAction: DashboardAction = {
+        id: `step:${step.stepId}`,
+        title,
+        description: t.dashboard.stepRecommendedNext,
+        reasons: [t.dashboard.stepRecommendedNext],
+        href: idx === 0 ? primaryRoute : secondaryRoute,
+        priority: idx === 0 ? "high" : "medium",
+        cta: t.dashboard.actionCtaOpen,
+        knowledgeStepId: step.stepId,
+        stepStatus: step.status,
+        stepSource: step.source,
+        isBlockedByStepState: step.status === "blocked",
+        blockedByStepIds: step.evidence.blockedByStepIds,
+        isApplicable: step.isApplicable,
+        applicabilityReason: step.applicabilityReason,
+        isEligible: true,
+      };
+      return fallbackAction;
+    })
+    .slice(0, 3);
+
+  return fallbackStepActions;
 }
 
