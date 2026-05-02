@@ -9,6 +9,24 @@ export async function resolveKnowledgeStepIdForDashboardAction(
   supabase: SupabaseClient,
   dashboardActionId: string,
 ): Promise<string | null> {
+  if (dashboardActionId.startsWith("step:")) {
+    const stepId = dashboardActionId.slice("step:".length).trim();
+    if (!stepId) {
+      return null;
+    }
+    const { data, error } = await supabase
+      .from("knowledge_steps")
+      .select("id")
+      .eq("is_active", true)
+      .eq("id", stepId)
+      .limit(1)
+      .maybeSingle();
+    if (error || !data || typeof (data as { id?: unknown }).id !== "string") {
+      return null;
+    }
+    return (data as { id: string }).id;
+  }
+
   const catalogActionId = mapDashboardActionToKnowledgeCatalogActionId(dashboardActionId);
   const { data, error } = await supabase
     .from("knowledge_steps")

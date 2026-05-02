@@ -10,6 +10,10 @@ function normalizeActionId(actionId: string): string {
   switch (actionId) {
     case "critical-health":
       return "health-insurance";
+    case "critical-steuer":
+      return "steuer-id";
+    case "critical-bank":
+      return "bank-account";
     case "critical-arbeitsagentur":
       return "arbeitsagentur";
     case "critical-cv":

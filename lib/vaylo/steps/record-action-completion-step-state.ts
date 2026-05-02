@@ -14,6 +14,7 @@ export async function recordStepStateAfterActionCompleted(params: {
   userId: string;
   dashboardActionId: string;
 }): Promise<{ wrote: boolean; stepId?: string }> {
+  const isDirectStepAction = params.dashboardActionId.startsWith("step:");
   const stepId = await resolveKnowledgeStepIdForDashboardAction(
     params.supabase,
     params.dashboardActionId,
@@ -22,7 +23,9 @@ export async function recordStepStateAfterActionCompleted(params: {
     return { wrote: false };
   }
 
-  const catalogActionId = mapDashboardActionToKnowledgeCatalogActionId(params.dashboardActionId);
+  const catalogActionId = isDirectStepAction
+    ? null
+    : mapDashboardActionToKnowledgeCatalogActionId(params.dashboardActionId);
 
   const result = await writeStepTransition({
     supabase: params.supabase,
