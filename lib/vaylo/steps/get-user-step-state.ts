@@ -496,6 +496,16 @@ export async function getUserStepState(params: {
 
   // Second pass: dependency gating for non-completed/non-verified steps
   for (const step of Object.values(resolved)) {
+    const persistedStatus = step.evidence.persisted?.status;
+    if (persistedStatus) {
+      step.status = persistedStatus;
+      if (persistedStatus === "completed" || persistedStatus === "verified") {
+        step.isApplicable = false;
+        step.applicabilityReason = "already_satisfied";
+      }
+      continue;
+    }
+
     if (
       step.status === "verified" ||
       step.status === "completed" ||
