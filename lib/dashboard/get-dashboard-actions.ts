@@ -920,6 +920,11 @@ export async function getDashboardActions(params: {
     params.behaviorSignals ??
     (await getUserBehaviorSignals(supabase, userId));
   const completedIds = new Set(Array.from(behavior.completedActionIds));
+  const completedStepIds = new Set(
+    Object.values(params.stepState?.steps || {})
+      .filter((step) => step.status === "completed")
+      .map((step) => step.stepId)
+  );
 
   const primaryRoute = getPrimaryRoute(dna);
   const secondaryRoute = getSecondaryRoute(dna);
@@ -936,7 +941,16 @@ export async function getDashboardActions(params: {
 
   // Keep deterministic ordering from the existing picker/critical layer.
   const finalActions = nextActions
-    .filter((a) => !completedIds.has(normalizeBehaviorActionId(a.id)))
+    .filter((a) => {
+      if (completedIds.has(normalizeBehaviorActionId(a.id))) {
+        return false;
+      }
+      if (a.id.startsWith("step:")) {
+        const stepId = a.id.slice("step:".length);
+        if (completedStepIds.has(stepId)) return false;
+      }
+      return true;
+    })
     .map((a, idx) => {
     const href =
       a.href ?? (idx === 0 ? primaryRoute : getActionRoute(a.id, dna, secondaryRoute));

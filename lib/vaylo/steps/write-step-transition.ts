@@ -4,7 +4,7 @@ import { compareStatus, mergeWithExistingStatus } from "./status-precedence";
 import type { UserStepSource, UserStepStatus } from "./types";
 
 export type WriteStepTransitionInput = {
-  supabase: SupabaseClient;
+  supabase?: SupabaseClient;
   userId: string;
   stepId: string;
   nextStatus: UserStepStatus;
@@ -30,17 +30,19 @@ export async function writeStepTransition(
   input: WriteStepTransitionInput,
 ): Promise<WriteStepTransitionResult> {
   const admin = createServiceRoleClient();
-  if (!admin) {
+  const readClient = input.supabase ?? admin;
+  const writeClient = admin ?? input.supabase;
+  if (!readClient || !writeClient) {
     return { ok: false, skippedNoServiceRole: true, error: "no_service_role" };
   }
 
-  const { supabase, userId, stepId, nextStatus, source, actionId, documentId, notes } = input;
+  const { userId, stepId, nextStatus, source, actionId, documentId, notes } = input;
   if (nextStatus === "not_applicable") {
     // DB constraint does not currently allow persisting this status.
     return { ok: false, error: "unsupported_status_not_persisted" };
   }
 
-  const { data: existingRow, error: readErr } = await supabase
+  const { data: existingRow, error: readErr } = await readClient
     .from("user_step_state")
     .select("status, source")
     .eq("user_id", userId)
@@ -77,7 +79,7 @@ export async function writeStepTransition(
     updated_at: new Date().toISOString(),
   };
 
-  const { error: upErr } = await admin.from("user_step_state").upsert(payload, {
+  const { error: upErr } = await writeClient.from("user_step_state").upsert(payload, {
     onConflict: "user_id,step_id",
   });
 
