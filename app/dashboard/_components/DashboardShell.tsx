@@ -240,25 +240,6 @@ export default function DashboardShell({
 
   useEffect(() => {
     if (process.env.NODE_ENV !== "development") return;
-    console.info("[dashboard:audit]", {
-      actions: liveActions.length,
-      primaryAction: primaryAction?.id ?? null,
-      hasUserState: Boolean(userState),
-      hasDNA: Boolean(userState?.identity.dna),
-      locale,
-    });
-    if (!primaryAction || auditIssues.length > 0) {
-      console.warn("[dashboard:audit:issues]", {
-        issues: !primaryAction
-          ? ["null_primary_action", ...auditIssues]
-          : auditIssues,
-      });
-    }
-  }, [auditIssues, liveActions.length, locale, primaryAction, userState]);
-
-
-  useEffect(() => {
-    if (process.env.NODE_ENV !== "development") return;
     const missingKeys = getMissingI18nKeys();
     if (missingKeys.length === 0) return;
     const signature = missingKeys.join("|");

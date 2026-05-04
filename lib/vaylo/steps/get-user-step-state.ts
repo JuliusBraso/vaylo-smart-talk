@@ -440,12 +440,6 @@ export async function getUserStepState(params: {
             : "blocked";
 
     if (process.env.NODE_ENV === "development") {
-      console.info("[step-state] branching decision", {
-        stepId: s.id,
-        status: finalStatus,
-        isApplicable: eligibility.applicable,
-        reason: eligibility.reason,
-      });
       if (eligibility.reason === "already_satisfied" && eligibility.realityCheck) {
         console.info("[step-state] reality-check", {
           stepId: s.id,
