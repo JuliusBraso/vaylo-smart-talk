@@ -1,27 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { normalizeDashboardActionId } from "@/lib/dashboard/action-id-normalization";
 
 export type BehaviorSignals = {
   completedActionIds: Set<string>;
   repeatedClickActionIds: Set<string>;
   timeDecayBoost: Map<string, number>;
 };
-
-function normalizeActionId(actionId: string): string {
-  switch (actionId) {
-    case "critical-health":
-      return "health-insurance";
-    case "critical-steuer":
-      return "steuer-id";
-    case "critical-bank":
-      return "bank-account";
-    case "critical-arbeitsagentur":
-      return "arbeitsagentur";
-    case "critical-cv":
-      return "cv";
-    default:
-      return actionId;
-  }
-}
 
 export async function getUserBehaviorSignals(
   supabase: SupabaseClient,
@@ -43,7 +27,7 @@ export async function getUserBehaviorSignals(
       for (const r of data as Array<{ action_id?: unknown }>) {
         const raw = typeof r.action_id === "string" ? r.action_id : "";
         if (!raw) continue;
-        completedActionIds.add(normalizeActionId(raw));
+        completedActionIds.add(normalizeDashboardActionId(raw));
       }
     }
   }
@@ -70,7 +54,7 @@ export async function getUserBehaviorSignals(
         const rawActionId = typeof r.action_id === "string" ? r.action_id : "";
         const rawEventType = typeof r.event_type === "string" ? r.event_type : "";
         if (!rawActionId) continue;
-        const actionId = normalizeActionId(rawActionId);
+        const actionId = normalizeDashboardActionId(rawActionId);
         const cur =
           counts.get(actionId) ?? { clicks: 0, completes: 0, lastClickMs: null };
         if (rawEventType === "click") cur.clicks += 1;

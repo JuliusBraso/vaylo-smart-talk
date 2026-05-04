@@ -18,6 +18,7 @@ import {
   type BehaviorSignals,
   getUserBehaviorSignals,
 } from "@/lib/dashboard/get-user-behavior-signals";
+import { normalizeDashboardActionId } from "@/lib/dashboard/action-id-normalization";
 import { fetchKnowledgeCatalogActionToStepIdMap } from "@/lib/dashboard/fetch-knowledge-catalog-action-to-step-id-map";
 import { mapDashboardActionToKnowledgeCatalogActionId } from "@/lib/dashboard/map-dashboard-action-to-knowledge-catalog-action-id";
 import {
@@ -122,19 +123,6 @@ function employmentTypeForScoring(
   ) as "employee" | "freelancer" | "job_seeker";
 }
 
-function normalizeBehaviorActionId(actionId: string): string {
-  switch (actionId) {
-    case "critical-health":
-      return "health-insurance";
-    case "critical-arbeitsagentur":
-      return "arbeitsagentur";
-    case "critical-cv":
-      return "cv";
-    default:
-      return actionId;
-  }
-}
-
 function toReadableStepLabel(value: string): string {
   const cleaned = value.replace(/[-_]+/g, " ").trim();
   if (!cleaned) return "Step";
@@ -188,14 +176,14 @@ function filterCompletedCriticalBlockers(
   kinds: CriticalBlockerKind[],
   completedIds: Set<string>
 ): CriticalBlockerKind[] {
-  return kinds.filter((k) => !completedIds.has(normalizeBehaviorActionId(blockerKindToCriticalActionId(k))));
+  return kinds.filter((k) => !completedIds.has(normalizeDashboardActionId(blockerKindToCriticalActionId(k))));
 }
 
 function filterCompletedCandidates(
   actions: NextAction[],
   completedIds: Set<string>
 ): NextAction[] {
-  return actions.filter((a) => !completedIds.has(normalizeBehaviorActionId(a.id)));
+  return actions.filter((a) => !completedIds.has(normalizeDashboardActionId(a.id)));
 }
 
 function dnaActionConflictsWithBlockers(
@@ -583,7 +571,7 @@ function scoreNextAction(
   // Small, deterministic tie-break nudges.
   baseScore += actionId === "health-insurance" ? 1 : 0;
 
-  const norm = normalizeBehaviorActionId(actionId);
+  const norm = normalizeDashboardActionId(actionId);
   const clickBoost = behavior.repeatedClickActionIds.has(norm) ? 20 : 0;
   const decayBoost = behavior.timeDecayBoost.get(norm) ?? 0;
 
@@ -942,7 +930,7 @@ export async function getDashboardActions(params: {
   // Keep deterministic ordering from the existing picker/critical layer.
   const finalActions = nextActions
     .filter((a) => {
-      if (completedIds.has(normalizeBehaviorActionId(a.id))) {
+      if (completedIds.has(normalizeDashboardActionId(a.id))) {
         return false;
       }
       if (a.id.startsWith("step:")) {
@@ -966,7 +954,7 @@ export async function getDashboardActions(params: {
       : undefined;
 
       const nudges: string[] = [];
-      const norm = normalizeBehaviorActionId(a.id);
+      const norm = normalizeDashboardActionId(a.id);
 
       // 1) Long ignore (>=72h) — represented by the max decay boost (30).
       if ((behavior.timeDecayBoost.get(norm) ?? 0) >= 30) {
