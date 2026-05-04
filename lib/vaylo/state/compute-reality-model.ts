@@ -31,7 +31,10 @@ export function computeRealityModel(params: {
     hasHealthInsurance:
       params.profile?.has_health_insurance === true ||
       hasCompleted("health_submit_membership") ||
-      hasCompleted("health-insurance"),
+      hasCompleted("health-insurance") ||
+      hasCompleted("health_insurance") ||
+      hasCompleted("health_receive_membership_confirmation") ||
+      hasCompleted("health-receive-membership-confirmation"),
 
     hasBankAccount:
       params.profile?.has_bank_account === true ||

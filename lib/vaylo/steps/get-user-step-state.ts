@@ -70,6 +70,8 @@ function isStepAlreadySatisfiedByReality(
   const healthPatterns = [
     "health-submit-membership",
     "health-insurance",
+    "health-receive-membership-confirmation",
+    "membership-confirmation",
     "critical-health",
     "insurance",
   ] as const;
