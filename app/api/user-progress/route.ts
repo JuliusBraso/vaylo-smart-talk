@@ -77,14 +77,28 @@ export async function POST(req: NextRequest) {
     return internalErrorResponse({ requestId, status: 500, debugError: progressError });
   }
 
+  let stepResult:
+    | { wrote: boolean; reason?: string }
+    | undefined;
   try {
-    await recordStepStateAfterActionCompleted({
+    stepResult = await recordStepStateAfterActionCompleted({
       supabase,
       userId,
       dashboardActionId: actionId,
     });
+    if (!stepResult?.wrote) {
+      console.warn("[step-bridge] write failed", {
+        userId,
+        actionId,
+        reason: stepResult?.reason ?? "unknown",
+      });
+    }
   } catch {
-    // Non-fatal: `user_progress` is canonical for dashboard exclusion; step-state is additive.
+    console.warn("[step-bridge] write failed", {
+      userId,
+      actionId,
+      reason: "unknown",
+    });
   }
 
   if (process.env.NEXT_PUBLIC_VAYLO_DEBUG === "1") {

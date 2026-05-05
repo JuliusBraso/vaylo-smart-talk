@@ -13,14 +13,18 @@ export async function recordStepStateAfterActionCompleted(params: {
   supabase: SupabaseClient;
   userId: string;
   dashboardActionId: string;
-}): Promise<{ wrote: boolean; stepId?: string }> {
+}): Promise<{
+  wrote: boolean;
+  stepId?: string;
+  reason?: "resolver_miss" | "no_service_role" | "write_failed";
+}> {
   const isDirectStepAction = params.dashboardActionId.startsWith("step:");
   const stepId = await resolveKnowledgeStepIdForDashboardAction(
     params.supabase,
     params.dashboardActionId,
   );
   if (!stepId) {
-    return { wrote: false };
+    return { wrote: false, reason: "resolver_miss" };
   }
 
   const catalogActionId = isDirectStepAction
@@ -38,5 +42,13 @@ export async function recordStepStateAfterActionCompleted(params: {
     notes: { bridge: "dashboard_mark_done" },
   });
 
-  return { wrote: result.ok, stepId };
+  if (!result.ok) {
+    return {
+      wrote: false,
+      stepId,
+      reason: result.skippedNoServiceRole ? "no_service_role" : "write_failed",
+    };
+  }
+
+  return { wrote: true, stepId };
 }
