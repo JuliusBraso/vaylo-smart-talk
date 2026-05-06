@@ -5,6 +5,31 @@ export type RealityModel = {
   hasAnmeldung: boolean;
 };
 
+function normalizeStepId(stepId: string): string {
+  switch (stepId) {
+    case "residency_anmeldung":
+    case "anmeldung":
+      return "anmeldung";
+
+    case "tax_id":
+    case "steuer-id":
+    case "residency_receive_tax_id":
+      return "tax-id";
+
+    case "bank_account":
+    case "bank-account":
+      return "bank-account";
+
+    case "health_receive_membership_confirmation":
+    case "health_submit_membership":
+    case "health-choose-insurer":
+      return "health-insurance";
+
+    default:
+      return stepId;
+  }
+}
+
 /**
  * Single source of truth for user reality.
  *
@@ -24,17 +49,17 @@ export function computeRealityModel(params: {
   } | null;
 }): RealityModel {
   const completed = params.stepState?.completedStepIds;
+  const normalizedCompletedSteps = new Set(
+    completed instanceof Set ? Array.from(completed).map(normalizeStepId) : [],
+  );
   const hasCompleted = (id: string): boolean =>
-    completed instanceof Set ? completed.has(id) : false;
+    normalizedCompletedSteps.has(normalizeStepId(id));
 
   return {
     hasHealthInsurance:
       params.profile?.has_health_insurance === true ||
       hasCompleted("health_submit_membership") ||
-      hasCompleted("health-insurance") ||
-      hasCompleted("health_insurance") ||
-      hasCompleted("health_receive_membership_confirmation") ||
-      hasCompleted("health-receive-membership-confirmation"),
+      hasCompleted("health-insurance"),
 
     hasBankAccount:
       params.profile?.has_bank_account === true ||
