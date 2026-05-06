@@ -724,10 +724,7 @@ function pickWideNonCriticalWithOptionalPromotion(
       });
     }
   }
-  const candidates =
-    preScoringCandidates.length > 0
-      ? preScoringCandidates
-      : deduped;
+  const candidates = opts?.stepState ? preScoringCandidates : deduped;
   const wideCap = Math.min(WIDE_DASHBOARD_CANDIDATE_POOL_MAX, candidates.length);
   const wide = pickOrderedActionsUpTo(
     candidates,
