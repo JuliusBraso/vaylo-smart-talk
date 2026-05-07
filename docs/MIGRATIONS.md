@@ -1,5 +1,7 @@
 # Migration discipline (deploy-safe)
 
+For environment variables, cron, storage, and post-deploy smoke tests, see **[PRODUCTION_RUNBOOK.md](./PRODUCTION_RUNBOOK.md)**.
+
 ## Core principle
 
 **Deploy order must always be:**
