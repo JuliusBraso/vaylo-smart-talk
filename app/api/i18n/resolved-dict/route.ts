@@ -1,4 +1,9 @@
 import { NextResponse } from "next/server";
+import {
+  createRequestId,
+  internalErrorResponse,
+  logRouteError,
+} from "@/lib/api/safe-error-response";
 import { LOCALES, type Locale } from "@/lib/i18n";
 import { getResolvedDict } from "@/lib/i18n/resolved-dict";
 
@@ -15,7 +20,8 @@ export async function GET(request: Request) {
     const t = await getResolvedDict(locale);
     return NextResponse.json(t);
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Failed to resolve dictionary";
-    return NextResponse.json({ error: message }, { status: 500 });
+    const requestId = createRequestId();
+    logRouteError("[i18n resolved-dict GET]", requestId, e);
+    return internalErrorResponse({ requestId, status: 500, debugError: e });
   }
 }
