@@ -9,6 +9,9 @@ import {
 import { markActionCompleted } from "@/lib/vaylo/user-progress";
 import { recordStepStateAfterActionCompleted } from "@/lib/vaylo/steps/record-action-completion-step-state";
 
+const ACTION_ID_MAX_LEN = 160;
+const ACTION_ID_PATTERN = /^[a-zA-Z0-9:_-]+$/;
+
 /**
  * POST body: { actionId: string }
  * Marks the given dashboard action_id as completed for the current user.
@@ -34,8 +37,13 @@ export async function POST(req: NextRequest) {
     console.error("[Vaylo][progress] Invalid JSON body", e);
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
-  const actionId = typeof body.actionId === "string" ? body.actionId.trim() : "";
-  if (!actionId) {
+  const trimmed =
+    typeof body.actionId === "string" ? body.actionId.trim() : "";
+  if (
+    !trimmed ||
+    trimmed.length > ACTION_ID_MAX_LEN ||
+    !ACTION_ID_PATTERN.test(trimmed)
+  ) {
     if (process.env.NODE_ENV !== "production") {
       console.error("[Vaylo][progress] Missing/invalid actionId", {
         actionId: body.actionId,
@@ -43,6 +51,7 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json({ error: "Invalid actionId" }, { status: 400 });
   }
+  const actionId = trimmed;
 
   const { error } = await markActionCompleted(supabase, userId, actionId);
   if (error) {
