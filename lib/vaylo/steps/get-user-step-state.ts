@@ -492,12 +492,13 @@ export async function getUserStepState(params: {
   for (const step of Object.values(resolved)) {
     const persistedStatus = step.evidence.persisted?.status;
     if (persistedStatus) {
-      step.status = persistedStatus;
-      if (persistedStatus === "completed" || persistedStatus === "verified") {
+      const mergedStatus = chooseStrongerStatus(persistedStatus, step.status);
+      step.status = mergedStatus;
+      if (mergedStatus === "completed" || mergedStatus === "verified") {
         step.isApplicable = false;
         step.applicabilityReason = "already_satisfied";
+        continue;
       }
-      continue;
     }
 
     if (
