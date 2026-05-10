@@ -22,8 +22,7 @@ Never deploy app code first if it expects a newer schema.
 ## Scripts (local + release)
 
 - `npm run db:verify`
-  - Runs a fast service-role schema check.
-  - Fails non-zero with a readable missing-schema summary.
+  - Runs a fast service-role check: required tables/columns, composite UNIQUE keys, and (when `pg_catalog` is reachable via the Data API) RLS, expected policies, and `idx_knowledge_steps_action_id`. Emits `PASS`, `WARN`, or `FAIL` lines; exits non-zero on failure.
 - `npm run release:check`
   - Runs `db:verify` (and can be extended with smoke tests).
 
