@@ -203,6 +203,33 @@ async function tryKnowledgeStepsActionIdIndex(admin: SupabaseClient): Promise<bo
   }
 }
 
+async function tryUniqueKnowledgeStepsActionIdActiveIndex(admin: SupabaseClient): Promise<boolean | null> {
+  try {
+    const { data, error } = await admin
+      .schema("pg_catalog")
+      .from("pg_indexes")
+      .select("indexname, indexdef")
+      .eq("schemaname", "public")
+      .eq("tablename", "knowledge_steps")
+      .eq("indexname", "uq_knowledge_steps_action_id_active")
+      .maybeSingle();
+    if (error) return null;
+    if (!data) return false;
+    const row = data as { indexname: string; indexdef: string };
+    const name = String(row.indexname).toLowerCase();
+    if (!name.includes("uq_knowledge_steps_action_id_active")) return false;
+    const def = String(row.indexdef).toLowerCase();
+    if (!def.includes("unique")) return false;
+    if (!def.includes("knowledge_steps")) return false;
+    if (!def.includes("action_id")) return false;
+    if (!def.includes("is_active")) return false;
+    if (!def.includes("action_id is not null")) return false;
+    return true;
+  } catch {
+    return null;
+  }
+}
+
 function logFail(msg: string) {
   // eslint-disable-next-line no-console
   console.error(`[db:verify] FAIL: ${msg}`);
@@ -298,6 +325,17 @@ async function main() {
       logFail(
         "partial index idx_knowledge_steps_action_id missing or wrong on public.knowledge_steps (migration 028)",
       );
+      failCount += 1;
+    }
+
+    const uniqueActiveOk = await tryUniqueKnowledgeStepsActionIdActiveIndex(admin);
+    if (uniqueActiveOk === null) {
+      logWarn(
+        "Could not read pg_indexes (pg_catalog). Skipping uq_knowledge_steps_action_id_active check — confirm migration 031.",
+      );
+      warnCount += 1;
+    } else if (uniqueActiveOk === false) {
+      logFail("Missing unique active knowledge_steps(action_id) index: uq_knowledge_steps_action_id_active");
       failCount += 1;
     }
 
