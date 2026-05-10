@@ -2,6 +2,9 @@
 
 import { useCallback, useRef, useState, type CSSProperties } from "react";
 
+const MAX_TEXT_LENGTH = 12000;
+const RECOMMENDED_TEXT_LENGTH = 4000;
+
 type SmartTalkResult = {
   summary: string;
   meaning: string;
@@ -96,11 +99,15 @@ export default function SmartTalkClient() {
   const busyRef = useRef(false);
 
   const trimmedLen = text.trim().length;
-  const submitDisabled = loading || trimmedLen < 8;
+  const overMaxLength = trimmedLen > MAX_TEXT_LENGTH;
+  const showLengthRecommendation =
+    trimmedLen > RECOMMENDED_TEXT_LENGTH && trimmedLen <= MAX_TEXT_LENGTH;
+  const submitDisabled =
+    loading || trimmedLen < 8 || trimmedLen > MAX_TEXT_LENGTH;
 
   const onSubmit = useCallback(async () => {
     const trimmed = text.trim();
-    if (trimmed.length < 8 || busyRef.current) return;
+    if (trimmed.length < 8 || trimmed.length > MAX_TEXT_LENGTH || busyRef.current) return;
     busyRef.current = true;
 
     setLoading(true);
@@ -158,6 +165,29 @@ export default function SmartTalkClient() {
         className="w-full resize-y rounded-[var(--r12)] border border-[var(--border)] bg-[var(--bg0)] px-3 py-3 text-[15px] leading-relaxed text-[var(--text)] outline-none placeholder:text-[var(--muted2)] focus:border-[color:rgba(199,210,254,1)] focus:shadow-[0_0_0_3px_rgba(199,210,254,0.45)] min-h-[168px]"
         disabled={loading}
       />
+
+      <div
+        style={{
+          marginTop: -6,
+          textAlign: "right",
+          fontSize: 12,
+          lineHeight: 1.4,
+          color: "var(--muted2)",
+          letterSpacing: "0.02em",
+        }}
+      >
+        {`${trimmedLen.toLocaleString("sk-SK")} / 12 000`}
+      </div>
+
+      {overMaxLength ? (
+        <p style={{ margin: "-4px 0 0", fontSize: 13, lineHeight: 1.5, color: "rgba(127, 29, 29, 0.88)" }}>
+          Text je príliš dlhý. Skráťte ho na maximálne 12 000 znakov.
+        </p>
+      ) : showLengthRecommendation ? (
+        <p style={{ margin: "-4px 0 0", fontSize: 13, lineHeight: 1.5, color: "var(--muted2)" }}>
+          Pre najlepší výsledok odporúčame vložiť iba najdôležitejšiu časť listu alebo formulára.
+        </p>
+      ) : null}
 
       <button
         type="button"
