@@ -22,6 +22,8 @@ import { runDocumentIntelligenceWorkerOnce } from "@/lib/vaylo/documents/process
 export const runtime = "nodejs";
 
 const MAX_BYTES = 52_428_800; // 50 MiB
+const MAX_DOCUMENTS_PER_USER = 20;
+const MAX_UPLOADS_PER_HOUR = 10;
 
 export async function GET() {
   try {
@@ -65,6 +67,47 @@ export async function POST(request: NextRequest) {
 
   if (file.size > MAX_BYTES) {
     return NextResponse.json({ error: "File too large" }, { status: 400 });
+  }
+
+  const oneHourAgoIso = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+
+  {
+    const { count: totalCount, error: totalErr } = await supabase
+      .from("user_documents")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id);
+
+    if (totalErr) {
+      const requestId = createRequestId();
+      logRouteError("[documents API POST quota total count]", requestId, totalErr);
+      return internalErrorResponse({ requestId, status: 500, debugError: totalErr });
+    }
+    if ((totalCount ?? 0) >= MAX_DOCUMENTS_PER_USER) {
+      return NextResponse.json(
+        { ok: false, error: "document_quota_exceeded" },
+        { status: 429 },
+      );
+    }
+  }
+
+  {
+    const { count: recentCount, error: recentErr } = await supabase
+      .from("user_documents")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .gte("created_at", oneHourAgoIso);
+
+    if (recentErr) {
+      const requestId = createRequestId();
+      logRouteError("[documents API POST quota hourly count]", requestId, recentErr);
+      return internalErrorResponse({ requestId, status: 500, debugError: recentErr });
+    }
+    if ((recentCount ?? 0) >= MAX_UPLOADS_PER_HOUR) {
+      return NextResponse.json(
+        { ok: false, error: "upload_rate_limited" },
+        { status: 429 },
+      );
+    }
   }
 
   const path = buildDocumentStoragePath(user.id, file.name);
