@@ -1,7 +1,8 @@
 -- Phase 6.49: DB integrity and migration hardening.
 -- - Add authenticated INSERT/UPDATE RLS policies for user_step_state.
--- - Add active knowledge_steps(action_id) index guard.
--- - Keep duplicate action_id detection as diagnostics only (no constraint yet).
+-- - Add non-unique lookup index on active knowledge_steps(action_id) (idx_knowledge_steps_action_id).
+-- - The unique active action_id invariant is enforced later by migration 031 (uq_knowledge_steps_action_id_active).
+-- - Duplicate diagnostic query below is retained for historical/debug context only.
 
 do $$
 begin
@@ -31,7 +32,7 @@ begin
 end
 $$;
 
--- Detect duplicates:
+-- Historical / debug: duplicate active action_id detection (retained; uniqueness enforced in migration 031).
 -- select action_id, count(*)
 -- from knowledge_steps
 -- where is_active = true
