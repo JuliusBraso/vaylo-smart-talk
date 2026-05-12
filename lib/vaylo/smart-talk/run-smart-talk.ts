@@ -40,8 +40,8 @@ function normalizeParsedObject(obj: Record<string, unknown>): SmartTalkResult {
   let summary = typeof obj.summary === "string" ? obj.summary.trim() : "";
   let meaning = typeof obj.meaning === "string" ? obj.meaning.trim() : "";
 
-  if (!summary) summary = "No summary could be extracted from the model output.";
-  if (!meaning) meaning = "See summary and warnings for details.";
+  if (!summary) summary = "Nepodarilo sa získať zhrnutie z výstupu modelu.";
+  if (!meaning) meaning = "Ďalšie informácie nájdete v zhrnutí a upozorneniach.";
 
   let urgency: SmartTalkUrgency = "unknown";
   if (typeof obj.urgency === "string" && URGENCY_SET.has(obj.urgency)) {
@@ -61,12 +61,15 @@ function normalizeParsedObject(obj: Record<string, unknown>): SmartTalkResult {
 
 function fallbackInvalidJson(): SmartTalkResult {
   return {
-    summary: "The explanation could not be formatted reliably.",
-    meaning: "Try again with a shorter or clearer excerpt from the document.",
+    summary: "Nepodarilo sa spoľahlivo spracovať odpoveď AI.",
+    meaning: "Skúste text odoslať znova alebo vložte kratšiu, jasnejšiu časť dokumentu.",
     urgency: "unknown",
-    nextSteps: [],
+    nextSteps: [
+      "Skontrolujte, či ste vložili čitateľný úradný text.",
+      "Ak problém pretrváva, skúste vložiť kratší úsek dokumentu.",
+    ],
     warnings: [
-      "The assistant returned data that could not be parsed. Content may still be useful on retry.",
+      "Výsledok môže byť neúplný, pretože odpoveď AI nebola v očakávanom formáte.",
     ],
   };
 }
