@@ -1,4 +1,8 @@
-import { buildSmartTalkMessages, type SmartTalkLocale } from "./build-smart-talk-prompt";
+import {
+  buildSmartTalkMessages,
+  type SmartTalkInputType,
+  type SmartTalkLocale,
+} from "./build-smart-talk-prompt";
 
 export type SmartTalkUrgency = "low" | "medium" | "high" | "unknown";
 
@@ -84,6 +88,7 @@ export type RunSmartTalkError = { kind: "openai_http"; status: number } | { kind
 export async function runSmartTalk(params: {
   text: string;
   locale: SmartTalkLocale;
+  inputType: SmartTalkInputType;
 }): Promise<{ ok: true; result: SmartTalkResult } | { ok: false; error: RunSmartTalkError }> {
   const key = process.env.OPENAI_API_KEY?.trim();
   if (!key) {

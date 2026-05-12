@@ -5,7 +5,14 @@ import {
   logRouteError,
 } from "@/lib/api/safe-error-response";
 import { runSmartTalk } from "@/lib/vaylo/smart-talk/run-smart-talk";
-import type { SmartTalkLocale } from "@/lib/vaylo/smart-talk/build-smart-talk-prompt";
+import type {
+  SmartTalkInputType,
+  SmartTalkLocale,
+} from "@/lib/vaylo/smart-talk/build-smart-talk-prompt";
+
+function isSmartTalkInputType(v: unknown): v is SmartTalkInputType {
+  return v === "text" || v === "question";
+}
 
 export const runtime = "nodejs";
 
@@ -82,9 +89,10 @@ export async function POST(req: Request) {
   if (o.context !== "anonymous") {
     return badRequest("invalid_context");
   }
-  if (o.inputType !== "text") {
+  if (!isSmartTalkInputType(o.inputType)) {
     return badRequest("invalid_input_type");
   }
+  const inputType = o.inputType;
   if (typeof o.text !== "string") {
     return badRequest("invalid_text");
   }
@@ -119,7 +127,7 @@ export async function POST(req: Request) {
   let out: Awaited<ReturnType<typeof runSmartTalk>>;
   try {
     out = await Promise.race([
-      runSmartTalk({ text, locale }),
+      runSmartTalk({ text, locale, inputType }),
       new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error("smart_talk_timeout")), SMART_TALK_ROUTE_TIMEOUT_MS);
       }),
