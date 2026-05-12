@@ -152,6 +152,15 @@ export default function SmartTalkClient() {
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
+      <div style={{ display: "grid", gap: 6 }}>
+        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: "var(--muted)" }}>
+          Najlepšie funguje, keď vložíte najdôležitejšiu časť listu alebo formulára.
+        </p>
+        <p style={{ margin: 0, fontSize: 12, lineHeight: 1.45, color: "var(--muted2)" }}>
+          Limit: maximálne 12 000 znakov.
+        </p>
+      </div>
+
       <label htmlFor="smart-talk-input" className="sr-only">
         Text dokumentu
       </label>
@@ -209,10 +218,6 @@ export default function SmartTalkClient() {
       >
         Vysvetliť text
       </button>
-
-      <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: "var(--muted2)" }}>
-        Text sa v tejto fáze neukladá do DNA ani do dokumentov.
-      </p>
 
       <div
         aria-live="polite"

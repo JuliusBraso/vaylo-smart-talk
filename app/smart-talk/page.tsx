@@ -17,6 +17,25 @@ export default function SmartTalkPage() {
           </p>
         </header>
 
+        <div
+          style={{
+            marginBottom: 18,
+            padding: "14px 16px",
+            borderRadius: "var(--r16)",
+            border: "1px solid var(--border)",
+            background: "rgba(248, 250, 252, 1)",
+            display: "grid",
+            gap: 12,
+          }}
+        >
+          <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55, color: "var(--text)" }}>
+            Súkromie na prvom mieste: Text sa v tejto fáze neukladá do DNA ani do dokumentov.
+          </p>
+          <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55, color: "var(--muted)" }}>
+            Dôležité: Vaylo Smart Talk poskytuje praktickú pomoc pri porozumení textu. Nenahrádza právne poradenstvo ani oficiálny preklad.
+          </p>
+        </div>
+
         <SmartTalkClient />
       </div>
     </main>
