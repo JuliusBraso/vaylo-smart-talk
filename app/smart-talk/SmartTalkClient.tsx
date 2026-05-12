@@ -65,13 +65,6 @@ const MSG = {
   fallback: "Nepodarilo sa vysvetliť text. Skúste to znova.",
 } as const;
 
-const URGENCY_SK: Record<string, string> = {
-  low: "nízka",
-  medium: "stredná",
-  high: "vysoká",
-  unknown: "neznáma",
-};
-
 function messageForStatus(status: number): string {
   if (status === 400) return MSG.badInput;
   if (status === 429) return MSG.rateLimited;
@@ -80,9 +73,66 @@ function messageForStatus(status: number): string {
   return MSG.fallback;
 }
 
+const BADGE_BASE: CSSProperties = {
+  display: "inline-block",
+  padding: "6px 14px",
+  borderRadius: "var(--r999)",
+  fontSize: 13,
+  fontWeight: 800,
+  letterSpacing: "0.02em",
+};
+
+const URGENCY_BADGE_STYLE: Record<string, CSSProperties> = {
+  low: {
+    border: "1px solid rgba(167, 243, 208, 1)",
+    background: "rgba(236, 253, 245, 1)",
+    color: "rgba(6, 95, 70, 0.92)",
+  },
+  medium: {
+    border: "1px solid rgba(253, 224, 71, 0.95)",
+    background: "rgba(254, 252, 232, 1)",
+    color: "rgba(113, 63, 18, 0.94)",
+  },
+  high: {
+    border: "1px solid rgba(251, 191, 36, 0.95)",
+    background: "rgba(255, 247, 237, 1)",
+    color: "rgba(124, 45, 18, 0.94)",
+  },
+  unknown: {
+    border: "1px solid var(--border)",
+    background: "rgba(248, 250, 252, 1)",
+    color: "var(--muted2)",
+  },
+};
+
+const URGENCY_BADGE_LABEL: Record<string, string> = {
+  low: "Nízka",
+  medium: "Stredná",
+  high: "Vysoká",
+  unknown: "Neznáma",
+};
+
+function urgencyBadgeFor(raw: string): { label: string; pillStyle: CSSProperties } {
+  const tier =
+    raw === "low" || raw === "medium" || raw === "high" || raw === "unknown" ? raw : "unknown";
+  const label = URGENCY_BADGE_LABEL[raw] ?? raw;
+  return {
+    label,
+    pillStyle: { ...BADGE_BASE, ...URGENCY_BADGE_STYLE[tier] },
+  };
+}
+
+const RESULT_CARD: CSSProperties = {
+  padding: "14px 16px",
+  borderRadius: "var(--r16)",
+  border: "1px solid var(--border)",
+  background: "var(--card)",
+  boxShadow: "0 6px 16px rgba(15, 23, 42, 0.04)",
+};
+
 function sectionTitleStyle(): CSSProperties {
   return {
-    margin: "0 0 6px",
+    margin: "0 0 10px",
     fontSize: 12,
     fontWeight: 800,
     color: "var(--muted2)",
@@ -148,7 +198,7 @@ export default function SmartTalkClient() {
     }
   }, [text]);
 
-  const urgencyLabel = result ? URGENCY_SK[result.urgency] ?? result.urgency : "";
+  const urgencyUi = result ? urgencyBadgeFor(result.urgency) : null;
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
@@ -242,47 +292,114 @@ export default function SmartTalkClient() {
         ) : error ? (
           <p style={{ margin: 0, color: "rgba(127, 29, 29, 0.92)" }}>{error}</p>
         ) : result ? (
-          <div style={{ display: "grid", gap: 18 }}>
-            <section>
-              <h2 style={sectionTitleStyle()}>Zhrnutie</h2>
-              <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>{result.summary}</p>
-            </section>
-            <section>
-              <h2 style={sectionTitleStyle()}>Čo to znamená</h2>
-              <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>{result.meaning}</p>
-            </section>
-            <section>
-              <h2 style={sectionTitleStyle()}>Naliehavosť</h2>
-              <p style={{ margin: 0 }}>{urgencyLabel}</p>
-            </section>
-            <section>
-              <h2 style={sectionTitleStyle()}>Čo urobiť ďalej</h2>
-              {result.nextSteps.length === 0 ? (
-                <p style={{ margin: 0, fontStyle: "italic" }}>Žiadne konkrétne kroky.</p>
-              ) : (
-                <ul style={{ margin: 0, paddingLeft: 20 }}>
-                  {result.nextSteps.map((step, i) => (
-                    <li key={i} style={{ marginBottom: 6 }}>
-                      {step}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-            <section>
-              <h2 style={sectionTitleStyle()}>Na čo si dať pozor</h2>
-              {result.warnings.length === 0 ? (
-                <p style={{ margin: 0, fontStyle: "italic" }}>Žiadne upozornenia.</p>
-              ) : (
-                <ul style={{ margin: 0, paddingLeft: 20 }}>
-                  {result.warnings.map((w, i) => (
-                    <li key={i} style={{ marginBottom: 6 }}>
-                      {w}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
+          <div style={{ display: "grid", gap: 14 }}>
+            <p
+              style={{
+                margin: 0,
+                fontSize: 15,
+                lineHeight: 1.55,
+                color: "var(--text)",
+                fontWeight: 700,
+              }}
+            >
+              Tu je vaša analýza. Takto situáciu vyhodnotilo Vaylo:
+            </p>
+
+            <div style={{ display: "grid", gap: 12 }}>
+              <section style={RESULT_CARD}>
+                <h2 style={sectionTitleStyle()}>Zhrnutie</h2>
+                <p
+                  style={{
+                    margin: 0,
+                    whiteSpace: "pre-wrap",
+                    fontSize: 14,
+                    lineHeight: 1.65,
+                    color: "var(--text)",
+                  }}
+                >
+                  {result.summary}
+                </p>
+              </section>
+
+              <section style={RESULT_CARD}>
+                <h2 style={sectionTitleStyle()}>Čo to znamená</h2>
+                <p
+                  style={{
+                    margin: 0,
+                    whiteSpace: "pre-wrap",
+                    fontSize: 14,
+                    lineHeight: 1.65,
+                    color: "var(--text)",
+                  }}
+                >
+                  {result.meaning}
+                </p>
+              </section>
+
+              <section style={RESULT_CARD}>
+                <h2 style={sectionTitleStyle()}>Naliehavosť</h2>
+                <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                  {urgencyUi ? (
+                    <span style={urgencyUi.pillStyle}>{urgencyUi.label}</span>
+                  ) : null}
+                </div>
+              </section>
+
+              <section style={RESULT_CARD}>
+                <h2 style={sectionTitleStyle()}>Čo urobiť ďalej</h2>
+                {result.nextSteps.length === 0 ? (
+                  <p style={{ margin: 0, fontStyle: "italic", fontSize: 14, color: "var(--muted)" }}>
+                    Žiadne konkrétne kroky.
+                  </p>
+                ) : (
+                  <ol
+                    style={{
+                      margin: 0,
+                      paddingLeft: 22,
+                      fontSize: 14,
+                      lineHeight: 1.65,
+                      color: "var(--text)",
+                      display: "grid",
+                      gap: 10,
+                    }}
+                  >
+                    {result.nextSteps.map((step, i) => (
+                      <li key={i} style={{ paddingLeft: 4 }}>
+                        {step}
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </section>
+
+              <section style={RESULT_CARD}>
+                <h2 style={sectionTitleStyle()}>Na čo si dať pozor</h2>
+                {result.warnings.length === 0 ? (
+                  <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55, color: "var(--muted)" }}>
+                    Žiadne upozornenia.
+                  </p>
+                ) : (
+                  <ul
+                    style={{
+                      margin: 0,
+                      paddingLeft: 22,
+                      fontSize: 14,
+                      lineHeight: 1.65,
+                      color: "var(--text)",
+                      display: "grid",
+                      gap: 10,
+                      listStyleType: "disc",
+                    }}
+                  >
+                    {result.warnings.map((w, i) => (
+                      <li key={i} style={{ paddingLeft: 4, color: "var(--muted)" }}>
+                        {w}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            </div>
           </div>
         ) : (
           <p style={{ margin: 0 }}>Výsledok vysvetlenia sa zobrazí tu.</p>
