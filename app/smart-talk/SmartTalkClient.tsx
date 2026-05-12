@@ -1,9 +1,30 @@
 "use client";
 
-import { useCallback, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 
 const MAX_TEXT_LENGTH = 12000;
 const RECOMMENDED_TEXT_LENGTH = 4000;
+
+type SmartTalkUiMode = "question" | "text" | "photo";
+
+const PLACEHOLDER: Record<SmartTalkUiMode, string> = {
+  question: "Opýtajte sa napríklad: Ako požiadam o Kindergeld v Nemecku?",
+  text: "Sem vložte text z listu, úradu alebo formulára…",
+  photo: "Foto režim pripravujeme.",
+};
+
+const GUIDANCE_PRIMARY: Record<SmartTalkUiMode, string> = {
+  question:
+    "Pýtajte sa na dane, Kindergeld, Anmeldung, zdravotnú poisťovňu, úrady alebo iné nemecké byrokratické kroky.",
+  text: "Najlepšie funguje, keď vložíte najdôležitejšiu časť listu alebo formulára.",
+  photo: "Čoskoro budete môcť dokument odfotiť priamo v mobile.",
+};
+
+const SUBMIT_LABEL: Record<SmartTalkUiMode, string> = {
+  question: "Opýtať sa Vayla",
+  text: "Vysvetliť text",
+  photo: "Už čoskoro",
+};
 
 type SmartTalkResult = {
   summary: string;
@@ -142,27 +163,47 @@ function sectionTitleStyle(): CSSProperties {
 }
 
 export default function SmartTalkClient() {
+  const [mode, setMode] = useState<SmartTalkUiMode>("question");
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SmartTalkResult | null>(null);
   const busyRef = useRef(false);
+  const generationRef = useRef(0);
+
+  useEffect(() => {
+    generationRef.current += 1;
+    setError(null);
+    setResult(null);
+    setLoading(false);
+    busyRef.current = false;
+  }, [mode]);
 
   const trimmedLen = text.trim().length;
-  const overMaxLength = trimmedLen > MAX_TEXT_LENGTH;
+  const lengthGuardActive = mode === "question" || mode === "text";
+  const overMaxLength = lengthGuardActive && trimmedLen > MAX_TEXT_LENGTH;
   const showLengthRecommendation =
-    trimmedLen > RECOMMENDED_TEXT_LENGTH && trimmedLen <= MAX_TEXT_LENGTH;
+    lengthGuardActive &&
+    trimmedLen > RECOMMENDED_TEXT_LENGTH &&
+    trimmedLen <= MAX_TEXT_LENGTH;
   const submitDisabled =
-    loading || trimmedLen < 8 || trimmedLen > MAX_TEXT_LENGTH;
+    loading ||
+    mode === "photo" ||
+    trimmedLen < 8 ||
+    trimmedLen > MAX_TEXT_LENGTH;
 
   const onSubmit = useCallback(async () => {
+    if (mode === "photo") return;
     const trimmed = text.trim();
     if (trimmed.length < 8 || trimmed.length > MAX_TEXT_LENGTH || busyRef.current) return;
+    const genAtStart = generationRef.current;
     busyRef.current = true;
 
     setLoading(true);
     setError(null);
     setResult(null);
+
+    const inputType = mode === "question" ? "question" : "text";
 
     try {
       const res = await fetch("/api/smart-talk", {
@@ -170,7 +211,7 @@ export default function SmartTalkClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           context: "anonymous",
-          inputType: "text",
+          inputType,
           locale: "sk",
           text: trimmed,
         }),
@@ -183,6 +224,8 @@ export default function SmartTalkClient() {
         data = null;
       }
 
+      if (genAtStart !== generationRef.current) return;
+
       const okParsed = parseSmartTalkResponse(data);
       if (res.ok && okParsed) {
         setResult(okParsed.result);
@@ -191,28 +234,92 @@ export default function SmartTalkClient() {
 
       setError(messageForStatus(res.status));
     } catch {
+      if (genAtStart !== generationRef.current) return;
       setError(MSG.fallback);
     } finally {
       busyRef.current = false;
       setLoading(false);
     }
-  }, [text]);
+  }, [text, mode]);
 
   const urgencyUi = result ? urgencyBadgeFor(result.urgency) : null;
 
+  const modeChip = (m: SmartTalkUiMode, label: string) => {
+    const selected = mode === m;
+    return (
+      <button
+        key={m}
+        type="button"
+        role="tab"
+        aria-selected={selected}
+        onClick={() => setMode(m)}
+        style={{
+          flex: "1 1 104px",
+          minHeight: 44,
+          padding: "10px 12px",
+          borderRadius: "var(--r12)",
+          border:
+            m === "photo" && !selected
+              ? "1px dashed rgba(203, 213, 225, 1)"
+              : selected
+                ? "1px solid var(--accentBorder)"
+                : "1px solid var(--border)",
+          background: selected ? "rgba(238, 242, 255, 1)" : "rgba(255, 255, 255, 0.96)",
+          color: "var(--text)",
+          fontWeight: 800,
+          fontSize: 13,
+          lineHeight: 1.25,
+          cursor: "pointer",
+          boxShadow: selected ? "0 0 0 3px rgba(199, 210, 254, 0.35)" : "none",
+        }}
+      >
+        {label}
+      </button>
+    );
+  };
+
   return (
     <div style={{ display: "grid", gap: 14 }}>
+      <div
+        role="tablist"
+        aria-label="Spôsob vstupu"
+        style={{ display: "flex", flexWrap: "wrap", gap: 8 }}
+      >
+        {modeChip("question", "Mám otázku")}
+        {modeChip("text", "Mám text listu")}
+        {modeChip("photo", "Odfotiť dokument")}
+      </div>
+
+      {mode === "photo" ? (
+        <p
+          style={{
+            margin: 0,
+            fontSize: 13,
+            lineHeight: 1.55,
+            color: "var(--muted)",
+            padding: "12px 14px",
+            borderRadius: "var(--r12)",
+            border: "1px dashed rgba(203, 213, 225, 1)",
+            background: "rgba(248, 250, 252, 1)",
+          }}
+        >
+          Na mobilnom skeneri dokumentov intenzívne pracujeme. Už čoskoro.
+        </p>
+      ) : null}
+
       <div style={{ display: "grid", gap: 6 }}>
         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: "var(--muted)" }}>
-          Najlepšie funguje, keď vložíte najdôležitejšiu časť listu alebo formulára.
+          {GUIDANCE_PRIMARY[mode]}
         </p>
-        <p style={{ margin: 0, fontSize: 12, lineHeight: 1.45, color: "var(--muted2)" }}>
-          Limit: maximálne 12 000 znakov.
-        </p>
+        {lengthGuardActive ? (
+          <p style={{ margin: 0, fontSize: 12, lineHeight: 1.45, color: "var(--muted2)" }}>
+            Limit: maximálne 12 000 znakov.
+          </p>
+        ) : null}
       </div>
 
       <label htmlFor="smart-talk-input" className="sr-only">
-        Text dokumentu
+        {mode === "question" ? "Otázka pre Vayla" : mode === "text" ? "Text dokumentu" : "Foto dokumentu"}
       </label>
       <textarea
         id="smart-talk-input"
@@ -220,32 +327,38 @@ export default function SmartTalkClient() {
         rows={8}
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder="Sem vložte text z listu, úradu alebo formulára…"
+        placeholder={PLACEHOLDER[mode]}
         className="w-full resize-y rounded-[var(--r12)] border border-[var(--border)] bg-[var(--bg0)] px-3 py-3 text-[15px] leading-relaxed text-[var(--text)] outline-none placeholder:text-[var(--muted2)] focus:border-[color:rgba(199,210,254,1)] focus:shadow-[0_0_0_3px_rgba(199,210,254,0.45)] min-h-[168px]"
-        disabled={loading}
+        disabled={loading || mode === "photo"}
       />
 
-      <div
-        style={{
-          marginTop: -6,
-          textAlign: "right",
-          fontSize: 12,
-          lineHeight: 1.4,
-          color: "var(--muted2)",
-          letterSpacing: "0.02em",
-        }}
-      >
-        {`${trimmedLen.toLocaleString("sk-SK")} / 12 000`}
-      </div>
+      {lengthGuardActive ? (
+        <>
+          <div
+            style={{
+              marginTop: -6,
+              textAlign: "right",
+              fontSize: 12,
+              lineHeight: 1.4,
+              color: "var(--muted2)",
+              letterSpacing: "0.02em",
+            }}
+          >
+            {`${trimmedLen.toLocaleString("sk-SK")} / 12 000`}
+          </div>
 
-      {overMaxLength ? (
-        <p style={{ margin: "-4px 0 0", fontSize: 13, lineHeight: 1.5, color: "rgba(127, 29, 29, 0.88)" }}>
-          Text je príliš dlhý. Skráťte ho na maximálne 12 000 znakov.
-        </p>
-      ) : showLengthRecommendation ? (
-        <p style={{ margin: "-4px 0 0", fontSize: 13, lineHeight: 1.5, color: "var(--muted2)" }}>
-          Pre najlepší výsledok odporúčame vložiť iba najdôležitejšiu časť listu alebo formulára.
-        </p>
+          {overMaxLength ? (
+            <p style={{ margin: "-4px 0 0", fontSize: 13, lineHeight: 1.5, color: "rgba(127, 29, 29, 0.88)" }}>
+              Text je príliš dlhý. Skráťte ho na maximálne 12 000 znakov.
+            </p>
+          ) : showLengthRecommendation ? (
+            <p style={{ margin: "-4px 0 0", fontSize: 13, lineHeight: 1.5, color: "var(--muted2)" }}>
+              {mode === "question"
+                ? "Pre najlepší výsledok skúste otázku formulovať stručne a konkrétne."
+                : "Pre najlepší výsledok odporúčame vložiť iba najdôležitejšiu časť listu alebo formulára."}
+            </p>
+          ) : null}
+        </>
       ) : null}
 
       <button
@@ -257,16 +370,19 @@ export default function SmartTalkClient() {
           width: "100%",
           height: 44,
           borderRadius: "var(--r999)",
-          border: "1px solid var(--accentBorder)",
-          background: "var(--accent)",
-          color: "rgba(255,255,255,0.98)",
+          border:
+            mode === "photo" ? "1px solid rgba(203, 213, 225, 1)" : "1px solid var(--accentBorder)",
+          background:
+            mode === "photo" ? "rgba(241, 245, 249, 1)" : "var(--accent)",
+          color:
+            mode === "photo" ? "var(--muted2)" : "rgba(255,255,255,0.98)",
           fontWeight: 800,
           fontSize: 15,
           cursor: submitDisabled ? "not-allowed" : "pointer",
           opacity: submitDisabled ? 0.55 : 1,
         }}
       >
-        Vysvetliť text
+        {SUBMIT_LABEL[mode]}
       </button>
 
       <div
@@ -288,7 +404,9 @@ export default function SmartTalkClient() {
         }}
       >
         {loading ? (
-          <p style={{ margin: 0 }}>Vaylo vysvetľuje text…</p>
+          <p style={{ margin: 0 }}>
+            {mode === "question" ? "Vaylo odpovedá na vašu otázku…" : "Vaylo vysvetľuje text…"}
+          </p>
         ) : error ? (
           <p style={{ margin: 0, color: "rgba(127, 29, 29, 0.92)" }}>{error}</p>
         ) : result ? (

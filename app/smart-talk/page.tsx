@@ -10,10 +10,10 @@ export default function SmartTalkPage() {
       <div className="card" style={{ maxWidth: 560, margin: "0 auto" }}>
         <header style={{ marginBottom: 20 }}>
           <h1 className="cardTitle" style={{ fontSize: "clamp(1.25rem, 4vw, 1.5rem)", lineHeight: 1.25 }}>
-            Rozumiete svojmu nemeckému dokumentu?
+            Nemecká byrokracia zrozumiteľne.
           </h1>
           <p className="cardSub muted" style={{ marginTop: 10, fontSize: 15, lineHeight: 1.55 }}>
-            Vložte text listu alebo formulára a Vaylo vám ho jednoducho vysvetlí.
+            Opýtajte sa na nemeckú byrokraciu alebo vložte text listu. Vaylo vám vysvetlí, čo to znamená a čo máte urobiť ďalej.
           </p>
         </header>
 
