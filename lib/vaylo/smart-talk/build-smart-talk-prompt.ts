@@ -8,7 +8,7 @@ const JSON_KEYS_TEXT = [
   'meaning (string): what the document is asking or stating.',
   'urgency (string): one of "low", "medium", "high", "unknown".',
   'nextSteps (string[]): practical steps for the reader; empty array if none.',
-  'warnings (string[]): caveats, missing info, or when to seek professional help; empty array if none.',
+  'warnings (string[]): prefer 1–2 short, calm, practical caveats grounded in the document when reasonable; empty array only when genuinely none apply.',
 ].join(" ");
 
 const JSON_KEYS_QUESTION = [
@@ -17,7 +17,7 @@ const JSON_KEYS_QUESTION = [
   'meaning (string): practical explanation and context answering the user question.',
   'urgency (string): one of "low", "medium", "high", "unknown".',
   'nextSteps (string[]): practical steps for the reader; empty array if none.',
-  'warnings (string[]): caveats, missing info, or when to seek professional help; empty array if none.',
+  'warnings (string[]): prefer 1–2 short, calm, practical caveats for the topic when reasonable; empty array only when genuinely none apply.',
 ].join(" ");
 
 /**
@@ -40,6 +40,8 @@ export function buildSmartTalkMessages(params: {
       "You explain German bureaucracy documents. You are not a lawyer. Do not invent facts. Return JSON only.",
       "Do not invent dates, amounts, or requirements not supported by the input.",
       "If the input is unclear or too short, say what is missing in warnings and keep urgency unknown.",
+      "warnings policy: Prefer 1–2 concise, trustworthy, non-alarmist caveats grounded in this document (deadlines, fees, ambiguities, illegibility, missing pages, need to confirm with the authority). Stay calm and practical; avoid legalistic or sensational wording. Use an empty warnings array only when no reasonable caveat exists—not by default.",
+      'warnings inspiration when the content matches (paraphrase in the output language per locale instruction; keep short): generic missing clarity — check that the document is current and readable; some authorities may require an original or certified copy (Úradná kópia). Krankenkasse — documents must be legible; the insurer may request further details. Mahnung / reminders — ignoring reminders can lead to additional fees; if payment was already made, verify processing with the creditor.',
       JSON_KEYS_TEXT,
     ].join(" ");
 
@@ -64,7 +66,9 @@ export function buildSmartTalkMessages(params: {
     "If the question is clearly outside German bureaucracy, politely decline by centering summary and meaning on this exact Slovak sentence (you may add one short clarifying phrase after it): " +
       redirectSk,
     'Urgency: prefer "low" for general informational questions; use "medium" when deadlines, forms, appointments, or time-sensitive paperwork likely matter; "high" only when the user mentions immediate deadlines, penalties, court or authority deadlines, job loss, visa or residence risk, or urgent official letters.',
-    "warnings should mention uncertainty and when to verify with an authority, official website, or qualified professional.",
+    "warnings policy: Include 1–2 concise, calm, practical caveats when the topic allows (timing, regional variability, need to verify on official sources). Trustworthy and non-legalistic; not alarming. Use an empty warnings array only when truly none apply—do not default to empty.",
+    "warnings inspiration when the topic matches (adapt wording; write in the output language per locale instruction; examples in Slovak for tone): Steuer-ID — Steuer-ID býva doručená poštou až po registrácii pobytu; doručenie môže trvať niekoľko týždňov. Anmeldung — požiadavky sa môžu líšiť podľa mesta alebo Bundeslandu; bez Wohnungsgeberbestätigung nemusí byť registrácia možná. Kindergeld — Familienkasse môže vyžiadať doplňujúce dokumenty; spracovanie žiadosti môže trvať viac týždňov.",
+    "warnings should also mention uncertainty and when to verify with an authority, official website, or qualified professional.",
     "If the question is unclear or cannot be answered safely, explain what is missing in warnings and use urgency unknown when appropriate.",
     JSON_KEYS_QUESTION,
   ].join(" ");
