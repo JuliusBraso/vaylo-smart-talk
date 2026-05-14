@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type CSSProperties,
+} from "react";
 import type {
   SmartTalkResult,
   SmartTalkConfidenceLevel,
@@ -16,20 +23,21 @@ type SmartTalkUiMode = "question" | "text" | "photo";
 const PLACEHOLDER: Record<SmartTalkUiMode, string> = {
   question: "Opýtajte sa napríklad: Ako požiadam o Kindergeld v Nemecku?",
   text: "Sem vložte text z listu, úradu alebo formulára…",
-  photo: "Foto režim pripravujeme.",
+  photo: "",
 };
 
 const GUIDANCE_PRIMARY: Record<SmartTalkUiMode, string> = {
   question:
     "Pýtajte sa na dane, Kindergeld, Anmeldung, zdravotnú poisťovňu, úrady alebo iné nemecké byrokratické kroky.",
   text: "Najlepšie funguje, keď vložíte najdôležitejšiu časť listu alebo formulára.",
-  photo: "Čoskoro budete môcť dokument odfotiť priamo v mobile.",
+  photo:
+    "Vyberte jasnú fotografiu listu (JPG, PNG alebo WebP, max. 4 MB). Ostré zaostrenie a dobré svetlo zlepšia rozpoznávanie textu.",
 };
 
 const SUBMIT_LABEL: Record<SmartTalkUiMode, string> = {
   question: "Opýtať sa Vayla",
   text: "Vysvetliť text",
-  photo: "Už čoskoro",
+  photo: "Analyzovať dokument",
 };
 
 const CONFIDENCE = new Set(["low", "medium", "high"]);
@@ -134,6 +142,48 @@ const MSG = {
   fallback: "Nepodarilo sa vysvetliť text. Skúste to znova.",
 } as const;
 
+function readApiErrorCode(data: unknown): string | null {
+  if (!isRecord(data) || data.ok !== false) return null;
+  const e = data.error;
+  return typeof e === "string" ? e : null;
+}
+
+/** Slovak UX for /api/smart-talk-photo (and shared OpenAI errors). */
+function messageForPhotoError(errorCode: string | null, httpStatus: number): string {
+  if (errorCode === "invalid_file_type") {
+    return "Nepodporovaný typ súboru. Použite JPG, PNG alebo WebP.";
+  }
+  if (errorCode === "file_too_large") {
+    return "Súbor je príliš veľký. Maximálna veľkosť je 4 MB.";
+  }
+  if (errorCode === "smart_talk_photo_extraction_failed") {
+    return "Nepodarilo sa rozpoznať text na fotografii. Skúste lepšie osvetlenie alebo ostrejšiu snímku.";
+  }
+  if (errorCode === "missing_file" || errorCode === "invalid_form_data") {
+    return "Vyberte platnú fotografiu dokumentu.";
+  }
+  if (errorCode === "smart_talk_photo_rate_limited") {
+    return "Príliš veľa fotografií v krátkom čase. Skúste to znova neskôr.";
+  }
+  if (errorCode === "smart_talk_unavailable") {
+    return MSG.unavailable;
+  }
+  if (
+    errorCode === "smart_talk_photo_timeout" ||
+    errorCode === "smart_talk_timeout" ||
+    httpStatus === 504
+  ) {
+    return "Spracovanie fotografie trvalo príliš dlho. Skúste menší súbor alebo to znova neskôr.";
+  }
+  if (httpStatus === 500) {
+    return "Chyba servera pri spracovaní fotografie. Skúste to znova neskôr.";
+  }
+  if (httpStatus === 400) {
+    return "Neplatná požiadavka. Skontrolujte fotografiu.";
+  }
+  return MSG.fallback;
+}
+
 function messageForStatus(status: number): string {
   if (status === 400) return MSG.badInput;
   if (status === 429) return MSG.rateLimited;
@@ -219,11 +269,14 @@ function sectionTitleStyle(): CSSProperties {
 export default function SmartTalkClient() {
   const [mode, setMode] = useState<SmartTalkUiMode>("question");
   const [text, setText] = useState("");
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SmartTalkResult | null>(null);
   const busyRef = useRef(false);
   const generationRef = useRef(0);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     generationRef.current += 1;
@@ -231,7 +284,25 @@ export default function SmartTalkClient() {
     setResult(null);
     setLoading(false);
     busyRef.current = false;
+
+    if (mode !== "photo") {
+      setPhotoFile(null);
+      setPhotoPreviewUrl(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   }, [mode]);
+
+  useEffect(() => {
+    return () => {
+      if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
+    };
+  }, [photoPreviewUrl]);
+
+  const onPhotoFileChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0] ?? null;
+    setPhotoFile(f);
+    setPhotoPreviewUrl(f ? URL.createObjectURL(f) : null);
+  }, []);
 
   const trimmedLen = text.trim().length;
   const lengthGuardActive = mode === "question" || mode === "text";
@@ -242,9 +313,9 @@ export default function SmartTalkClient() {
     trimmedLen <= MAX_TEXT_LENGTH;
   const submitDisabled =
     loading ||
-    mode === "photo" ||
-    trimmedLen < 8 ||
-    trimmedLen > MAX_TEXT_LENGTH;
+    (mode === "photo" ? !photoFile : trimmedLen < 8 || trimmedLen > MAX_TEXT_LENGTH);
+
+  const photoReady = mode === "photo" && !!photoFile;
 
   const onSubmit = useCallback(async () => {
     if (mode === "photo") return;
@@ -296,6 +367,51 @@ export default function SmartTalkClient() {
     }
   }, [text, mode]);
 
+  const onPhotoSubmit = useCallback(async () => {
+    if (!photoFile || busyRef.current) return;
+    const genAtStart = generationRef.current;
+    busyRef.current = true;
+
+    setLoading(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      const fd = new FormData();
+      fd.append("file", photoFile);
+      fd.append("context", "anonymous");
+      fd.append("locale", "sk");
+
+      const res = await fetch("/api/smart-talk-photo", {
+        method: "POST",
+        body: fd,
+      });
+
+      let data: unknown = null;
+      try {
+        data = (await res.json()) as unknown;
+      } catch {
+        data = null;
+      }
+
+      if (genAtStart !== generationRef.current) return;
+
+      const okParsed = parseSmartTalkResponse(data);
+      if (res.ok && okParsed) {
+        setResult(okParsed.result);
+        return;
+      }
+
+      setError(messageForPhotoError(readApiErrorCode(data), res.status));
+    } catch {
+      if (genAtStart !== generationRef.current) return;
+      setError(MSG.fallback);
+    } finally {
+      busyRef.current = false;
+      setLoading(false);
+    }
+  }, [photoFile]);
+
   const urgencyUi = result ? urgencyBadgeFor(result.urgency) : null;
 
   const modeChip = (m: SmartTalkUiMode, label: string) => {
@@ -344,23 +460,6 @@ export default function SmartTalkClient() {
         {modeChip("photo", "Odfotiť dokument")}
       </div>
 
-      {mode === "photo" ? (
-        <p
-          style={{
-            margin: 0,
-            fontSize: 13,
-            lineHeight: 1.55,
-            color: "var(--muted)",
-            padding: "12px 14px",
-            borderRadius: "var(--r12)",
-            border: "1px dashed rgba(203, 213, 225, 1)",
-            background: "rgba(248, 250, 252, 1)",
-          }}
-        >
-          Na mobilnom skeneri dokumentov intenzívne pracujeme. Už čoskoro.
-        </p>
-      ) : null}
-
       <div style={{ display: "grid", gap: 6 }}>
         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: "var(--muted)" }}>
           {GUIDANCE_PRIMARY[mode]}
@@ -372,19 +471,95 @@ export default function SmartTalkClient() {
         ) : null}
       </div>
 
-      <label htmlFor="smart-talk-input" className="sr-only">
-        {mode === "question" ? "Otázka pre Vayla" : mode === "text" ? "Text dokumentu" : "Foto dokumentu"}
-      </label>
-      <textarea
-        id="smart-talk-input"
-        name="smart-talk-text"
-        rows={8}
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        placeholder={PLACEHOLDER[mode]}
-        className="w-full resize-y rounded-[var(--r12)] border border-[var(--border)] bg-[var(--bg0)] px-3 py-3 text-[15px] leading-relaxed text-[var(--text)] outline-none placeholder:text-[var(--muted2)] focus:border-[color:rgba(199,210,254,1)] focus:shadow-[0_0_0_3px_rgba(199,210,254,0.45)] min-h-[168px]"
-        disabled={loading || mode === "photo"}
-      />
+        {mode === "photo" ? (
+          <>
+            <span id="smart-talk-photo-label" className="sr-only">
+              Fotografia dokumentu pre Smart Talk
+            </span>
+            <input
+              ref={fileInputRef}
+              id="smart-talk-photo-input"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              capture="environment"
+              aria-labelledby="smart-talk-photo-label"
+              disabled={loading}
+              onChange={onPhotoFileChange}
+              className="sr-only"
+            />
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "center",
+                gap: 10,
+              }}
+            >
+              <label
+                htmlFor="smart-talk-photo-input"
+                style={{
+                  display: "inline-block",
+                  padding: "10px 16px",
+                  borderRadius: "var(--r12)",
+                  border: "1px solid var(--accentBorder)",
+                  background: "rgba(238, 242, 255, 1)",
+                  color: "var(--text)",
+                  fontWeight: 700,
+                  fontSize: 14,
+                  cursor: loading ? "not-allowed" : "pointer",
+                  opacity: loading ? 0.55 : 1,
+                }}
+              >
+                Vybrať fotografiu
+              </label>
+              {photoFile ? (
+                <span
+                  style={{
+                    fontSize: 13,
+                    color: "var(--muted)",
+                    wordBreak: "break-word",
+                  }}
+                >
+                  {photoFile.name}
+                </span>
+              ) : (
+                <span style={{ fontSize: 13, color: "var(--muted2)" }}>
+                  Žiadny súbor
+                </span>
+              )}
+            </div>
+            {photoPreviewUrl ? (
+              <img
+                src={photoPreviewUrl}
+                alt=""
+                style={{
+                  maxWidth: "100%",
+                  maxHeight: 220,
+                  objectFit: "contain",
+                  borderRadius: "var(--r12)",
+                  border: "1px solid var(--border)",
+                  background: "rgba(248, 250, 252, 1)",
+                }}
+              />
+            ) : null}
+          </>
+        ) : (
+          <>
+            <label htmlFor="smart-talk-input" className="sr-only">
+              {mode === "question" ? "Otázka pre Vayla" : "Text dokumentu"}
+            </label>
+            <textarea
+              id="smart-talk-input"
+              name="smart-talk-text"
+              rows={8}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder={PLACEHOLDER[mode]}
+              className="w-full resize-y rounded-[var(--r12)] border border-[var(--border)] bg-[var(--bg0)] px-3 py-3 text-[15px] leading-relaxed text-[var(--text)] outline-none placeholder:text-[var(--muted2)] focus:border-[color:rgba(199,210,254,1)] focus:shadow-[0_0_0_3px_rgba(199,210,254,0.45)] min-h-[168px]"
+              disabled={loading}
+            />
+          </>
+        )}
 
       {lengthGuardActive ? (
         <>
@@ -417,19 +592,21 @@ export default function SmartTalkClient() {
 
       <button
         type="button"
-        onClick={() => void onSubmit()}
+        onClick={() => {
+          if (mode === "photo") void onPhotoSubmit();
+          else void onSubmit();
+        }}
         disabled={submitDisabled}
         aria-busy={loading}
         style={{
           width: "100%",
           height: 44,
           borderRadius: "var(--r999)",
-          border:
-            mode === "photo" ? "1px solid rgba(203, 213, 225, 1)" : "1px solid var(--accentBorder)",
+          border: !photoReady && mode === "photo" ? "1px solid rgba(203, 213, 225, 1)" : "1px solid var(--accentBorder)",
           background:
-            mode === "photo" ? "rgba(241, 245, 249, 1)" : "var(--accent)",
+            !photoReady && mode === "photo" ? "rgba(241, 245, 249, 1)" : "var(--accent)",
           color:
-            mode === "photo" ? "var(--muted2)" : "rgba(255,255,255,0.98)",
+            !photoReady && mode === "photo" ? "var(--muted2)" : "rgba(255,255,255,0.98)",
           fontWeight: 800,
           fontSize: 15,
           cursor: submitDisabled ? "not-allowed" : "pointer",
@@ -459,7 +636,11 @@ export default function SmartTalkClient() {
       >
         {loading ? (
           <p style={{ margin: 0 }}>
-            {mode === "question" ? "Vaylo odpovedá na vašu otázku…" : "Vaylo vysvetľuje text…"}
+            {mode === "photo"
+              ? "Spracovávam fotografiu a analyzujem text…"
+              : mode === "question"
+                ? "Vaylo odpovedá na vašu otázku…"
+                : "Vaylo vysvetľuje text…"}
           </p>
         ) : error ? (
           <p style={{ margin: 0, color: "rgba(127, 29, 29, 0.92)" }}>{error}</p>
