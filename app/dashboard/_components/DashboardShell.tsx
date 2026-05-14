@@ -457,6 +457,7 @@ export default function DashboardShell({
                   <div className="mt-4 flex items-center justify-between gap-3 text-sm text-slate-600">
                     <button
                       type="button"
+                      onClick={() => router.push("/smart-talk")}
                       className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98]"
                       title="Add"
                     >
