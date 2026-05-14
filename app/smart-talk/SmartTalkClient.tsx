@@ -1,6 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import type {
+  SmartTalkResult,
+  SmartTalkConfidenceLevel,
+  SmartTalkConsequencePhase,
+  SmartTalkDocumentQuality,
+} from "@/lib/vaylo/smart-talk/run-smart-talk";
 
 const MAX_TEXT_LENGTH = 12000;
 const RECOMMENDED_TEXT_LENGTH = 4000;
@@ -26,13 +32,22 @@ const SUBMIT_LABEL: Record<SmartTalkUiMode, string> = {
   photo: "Už čoskoro",
 };
 
-type SmartTalkResult = {
-  summary: string;
-  meaning: string;
-  urgency: string;
-  nextSteps: string[];
-  warnings: string[];
-};
+const CONFIDENCE = new Set(["low", "medium", "high"]);
+const CONSEQUENCE = new Set(["none", "possible", "conditional", "active"]);
+const DOC_QUALITY = new Set(["clear", "noisy", "ocr_damaged", "unknown"]);
+const URGENCY = new Set(["low", "medium", "high", "unknown"]);
+
+function parseStabilizersClient(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  for (const x of raw) {
+    if (typeof x !== "string") continue;
+    const s = x.trim().slice(0, 400);
+    if (s) out.push(s);
+    if (out.length >= 2) break;
+  }
+  return out;
+}
 
 type SmartTalkOkResponse = {
   ok: true;
@@ -53,7 +68,8 @@ function parseSmartTalkResponse(data: unknown): SmartTalkOkResponse | null {
 
   const summary = typeof result.summary === "string" ? result.summary : "";
   const meaning = typeof result.meaning === "string" ? result.meaning : "";
-  const urgency = typeof result.urgency === "string" ? result.urgency : "unknown";
+  const urgencyRaw = typeof result.urgency === "string" ? result.urgency : "unknown";
+  const urgency = URGENCY.has(urgencyRaw) ? urgencyRaw : "unknown";
 
   const nextSteps: string[] = [];
   if (Array.isArray(result.nextSteps)) {
@@ -69,11 +85,43 @@ function parseSmartTalkResponse(data: unknown): SmartTalkOkResponse | null {
     }
   }
 
+  const stabilizers = parseStabilizersClient(result.stabilizers);
+
+  const confidenceRaw =
+    typeof result.confidenceLevel === "string" ? result.confidenceLevel : "medium";
+  const confidenceLevel: SmartTalkConfidenceLevel = CONFIDENCE.has(confidenceRaw)
+    ? (confidenceRaw as SmartTalkConfidenceLevel)
+    : "medium";
+
+  const consequenceRaw =
+    typeof result.consequencePhase === "string" ? result.consequencePhase : "possible";
+  const consequencePhase: SmartTalkConsequencePhase = CONSEQUENCE.has(consequenceRaw)
+    ? (consequenceRaw as SmartTalkConsequencePhase)
+    : "possible";
+
+  const docQualityRaw =
+    typeof result.documentQuality === "string" ? result.documentQuality : "unknown";
+  const documentQuality: SmartTalkDocumentQuality = DOC_QUALITY.has(docQualityRaw)
+    ? (docQualityRaw as SmartTalkDocumentQuality)
+    : "unknown";
+
+  const parsedResult: SmartTalkResult = {
+    summary,
+    meaning,
+    urgency: urgency as SmartTalkResult["urgency"],
+    nextSteps,
+    warnings,
+    stabilizers,
+    confidenceLevel,
+    consequencePhase,
+    documentQuality,
+  };
+
   return {
     ok: true,
     mode: data.mode,
     context: data.context,
-    result: { summary, meaning, urgency, nextSteps, warnings },
+    result: parsedResult,
   };
 }
 

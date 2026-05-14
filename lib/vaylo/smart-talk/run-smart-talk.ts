@@ -6,16 +6,34 @@ import {
 
 export type SmartTalkUrgency = "low" | "medium" | "high" | "unknown";
 
+export type SmartTalkConfidenceLevel = "low" | "medium" | "high";
+
+export type SmartTalkConsequencePhase = "none" | "possible" | "conditional" | "active";
+
+export type SmartTalkDocumentQuality = "clear" | "noisy" | "ocr_damaged" | "unknown";
+
 export type SmartTalkResult = {
   summary: string;
   meaning: string;
   urgency: SmartTalkUrgency;
   nextSteps: string[];
   warnings: string[];
+  stabilizers: string[];
+  confidenceLevel: SmartTalkConfidenceLevel;
+  consequencePhase: SmartTalkConsequencePhase;
+  documentQuality: SmartTalkDocumentQuality;
 };
 
 const DEFAULT_MODEL = "gpt-4o-mini";
 const URGENCY_SET = new Set<string>(["low", "medium", "high", "unknown"]);
+const CONFIDENCE_SET = new Set<string>(["low", "medium", "high"]);
+const CONSEQUENCE_SET = new Set<string>(["none", "possible", "conditional", "active"]);
+const DOCUMENT_QUALITY_SET = new Set<string>(["clear", "noisy", "ocr_damaged", "unknown"]);
+
+const DEFAULT_STABILIZERS: string[] = [];
+const DEFAULT_CONFIDENCE: SmartTalkConfidenceLevel = "medium";
+const DEFAULT_CONSEQUENCE: SmartTalkConsequencePhase = "possible";
+const DEFAULT_DOCUMENT_QUALITY: SmartTalkDocumentQuality = "unknown";
 
 function stripJsonFence(s: string): string {
   const t = s.trim();
@@ -40,6 +58,7 @@ function parseStringArray(raw: unknown, maxItems: number, maxLen: number): strin
 
 function normalizeParsedObject(obj: Record<string, unknown>): SmartTalkResult {
   const warnings: string[] = parseStringArray(obj.warnings, 12, 400);
+  const stabilizers: string[] = parseStringArray(obj.stabilizers, 2, 400);
 
   let summary = typeof obj.summary === "string" ? obj.summary.trim() : "";
   let meaning = typeof obj.meaning === "string" ? obj.meaning.trim() : "";
@@ -52,6 +71,30 @@ function normalizeParsedObject(obj: Record<string, unknown>): SmartTalkResult {
     urgency = obj.urgency as SmartTalkUrgency;
   }
 
+  let confidenceLevel: SmartTalkConfidenceLevel = DEFAULT_CONFIDENCE;
+  if (
+    typeof obj.confidenceLevel === "string" &&
+    CONFIDENCE_SET.has(obj.confidenceLevel)
+  ) {
+    confidenceLevel = obj.confidenceLevel as SmartTalkConfidenceLevel;
+  }
+
+  let consequencePhase: SmartTalkConsequencePhase = DEFAULT_CONSEQUENCE;
+  if (
+    typeof obj.consequencePhase === "string" &&
+    CONSEQUENCE_SET.has(obj.consequencePhase)
+  ) {
+    consequencePhase = obj.consequencePhase as SmartTalkConsequencePhase;
+  }
+
+  let documentQuality: SmartTalkDocumentQuality = DEFAULT_DOCUMENT_QUALITY;
+  if (
+    typeof obj.documentQuality === "string" &&
+    DOCUMENT_QUALITY_SET.has(obj.documentQuality)
+  ) {
+    documentQuality = obj.documentQuality as SmartTalkDocumentQuality;
+  }
+
   const nextSteps = parseStringArray(obj.nextSteps, 16, 500);
 
   return {
@@ -60,6 +103,10 @@ function normalizeParsedObject(obj: Record<string, unknown>): SmartTalkResult {
     urgency,
     nextSteps,
     warnings,
+    stabilizers,
+    confidenceLevel,
+    consequencePhase,
+    documentQuality,
   };
 }
 
@@ -75,6 +122,10 @@ function fallbackInvalidJson(): SmartTalkResult {
     warnings: [
       "Výsledok môže byť neúplný, pretože odpoveď AI nebola v očakávanom formáte.",
     ],
+    stabilizers: DEFAULT_STABILIZERS,
+    confidenceLevel: DEFAULT_CONFIDENCE,
+    consequencePhase: DEFAULT_CONSEQUENCE,
+    documentQuality: DEFAULT_DOCUMENT_QUALITY,
   };
 }
 

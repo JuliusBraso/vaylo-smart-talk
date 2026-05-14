@@ -17,6 +17,10 @@ const JSON_KEYS_TEXT = [
   'urgency (string): one of "low", "medium", "high", or "unknown"; apply the document-mode urgency calibration rules from the system instructions.',
   'nextSteps (string[]): practical steps for the reader; empty array if none.',
   'warnings (string[]): 1–2 short calm items (material risks, deadlines, procedures); at most one may be a brief stabilizing clarification only if the document explicitly supports it; prioritize contextual risks over generic hygiene; empty array only when genuinely none apply.',
+  'stabilizers (string[]): 0–2 very short items: protective or stabilizing facts explicitly stated in the input (e.g. no final decision yet; no enforcement active yet; lawful residence during pending review; insurance not cancelled—only conditional limitation risk; benefits or payments continue during review; documents received but processing not finished). [] when none. Do not invent reassurance. Prefer stabilizers for these facts; keep warnings primarily for risks; minimize repeating the same fact in warnings and stabilizers.',
+  'confidenceLevel (string): one of "low", "medium", "high". high = clean text, clear office, clear deadlines/actions. medium = some ambiguity, conditional language, or partial uncertainty. low = OCR-damaged or garbled text, missing context, contradictory or incomplete input.',
+  'consequencePhase (string): one of "none", "possible", "conditional", "active". none = informational / no meaningful consequence. possible = a risk is raised as possible but not clearly tied to a specific condition. conditional = consequence depends on user action, missing documents, or a stated if-then. active = already in effect now only if the text says so (e.g. payment already stopped, enforcement already underway, deadline already running).',
+  'documentQuality (string): one of "clear", "noisy", "ocr_damaged", "unknown". clear = normal readable text. noisy = formatting issues but mostly readable. ocr_damaged = OCR corruption, broken spacing, damaged words. unknown = not enough input to judge.',
 ].join(" ");
 
 const JSON_KEYS_QUESTION = [
@@ -26,6 +30,10 @@ const JSON_KEYS_QUESTION = [
   'urgency (string): one of "low", "medium", "high", or "unknown"; apply the question-mode urgency calibration rules from the system instructions.',
   'nextSteps (string[]): practical steps for the reader; empty array if none.',
   'warnings (string[]): 1–2 short calm items (material risks, deadlines, procedures); at most one may be a brief stabilizing clarification only if the question or described facts explicitly support it; prioritize contextual consequences over generic hygiene; empty array only when genuinely none apply.',
+  'stabilizers (string[]): 0–2 very short items: protective or stabilizing facts explicitly stated in the question or quoted letter (same rules as document mode). [] when none. Never invent reassurance. Prefer stabilizers for these facts; keep warnings primarily for risks; minimize duplication.',
+  'confidenceLevel (string): one of "low", "medium", "high". high = clear question and facts. medium = some ambiguity or conditional wording. low = garbled paste, missing context, contradiction, or incomplete.',
+  'consequencePhase (string): one of "none", "possible", "conditional", "active" — classify the user-described situation like document mode; active only when the described facts support something already in effect.',
+  'documentQuality (string): one of "clear", "noisy", "ocr_damaged", "unknown" — judge the user input text the same way as document mode.',
 ].join(" ");
 
 /**
@@ -38,10 +46,10 @@ export function buildSmartTalkMessages(params: {
 }): { system: string; user: string } {
   const localeLine =
     params.locale === "sk"
-      ? "Write summary, meaning, nextSteps, and warnings in Slovak unless quoting German source text."
+      ? "Write summary, meaning, nextSteps, warnings, and stabilizers in Slovak unless quoting German source text."
       : params.locale === "de"
-        ? "Write summary, meaning, nextSteps, and warnings in German unless quoting source text."
-        : "Write summary, meaning, nextSteps, and warnings in English unless quoting German source text.";
+        ? "Write summary, meaning, nextSteps, warnings, and stabilizers in German unless quoting source text."
+        : "Write summary, meaning, nextSteps, warnings, and stabilizers in English unless quoting German source text.";
 
   if (params.inputType === "text") {
     const system = [
