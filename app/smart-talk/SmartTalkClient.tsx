@@ -199,6 +199,12 @@ const RESULT_CARD: CSSProperties = {
   boxShadow: "0 6px 16px rgba(15, 23, 42, 0.04)",
 };
 
+/** Dev-only display string; avoids crashes if API/client parsing omits fields. */
+function devMetaString(value: unknown): string {
+  if (typeof value === "string" && value.trim()) return value;
+  return "—";
+}
+
 function sectionTitleStyle(): CSSProperties {
   return {
     margin: "0 0 10px",
@@ -566,6 +572,93 @@ export default function SmartTalkClient() {
                 )}
               </section>
             </div>
+
+            {process.env.NODE_ENV === "development" ? (
+              <details
+                style={{
+                  marginTop: 2,
+                  border: "1px dashed rgba(100, 116, 139, 0.55)",
+                  borderRadius: "var(--r12)",
+                  padding: "10px 12px",
+                  background: "rgba(241, 245, 249, 0.65)",
+                  fontSize: 11,
+                  lineHeight: 1.45,
+                  color: "rgba(71, 85, 105, 0.95)",
+                  fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                }}
+              >
+                <summary
+                  style={{
+                    cursor: "pointer",
+                    fontWeight: 700,
+                    letterSpacing: "0.02em",
+                    userSelect: "none",
+                  }}
+                >
+                  DEV: Smart Talk reasoning metadata
+                </summary>
+                <div
+                  style={{
+                    marginTop: 10,
+                    display: "grid",
+                    gap: 8,
+                    paddingTop: 4,
+                    borderTop: "1px dashed rgba(148, 163, 184, 0.45)",
+                  }}
+                >
+                  <div>
+                    <span style={{ opacity: 0.85 }}>confidenceLevel: </span>
+                    {devMetaString(
+                      (result as unknown as Record<string, unknown>).confidenceLevel,
+                    )}
+                  </div>
+                  <div>
+                    <span style={{ opacity: 0.85 }}>consequencePhase: </span>
+                    {devMetaString(
+                      (result as unknown as Record<string, unknown>).consequencePhase,
+                    )}
+                  </div>
+                  <div>
+                    <span style={{ opacity: 0.85 }}>documentQuality: </span>
+                    {devMetaString(
+                      (result as unknown as Record<string, unknown>).documentQuality,
+                    )}
+                  </div>
+                  <div>
+                    <div style={{ opacity: 0.85, marginBottom: 4 }}>stabilizers:</div>
+                    {(() => {
+                      const raw = (result as unknown as Record<string, unknown>).stabilizers;
+                      const list = Array.isArray(raw)
+                        ? raw.filter((x): x is string => typeof x === "string" && x.trim() !== "")
+                        : [];
+                      if (list.length === 0) {
+                        return (
+                          <span style={{ fontStyle: "italic", opacity: 0.9 }}>
+                            Žiadne stabilizujúce informácie neboli extrahované.
+                          </span>
+                        );
+                      }
+                      return (
+                        <ul
+                          style={{
+                            margin: 0,
+                            paddingLeft: 18,
+                            display: "grid",
+                            gap: 4,
+                          }}
+                        >
+                          {list.map((s, i) => (
+                            <li key={i} style={{ paddingLeft: 2 }}>
+                              {s}
+                            </li>
+                          ))}
+                        </ul>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </details>
+            ) : null}
           </div>
         ) : (
           <p style={{ margin: 0 }}>Výsledok vysvetlenia sa zobrazí tu.</p>
