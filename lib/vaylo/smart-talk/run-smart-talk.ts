@@ -169,26 +169,107 @@ function normalizeDocumentTypeLabel(raw: unknown): string {
 const EU_CALENDAR_DATE = /\b\d{1,2}\.\d{1,2}\.\d{4}\b/g;
 const ISO_CALENDAR_DATE = /\b\d{4}-\d{2}-\d{2}\b/g;
 
-/**
- * Drops strings that cite DD.MM.YYYY or YYYY-MM-DD when those exact tokens
- * do not appear in the source transcript (cheap anti-hallucination guard; no date parsing).
- */
-function calendarTokensGroundedInSource(text: string, source: string): boolean {
+/** Chars before/after each date occurrence in source to scan for procedural cues (Phase 7.8C). */
+const DEADLINE_CUE_WINDOW_CHARS = 200;
+
+/** German (and OCR-tolerant) substrings; matching is case-insensitive on source slices. */
+const GERMAN_DEADLINE_CUE_FRAGMENTS: readonly string[] = [
+  "frist",
+  "innerhalb",
+  "einspruch",
+  "widerspruch",
+  "rechtsbehelf",
+  "rechtsbehelfsbelehrung",
+  "bekanntgabe",
+  "zahlung",
+  "zahlen",
+  "zahlbar",
+  "zahlungs",
+  "spätestens",
+  "spaetestens",
+  "bis zum",
+  "bis spätestens",
+  "bis spaetestens",
+  "fälligkeit",
+  "falligkeit",
+  "faelligkeit",
+  "fällig",
+  "fallig",
+  "faellig",
+  "mahnung",
+  "säumnis",
+  "saumnis",
+  "säumniszuschlag",
+  "saumniszuschlag",
+  "vollstreckung",
+  "nachreichung",
+  "unterlagen",
+  "mitwirkung",
+  "termin",
+  "bitte zahlen",
+];
+
+function uniqueCalendarTokens(text: string): string[] {
   const eu = text.match(EU_CALENDAR_DATE) ?? [];
   const iso = text.match(ISO_CALENDAR_DATE) ?? [];
-  if (eu.length === 0 && iso.length === 0) return true;
-  for (const tok of [...eu, ...iso]) {
-    if (!source.includes(tok)) return false;
-  }
-  return true;
+  return [...new Set([...eu, ...iso])];
 }
 
-function filterArraysByGroundedCalendarTokens(
-  items: string[],
-  source: string,
-): string[] {
+function sourceSliceHasDeadlineCue(slice: string): boolean {
+  const normalized = slice.toLowerCase();
+  for (const cue of GERMAN_DEADLINE_CUE_FRAGMENTS) {
+    if (normalized.includes(cue)) return true;
+  }
+  return false;
+}
+
+/**
+ * True if at least one occurrence of `token` in `source` lies within a window
+ * that also contains a deadline/payment/procedural cue (7.8C).
+ */
+function dateTokenOccurrenceCueGroundedInSource(token: string, source: string): boolean {
+  let from = 0;
+  while (from <= source.length) {
+    const i = source.indexOf(token, from);
+    if (i === -1) break;
+    const start = Math.max(0, i - DEADLINE_CUE_WINDOW_CHARS);
+    const end = Math.min(source.length, i + token.length + DEADLINE_CUE_WINDOW_CHARS);
+    if (sourceSliceHasDeadlineCue(source.slice(start, end))) return true;
+    from = i + 1;
+  }
+  return false;
+}
+
+/**
+ * Model output passes if it has no calendar tokens, OR every DD.MM.YYYY / ISO date
+ * in the item occurs in source near a procedural cue (7.8C).
+ */
+function calendarTokensProceduralCueGroundedInSource(item: string, source: string): boolean {
+  const tokens = uniqueCalendarTokens(item);
+  if (tokens.length === 0) return true;
+  return tokens.every(
+    (tok) => source.includes(tok) && dateTokenOccurrenceCueGroundedInSource(tok, source),
+  );
+}
+
+/**
+ * Drops strings that cite DD.MM.YYYY / YYYY-MM-DD when those exact tokens
+ * do not appear in the source transcript (Phase 7.8B; used for rights[]).
+ */
+function calendarTokensPresenceOnlyInSource(text: string, source: string): boolean {
+  const tokens = uniqueCalendarTokens(text);
+  if (tokens.length === 0) return true;
+  return tokens.every((tok) => source.includes(tok));
+}
+
+function filterArrayByProceduralCalendarGrounding(items: string[], source: string): string[] {
   if (!source.trim()) return items;
-  return items.filter((s) => calendarTokensGroundedInSource(s, source));
+  return items.filter((s) => calendarTokensProceduralCueGroundedInSource(s, source));
+}
+
+function filterArrayByPresenceCalendarGrounding(items: string[], source: string): string[] {
+  if (!source.trim()) return items;
+  return items.filter((s) => calendarTokensPresenceOnlyInSource(s, source));
 }
 
 function normalizeParsedObject(
@@ -272,12 +353,12 @@ function normalizeParsedObject(
   const obligationsRaw = parseStringArray(obj.obligations, 10, 400);
   const consequencesRaw = parseStringArray(obj.consequences, 10, 400);
 
-  const warnings = filterArraysByGroundedCalendarTokens(warningsRaw, ground);
-  const nextSteps = filterArraysByGroundedCalendarTokens(nextStepsRaw, ground);
-  const deadlines = filterArraysByGroundedCalendarTokens(deadlinesRaw, ground);
-  const rights = filterArraysByGroundedCalendarTokens(rightsRaw, ground);
-  const obligations = filterArraysByGroundedCalendarTokens(obligationsRaw, ground);
-  const consequences = filterArraysByGroundedCalendarTokens(consequencesRaw, ground);
+  const warnings = filterArrayByProceduralCalendarGrounding(warningsRaw, ground);
+  const nextSteps = filterArrayByProceduralCalendarGrounding(nextStepsRaw, ground);
+  const deadlines = filterArrayByProceduralCalendarGrounding(deadlinesRaw, ground);
+  const rights = filterArrayByPresenceCalendarGrounding(rightsRaw, ground);
+  const obligations = filterArrayByProceduralCalendarGrounding(obligationsRaw, ground);
+  const consequences = filterArrayByProceduralCalendarGrounding(consequencesRaw, ground);
 
   return {
     summary: summary.slice(0, 8000),
