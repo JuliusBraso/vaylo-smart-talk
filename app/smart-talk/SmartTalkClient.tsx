@@ -24,6 +24,20 @@ import {
 const MAX_TEXT_LENGTH = 12000;
 const RECOMMENDED_TEXT_LENGTH = 4000;
 
+/** Smart Talk photo MVP: multi-page scan cap (matches `/api/smart-talk-photo`). */
+const SMART_TALK_MAX_PHOTO_PAGES = 3;
+const SMART_TALK_MAX_PHOTO_UPLOAD_TOTAL_BYTES = 4 * 1024 * 1024;
+
+type SmartTalkPhotoPage = {
+  id: string;
+  file: File;
+  label: string;
+};
+
+function sumPhotoPageBytes(pages: SmartTalkPhotoPage[]): number {
+  return pages.reduce((sum, p) => sum + p.file.size, 0);
+}
+
 type SmartTalkUiMode = "question" | "text" | "photo";
 
 const PLACEHOLDER: Record<SmartTalkUiMode, string> = {
@@ -37,7 +51,7 @@ const GUIDANCE_PRIMARY: Record<SmartTalkUiMode, string> = {
     "Pýtajte sa na dane, Kindergeld, Anmeldung, zdravotnú poisťovňu, úrady alebo iné nemecké byrokratické kroky.",
   text: "Najlepšie funguje, keď vložíte najdôležitejšiu časť listu alebo formulára.",
   photo:
-    "Odfotíte dokument nízkovýkonnou kamerou v prehliadači alebo vyberte JPG/PNG/WebP z galérie (max. 8 MB pred úpravou). Na server max. 4 MB. Dobré svetlo zlepší OCR.",
+    "Pridajte až 3 strany dokumentu (poradie zachováme): kamerou alebo viac obrázkov z galérie (JPG/PNG/WebP; max. 8 MB pred úpravou na súbor). Spolu max. 4 MB po úprave. Dobré svetlo zlepší OCR.",
 };
 
 const SUBMIT_LABEL: Record<SmartTalkUiMode, string> = {
@@ -104,6 +118,8 @@ type SmartTalkOkResponse = {
   mode: string;
   context: string;
   result: SmartTalkResult;
+  /** Present when `/api/smart-talk-photo` substituted OCR placeholders for one or more pages. */
+  partialOcr?: boolean;
 };
 
 function isRecord(x: unknown): x is Record<string, unknown> {
@@ -200,6 +216,7 @@ function parseSmartTalkResponse(data: unknown): SmartTalkOkResponse | null {
     mode: data.mode,
     context: data.context,
     result: parsedResult,
+    partialOcr: data.partialOcr === true,
   };
 }
 
@@ -231,10 +248,14 @@ const MSG = {
     "Fotky vo formáte HEIC/HEIF zatiaľ nie sú podporované. Prosím použite kameru vo Vaylo alebo vyberte JPG/PNG obrázok.",
   photoReadyForAnalysis: "Fotografia pripravená na analýzu.",
   photoProcessingDoc: "Spracovávam dokument…",
+  photoTotalTooLarge:
+    "Súčet veľkosti strán po úprave presahuje 4 MB. Odstráňte stranu alebo použite menšie obrázky.",
+  photoPartialOcrNotice:
+    "OCR jednej strany sa nepodarilo úplne spracovať — výsledok môže byť neúplný.",
 } as const;
 
 const PHOTO_PREPARE_TIMEOUT_MS = 55_000;
-const PHOTO_FETCH_TIMEOUT_MS = 95_000;
+const PHOTO_FETCH_TIMEOUT_MS = 115_000;
 
 function messageForPreparePhotoError(err: unknown): string {
   if (err instanceof PrepareDocumentPhotoError) {
@@ -266,8 +287,18 @@ function messageForPhotoError(errorCode: string | null, httpStatus: number): str
   if (errorCode === "smart_talk_photo_extraction_failed") {
     return "Nepodarilo sa rozpoznať text na fotografii. Skúste lepšie osvetlenie alebo ostrejšiu snímku.";
   }
-  if (errorCode === "missing_file" || errorCode === "invalid_form_data") {
+  if (
+    errorCode === "missing_file" ||
+    errorCode === "missing_files" ||
+    errorCode === "invalid_form_data"
+  ) {
     return "Vyberte platnú fotografiu dokumentu.";
+  }
+  if (errorCode === "too_many_files") {
+    return "Maximálne 3 strany naraz. Odstráňte prebytočné strany.";
+  }
+  if (errorCode === "total_upload_too_large") {
+    return MSG.photoTotalTooLarge;
   }
   if (errorCode === "smart_talk_photo_rate_limited") {
     return "Príliš veľa fotografií v krátkom čase. Skúste to znova neskôr.";
@@ -395,10 +426,10 @@ function sectionTitleStyle(): CSSProperties {
 export default function SmartTalkClient() {
   const [mode, setMode] = useState<SmartTalkUiMode>("question");
   const [text, setText] = useState("");
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
-  /** Original pick name for display only; prepared file is always `smart-talk-document.jpg`. */
-  const [photoSourceName, setPhotoSourceName] = useState<string | null>(null);
+  const [photoPages, setPhotoPages] = useState<SmartTalkPhotoPage[]>([]);
   const [photoPreparing, setPhotoPreparing] = useState(false);
+  const [photoPrepareStatus, setPhotoPrepareStatus] = useState<string | null>(null);
+  const [partialOcrNotice, setPartialOcrNotice] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SmartTalkResult | null>(null);
@@ -433,6 +464,7 @@ export default function SmartTalkClient() {
     setResult(null);
     setLoading(false);
     setPhotoPreparing(false);
+    setPhotoPrepareStatus(null);
     busyRef.current = false;
 
     if (mode !== "photo") {
@@ -442,8 +474,8 @@ export default function SmartTalkClient() {
       setCameraStarting(false);
       setCameraVideoReady(false);
       setPhotoInfoLine(null);
-      setPhotoFile(null);
-      setPhotoSourceName(null);
+      setPhotoPages([]);
+      setPartialOcrNotice(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }, [mode, releaseCameraHardware]);
@@ -499,13 +531,12 @@ export default function SmartTalkClient() {
       return;
     }
     if (loading || photoPreparing || busyRef.current || cameraStarting || cameraActive) return;
+    if (photoPages.length >= SMART_TALK_MAX_PHOTO_PAGES) return;
     setError(null);
     setPhotoInfoLine(null);
     setCameraVideoReady(false);
     releaseCameraHardware();
     setCameraActive(false);
-    setPhotoFile(null);
-    setPhotoSourceName(null);
     setCameraStarting(true);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -541,7 +572,7 @@ export default function SmartTalkClient() {
     } finally {
       setCameraStarting(false);
     }
-  }, [loading, photoPreparing, cameraStarting, cameraActive, releaseCameraHardware]);
+  }, [loading, photoPreparing, cameraStarting, cameraActive, releaseCameraHardware, photoPages.length]);
 
   const cancelCamera = useCallback(() => {
     releaseCameraHardware();
@@ -560,100 +591,176 @@ export default function SmartTalkClient() {
       photoPreparing
     )
       return;
+    if (photoPages.length >= SMART_TALK_MAX_PHOTO_PAGES) return;
     try {
       const file = await compressVideoFrameToSmartTalkPhotoFile(el);
-      releaseCameraHardware();
-      setCameraActive(false);
-      setCameraVideoReady(false);
+      const addedTotal = sumPhotoPageBytes(photoPages) + file.size;
+      if (addedTotal > SMART_TALK_MAX_PHOTO_UPLOAD_TOTAL_BYTES) {
+        setError(MSG.photoTotalTooLarge);
+        return;
+      }
+      const nextIndex = photoPages.length + 1;
+      const id =
+        typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      const nextPages: SmartTalkPhotoPage[] = [
+        ...photoPages,
+        {
+          id,
+          file,
+          label: `Snímka z kamery · strana ${nextIndex}`,
+        },
+      ];
+      setPhotoPages(nextPages);
       photoPickSeqRef.current += 1;
-      setPhotoFile(file);
-      setPhotoSourceName("Snímka z kamery");
       setPhotoInfoLine(MSG.photoReadyForAnalysis);
       setError(null);
+      if (nextPages.length >= SMART_TALK_MAX_PHOTO_PAGES) {
+        releaseCameraHardware();
+        setCameraActive(false);
+        setCameraVideoReady(false);
+      }
     } catch (err) {
       setError(messageForPreparePhotoError(err));
     }
-  }, [releaseCameraHardware, photoPreparing, cameraVideoReady]);
+  }, [releaseCameraHardware, photoPreparing, cameraVideoReady, photoPages]);
 
-  const onPhotoFileChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.files?.[0] ?? null;
-
-    if (!raw) {
-      photoPickSeqRef.current += 1;
-      setPhotoPreparing(false);
-      setPhotoFile(null);
-      setPhotoSourceName(null);
-      setPhotoInfoLine(null);
-      setError(null);
-      return;
-    }
-
-    if (isHeicOrHeifFile(raw)) {
-      photoPickSeqRef.current += 1;
-      setPhotoPreparing(false);
-      setPhotoFile(null);
-      setPhotoSourceName(null);
-      setPhotoInfoLine(null);
-      setError(MSG.photoHeicNotSupported);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      return;
-    }
-
-    if (raw.size > SMART_TALK_MAX_GALLERY_PHOTO_BYTES) {
-      photoPickSeqRef.current += 1;
-      setPhotoPreparing(false);
-      setPhotoFile(null);
-      setPhotoSourceName(null);
-      setPhotoInfoLine(null);
-      setError(MSG.photoGalleryTooLarge);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      return;
-    }
-
-    releaseCameraHardware();
-    setCameraActive(false);
-    setCameraStarting(false);
-    setCameraVideoReady(false);
-
-    const pickSeq = ++photoPickSeqRef.current;
-    const startGen = generationRef.current;
-    const sourceLabel = raw.name?.trim() ? raw.name : "fotografia";
-
-    setPhotoPreparing(true);
-    setError(null);
-    setPhotoFile(null);
-    setPhotoSourceName(null);
+  const removePhotoPage = useCallback((pageId: string) => {
+    setPhotoPages((prev) => prev.filter((p) => p.id !== pageId));
+    setPartialOcrNotice(false);
     setPhotoInfoLine(null);
+  }, []);
 
-    void (async () => {
-      try {
-        const preparedPromise = prepareDocumentPhotoForUpload(raw);
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => {
-            reject(new Error("smart_talk_prepare_timeout"));
-          }, PHOTO_PREPARE_TIMEOUT_MS);
-        });
-        const prepared = await Promise.race([preparedPromise, timeoutPromise]);
+  const onPhotoFileChange = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => {
+      const rawFiles = e.target.files ? Array.from(e.target.files) : [];
 
-        if (pickSeq !== photoPickSeqRef.current || startGen !== generationRef.current) {
-          return;
-        }
-
-        setPhotoFile(prepared);
-        setPhotoSourceName(sourceLabel);
-        setPhotoInfoLine(MSG.photoReadyForAnalysis);
-      } catch (err) {
-        if (pickSeq !== photoPickSeqRef.current || startGen !== generationRef.current) {
-          return;
-        }
-        setError(messageForPreparePhotoError(err));
-      } finally {
-        if (pickSeq === photoPickSeqRef.current) {
-          setPhotoPreparing(false);
-        }
+      if (rawFiles.length === 0) {
+        photoPickSeqRef.current += 1;
+        setPhotoPreparing(false);
+        setPhotoPrepareStatus(null);
+        setPhotoInfoLine(null);
+        setError(null);
+        return;
       }
-    })();
-  }, [releaseCameraHardware]);
+
+      releaseCameraHardware();
+      setCameraActive(false);
+      setCameraStarting(false);
+      setCameraVideoReady(false);
+
+      const pickSeq = ++photoPickSeqRef.current;
+      const startGen = generationRef.current;
+
+      const slotsLeft = SMART_TALK_MAX_PHOTO_PAGES - photoPages.length;
+      if (slotsLeft <= 0) {
+        setError("Maximálne 3 strany. Pred pridaním odstráňte stranu.");
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
+
+      const toProcess = rawFiles.slice(0, slotsLeft);
+
+      setPhotoPreparing(true);
+      setPhotoPrepareStatus(null);
+      setError(null);
+      setPhotoInfoLine(null);
+
+      void (async () => {
+        let cumulativePages = [...photoPages];
+
+        for (let i = 0; i < toProcess.length; i++) {
+          const raw = toProcess[i]!;
+          const slotNum = cumulativePages.length + 1;
+
+          if (pickSeq !== photoPickSeqRef.current || startGen !== generationRef.current) {
+            return;
+          }
+
+          if (isHeicOrHeifFile(raw)) {
+            setPhotoPreparing(false);
+            setPhotoPrepareStatus(null);
+            setError(MSG.photoHeicNotSupported);
+            if (pickSeq === photoPickSeqRef.current && fileInputRef.current) {
+              fileInputRef.current.value = "";
+            }
+            return;
+          }
+
+          if (raw.size > SMART_TALK_MAX_GALLERY_PHOTO_BYTES) {
+            setPhotoPreparing(false);
+            setPhotoPrepareStatus(null);
+            setError(MSG.photoGalleryTooLarge);
+            if (pickSeq === photoPickSeqRef.current && fileInputRef.current) {
+              fileInputRef.current.value = "";
+            }
+            return;
+          }
+
+          setPhotoPrepareStatus(`Pripravujem stranu ${slotNum}…`);
+
+          try {
+            const preparedPromise = prepareDocumentPhotoForUpload(raw);
+            const timeoutPromise = new Promise<never>((_, reject) => {
+              setTimeout(() => {
+                reject(new Error("smart_talk_prepare_timeout"));
+              }, PHOTO_PREPARE_TIMEOUT_MS);
+            });
+            const prepared = await Promise.race([preparedPromise, timeoutPromise]);
+
+            if (pickSeq !== photoPickSeqRef.current || startGen !== generationRef.current) {
+              return;
+            }
+
+            const nextTotal = sumPhotoPageBytes(cumulativePages) + prepared.size;
+            if (nextTotal > SMART_TALK_MAX_PHOTO_UPLOAD_TOTAL_BYTES) {
+              setPhotoPreparing(false);
+              setPhotoPrepareStatus(null);
+              setError(MSG.photoTotalTooLarge);
+              if (pickSeq === photoPickSeqRef.current && fileInputRef.current) {
+                fileInputRef.current.value = "";
+              }
+              return;
+            }
+
+            const id =
+              typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+                ? crypto.randomUUID()
+                : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+            const label = raw.name?.trim()
+              ? `${raw.name.trim()} · strana ${slotNum}`
+              : `Strana ${slotNum}`;
+
+            cumulativePages = [...cumulativePages, { id, file: prepared, label }];
+            setPhotoPages(cumulativePages);
+            setPhotoInfoLine(MSG.photoReadyForAnalysis);
+          } catch (err) {
+            if (pickSeq !== photoPickSeqRef.current || startGen !== generationRef.current) {
+              return;
+            }
+            setPhotoPrepareStatus(null);
+            setPhotoPreparing(false);
+            setError(messageForPreparePhotoError(err));
+            if (pickSeq === photoPickSeqRef.current && fileInputRef.current) {
+              fileInputRef.current.value = "";
+            }
+            return;
+          }
+        }
+
+        if (pickSeq !== photoPickSeqRef.current || startGen !== generationRef.current) {
+          return;
+        }
+        setPhotoPreparing(false);
+        setPhotoPrepareStatus(null);
+        if (pickSeq === photoPickSeqRef.current && fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+      })();
+    },
+    [photoPages, releaseCameraHardware],
+  );
 
   const trimmedLen = text.trim().length;
   const lengthGuardActive = mode === "question" || mode === "text";
@@ -662,14 +769,31 @@ export default function SmartTalkClient() {
     lengthGuardActive &&
     trimmedLen > RECOMMENDED_TEXT_LENGTH &&
     trimmedLen <= MAX_TEXT_LENGTH;
+  const photoBytesTotal =
+    mode === "photo" ? sumPhotoPageBytes(photoPages) : 0;
+  const photoOverUploadBudget =
+    mode === "photo" &&
+    photoBytesTotal > SMART_TALK_MAX_PHOTO_UPLOAD_TOTAL_BYTES;
+
   const submitDisabled =
     loading ||
     photoPreparing ||
     cameraStarting ||
-    (mode === "photo" ? !photoFile : trimmedLen < 8 || trimmedLen > MAX_TEXT_LENGTH);
+    (mode === "photo"
+      ? photoPages.length === 0 || photoOverUploadBudget
+      : trimmedLen < 8 || trimmedLen > MAX_TEXT_LENGTH);
 
-  const photoReady = mode === "photo" && !!photoFile;
-  const photoPickDisabled = loading || photoPreparing || cameraStarting;
+  const photoReady =
+    mode === "photo" &&
+    photoPages.length > 0 &&
+    !photoOverUploadBudget &&
+    !photoPreparing;
+
+  const photoPickDisabled =
+    loading ||
+    photoPreparing ||
+    cameraStarting ||
+    photoPages.length >= SMART_TALK_MAX_PHOTO_PAGES;
   const photoLabelStyle: CSSProperties = {
     display: "inline-block",
     padding: "10px 16px",
@@ -746,13 +870,20 @@ export default function SmartTalkClient() {
   }, [text, mode]);
 
   const onPhotoSubmit = useCallback(async () => {
-    if (!photoFile || busyRef.current || photoPreparing) return;
+    if (
+      photoPages.length === 0 ||
+      busyRef.current ||
+      photoPreparing ||
+      sumPhotoPageBytes(photoPages) > SMART_TALK_MAX_PHOTO_UPLOAD_TOTAL_BYTES
+    )
+      return;
     const genAtStart = generationRef.current;
     busyRef.current = true;
 
     setLoading(true);
     setError(null);
     setResult(null);
+    setPartialOcrNotice(false);
     setPhotoInfoLine(null);
 
     const ac = new AbortController();
@@ -760,7 +891,9 @@ export default function SmartTalkClient() {
 
     try {
       const fd = new FormData();
-      fd.append("file", photoFile);
+      for (const p of photoPages) {
+        fd.append("files", p.file);
+      }
       fd.append("context", "anonymous");
       fd.append("locale", "sk");
 
@@ -782,6 +915,7 @@ export default function SmartTalkClient() {
       const okParsed = parseSmartTalkResponse(data);
       if (res.ok && okParsed) {
         setResult(okParsed.result);
+        setPartialOcrNotice(okParsed.partialOcr === true);
         return;
       }
 
@@ -798,7 +932,7 @@ export default function SmartTalkClient() {
       busyRef.current = false;
       setLoading(false);
     }
-  }, [photoFile, photoPreparing]);
+  }, [photoPages, photoPreparing]);
 
   const urgencyUi = result ? urgencyBadgeFor(result.urgency) : null;
 
@@ -869,6 +1003,7 @@ export default function SmartTalkClient() {
               id="smart-talk-gallery-input"
               type="file"
               accept="image/jpeg,image/png,image/webp"
+              multiple
               aria-labelledby="smart-talk-photo-label"
               disabled={photoPickDisabled}
               onChange={onPhotoFileChange}
@@ -902,17 +1037,29 @@ export default function SmartTalkClient() {
                 type="button"
                 onClick={() => void openCamera()}
                 disabled={
-                  loading || photoPreparing || cameraStarting || cameraActive
+                  loading ||
+                  photoPreparing ||
+                  cameraStarting ||
+                  cameraActive ||
+                  photoPages.length >= SMART_TALK_MAX_PHOTO_PAGES
                 }
                 style={{
                   ...photoLabelStyle,
                   border: "1px solid var(--accentBorder)",
                   cursor:
-                    loading || photoPreparing || cameraStarting || cameraActive
+                    loading ||
+                    photoPreparing ||
+                    cameraStarting ||
+                    cameraActive ||
+                    photoPages.length >= SMART_TALK_MAX_PHOTO_PAGES
                       ? "not-allowed"
                       : "pointer",
                   opacity:
-                    loading || photoPreparing || cameraStarting || cameraActive
+                    loading ||
+                    photoPreparing ||
+                    cameraStarting ||
+                    cameraActive ||
+                    photoPages.length >= SMART_TALK_MAX_PHOTO_PAGES
                       ? 0.55
                       : 1,
                 }}
@@ -920,24 +1067,71 @@ export default function SmartTalkClient() {
                 Otvoriť kameru
               </button>
               <label htmlFor="smart-talk-gallery-input" style={photoLabelStyle}>
-                Vybrať obrázok z galérie
+                {photoPages.length === 0
+                  ? "Vybrať z galérie"
+                  : "Pridať ďalšiu stranu z galérie"}
               </label>
-              {photoFile && photoSourceName ? (
-                <span
+            </div>
+            {photoPages.length > 0 ? (
+              <div style={{ marginTop: 4 }}>
+                <p style={{ margin: "0 0 8px", fontSize: 13, color: "var(--muted)" }}>
+                  Strany: {photoPages.length} / {SMART_TALK_MAX_PHOTO_PAGES} · spolu{" "}
+                  {formatBytesSk(photoBytesTotal)}
+                  {photoOverUploadBudget ? (
+                    <span style={{ color: "rgba(127, 29, 29, 0.88)" }}>
+                      {" "}
+                      — presahuje limit 4 MB
+                    </span>
+                  ) : null}
+                </p>
+                <ul
                   style={{
+                    margin: 0,
+                    paddingLeft: 18,
                     fontSize: 13,
-                    color: "var(--muted)",
-                    wordBreak: "break-word",
+                    lineHeight: 1.55,
+                    color: "var(--text)",
+                    display: "grid",
+                    gap: 8,
                   }}
                 >
-                  {`${photoSourceName} · ${formatBytesSk(photoFile.size)}`}
-                </span>
-              ) : (
-                <span style={{ fontSize: 13, color: "var(--muted2)" }}>
-                  Žiadny súbor
-                </span>
-              )}
-            </div>
+                  {photoPages.map((p, idx) => (
+                    <li key={p.id} style={{ paddingLeft: 4 }}>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                        <span style={{ fontWeight: 700 }}>
+                          Strana {idx + 1}
+                        </span>
+                        <span style={{ color: "var(--muted)", wordBreak: "break-word" }}>
+                          {p.label} · {formatBytesSk(p.file.size)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removePhotoPage(p.id)}
+                          disabled={loading || photoPreparing || cameraStarting}
+                          style={{
+                            ...photoSecondaryBtnStyle,
+                            padding: "6px 12px",
+                            minHeight: 36,
+                            fontSize: 13,
+                            opacity: loading || photoPreparing || cameraStarting ? 0.55 : 1,
+                            cursor:
+                              loading || photoPreparing || cameraStarting
+                                ? "not-allowed"
+                                : "pointer",
+                          }}
+                        >
+                          Odstrániť
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--muted2)" }}>
+                Zatiaľ žiadna strana — použite kameru alebo galériu.
+              </p>
+            )}
             {cameraActive ? (
               <div
                 style={{
@@ -962,13 +1156,26 @@ export default function SmartTalkClient() {
                 <button
                   type="button"
                   onClick={() => void captureFromCamera()}
-                  disabled={loading || photoPreparing || !cameraVideoReady}
+                  disabled={
+                    loading ||
+                    photoPreparing ||
+                    !cameraVideoReady ||
+                    photoPages.length >= SMART_TALK_MAX_PHOTO_PAGES
+                  }
                   style={{
                     ...photoLabelStyle,
                     opacity:
-                      loading || photoPreparing || !cameraVideoReady ? 0.55 : 1,
+                      loading ||
+                      photoPreparing ||
+                      !cameraVideoReady ||
+                      photoPages.length >= SMART_TALK_MAX_PHOTO_PAGES
+                        ? 0.55
+                        : 1,
                     cursor:
-                      loading || photoPreparing || !cameraVideoReady
+                      loading ||
+                      photoPreparing ||
+                      !cameraVideoReady ||
+                      photoPages.length >= SMART_TALK_MAX_PHOTO_PAGES
                         ? "not-allowed"
                         : "pointer",
                   }}
@@ -1071,7 +1278,12 @@ export default function SmartTalkClient() {
           borderRadius: "var(--r16)",
           border: error
             ? "1px solid rgba(248, 113, 113, 0.45)"
-            : result || loading || photoPreparing || cameraStarting || photoInfoLine
+            : result ||
+                loading ||
+                photoPreparing ||
+                cameraStarting ||
+                photoInfoLine ||
+                photoPrepareStatus
               ? "1px solid rgba(226, 232, 240, 1)"
               : "1px dashed rgba(203, 213, 225, 1)",
           background: error ? "rgba(254, 242, 242, 1)" : "rgba(248, 250, 252, 1)",
@@ -1086,12 +1298,14 @@ export default function SmartTalkClient() {
             {cameraStarting
               ? MSG.cameraOpening
               : photoPreparing
-                ? MSG.photoProcessingDoc
-                : mode === "photo"
-                  ? "Spracovávam fotografiu a analyzujem text…"
-                  : mode === "question"
-                    ? "Vaylo odpovedá na vašu otázku…"
-                    : "Vaylo vysvetľuje text…"}
+                ? photoPrepareStatus ?? MSG.photoProcessingDoc
+              : mode === "photo"
+                ? photoPages.length > 1
+                  ? `Analyzujem dokument (${photoPages.length} strán)…`
+                  : "Spracovávam fotografiu a analyzujem text…"
+                : mode === "question"
+                  ? "Vaylo odpovedá na vašu otázku…"
+                  : "Vaylo vysvetľuje text…"}
           </p>
         ) : error ? (
           <p style={{ margin: 0, color: "rgba(127, 29, 29, 0.92)" }}>{error}</p>
@@ -1110,6 +1324,18 @@ export default function SmartTalkClient() {
             >
               Tu je vaša analýza. Takto situáciu vyhodnotilo Vaylo:
             </p>
+            {partialOcrNotice ? (
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 13,
+                  lineHeight: 1.55,
+                  color: "var(--muted)",
+                }}
+              >
+                {MSG.photoPartialOcrNotice}
+              </p>
+            ) : null}
 
             <div style={{ display: "grid", gap: 12 }}>
               <section style={RESULT_CARD}>
