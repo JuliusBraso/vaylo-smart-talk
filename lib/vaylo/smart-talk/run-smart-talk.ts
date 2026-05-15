@@ -48,6 +48,17 @@ export type SmartTalkPaymentChannel =
   | "unclear"
   | "not_applicable";
 
+export type SmartTalkProceduralState =
+  | "informational"
+  | "action_required"
+  | "response_possible"
+  | "decision_issued"
+  | "payment_required"
+  | "deadline_active"
+  | "unknown";
+
+export type SmartTalkLegalSeverity = "none" | "low" | "medium" | "high" | "critical";
+
 export type SmartTalkResult = {
   summary: string;
   meaning: string;
@@ -62,6 +73,12 @@ export type SmartTalkResult = {
   domain: SmartTalkDomain;
   documentTypeLabel: string;
   paymentChannel: SmartTalkPaymentChannel;
+  proceduralState: SmartTalkProceduralState;
+  legalSeverity: SmartTalkLegalSeverity;
+  deadlines: string[];
+  rights: string[];
+  obligations: string[];
+  consequences: string[];
 };
 
 const DEFAULT_MODEL = "gpt-4o-mini";
@@ -105,6 +122,18 @@ const PAYMENT_CHANNEL_SET = new Set<string>([
   "unclear",
   "not_applicable",
 ]);
+
+const PROCEDURAL_STATE_SET = new Set<string>([
+  "informational",
+  "action_required",
+  "response_possible",
+  "decision_issued",
+  "payment_required",
+  "deadline_active",
+  "unknown",
+]);
+
+const LEGAL_SEVERITY_SET = new Set<string>(["none", "low", "medium", "high", "critical"]);
 
 const DEFAULT_STABILIZERS: string[] = [];
 const DEFAULT_CONFIDENCE: SmartTalkConfidenceLevel = "medium";
@@ -195,6 +224,24 @@ function normalizeParsedObject(obj: Record<string, unknown>): SmartTalkResult {
     paymentChannel = obj.paymentChannel as SmartTalkPaymentChannel;
   }
 
+  let proceduralState: SmartTalkProceduralState = "unknown";
+  if (
+    typeof obj.proceduralState === "string" &&
+    PROCEDURAL_STATE_SET.has(obj.proceduralState)
+  ) {
+    proceduralState = obj.proceduralState as SmartTalkProceduralState;
+  }
+
+  let legalSeverity: SmartTalkLegalSeverity = "none";
+  if (typeof obj.legalSeverity === "string" && LEGAL_SEVERITY_SET.has(obj.legalSeverity)) {
+    legalSeverity = obj.legalSeverity as SmartTalkLegalSeverity;
+  }
+
+  const deadlines = parseStringArray(obj.deadlines, 12, 400);
+  const rights = parseStringArray(obj.rights, 10, 400);
+  const obligations = parseStringArray(obj.obligations, 10, 400);
+  const consequences = parseStringArray(obj.consequences, 10, 400);
+
   return {
     summary: summary.slice(0, 8000),
     meaning: meaning.slice(0, 12000),
@@ -209,6 +256,12 @@ function normalizeParsedObject(obj: Record<string, unknown>): SmartTalkResult {
     domain,
     documentTypeLabel,
     paymentChannel,
+    proceduralState,
+    legalSeverity,
+    deadlines,
+    rights,
+    obligations,
+    consequences,
   };
 }
 
@@ -232,6 +285,12 @@ function fallbackInvalidJson(): SmartTalkResult {
     domain: "unknown",
     documentTypeLabel: "",
     paymentChannel: "not_applicable",
+    proceduralState: "unknown",
+    legalSeverity: "none",
+    deadlines: [],
+    rights: [],
+    obligations: [],
+    consequences: [],
   };
 }
 
@@ -269,7 +328,7 @@ export async function runSmartTalk(params: {
       body: JSON.stringify({
         model,
         temperature: 0.2,
-        max_tokens: 2000,
+        max_tokens: 2300,
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: system },

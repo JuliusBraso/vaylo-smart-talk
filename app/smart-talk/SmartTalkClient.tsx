@@ -101,6 +101,18 @@ const PAYMENT_CHANNEL = new Set([
   "not_applicable",
 ]);
 
+const PROCEDURAL_STATE = new Set([
+  "informational",
+  "action_required",
+  "response_possible",
+  "decision_issued",
+  "payment_required",
+  "deadline_active",
+  "unknown",
+]);
+
+const LEGAL_SEVERITY = new Set(["none", "low", "medium", "high", "critical"]);
+
 function parseStabilizersClient(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
   const out: string[] = [];
@@ -109,6 +121,18 @@ function parseStabilizersClient(raw: unknown): string[] {
     const s = x.trim().slice(0, 400);
     if (s) out.push(s);
     if (out.length >= 2) break;
+  }
+  return out;
+}
+
+function parseStringListClient(raw: unknown, maxItems: number, maxLen: number): string[] {
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  for (const x of raw) {
+    if (typeof x !== "string") continue;
+    const s = x.trim().slice(0, maxLen);
+    if (s) out.push(s);
+    if (out.length >= maxItems) break;
   }
   return out;
 }
@@ -195,6 +219,26 @@ function parseSmartTalkResponse(data: unknown): SmartTalkOkResponse | null {
     ? (paymentChannelRaw as SmartTalkResult["paymentChannel"])
     : "not_applicable";
 
+  const proceduralRaw =
+    typeof result.proceduralState === "string" ? result.proceduralState : "unknown";
+  const proceduralState: SmartTalkResult["proceduralState"] =
+    PROCEDURAL_STATE.has(proceduralRaw)
+      ? (proceduralRaw as SmartTalkResult["proceduralState"])
+      : "unknown";
+
+  const severityRaw =
+    typeof result.legalSeverity === "string" ? result.legalSeverity : "none";
+  const legalSeverity: SmartTalkResult["legalSeverity"] = LEGAL_SEVERITY.has(
+    severityRaw,
+  )
+    ? (severityRaw as SmartTalkResult["legalSeverity"])
+    : "none";
+
+  const deadlines = parseStringListClient(result.deadlines, 12, 400);
+  const rights = parseStringListClient(result.rights, 10, 400);
+  const obligations = parseStringListClient(result.obligations, 10, 400);
+  const consequences = parseStringListClient(result.consequences, 10, 400);
+
   const parsedResult: SmartTalkResult = {
     summary,
     meaning,
@@ -209,6 +253,12 @@ function parseSmartTalkResponse(data: unknown): SmartTalkOkResponse | null {
     domain,
     documentTypeLabel,
     paymentChannel,
+    proceduralState,
+    legalSeverity,
+    deadlines,
+    rights,
+    obligations,
+    consequences,
   };
 
   return {
@@ -1499,6 +1549,30 @@ export default function SmartTalkClient() {
                   <div>
                     <span style={{ opacity: 0.85 }}>paymentChannel: </span>
                     {devMetaString(result.paymentChannel)}
+                  </div>
+                  <div>
+                    <span style={{ opacity: 0.85 }}>proceduralState: </span>
+                    {devMetaString(result.proceduralState)}
+                  </div>
+                  <div>
+                    <span style={{ opacity: 0.85 }}>legalSeverity: </span>
+                    {devMetaString(result.legalSeverity)}
+                  </div>
+                  <div style={{ wordBreak: "break-word", opacity: 0.92 }}>
+                    <span style={{ opacity: 0.85 }}>deadlines: </span>
+                    {JSON.stringify(result.deadlines)}
+                  </div>
+                  <div style={{ wordBreak: "break-word", opacity: 0.92 }}>
+                    <span style={{ opacity: 0.85 }}>rights: </span>
+                    {JSON.stringify(result.rights)}
+                  </div>
+                  <div style={{ wordBreak: "break-word", opacity: 0.92 }}>
+                    <span style={{ opacity: 0.85 }}>obligations: </span>
+                    {JSON.stringify(result.obligations)}
+                  </div>
+                  <div style={{ wordBreak: "break-word", opacity: 0.92 }}>
+                    <span style={{ opacity: 0.85 }}>consequences: </span>
+                    {JSON.stringify(result.consequences)}
                   </div>
                   <div>
                     <div style={{ opacity: 0.85, marginBottom: 4 }}>stabilizers:</div>
