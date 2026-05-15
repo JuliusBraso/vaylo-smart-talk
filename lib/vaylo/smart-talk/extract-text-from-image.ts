@@ -8,8 +8,20 @@ const DEFAULT_OCR_MODEL = "gpt-4o-mini";
 const MAX_EXTRACTED_CHARS = 14_000;
 const OCR_FETCH_TIMEOUT_MS = 45_000;
 
+const ENV_DETAIL = process.env.OPENAI_SMART_TALK_OCR_DETAIL?.trim();
+const OCR_IMAGE_DETAIL: "low" | "high" | "auto" =
+  ENV_DETAIL === "low" || ENV_DETAIL === "high" || ENV_DETAIL === "auto"
+    ? ENV_DETAIL
+    : "auto";
+
 const TRANSCRIBE_USER_PROMPT =
-  "Extract the visible text from this German bureaucratic document image. Preserve dates, amounts, reference numbers, legal citations, headings, and paragraph order as much as possible. If a part is unreadable, mark it as [unreadable]. Do not explain. Do not summarize.";
+  "Extract all visible text from this German-language bureaucracy or insurance/commercial document image. Output plain UTF-8 text only: same language as printed on the page (German), no translation, no commentary, no summary, no JSON, no markdown fences, no labels before or after the transcription. " +
+  "Preserve document structure as plain text: keep headings and their order; preserve section order top-to-bottom; use line breaks to separate blocks; for tables or aligned columns, keep rows on separate lines and align columns where possible with spaces — do not collapse tables into a single sentence. " +
+  "Preserve payment-related fields when visible: payment method (e.g. Überweisung, Lastschrift, SEPA), SEPA / direct-debit cues, IBAN, BIC if shown, Gläubiger-ID / Creditor Identifier, mandate reference (Mandatsreferenz), reference numbers (Aktenzeichen, Rechnungsnummer, Kundennummer, Vertragsnummer), amounts and currencies, due dates (Fälligkeit), bank details. " +
+  "Preserve insurance items when visible: product/package names, components (Bausteine), tariffs, coverage lines, and warning or Hinweis boxes. " +
+  "Preserve wording that signals document type (e.g. Rechnung, Mahnung, Zahlungsavis, Lastschriftavis, Abbuchung, Rücklastschrift, Kündigung, Einstellung, Mahngebühr, Rückzahlung, Nutzungsentgelt) — transcribe titles and lead phrases faithfully. " +
+  "Preserve cancellation, repayment (Rückzahlung, Rückforderung), status/procedure (bearbeitet, offen, unter Vorbehalt), and payment instructions (e.g. only ensure account coverage, do not transfer separately) when printed. " +
+  "Where a digit or amount is visually ambiguous, do not guess: prefer [unclear], [ambiguous: X or Y], or two lines with a question mark — never invent a confident amount. For unreadable regions use [unreadable].";
 
 export type ExtractTextFromImageErrorKind =
   | "openai_http"
@@ -53,7 +65,7 @@ export async function extractTextFromImage(params: {
           {
             role: "system",
             content:
-              "You output only the extracted document text as plain UTF-8. No markdown fences. No labels. No commentary before or after the transcription.",
+              "You output only the extracted document text as plain UTF-8. No markdown fences. No interpretation or summary. No JSON. No commentary before or after the transcription. Follow the user instructions for ambiguity markers.",
           },
           {
             role: "user",
@@ -61,7 +73,10 @@ export async function extractTextFromImage(params: {
               { type: "text", text: TRANSCRIBE_USER_PROMPT },
               {
                 type: "image_url",
-                image_url: { url: params.imageDataUrl, detail: "low" },
+                image_url: {
+                  url: params.imageDataUrl,
+                  detail: OCR_IMAGE_DETAIL,
+                },
               },
             ],
           },

@@ -2,7 +2,10 @@ import {
   buildSmartTalkMessages,
   type SmartTalkInputType,
   type SmartTalkLocale,
+  type SmartTalkTextSource,
 } from "./build-smart-talk-prompt";
+
+export type { SmartTalkTextSource } from "./build-smart-talk-prompt";
 
 export type SmartTalkUrgency = "low" | "medium" | "high" | "unknown";
 
@@ -140,6 +143,7 @@ export async function runSmartTalk(params: {
   text: string;
   locale: SmartTalkLocale;
   inputType: SmartTalkInputType;
+  source?: SmartTalkTextSource;
 }): Promise<{ ok: true; result: SmartTalkResult } | { ok: false; error: RunSmartTalkError }> {
   const key = process.env.OPENAI_API_KEY?.trim();
   if (!key) {

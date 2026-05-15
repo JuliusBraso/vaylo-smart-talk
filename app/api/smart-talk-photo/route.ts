@@ -211,7 +211,7 @@ export async function POST(req: Request) {
   let out: Awaited<ReturnType<typeof runSmartTalk>>;
   try {
     out = await Promise.race([
-      runSmartTalk({ text, locale, inputType: "text" }),
+      runSmartTalk({ text, locale, inputType: "text", source: "photo_ocr" }),
       new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error("smart_talk_timeout")), 60_000);
       }),
