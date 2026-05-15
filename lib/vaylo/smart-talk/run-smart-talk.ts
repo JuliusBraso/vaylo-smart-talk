@@ -166,8 +166,38 @@ function normalizeDocumentTypeLabel(raw: unknown): string {
   return raw.trim().slice(0, 200);
 }
 
-function normalizeParsedObject(obj: Record<string, unknown>): SmartTalkResult {
-  const warnings: string[] = parseStringArray(obj.warnings, 12, 400);
+const EU_CALENDAR_DATE = /\b\d{1,2}\.\d{1,2}\.\d{4}\b/g;
+const ISO_CALENDAR_DATE = /\b\d{4}-\d{2}-\d{2}\b/g;
+
+/**
+ * Drops strings that cite DD.MM.YYYY or YYYY-MM-DD when those exact tokens
+ * do not appear in the source transcript (cheap anti-hallucination guard; no date parsing).
+ */
+function calendarTokensGroundedInSource(text: string, source: string): boolean {
+  const eu = text.match(EU_CALENDAR_DATE) ?? [];
+  const iso = text.match(ISO_CALENDAR_DATE) ?? [];
+  if (eu.length === 0 && iso.length === 0) return true;
+  for (const tok of [...eu, ...iso]) {
+    if (!source.includes(tok)) return false;
+  }
+  return true;
+}
+
+function filterArraysByGroundedCalendarTokens(
+  items: string[],
+  source: string,
+): string[] {
+  if (!source.trim()) return items;
+  return items.filter((s) => calendarTokensGroundedInSource(s, source));
+}
+
+function normalizeParsedObject(
+  obj: Record<string, unknown>,
+  groundSourceText?: string,
+): SmartTalkResult {
+  const ground = typeof groundSourceText === "string" ? groundSourceText : "";
+
+  const warningsRaw = parseStringArray(obj.warnings, 12, 400);
   const stabilizers: string[] = parseStringArray(obj.stabilizers, 2, 400);
 
   let summary = typeof obj.summary === "string" ? obj.summary.trim() : "";
@@ -205,7 +235,7 @@ function normalizeParsedObject(obj: Record<string, unknown>): SmartTalkResult {
     documentQuality = obj.documentQuality as SmartTalkDocumentQuality;
   }
 
-  const nextSteps = parseStringArray(obj.nextSteps, 16, 500);
+  const nextStepsRaw = parseStringArray(obj.nextSteps, 16, 500);
 
   let documentKind: SmartTalkDocumentKind = "unknown";
   if (typeof obj.documentKind === "string" && DOCUMENT_KIND_SET.has(obj.documentKind)) {
@@ -237,10 +267,17 @@ function normalizeParsedObject(obj: Record<string, unknown>): SmartTalkResult {
     legalSeverity = obj.legalSeverity as SmartTalkLegalSeverity;
   }
 
-  const deadlines = parseStringArray(obj.deadlines, 12, 400);
-  const rights = parseStringArray(obj.rights, 10, 400);
-  const obligations = parseStringArray(obj.obligations, 10, 400);
-  const consequences = parseStringArray(obj.consequences, 10, 400);
+  const deadlinesRaw = parseStringArray(obj.deadlines, 12, 400);
+  const rightsRaw = parseStringArray(obj.rights, 10, 400);
+  const obligationsRaw = parseStringArray(obj.obligations, 10, 400);
+  const consequencesRaw = parseStringArray(obj.consequences, 10, 400);
+
+  const warnings = filterArraysByGroundedCalendarTokens(warningsRaw, ground);
+  const nextSteps = filterArraysByGroundedCalendarTokens(nextStepsRaw, ground);
+  const deadlines = filterArraysByGroundedCalendarTokens(deadlinesRaw, ground);
+  const rights = filterArraysByGroundedCalendarTokens(rightsRaw, ground);
+  const obligations = filterArraysByGroundedCalendarTokens(obligationsRaw, ground);
+  const consequences = filterArraysByGroundedCalendarTokens(consequencesRaw, ground);
 
   return {
     summary: summary.slice(0, 8000),
@@ -362,7 +399,7 @@ export async function runSmartTalk(params: {
       return { ok: true, result: fallbackInvalidJson() };
     }
 
-    return { ok: true, result: normalizeParsedObject(parsed as Record<string, unknown>) };
+    return { ok: true, result: normalizeParsedObject(parsed as Record<string, unknown>, params.text) };
   } catch {
     return { ok: false, error: { kind: "openai_http", status: 0 } };
   } finally {

@@ -30,21 +30,23 @@ const CLASSIFICATION_RULES_COMPACT =
 /** Phase 7.8: procedural extraction — concise; no invention of rights/deadlines/penalties. */
 const PROCEDURAL_REASONING_RULES =
   "Procedural intelligence (7.8; ground strictly in source; not a lawyer): meaning should explain what kind of procedural situation this is (information vs obligation vs appeal window vs payment duty), weaving explicit deadlines and rights/obligations when stated—without fear amplification or dramatic legal claims.\n" +
-  "deadlines[]: only explicit time expressions (printed dates; Frist; bis/spätestens; innerhalb eines Monats; zahlbar bis; Fälligkeit; Einspruch/Widerspruch within…). Raw strings as in text; [] if unclear or absent. Never invent deadlines.\n" +
+  "Literal-first deadlines (7.8B — legal safety): deadlines[] MUST list only wording that is explicitly present or a direct short paraphrase of a printed rule (e.g. innerhalb eines Monats nach Bekanntgabe). NEVER calculate a calendar date from document date, notification assumption, postal delivery, or issue date. NEVER convert relative windows (innerhalb eines Monats, binnen vier Wochen) into DD.MM.YYYY. If only a relative window is printed, store that relative phrase—not a synthesized end date. If the text ties a deadline to Bekanntgabe/Zugang but gives no calendar day, meaning/nextSteps must say the period runs from notification (e.g. Slovak: lehota je podľa dokumentu jeden mesiac od oznámenia) — NOT a fabricated date.\n" +
+  "rights[] / obligations[] / consequences[]: explicit source support only—prefer quoting or near-verbatim German phrases for Rechtsbehelfsbelehrung/Einspruch/Widerspruch when possible. rights[] must not invent appeal end dates.\n" +
+  "nextSteps[] / warnings[]: do NOT include calendar dates (DD.MM.YYYY or YYYY-MM-DD) unless that exact date string appears in the source text. For Finanzamt/Bescheid with Einspruch but no printed end date, use generic guidance (e.g. zvážte Einspruch v lehote uvedenej v poučení / jeden mesiac od oznámenia)—never 'do X by 31.01.2026' unless 31.01.2026 is printed. Use 'môže vzniknúť' / conditional wording only when the document supports it; no invented fees or enforcement.\n" +
+  "deadlines[]: each item must be traceable to the source—printed dates verbatim; printed relative periods as printed (or minimally translated); [] if unclear. Never invent deadlines.\n" +
   "rights[]: stated options only (e.g. Einspruch, Widerspruch, Anhörung, Mitwirkung, Berichtigung, Beschwerde where the text explicitly allows them). [] if none. Do NOT infer appeals or rights.\n" +
-  "obligations[]: explicit duties (pay, reply by date, submit named documents/nachreichen, appear at Termin, notify office, update insurer). Hedge if conditional. [] if purely informational.\n" +
+  "obligations[]: explicit duties (pay, reply by date, submit named documents/nachreichen, appear at Termin, notify office, update insurer). If a payment rule is vague, do not invent a due date—describe the obligation without a fabricated day.\n" +
   "consequences[]: risks the document states or clearly implies (Säumniszuschlag/Mahngebühr, service cut, termination, repayment demand escalation, Inkasso/Vollstreckungs­sprache)—calm factual phrasing; [] if none supported. Avoid naming worst-case enforcement if the letter only threatens possible fees or generic Mahnstufen.\n" +
-  "proceduralState (English enum): single best fit—informational | action_required | response_possible | decision_issued | payment_required | deadline_active | unknown. Use decision_issued when an official ruling (Bescheid etc.) has been communicated; deadline_active when a running procedural timer/deadline is explicit; payment_required when paying is explicitly commanded; response_possible when optional responses/appeals exist; action_required other mandatory non-payment duties.\n" +
+  "proceduralState (English enum): single best fit—informational | action_required | response_possible | decision_issued | payment_required | deadline_active | unknown. Use decision_issued when an official ruling (Bescheid etc.) has been communicated; deadline_active only when an explicit countdown/rule is printed (relative or absolute), not inferred; payment_required when paying is explicitly commanded; response_possible when optional responses/appeals exist; action_required other mandatory non-payment duties.\n" +
   "legalSeverity (English enum): none | low | medium | high | critical from practical weight of stated consequences—none when informational only; reserve critical for clearly stated severe imminent harm/enforcement affecting essentials; prefer lower tiers when wording is conditional or OCR weak.\n" +
   "If uncertain about procedure: lower confidenceLevel; shorten consequences/rights arrays; prefer unknown proceduralState.";
 
 const JSON_KEYS_TEXT = [
   "Return a single JSON object only (no markdown fences). Keys:",
   'summary (string): short plain-language overview.',
-  'meaning (string): what the document is asking or stating.',
-  'urgency (string): one of "low", "medium", "high", or "unknown"; apply the document-mode urgency calibration rules from the system instructions.',
-  'nextSteps (string[]): practical steps for the reader; empty array if none.',
-  'warnings (string[]): 1–2 short calm items (material risks, deadlines, procedures); at most one may be a brief stabilizing clarification only if the document explicitly supports it; prioritize contextual risks over generic hygiene; empty array only when genuinely none apply.',
+  'meaning (string): procedural explanation consistent with Poučenie o právnych prostriedkoch: separate what is explicitly stated from what depends on Zugang/Bekanntgabe; avoid sounding like legal advice; never state a computed appeal or payment deadline as fact unless that calendar date appears in the pasted text.',
+  'nextSteps (string[]): practical steps; NEVER include DD.MM.YYYY or YYYY-MM-DD unless that exact substring exists in the source text; for relative Frist/Einspruch windows without a printed end date, direct the user to the stated period only (no calculated day).',
+  'warnings (string[]): 1–2 short calm items (material risks, deadlines, procedures); at most one may be a brief stabilizing clarification only if the document explicitly supports it; prioritize contextual risks over generic hygiene; empty array only when genuinely none apply. Never cite a concrete calendar deadline not printed in the source; use conditional wording (môže / may) only when supported.',
   'stabilizers (string[]): 0–2 very short items: protective or stabilizing facts explicitly stated in the input (e.g. no final decision yet; no enforcement active yet; lawful residence during pending review; insurance not cancelled—only conditional limitation risk; benefits or payments continue during review; documents received but processing not finished). [] when none. Do not invent reassurance. Prefer stabilizers for these facts; keep warnings primarily for risks; minimize repeating the same fact in warnings and stabilizers.',
   'confidenceLevel (string): one of "low", "medium", "high". high = clean text, clear office, clear deadlines/actions. medium = some ambiguity, conditional language, or partial uncertainty. low = OCR-damaged or garbled text, missing context, contradictory or incomplete input.',
   'consequencePhase (string): one of "none", "possible", "conditional", "active". none = informational / no meaningful consequence. possible = a risk is raised as possible but not clearly tied to a specific condition. conditional = consequence depends on user action, missing documents, or a stated if-then. active = already in effect now only if the text says so (e.g. payment already stopped, enforcement already underway, deadline already running).',
@@ -55,7 +57,7 @@ const JSON_KEYS_TEXT = [
   'paymentChannel (string): exactly one of "sepa_direct_debit", "manual_transfer", "unclear", "not_applicable".',
   'proceduralState (string): exactly one of "informational", "action_required", "response_possible", "decision_issued", "payment_required", "deadline_active", "unknown".',
   'legalSeverity (string): exactly one of "none", "low", "medium", "high", "critical".',
-  'deadlines (string[]): verbatim or close paraphrase of explicit deadlines/date rules from the document; Slovak/German locale per instructions; empty if none.',
+  'deadlines (string[]): literal-only strings taken from visible source text — exact printed DD.MM.YYYY if present, or verbatim/near-verbatim relative rules (innerhalb eines Monats nach Bekanntgabe etc.). NEVER include a calendar date computed or inferred from another date. Slovak/German locale per instructions; empty if none.',
   'rights (string[]): short bullets of procedural rights/options explicitly in the text; empty if none.',
   'obligations (string[]): short bullets of mandatory or clearly required responses/actions; empty if purely informational.',
   'consequences (string[]): stated or clearly implied negative outcomes/fees/interruptions—not speculative; align tone with warnings (calm); empty if none.',
@@ -64,10 +66,10 @@ const JSON_KEYS_TEXT = [
 const JSON_KEYS_QUESTION = [
   "Return a single JSON object only (no markdown fences). Keys:",
   'summary (string): short plain-language overview.',
-  'meaning (string): practical explanation and context answering the user question.',
+  'meaning (string): practical explanation; if quoted excerpt uses relative procedural windows, say they depend on notification/delivery unless a calendar date is quoted; never imply a fabricated end date.',
   'urgency (string): one of "low", "medium", "high", or "unknown"; apply the question-mode urgency calibration rules from the system instructions.',
-  'nextSteps (string[]): practical steps for the reader; empty array if none.',
-  'warnings (string[]): 1–2 short calm items (material risks, deadlines, procedures); at most one may be a brief stabilizing clarification only if the question or described facts explicitly support it; prioritize contextual consequences over generic hygiene; empty array only when genuinely none apply.',
+  'nextSteps (string[]): same date literal rules as document mode—no fabricated calendar deadlines.',
+  'warnings (string[]): 1–2 short calm items (material risks, deadlines, procedures); at most one may be a brief stabilizing clarification only if the question or described facts explicitly support it; prioritize contextual consequences over generic hygiene; empty array only when genuinely none apply. Same literal-date rule as document mode.',
   'stabilizers (string[]): 0–2 very short items: protective or stabilizing facts explicitly stated in the question or quoted letter (same rules as document mode). [] when none. Never invent reassurance. Prefer stabilizers for these facts; keep warnings primarily for risks; minimize duplication.',
   'confidenceLevel (string): one of "low", "medium", "high". high = clear question and facts. medium = some ambiguity or conditional wording. low = garbled paste, missing context, contradiction, or incomplete.',
   'consequencePhase (string): one of "none", "possible", "conditional", "active" — classify the user-described situation like document mode; active only when the described facts support something already in effect.',
@@ -78,7 +80,7 @@ const JSON_KEYS_QUESTION = [
   'paymentChannel (string): same enum as document mode when payment cues exist in quoted text; else "not_applicable" or "unclear".',
   'proceduralState (string): same enum as document mode when the question or quoted letter supports it; else "unknown".',
   'legalSeverity (string): same enum as document mode when grounded; else "none".',
-  'deadlines, rights, obligations, consequences (string[]): same extraction rules as document mode when quoting a letter; otherwise use [] everywhere.',
+  'deadlines, rights, obligations, consequences (string[]): document-mode literal rules; deadlines[] strictly source-backed—no inferred calendar dates; otherwise use [] when no excerpt.',
 ].join(" ");
 
 /**
