@@ -17,6 +17,7 @@ import type {
 import {
   prepareDocumentPhotoForUpload,
   PrepareDocumentPhotoError,
+  SMART_TALK_MAX_ORIGINAL_PHOTO_BYTES,
 } from "@/lib/vaylo/smart-talk/prepare-document-photo-for-upload";
 
 const MAX_TEXT_LENGTH = 12000;
@@ -35,7 +36,7 @@ const GUIDANCE_PRIMARY: Record<SmartTalkUiMode, string> = {
     "Pýtajte sa na dane, Kindergeld, Anmeldung, zdravotnú poisťovňu, úrady alebo iné nemecké byrokratické kroky.",
   text: "Najlepšie funguje, keď vložíte najdôležitejšiu časť listu alebo formulára.",
   photo:
-    "Vyberte jasnú fotografiu listu (JPG, PNG alebo WebP, max. 4 MB). Pred odoslaním sa obrázok na mobile zmenší a stlačí. Ostré zaostrenie a dobré svetlo zlepšia rozpoznávanie textu.",
+    "Vyberte jasnú fotografiu listu (JPG, PNG alebo WebP; pred spracovaním max. 12 MB, na server max. 4 MB). Pred odoslaním sa obrázok zmenší a stlačí. Ostré zaostrenie a dobré svetlo zlepšia rozpoznávanie textu.",
 };
 
 const SUBMIT_LABEL: Record<SmartTalkUiMode, string> = {
@@ -150,8 +151,8 @@ const MSG = {
     "Odoslanie alebo spracovanie fotografie trvalo príliš dlho. Skúste to znova neskôr.",
   photoPrepareFailed:
     "Nepodarilo sa pripraviť fotografiu na odoslanie. Skúste iný súbor alebo znížte rozlíšenie.",
-  photoInputTooLarge:
-    "Fotografia je príliš veľká na spracovanie v prehliadači. Skúste menšie rozlíšenie alebo iný záber.",
+  photoOver12Mb:
+    "Táto fotografia je príliš veľká (nad 12 MB). Vyberte menší súbor alebo snímku s nižším rozlíšením.",
   photoOutputTooLarge:
     "Aj po zmenšení je súbor príliš veľký. Skúste inú fotografiu s nižším rozlíšením.",
 } as const;
@@ -161,7 +162,7 @@ const PHOTO_FETCH_TIMEOUT_MS = 95_000;
 
 function messageForPreparePhotoError(err: unknown): string {
   if (err instanceof PrepareDocumentPhotoError) {
-    if (err.code === "input_too_large") return MSG.photoInputTooLarge;
+    if (err.code === "input_too_large") return MSG.photoOver12Mb;
     if (err.code === "output_too_large") return MSG.photoOutputTooLarge;
     return MSG.photoPrepareFailed;
   }
@@ -284,6 +285,18 @@ function devMetaString(value: unknown): string {
   return "—";
 }
 
+function formatBytesSk(n: number): string {
+  if (n < 1024) return `${n} B`;
+  const kb = n / 1024;
+  if (kb < 1024) {
+    const s = kb >= 100 ? kb.toFixed(0) : kb >= 10 ? kb.toFixed(1) : kb.toFixed(2);
+    return `${s.replace(".", ",")} kB`;
+  }
+  const mb = kb / 1024;
+  const s = mb >= 10 ? mb.toFixed(1) : mb.toFixed(2);
+  return `${s.replace(".", ",")} MB`;
+}
+
 function sectionTitleStyle(): CSSProperties {
   return {
     margin: "0 0 10px",
@@ -299,7 +312,8 @@ export default function SmartTalkClient() {
   const [mode, setMode] = useState<SmartTalkUiMode>("question");
   const [text, setText] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
+  /** Original pick name for display only; prepared file is always `smart-talk-document.jpg`. */
+  const [photoSourceName, setPhotoSourceName] = useState<string | null>(null);
   const [photoPreparing, setPhotoPreparing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -320,16 +334,10 @@ export default function SmartTalkClient() {
     if (mode !== "photo") {
       photoPickSeqRef.current += 1;
       setPhotoFile(null);
-      setPhotoPreviewUrl(null);
+      setPhotoSourceName(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }, [mode]);
-
-  useEffect(() => {
-    return () => {
-      if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
-    };
-  }, [photoPreviewUrl]);
 
   const onPhotoFileChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.files?.[0] ?? null;
@@ -338,24 +346,29 @@ export default function SmartTalkClient() {
       photoPickSeqRef.current += 1;
       setPhotoPreparing(false);
       setPhotoFile(null);
-      setPhotoPreviewUrl((prev) => {
-        if (prev) URL.revokeObjectURL(prev);
-        return null;
-      });
+      setPhotoSourceName(null);
       setError(null);
+      return;
+    }
+
+    if (raw.size > SMART_TALK_MAX_ORIGINAL_PHOTO_BYTES) {
+      photoPickSeqRef.current += 1;
+      setPhotoPreparing(false);
+      setPhotoFile(null);
+      setPhotoSourceName(null);
+      setError(MSG.photoOver12Mb);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
 
     const pickSeq = ++photoPickSeqRef.current;
     const startGen = generationRef.current;
+    const sourceLabel = raw.name?.trim() ? raw.name : "fotografia";
 
     setPhotoPreparing(true);
     setError(null);
     setPhotoFile(null);
-    setPhotoPreviewUrl((prev) => {
-      if (prev) URL.revokeObjectURL(prev);
-      return null;
-    });
+    setPhotoSourceName(null);
 
     void (async () => {
       try {
@@ -371,9 +384,8 @@ export default function SmartTalkClient() {
           return;
         }
 
-        const url = URL.createObjectURL(prepared);
         setPhotoFile(prepared);
-        setPhotoPreviewUrl(url);
+        setPhotoSourceName(sourceLabel);
       } catch (err) {
         if (pickSeq !== photoPickSeqRef.current || startGen !== generationRef.current) {
           return;
@@ -605,7 +617,7 @@ export default function SmartTalkClient() {
               >
                 Vybrať fotografiu
               </label>
-              {photoFile ? (
+              {photoFile && photoSourceName ? (
                 <span
                   style={{
                     fontSize: 13,
@@ -613,7 +625,7 @@ export default function SmartTalkClient() {
                     wordBreak: "break-word",
                   }}
                 >
-                  {photoFile.name}
+                  {`${photoSourceName} · ${formatBytesSk(photoFile.size)}`}
                 </span>
               ) : (
                 <span style={{ fontSize: 13, color: "var(--muted2)" }}>
@@ -621,20 +633,6 @@ export default function SmartTalkClient() {
                 </span>
               )}
             </div>
-            {photoPreviewUrl ? (
-              <img
-                src={photoPreviewUrl}
-                alt=""
-                style={{
-                  maxWidth: "100%",
-                  maxHeight: 220,
-                  objectFit: "contain",
-                  borderRadius: "var(--r12)",
-                  border: "1px solid var(--border)",
-                  background: "rgba(248, 250, 252, 1)",
-                }}
-              />
-            ) : null}
           </>
         ) : (
           <>
@@ -730,7 +728,7 @@ export default function SmartTalkClient() {
         {loading || photoPreparing ? (
           <p style={{ margin: 0 }}>
             {photoPreparing
-              ? "Upravujem fotografiu pred odoslaním (zmenšenie a stlačenie)…"
+              ? "Zmenšujem fotografiu pre bezpečné spracovanie…"
               : mode === "photo"
                 ? "Spracovávam fotografiu a analyzujem text…"
                 : mode === "question"

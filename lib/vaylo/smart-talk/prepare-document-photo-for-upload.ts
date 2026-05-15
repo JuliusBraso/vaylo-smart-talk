@@ -1,6 +1,6 @@
 /**
  * Browser-only: downscale and JPEG-compress document photos before Smart Talk upload.
- * Keeps memory bounded on mobile (no base64; single decoded bitmap pass per attempt).
+ * Uses a short-lived object URL + HTMLImageElement (avoids createImageBitmap extra decode path).
  */
 
 export type PrepareDocumentPhotoErrorCode =
@@ -20,18 +20,56 @@ export class PrepareDocumentPhotoError extends Error {
   }
 }
 
-const MAX_INPUT_BYTES = 22 * 1024 * 1024;
-/** Target output cap (API allows 4 MB; stay well under for multipart overhead). */
-const TARGET_MAX_BYTES = Math.floor(1.5 * 1024 * 1024);
-const MAX_SIDE_STEPS = [1600, 1280, 1024, 896, 768] as const;
-const INITIAL_QUALITY = 0.78;
-const MIN_QUALITY = 0.46;
-const QUALITY_STEP = 0.06;
+/** Client may reject before calling `prepareDocumentPhotoForUpload`. */
+export const SMART_TALK_MAX_ORIGINAL_PHOTO_BYTES = 12 * 1024 * 1024;
 
-function drawScaled(source: ImageBitmap, maxSide: number): HTMLCanvasElement {
-  const scale = Math.min(1, maxSide / source.width, maxSide / source.height);
-  const w = Math.max(1, Math.round(source.width * scale));
-  const h = Math.max(1, Math.round(source.height * scale));
+const MAX_INPUT_BYTES = SMART_TALK_MAX_ORIGINAL_PHOTO_BYTES;
+const TARGET_MAX_BYTES = Math.floor(900 * 1024);
+const HARD_CAP_BYTES = Math.floor(1.5 * 1024 * 1024);
+const MAX_SIDE_STEPS = [1024, 896, 768, 640, 512] as const;
+const INITIAL_QUALITY = 0.68;
+const MIN_QUALITY = 0.45;
+const QUALITY_STEP = 0.05;
+
+function loadImageElement(objectUrl: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.decoding = "async";
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new PrepareDocumentPhotoError("decode_failed"));
+    img.src = objectUrl;
+  });
+}
+
+async function decodeImageFromFile(file: File): Promise<HTMLImageElement> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await loadImageElement(url);
+    if (typeof img.decode === "function") {
+      try {
+        await img.decode();
+      } catch {
+        // onload already fired; proceed if dimensions are usable
+        if (!img.naturalWidth) {
+          throw new PrepareDocumentPhotoError("decode_failed");
+        }
+      }
+    }
+    return img;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function drawScaled(source: HTMLImageElement, maxSide: number): HTMLCanvasElement {
+  const w0 = source.naturalWidth || source.width;
+  const h0 = source.naturalHeight || source.height;
+  if (!w0 || !h0) {
+    throw new PrepareDocumentPhotoError("decode_failed");
+  }
+  const scale = Math.min(1, maxSide / w0, maxSide / h0);
+  const w = Math.max(1, Math.round(w0 * scale));
+  const h = Math.max(1, Math.round(h0 * scale));
   const canvas = document.createElement("canvas");
   canvas.width = w;
   canvas.height = h;
@@ -60,52 +98,38 @@ function toJpegBlob(canvas: HTMLCanvasElement, quality: number): Promise<Blob> {
 }
 
 /**
- * Resize (max 1600×1600 first, then smaller steps if needed), JPEG encode, aim under ~1.5 MB.
+ * Resize (max side 1024 first, then smaller steps), JPEG encode, aim ≤ ~900 KB, hard cap ~1.5 MB.
  */
 export async function prepareDocumentPhotoForUpload(file: File): Promise<File> {
-  if (typeof createImageBitmap !== "function") {
-    throw new PrepareDocumentPhotoError("decode_failed");
-  }
   if (file.size > MAX_INPUT_BYTES) {
     throw new PrepareDocumentPhotoError("input_too_large");
   }
 
-  let bitmap: ImageBitmap;
-  try {
-    bitmap = await createImageBitmap(file);
-  } catch {
-    throw new PrepareDocumentPhotoError("decode_failed");
-  }
+  const img = await decodeImageFromFile(file);
 
-  try {
-    let bestBlob: Blob | null = null;
+  let bestBlob: Blob | null = null;
 
-    for (const maxSide of MAX_SIDE_STEPS) {
-      await Promise.resolve();
-      const canvas = drawScaled(bitmap, maxSide);
-      let q = INITIAL_QUALITY;
-      while (q >= MIN_QUALITY - 1e-9) {
-        const blob = await toJpegBlob(canvas, q);
-        bestBlob = blob;
-        if (blob.size <= TARGET_MAX_BYTES) {
-          return new File([blob], "smart-talk-document.jpg", {
-            type: "image/jpeg",
-            lastModified: Date.now(),
-          });
-        }
-        q -= QUALITY_STEP;
+  for (const maxSide of MAX_SIDE_STEPS) {
+    await Promise.resolve();
+    const canvas = drawScaled(img, maxSide);
+    for (let q = INITIAL_QUALITY; q + 1e-9 >= MIN_QUALITY; q -= QUALITY_STEP) {
+      const blob = await toJpegBlob(canvas, q);
+      bestBlob = blob;
+      if (blob.size <= TARGET_MAX_BYTES) {
+        return new File([blob], "smart-talk-document.jpg", {
+          type: "image/jpeg",
+          lastModified: Date.now(),
+        });
       }
     }
-
-    if (bestBlob && bestBlob.size <= 4 * 1024 * 1024) {
-      return new File([bestBlob], "smart-talk-document.jpg", {
-        type: "image/jpeg",
-        lastModified: Date.now(),
-      });
-    }
-
-    throw new PrepareDocumentPhotoError("output_too_large");
-  } finally {
-    bitmap.close();
   }
+
+  if (bestBlob && bestBlob.size <= HARD_CAP_BYTES) {
+    return new File([bestBlob], "smart-talk-document.jpg", {
+      type: "image/jpeg",
+      lastModified: Date.now(),
+    });
+  }
+
+  throw new PrepareDocumentPhotoError("output_too_large");
 }
