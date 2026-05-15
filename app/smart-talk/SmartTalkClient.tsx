@@ -15,9 +15,10 @@ import type {
   SmartTalkDocumentQuality,
 } from "@/lib/vaylo/smart-talk/run-smart-talk";
 import {
+  compressVideoFrameToSmartTalkPhotoFile,
   prepareDocumentPhotoForUpload,
   PrepareDocumentPhotoError,
-  SMART_TALK_MAX_ORIGINAL_PHOTO_BYTES,
+  SMART_TALK_MAX_GALLERY_PHOTO_BYTES,
 } from "@/lib/vaylo/smart-talk/prepare-document-photo-for-upload";
 
 const MAX_TEXT_LENGTH = 12000;
@@ -36,7 +37,7 @@ const GUIDANCE_PRIMARY: Record<SmartTalkUiMode, string> = {
     "Pýtajte sa na dane, Kindergeld, Anmeldung, zdravotnú poisťovňu, úrady alebo iné nemecké byrokratické kroky.",
   text: "Najlepšie funguje, keď vložíte najdôležitejšiu časť listu alebo formulára.",
   photo:
-    "Vyberte jasnú fotografiu listu (JPG, PNG alebo WebP; pred spracovaním max. 12 MB, na server max. 4 MB). Pred odoslaním sa obrázok zmenší a stlačí. Ostré zaostrenie a dobré svetlo zlepšia rozpoznávanie textu.",
+    "Odfotíte dokument nízkovýkonnou kamerou v prehliadači alebo vyberte JPG/PNG/WebP z galérie (max. 8 MB pred úpravou). Na server max. 4 MB. Dobré svetlo zlepší OCR.",
 };
 
 const SUBMIT_LABEL: Record<SmartTalkUiMode, string> = {
@@ -151,10 +152,16 @@ const MSG = {
     "Odoslanie alebo spracovanie fotografie trvalo príliš dlho. Skúste to znova neskôr.",
   photoPrepareFailed:
     "Nepodarilo sa pripraviť fotografiu na odoslanie. Skúste iný súbor alebo znížte rozlíšenie.",
-  photoOver12Mb:
-    "Táto fotografia je príliš veľká (nad 12 MB). Vyberte menší súbor alebo snímku s nižším rozlíšením.",
+  photoGalleryTooLarge:
+    "Súbor z galérie je príliš veľký (nad 8 MB). Vyberte menší obrázok.",
   photoOutputTooLarge:
     "Aj po zmenšení je súbor príliš veľký. Skúste inú fotografiu s nižším rozlíšením.",
+  cameraOpening: "Otváram kameru…",
+  cameraDenied:
+    "Kamera nebola povolená. Môžete vybrať obrázok z galérie.",
+  cameraFailed: "Nepodarilo sa otvoriť kameru.",
+  photoReadyForAnalysis: "Fotografia pripravená na analýzu.",
+  photoProcessingDoc: "Spracovávam dokument…",
 } as const;
 
 const PHOTO_PREPARE_TIMEOUT_MS = 55_000;
@@ -162,8 +169,9 @@ const PHOTO_FETCH_TIMEOUT_MS = 95_000;
 
 function messageForPreparePhotoError(err: unknown): string {
   if (err instanceof PrepareDocumentPhotoError) {
-    if (err.code === "input_too_large") return MSG.photoOver12Mb;
+    if (err.code === "input_too_large") return MSG.photoGalleryTooLarge;
     if (err.code === "output_too_large") return MSG.photoOutputTooLarge;
+    if (err.code === "video_not_ready") return MSG.photoPrepareFailed;
     return MSG.photoPrepareFailed;
   }
   if (err instanceof Error && err.message === "smart_talk_prepare_timeout") {
@@ -322,6 +330,25 @@ export default function SmartTalkClient() {
   const generationRef = useRef(0);
   const photoPickSeqRef = useRef(0);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraStarting, setCameraStarting] = useState(false);
+  const [photoInfoLine, setPhotoInfoLine] = useState<string | null>(null);
+
+  const releaseCameraHardware = useCallback(() => {
+    const v = videoRef.current;
+    if (v) {
+      v.srcObject = null;
+    }
+    const stream = cameraStreamRef.current;
+    if (stream) {
+      for (const t of stream.getTracks()) {
+        t.stop();
+      }
+      cameraStreamRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     generationRef.current += 1;
@@ -333,11 +360,87 @@ export default function SmartTalkClient() {
 
     if (mode !== "photo") {
       photoPickSeqRef.current += 1;
+      releaseCameraHardware();
+      setCameraActive(false);
+      setCameraStarting(false);
+      setPhotoInfoLine(null);
       setPhotoFile(null);
       setPhotoSourceName(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
-  }, [mode]);
+  }, [mode, releaseCameraHardware]);
+
+  useEffect(() => {
+    return () => {
+      releaseCameraHardware();
+    };
+  }, [releaseCameraHardware]);
+
+  const openCamera = useCallback(async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setError(MSG.cameraFailed);
+      return;
+    }
+    if (loading || photoPreparing || busyRef.current || cameraStarting || cameraActive) return;
+    setError(null);
+    setPhotoInfoLine(null);
+    releaseCameraHardware();
+    setCameraActive(false);
+    setPhotoFile(null);
+    setPhotoSourceName(null);
+    setCameraStarting(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1280, max: 1280 },
+          height: { ideal: 720, max: 1280 },
+        },
+        audio: false,
+      });
+      cameraStreamRef.current = stream;
+      const el = videoRef.current;
+      if (!el) {
+        releaseCameraHardware();
+        setError(MSG.cameraFailed);
+        return;
+      }
+      el.srcObject = stream;
+      await el.play().catch(() => {});
+      setCameraActive(true);
+    } catch (e) {
+      releaseCameraHardware();
+      const denied =
+        e instanceof DOMException &&
+        (e.name === "NotAllowedError" || e.name === "PermissionDeniedError");
+      setError(denied ? MSG.cameraDenied : MSG.cameraFailed);
+    } finally {
+      setCameraStarting(false);
+    }
+  }, [loading, photoPreparing, cameraStarting, cameraActive, releaseCameraHardware]);
+
+  const cancelCamera = useCallback(() => {
+    releaseCameraHardware();
+    setCameraActive(false);
+    setCameraStarting(false);
+  }, [releaseCameraHardware]);
+
+  const captureFromCamera = useCallback(async () => {
+    const el = videoRef.current;
+    if (!el || !cameraStreamRef.current || busyRef.current || photoPreparing) return;
+    try {
+      const file = await compressVideoFrameToSmartTalkPhotoFile(el);
+      releaseCameraHardware();
+      setCameraActive(false);
+      photoPickSeqRef.current += 1;
+      setPhotoFile(file);
+      setPhotoSourceName("Snímka z kamery");
+      setPhotoInfoLine(MSG.photoReadyForAnalysis);
+      setError(null);
+    } catch (err) {
+      setError(messageForPreparePhotoError(err));
+    }
+  }, [releaseCameraHardware, photoPreparing]);
 
   const onPhotoFileChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.files?.[0] ?? null;
@@ -347,19 +450,25 @@ export default function SmartTalkClient() {
       setPhotoPreparing(false);
       setPhotoFile(null);
       setPhotoSourceName(null);
+      setPhotoInfoLine(null);
       setError(null);
       return;
     }
 
-    if (raw.size > SMART_TALK_MAX_ORIGINAL_PHOTO_BYTES) {
+    if (raw.size > SMART_TALK_MAX_GALLERY_PHOTO_BYTES) {
       photoPickSeqRef.current += 1;
       setPhotoPreparing(false);
       setPhotoFile(null);
       setPhotoSourceName(null);
-      setError(MSG.photoOver12Mb);
+      setPhotoInfoLine(null);
+      setError(MSG.photoGalleryTooLarge);
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
+
+    releaseCameraHardware();
+    setCameraActive(false);
+    setCameraStarting(false);
 
     const pickSeq = ++photoPickSeqRef.current;
     const startGen = generationRef.current;
@@ -369,6 +478,7 @@ export default function SmartTalkClient() {
     setError(null);
     setPhotoFile(null);
     setPhotoSourceName(null);
+    setPhotoInfoLine(null);
 
     void (async () => {
       try {
@@ -386,6 +496,7 @@ export default function SmartTalkClient() {
 
         setPhotoFile(prepared);
         setPhotoSourceName(sourceLabel);
+        setPhotoInfoLine(MSG.photoReadyForAnalysis);
       } catch (err) {
         if (pickSeq !== photoPickSeqRef.current || startGen !== generationRef.current) {
           return;
@@ -397,7 +508,7 @@ export default function SmartTalkClient() {
         }
       }
     })();
-  }, []);
+  }, [releaseCameraHardware]);
 
   const trimmedLen = text.trim().length;
   const lengthGuardActive = mode === "question" || mode === "text";
@@ -409,9 +520,35 @@ export default function SmartTalkClient() {
   const submitDisabled =
     loading ||
     photoPreparing ||
+    cameraStarting ||
     (mode === "photo" ? !photoFile : trimmedLen < 8 || trimmedLen > MAX_TEXT_LENGTH);
 
   const photoReady = mode === "photo" && !!photoFile;
+  const photoPickDisabled = loading || photoPreparing || cameraStarting;
+  const photoLabelStyle: CSSProperties = {
+    display: "inline-block",
+    padding: "10px 16px",
+    borderRadius: "var(--r12)",
+    border: "1px solid var(--accentBorder)",
+    background: "rgba(238, 242, 255, 1)",
+    color: "var(--text)",
+    fontWeight: 700,
+    fontSize: 14,
+    cursor: photoPickDisabled ? "not-allowed" : "pointer",
+    opacity: photoPickDisabled ? 0.55 : 1,
+  };
+  const photoSecondaryBtnStyle: CSSProperties = {
+    display: "inline-block",
+    padding: "10px 16px",
+    borderRadius: "var(--r12)",
+    border: "1px solid var(--border)",
+    background: "rgba(255, 255, 255, 0.96)",
+    color: "var(--text)",
+    fontWeight: 700,
+    fontSize: 14,
+    minHeight: 44,
+    cursor: "pointer",
+  };
 
   const onSubmit = useCallback(async () => {
     if (mode === "photo") return;
@@ -471,6 +608,7 @@ export default function SmartTalkClient() {
     setLoading(true);
     setError(null);
     setResult(null);
+    setPhotoInfoLine(null);
 
     const ac = new AbortController();
     const fetchTimeoutId = setTimeout(() => ac.abort(), PHOTO_FETCH_TIMEOUT_MS);
@@ -579,18 +717,32 @@ export default function SmartTalkClient() {
         {mode === "photo" ? (
           <>
             <span id="smart-talk-photo-label" className="sr-only">
-              Fotografia dokumentu pre Smart Talk
+              Vstup fotografie: kamera alebo galéria
             </span>
             <input
               ref={fileInputRef}
-              id="smart-talk-photo-input"
+              id="smart-talk-gallery-input"
               type="file"
               accept="image/jpeg,image/png,image/webp"
-              capture="environment"
               aria-labelledby="smart-talk-photo-label"
-              disabled={loading || photoPreparing}
+              disabled={photoPickDisabled}
               onChange={onPhotoFileChange}
               className="sr-only"
+            />
+            <video
+              ref={videoRef}
+              playsInline
+              muted
+              autoPlay
+              style={{
+                display: cameraActive ? "block" : "none",
+                width: "100%",
+                maxHeight: 260,
+                objectFit: "contain",
+                borderRadius: "var(--r12)",
+                border: "1px solid var(--border)",
+                background: "rgba(15, 23, 42, 0.9)",
+              }}
             />
             <div
               style={{
@@ -600,22 +752,29 @@ export default function SmartTalkClient() {
                 gap: 10,
               }}
             >
-              <label
-                htmlFor="smart-talk-photo-input"
+              <button
+                type="button"
+                onClick={() => void openCamera()}
+                disabled={
+                  loading || photoPreparing || cameraStarting || cameraActive
+                }
                 style={{
-                  display: "inline-block",
-                  padding: "10px 16px",
-                  borderRadius: "var(--r12)",
+                  ...photoLabelStyle,
                   border: "1px solid var(--accentBorder)",
-                  background: "rgba(238, 242, 255, 1)",
-                  color: "var(--text)",
-                  fontWeight: 700,
-                  fontSize: 14,
-                  cursor: loading || photoPreparing ? "not-allowed" : "pointer",
-                  opacity: loading || photoPreparing ? 0.55 : 1,
+                  cursor:
+                    loading || photoPreparing || cameraStarting || cameraActive
+                      ? "not-allowed"
+                      : "pointer",
+                  opacity:
+                    loading || photoPreparing || cameraStarting || cameraActive
+                      ? 0.55
+                      : 1,
                 }}
               >
-                Vybrať fotografiu
+                Otvoriť kameru
+              </button>
+              <label htmlFor="smart-talk-gallery-input" style={photoLabelStyle}>
+                Vybrať obrázok z galérie
               </label>
               {photoFile && photoSourceName ? (
                 <span
@@ -633,6 +792,41 @@ export default function SmartTalkClient() {
                 </span>
               )}
             </div>
+            {cameraActive ? (
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 10,
+                  alignItems: "center",
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={cancelCamera}
+                  disabled={loading || photoPreparing}
+                  style={{
+                    ...photoSecondaryBtnStyle,
+                    opacity: loading || photoPreparing ? 0.55 : 1,
+                    cursor: loading || photoPreparing ? "not-allowed" : "pointer",
+                  }}
+                >
+                  Zrušiť
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void captureFromCamera()}
+                  disabled={loading || photoPreparing}
+                  style={{
+                    ...photoLabelStyle,
+                    opacity: loading || photoPreparing ? 0.55 : 1,
+                    cursor: loading || photoPreparing ? "not-allowed" : "pointer",
+                  }}
+                >
+                  Odfotiť
+                </button>
+              </div>
+            ) : null}
           </>
         ) : (
           <>
@@ -688,7 +882,7 @@ export default function SmartTalkClient() {
           else void onSubmit();
         }}
         disabled={submitDisabled}
-        aria-busy={loading || photoPreparing}
+        aria-busy={loading || photoPreparing || cameraStarting}
         style={{
           width: "100%",
           height: 44,
@@ -715,7 +909,7 @@ export default function SmartTalkClient() {
           borderRadius: "var(--r16)",
           border: error
             ? "1px solid rgba(248, 113, 113, 0.45)"
-            : result || loading || photoPreparing
+            : result || loading || photoPreparing || cameraStarting || photoInfoLine
               ? "1px solid rgba(226, 232, 240, 1)"
               : "1px dashed rgba(203, 213, 225, 1)",
           background: error ? "rgba(254, 242, 242, 1)" : "rgba(248, 250, 252, 1)",
@@ -725,18 +919,22 @@ export default function SmartTalkClient() {
           color: "var(--muted)",
         }}
       >
-        {loading || photoPreparing ? (
+        {loading || photoPreparing || cameraStarting ? (
           <p style={{ margin: 0 }}>
-            {photoPreparing
-              ? "Zmenšujem fotografiu pre bezpečné spracovanie…"
-              : mode === "photo"
-                ? "Spracovávam fotografiu a analyzujem text…"
-                : mode === "question"
-                  ? "Vaylo odpovedá na vašu otázku…"
-                  : "Vaylo vysvetľuje text…"}
+            {cameraStarting
+              ? MSG.cameraOpening
+              : photoPreparing
+                ? MSG.photoProcessingDoc
+                : mode === "photo"
+                  ? "Spracovávam fotografiu a analyzujem text…"
+                  : mode === "question"
+                    ? "Vaylo odpovedá na vašu otázku…"
+                    : "Vaylo vysvetľuje text…"}
           </p>
         ) : error ? (
           <p style={{ margin: 0, color: "rgba(127, 29, 29, 0.92)" }}>{error}</p>
+        ) : photoInfoLine && mode === "photo" ? (
+          <p style={{ margin: 0 }}>{photoInfoLine}</p>
         ) : result ? (
           <div style={{ display: "grid", gap: 14 }}>
             <p

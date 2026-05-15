@@ -1,6 +1,6 @@
 /**
- * Browser-only: downscale and JPEG-compress document photos before Smart Talk upload.
- * Uses a short-lived object URL + HTMLImageElement (avoids createImageBitmap extra decode path).
+ * Browser-only: document photos for Smart Talk — gallery decode path and
+ * memory-safe capture from getUserMedia video (no full-res file from camera).
  */
 
 export type PrepareDocumentPhotoErrorCode =
@@ -8,7 +8,8 @@ export type PrepareDocumentPhotoErrorCode =
   | "canvas_failed"
   | "blob_failed"
   | "input_too_large"
-  | "output_too_large";
+  | "output_too_large"
+  | "video_not_ready";
 
 export class PrepareDocumentPhotoError extends Error {
   readonly code: PrepareDocumentPhotoErrorCode;
@@ -20,16 +21,23 @@ export class PrepareDocumentPhotoError extends Error {
   }
 }
 
-/** Client may reject before calling `prepareDocumentPhotoForUpload`. */
-export const SMART_TALK_MAX_ORIGINAL_PHOTO_BYTES = 12 * 1024 * 1024;
+/** Gallery `File` picker: reject larger files before decode. */
+export const SMART_TALK_MAX_GALLERY_PHOTO_BYTES = 8 * 1024 * 1024;
 
-const MAX_INPUT_BYTES = SMART_TALK_MAX_ORIGINAL_PHOTO_BYTES;
+const MAX_INPUT_BYTES = SMART_TALK_MAX_GALLERY_PHOTO_BYTES;
 const TARGET_MAX_BYTES = Math.floor(900 * 1024);
+/** Camera capture targets ≤ ~900 kB JPEG (~0.7 quality first). */
+const CAMERA_TARGET_MAX_BYTES = Math.floor(900 * 1024);
 const HARD_CAP_BYTES = Math.floor(1.5 * 1024 * 1024);
 const MAX_SIDE_STEPS = [1024, 896, 768, 640, 512] as const;
 const INITIAL_QUALITY = 0.68;
 const MIN_QUALITY = 0.45;
 const QUALITY_STEP = 0.05;
+
+const CAMERA_INITIAL_QUALITY = 0.7;
+const CAMERA_MIN_QUALITY = 0.45;
+const CAMERA_QUALITY_STEP = 0.05;
+const CAMERA_MAX_SIDE_STEPS = [1024, 896, 768, 640] as const;
 
 function loadImageElement(objectUrl: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -49,7 +57,6 @@ async function decodeImageFromFile(file: File): Promise<HTMLImageElement> {
       try {
         await img.decode();
       } catch {
-        // onload already fired; proceed if dimensions are usable
         if (!img.naturalWidth) {
           throw new PrepareDocumentPhotoError("decode_failed");
         }
@@ -61,7 +68,7 @@ async function decodeImageFromFile(file: File): Promise<HTMLImageElement> {
   }
 }
 
-function drawScaled(source: HTMLImageElement, maxSide: number): HTMLCanvasElement {
+function drawScaledFromImage(source: HTMLImageElement, maxSide: number): HTMLCanvasElement {
   const w0 = source.naturalWidth || source.width;
   const h0 = source.naturalHeight || source.height;
   if (!w0 || !h0) {
@@ -78,6 +85,26 @@ function drawScaled(source: HTMLImageElement, maxSide: number): HTMLCanvasElemen
     throw new PrepareDocumentPhotoError("canvas_failed");
   }
   ctx.drawImage(source, 0, 0, w, h);
+  return canvas;
+}
+
+function drawScaledFromVideo(video: HTMLVideoElement, maxSide: number): HTMLCanvasElement {
+  const w0 = video.videoWidth;
+  const h0 = video.videoHeight;
+  if (!w0 || !h0) {
+    throw new PrepareDocumentPhotoError("video_not_ready");
+  }
+  const scale = Math.min(1, maxSide / w0, maxSide / h0);
+  const w = Math.max(1, Math.round(w0 * scale));
+  const h = Math.max(1, Math.round(h0 * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    throw new PrepareDocumentPhotoError("canvas_failed");
+  }
+  ctx.drawImage(video, 0, 0, w, h);
   return canvas;
 }
 
@@ -98,7 +125,45 @@ function toJpegBlob(canvas: HTMLCanvasElement, quality: number): Promise<Blob> {
 }
 
 /**
- * Resize (max side 1024 first, then smaller steps), JPEG encode, aim ≤ ~900 KB, hard cap ~1.5 MB.
+ * One frame from live preview → JPEG File (max side 1024 first), ~700–900 kB target, hard cap ~1.5 MB.
+ * No createImageBitmap, no giant camera File from disk.
+ */
+export async function compressVideoFrameToSmartTalkPhotoFile(
+  video: HTMLVideoElement,
+): Promise<File> {
+  let bestBlob: Blob | null = null;
+
+  for (const maxSide of CAMERA_MAX_SIDE_STEPS) {
+    await Promise.resolve();
+    const canvas = drawScaledFromVideo(video, maxSide);
+    for (
+      let q = CAMERA_INITIAL_QUALITY;
+      q + 1e-9 >= CAMERA_MIN_QUALITY;
+      q -= CAMERA_QUALITY_STEP
+    ) {
+      const blob = await toJpegBlob(canvas, q);
+      bestBlob = blob;
+      if (blob.size <= CAMERA_TARGET_MAX_BYTES) {
+        return new File([blob], "smart-talk-document.jpg", {
+          type: "image/jpeg",
+          lastModified: Date.now(),
+        });
+      }
+    }
+  }
+
+  if (bestBlob && bestBlob.size <= HARD_CAP_BYTES) {
+    return new File([bestBlob], "smart-talk-document.jpg", {
+      type: "image/jpeg",
+      lastModified: Date.now(),
+    });
+  }
+
+  throw new PrepareDocumentPhotoError("output_too_large");
+}
+
+/**
+ * Gallery image: decode via short-lived object URL, resize, JPEG, aim ≤ ~900 kB, hard cap ~1.5 MB.
  */
 export async function prepareDocumentPhotoForUpload(file: File): Promise<File> {
   if (file.size > MAX_INPUT_BYTES) {
@@ -111,7 +176,7 @@ export async function prepareDocumentPhotoForUpload(file: File): Promise<File> {
 
   for (const maxSide of MAX_SIDE_STEPS) {
     await Promise.resolve();
-    const canvas = drawScaled(img, maxSide);
+    const canvas = drawScaledFromImage(img, maxSide);
     for (let q = INITIAL_QUALITY; q + 1e-9 >= MIN_QUALITY; q -= QUALITY_STEP) {
       const blob = await toJpegBlob(canvas, q);
       bestBlob = blob;
