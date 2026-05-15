@@ -61,7 +61,7 @@ export async function extractTextFromImage(params: {
               { type: "text", text: TRANSCRIBE_USER_PROMPT },
               {
                 type: "image_url",
-                image_url: { url: params.imageDataUrl, detail: "high" },
+                image_url: { url: params.imageDataUrl, detail: "low" },
               },
             ],
           },
