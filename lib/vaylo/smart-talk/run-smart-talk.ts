@@ -15,6 +15,39 @@ export type SmartTalkConsequencePhase = "none" | "possible" | "conditional" | "a
 
 export type SmartTalkDocumentQuality = "clear" | "noisy" | "ocr_damaged" | "unknown";
 
+export type SmartTalkDocumentKind =
+  | "payment_notice"
+  | "direct_debit_notice"
+  | "reminder_dunning"
+  | "official_decision"
+  | "hearing_procedural"
+  | "approval_grant"
+  | "rejection_refusal"
+  | "informational_status"
+  | "contribution_or_tax_assessment"
+  | "demand_repayment"
+  | "termination"
+  | "generic_request"
+  | "unknown";
+
+export type SmartTalkDomain =
+  | "insurance"
+  | "health_insurance"
+  | "tax"
+  | "social_benefits"
+  | "residence"
+  | "municipal"
+  | "debt_collection"
+  | "family_benefits"
+  | "employment"
+  | "unknown";
+
+export type SmartTalkPaymentChannel =
+  | "sepa_direct_debit"
+  | "manual_transfer"
+  | "unclear"
+  | "not_applicable";
+
 export type SmartTalkResult = {
   summary: string;
   meaning: string;
@@ -25,6 +58,10 @@ export type SmartTalkResult = {
   confidenceLevel: SmartTalkConfidenceLevel;
   consequencePhase: SmartTalkConsequencePhase;
   documentQuality: SmartTalkDocumentQuality;
+  documentKind: SmartTalkDocumentKind;
+  domain: SmartTalkDomain;
+  documentTypeLabel: string;
+  paymentChannel: SmartTalkPaymentChannel;
 };
 
 const DEFAULT_MODEL = "gpt-4o-mini";
@@ -32,6 +69,42 @@ const URGENCY_SET = new Set<string>(["low", "medium", "high", "unknown"]);
 const CONFIDENCE_SET = new Set<string>(["low", "medium", "high"]);
 const CONSEQUENCE_SET = new Set<string>(["none", "possible", "conditional", "active"]);
 const DOCUMENT_QUALITY_SET = new Set<string>(["clear", "noisy", "ocr_damaged", "unknown"]);
+
+const DOCUMENT_KIND_SET = new Set<string>([
+  "payment_notice",
+  "direct_debit_notice",
+  "reminder_dunning",
+  "official_decision",
+  "hearing_procedural",
+  "approval_grant",
+  "rejection_refusal",
+  "informational_status",
+  "contribution_or_tax_assessment",
+  "demand_repayment",
+  "termination",
+  "generic_request",
+  "unknown",
+]);
+
+const DOMAIN_SET = new Set<string>([
+  "insurance",
+  "health_insurance",
+  "tax",
+  "social_benefits",
+  "residence",
+  "municipal",
+  "debt_collection",
+  "family_benefits",
+  "employment",
+  "unknown",
+]);
+
+const PAYMENT_CHANNEL_SET = new Set<string>([
+  "sepa_direct_debit",
+  "manual_transfer",
+  "unclear",
+  "not_applicable",
+]);
 
 const DEFAULT_STABILIZERS: string[] = [];
 const DEFAULT_CONFIDENCE: SmartTalkConfidenceLevel = "medium";
@@ -57,6 +130,11 @@ function parseStringArray(raw: unknown, maxItems: number, maxLen: number): strin
     if (out.length >= maxItems) break;
   }
   return out;
+}
+
+function normalizeDocumentTypeLabel(raw: unknown): string {
+  if (typeof raw !== "string") return "";
+  return raw.trim().slice(0, 200);
 }
 
 function normalizeParsedObject(obj: Record<string, unknown>): SmartTalkResult {
@@ -100,6 +178,23 @@ function normalizeParsedObject(obj: Record<string, unknown>): SmartTalkResult {
 
   const nextSteps = parseStringArray(obj.nextSteps, 16, 500);
 
+  let documentKind: SmartTalkDocumentKind = "unknown";
+  if (typeof obj.documentKind === "string" && DOCUMENT_KIND_SET.has(obj.documentKind)) {
+    documentKind = obj.documentKind as SmartTalkDocumentKind;
+  }
+
+  let domain: SmartTalkDomain = "unknown";
+  if (typeof obj.domain === "string" && DOMAIN_SET.has(obj.domain)) {
+    domain = obj.domain as SmartTalkDomain;
+  }
+
+  const documentTypeLabel = normalizeDocumentTypeLabel(obj.documentTypeLabel);
+
+  let paymentChannel: SmartTalkPaymentChannel = "not_applicable";
+  if (typeof obj.paymentChannel === "string" && PAYMENT_CHANNEL_SET.has(obj.paymentChannel)) {
+    paymentChannel = obj.paymentChannel as SmartTalkPaymentChannel;
+  }
+
   return {
     summary: summary.slice(0, 8000),
     meaning: meaning.slice(0, 12000),
@@ -110,6 +205,10 @@ function normalizeParsedObject(obj: Record<string, unknown>): SmartTalkResult {
     confidenceLevel,
     consequencePhase,
     documentQuality,
+    documentKind,
+    domain,
+    documentTypeLabel,
+    paymentChannel,
   };
 }
 
@@ -129,6 +228,10 @@ function fallbackInvalidJson(): SmartTalkResult {
     confidenceLevel: DEFAULT_CONFIDENCE,
     consequencePhase: DEFAULT_CONSEQUENCE,
     documentQuality: DEFAULT_DOCUMENT_QUALITY,
+    documentKind: "unknown",
+    domain: "unknown",
+    documentTypeLabel: "",
+    paymentChannel: "not_applicable",
   };
 }
 

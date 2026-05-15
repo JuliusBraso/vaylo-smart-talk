@@ -21,6 +21,9 @@ const PHOTO_OCR_EPISTEMIC = [
   "Defaults when input is OCR from photo: Prefer documentQuality noisy or ocr_damaged when the transcript shows garbled tokens, odd spacing, inconsistent amounts, or obvious OCR artifacts; use clear only when the text reads coherent. Prefer confidenceLevel medium or low unless the transcript is unusually clean and specific; reserve high rarely.",
 ].join(" ");
 
+const CLASSIFICATION_RULES_COMPACT =
+  "Document type & domain (English enum values; ground in source text only; Phase 7.5): Do not classify by amount alone—distinguish Beitragsrechnung vs Lastschriftavis vs Mahnung vs informational contribution notice. SEPA/Lastschrift/Abbuchung/Mandat/Gläubiger-ID → prefer direct_debit_notice and paymentChannel sepa_direct_debit when applicable. Überweisung / pay-to-account / IBAN transfer instructions → manual_transfer. Mahnung / Erinnerung / Säumnis / Inkasso cues → reminder_dunning or domain debt_collection when text supports. Bescheid / Bewilligung / Ablehnung / Anhörung → procedural documentKinds. If uncertain: documentKind or domain unknown; paymentChannel unclear or not_applicable; never invent documentTypeLabel. Do not infer legal consequences from documentKind alone.";
+
 const JSON_KEYS_TEXT = [
   "Return a single JSON object only (no markdown fences). Keys:",
   'summary (string): short plain-language overview.',
@@ -32,6 +35,10 @@ const JSON_KEYS_TEXT = [
   'confidenceLevel (string): one of "low", "medium", "high". high = clean text, clear office, clear deadlines/actions. medium = some ambiguity, conditional language, or partial uncertainty. low = OCR-damaged or garbled text, missing context, contradictory or incomplete input.',
   'consequencePhase (string): one of "none", "possible", "conditional", "active". none = informational / no meaningful consequence. possible = a risk is raised as possible but not clearly tied to a specific condition. conditional = consequence depends on user action, missing documents, or a stated if-then. active = already in effect now only if the text says so (e.g. payment already stopped, enforcement already underway, deadline already running).',
   'documentQuality (string): one of "clear", "noisy", "ocr_damaged", "unknown". clear = normal readable text. noisy = formatting issues but mostly readable. ocr_damaged = OCR corruption, broken spacing, damaged words. unknown = not enough input to judge.',
+  'documentKind (string): exactly one of "payment_notice", "direct_debit_notice", "reminder_dunning", "official_decision", "hearing_procedural", "approval_grant", "rejection_refusal", "informational_status", "contribution_or_tax_assessment", "demand_repayment", "termination", "generic_request", "unknown".',
+  'domain (string): exactly one of "insurance", "health_insurance", "tax", "social_benefits", "residence", "municipal", "debt_collection", "family_benefits", "employment", "unknown".',
+  'documentTypeLabel (string): exact German heading or document-type phrase if clearly printed (e.g. Beitragsrechnung, Lastschriftavis, Mahnung, Bescheid); otherwise "".',
+  'paymentChannel (string): exactly one of "sepa_direct_debit", "manual_transfer", "unclear", "not_applicable".',
 ].join(" ");
 
 const JSON_KEYS_QUESTION = [
@@ -45,6 +52,10 @@ const JSON_KEYS_QUESTION = [
   'confidenceLevel (string): one of "low", "medium", "high". high = clear question and facts. medium = some ambiguity or conditional wording. low = garbled paste, missing context, contradiction, or incomplete.',
   'consequencePhase (string): one of "none", "possible", "conditional", "active" — classify the user-described situation like document mode; active only when the described facts support something already in effect.',
   'documentQuality (string): one of "clear", "noisy", "ocr_damaged", "unknown" — judge the user input text the same way as document mode.',
+  'documentKind (string): same enum as document mode when the question quotes or embeds a German bureaucracy document; if there is no document excerpt, use "unknown".',
+  'domain (string): same enum as document mode when classifying quoted/pasted document text; otherwise "unknown".',
+  'documentTypeLabel (string): German heading if clearly quoted; else "".',
+  'paymentChannel (string): same enum as document mode when payment cues exist in quoted text; else "not_applicable" or "unclear".',
 ].join(" ");
 
 /**
@@ -73,6 +84,7 @@ export function buildSmartTalkMessages(params: {
       "Urgency calibration (document mode): Classify practical priority calmly—not panic. HIGH when the letter involves repayment demands (e.g. Familienkasse Rückforderung), Mahnung, Inkasso, an official payment deadline, stated or clearly implied default fees or penalties (e.g. Säumniszuschlag), enforcement-style payment language, cancellation tied to unpaid amounts, or repayment expected to continue during Einspruch/Widerspruch unless the letter clearly suspends payment—especially when a deadline combines with financial risk. HIGH may also be justified when the text credibly indicates imminent harm to essential needs even without a single euro figure: risk of Krankenversicherung interruption, restriction to emergency-only care (Notfallversorgung), livelihood or benefit suspension affecting basic income, concrete residence or work-permit jeopardy, housing loss or housing-related enforcement tied to the notice, active Vollstreckung or enforcement already underway—only when the document supports it; do not invent such threats. MEDIUM for routine administrative requests without immediate monetary or essential-needs pressure: requesting documents (e.g. Krankenkasse supplemental paperwork), registration paperwork asks (e.g. Bürgeramt), appointment scheduling, procedural updates without fines or basic-needs jeopardy threatened. LOW for informational confirmations, general explanatory notices, optional actions, or no meaningful deadline/consequence. UNKNOWN when the text is too vague to classify. Do not label everything high or everything medium/low; do not invent deportation, unrelated catastrophic threats, penalties, or enforcement not present or strongly implied.",
       "warnings intelligence (document mode): Each warning should reflect something concrete from this paste—named offices, stated deadlines, amounts, procedures—not boilerplate. Prioritize: payment consequences; deadlines; tension between appeal/objection and whether payment must continue; procedural risks; missing stated requirements; credible delays; fees or penalties only if written or clearly implied; provisional or non-final decisions and open procedures when they change how to read risk; dependence on another authority. Use at most one stabilizing clarification among the 1–2 lines only when the letter explicitly states it and it prevents misreading—never instead of a material risk the letter states. Tone: calm, short, practical, non-dramatic, non-legalistic. Do NOT invent penalties, deadlines, authorities, legal consequences, requirements, or reassurance not present or clearly implied by the document. Deprioritize generic hygiene (e.g. \"document readability\", \"some offices want originals\") unless no stronger contextual warning exists.",
       'warnings pattern examples when the source fits (paraphrase in output language; Slovak tone): Finanzamt — good: Aj pri podaní námietky môže zostať lehota platby aktívna; oneskorená úhrada môže viesť k dodatočným poplatkom. Avoid replacing specifics with: Skontrolujte čitateľnosť dokumentu. Bürgeramt — good: Ak sa nemôžete dostaviť osobne, kontaktujte úrad ešte pred termínom; chýbajúce dokumenty môžu oddialiť vybavenie prípadu. Krankenkasse — good: Neúplné dokumenty môžu predĺžiť spracovanie poistenia; poisťovňa môže vyžiadať doplňujúce potvrdenia. Mahnung/Inkasso — good: Po termíne môžu vzniknúť ďalšie poplatky; ak ste už zaplatili, uschovajte si potvrdenie o úhrade. Familienkasse Rückforderung — good: Lehota na vrátenie platí; nárok na výnimku počas námietky nie je automatický, ak to list výslovne neuvádza.',
+      CLASSIFICATION_RULES_COMPACT,
       JSON_KEYS_TEXT,
     ].join(" ");
 
@@ -107,6 +119,7 @@ export function buildSmartTalkMessages(params: {
     "Combine Steuer-ID / Anmeldung / Kindergeld timing notes into warnings only when they directly answer the user's risk (e.g. postal delays, missing landlord confirmation), not as filler.",
     "warnings should also mention residual uncertainty and when to verify on official sources or with the relevant authority—without sounding alarming.",
     "If the question is unclear or cannot be answered safely, explain what is missing in warnings and use urgency unknown when appropriate.",
+    CLASSIFICATION_RULES_COMPACT,
     JSON_KEYS_QUESTION,
   ].join(" ");
 

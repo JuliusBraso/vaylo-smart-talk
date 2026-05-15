@@ -51,6 +51,42 @@ const CONSEQUENCE = new Set(["none", "possible", "conditional", "active"]);
 const DOC_QUALITY = new Set(["clear", "noisy", "ocr_damaged", "unknown"]);
 const URGENCY = new Set(["low", "medium", "high", "unknown"]);
 
+const DOCUMENT_KIND = new Set([
+  "payment_notice",
+  "direct_debit_notice",
+  "reminder_dunning",
+  "official_decision",
+  "hearing_procedural",
+  "approval_grant",
+  "rejection_refusal",
+  "informational_status",
+  "contribution_or_tax_assessment",
+  "demand_repayment",
+  "termination",
+  "generic_request",
+  "unknown",
+]);
+
+const DOMAIN = new Set([
+  "insurance",
+  "health_insurance",
+  "tax",
+  "social_benefits",
+  "residence",
+  "municipal",
+  "debt_collection",
+  "family_benefits",
+  "employment",
+  "unknown",
+]);
+
+const PAYMENT_CHANNEL = new Set([
+  "sepa_direct_debit",
+  "manual_transfer",
+  "unclear",
+  "not_applicable",
+]);
+
 function parseStabilizersClient(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
   const out: string[] = [];
@@ -119,6 +155,30 @@ function parseSmartTalkResponse(data: unknown): SmartTalkOkResponse | null {
     ? (docQualityRaw as SmartTalkDocumentQuality)
     : "unknown";
 
+  const documentKindRaw =
+    typeof result.documentKind === "string" ? result.documentKind : "unknown";
+  const documentKind: SmartTalkResult["documentKind"] = DOCUMENT_KIND.has(documentKindRaw)
+    ? (documentKindRaw as SmartTalkResult["documentKind"])
+    : "unknown";
+
+  const domainRaw = typeof result.domain === "string" ? result.domain : "unknown";
+  const domain: SmartTalkResult["domain"] = DOMAIN.has(domainRaw)
+    ? (domainRaw as SmartTalkResult["domain"])
+    : "unknown";
+
+  const documentTypeLabel =
+    typeof result.documentTypeLabel === "string"
+      ? result.documentTypeLabel.trim().slice(0, 200)
+      : "";
+
+  const paymentChannelRaw =
+    typeof result.paymentChannel === "string" ? result.paymentChannel : "not_applicable";
+  const paymentChannel: SmartTalkResult["paymentChannel"] = PAYMENT_CHANNEL.has(
+    paymentChannelRaw,
+  )
+    ? (paymentChannelRaw as SmartTalkResult["paymentChannel"])
+    : "not_applicable";
+
   const parsedResult: SmartTalkResult = {
     summary,
     meaning,
@@ -129,6 +189,10 @@ function parseSmartTalkResponse(data: unknown): SmartTalkOkResponse | null {
     confidenceLevel,
     consequencePhase,
     documentQuality,
+    documentKind,
+    domain,
+    documentTypeLabel,
+    paymentChannel,
   };
 
   return {
@@ -1193,6 +1257,22 @@ export default function SmartTalkClient() {
                     {devMetaString(
                       (result as unknown as Record<string, unknown>).documentQuality,
                     )}
+                  </div>
+                  <div>
+                    <span style={{ opacity: 0.85 }}>documentKind: </span>
+                    {devMetaString(result.documentKind)}
+                  </div>
+                  <div>
+                    <span style={{ opacity: 0.85 }}>domain: </span>
+                    {devMetaString(result.domain)}
+                  </div>
+                  <div>
+                    <span style={{ opacity: 0.85 }}>documentTypeLabel: </span>
+                    {devMetaString(result.documentTypeLabel)}
+                  </div>
+                  <div>
+                    <span style={{ opacity: 0.85 }}>paymentChannel: </span>
+                    {devMetaString(result.paymentChannel)}
                   </div>
                   <div>
                     <div style={{ opacity: 0.85, marginBottom: 4 }}>stabilizers:</div>
