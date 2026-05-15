@@ -159,7 +159,12 @@ const MSG = {
   cameraOpening: "Otváram kameru…",
   cameraDenied:
     "Kamera nebola povolená. Môžete vybrať obrázok z galérie.",
+  cameraUnavailable:
+    "Kamera nie je v tomto prehliadači dostupná. Skúste vybrať obrázok z galérie.",
   cameraFailed: "Nepodarilo sa otvoriť kameru.",
+  cameraVideoPreparing: "Kamera sa ešte pripravuje…",
+  photoHeicNotSupported:
+    "Fotky vo formáte HEIC/HEIF zatiaľ nie sú podporované. Prosím použite kameru vo Vaylo alebo vyberte JPG/PNG obrázok.",
   photoReadyForAnalysis: "Fotografia pripravená na analýzu.",
   photoProcessingDoc: "Spracovávam dokument…",
 } as const;
@@ -305,6 +310,13 @@ function formatBytesSk(n: number): string {
   return `${s.replace(".", ",")} MB`;
 }
 
+function isHeicOrHeifFile(file: File): boolean {
+  const t = (file.type || "").toLowerCase().split(";")[0]?.trim() ?? "";
+  if (t === "image/heic" || t === "image/heif") return true;
+  const n = file.name.toLowerCase();
+  return n.endsWith(".heic") || n.endsWith(".heif");
+}
+
 function sectionTitleStyle(): CSSProperties {
   return {
     margin: "0 0 10px",
@@ -334,6 +346,7 @@ export default function SmartTalkClient() {
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraStarting, setCameraStarting] = useState(false);
+  const [cameraVideoReady, setCameraVideoReady] = useState(false);
   const [photoInfoLine, setPhotoInfoLine] = useState<string | null>(null);
 
   const releaseCameraHardware = useCallback(() => {
@@ -363,6 +376,7 @@ export default function SmartTalkClient() {
       releaseCameraHardware();
       setCameraActive(false);
       setCameraStarting(false);
+      setCameraVideoReady(false);
       setPhotoInfoLine(null);
       setPhotoFile(null);
       setPhotoSourceName(null);
@@ -371,19 +385,59 @@ export default function SmartTalkClient() {
   }, [mode, releaseCameraHardware]);
 
   useEffect(() => {
+    if (!cameraActive) {
+      setCameraVideoReady(false);
+      return;
+    }
+    const v = videoRef.current;
+    if (!v) {
+      setCameraVideoReady(false);
+      return;
+    }
+
+    const syncReady = () => {
+      const ok =
+        v.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
+        v.videoWidth > 0 &&
+        v.videoHeight > 0;
+      setCameraVideoReady(ok);
+    };
+
+    const onLoadedMeta = () => syncReady();
+    const onCanPlay = () => syncReady();
+    const onPlaying = () => syncReady();
+
+    v.addEventListener("loadedmetadata", onLoadedMeta);
+    v.addEventListener("canplay", onCanPlay);
+    v.addEventListener("playing", onPlaying);
+    syncReady();
+
+    return () => {
+      v.removeEventListener("loadedmetadata", onLoadedMeta);
+      v.removeEventListener("canplay", onCanPlay);
+      v.removeEventListener("playing", onPlaying);
+    };
+  }, [cameraActive]);
+
+  useEffect(() => {
     return () => {
       releaseCameraHardware();
     };
   }, [releaseCameraHardware]);
 
   const openCamera = useCallback(async () => {
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setError(MSG.cameraFailed);
+    if (
+      typeof navigator === "undefined" ||
+      !navigator.mediaDevices ||
+      typeof navigator.mediaDevices.getUserMedia !== "function"
+    ) {
+      setError(MSG.cameraUnavailable);
       return;
     }
     if (loading || photoPreparing || busyRef.current || cameraStarting || cameraActive) return;
     setError(null);
     setPhotoInfoLine(null);
+    setCameraVideoReady(false);
     releaseCameraHardware();
     setCameraActive(false);
     setPhotoFile(null);
@@ -405,11 +459,17 @@ export default function SmartTalkClient() {
         setError(MSG.cameraFailed);
         return;
       }
+      setCameraVideoReady(false);
       el.srcObject = stream;
-      await el.play().catch(() => {});
+      try {
+        await el.play();
+      } catch {
+        /* Playback may be deferred on iOS; dimensions arrive via loadedmetadata. */
+      }
       setCameraActive(true);
     } catch (e) {
       releaseCameraHardware();
+      setCameraVideoReady(false);
       const denied =
         e instanceof DOMException &&
         (e.name === "NotAllowedError" || e.name === "PermissionDeniedError");
@@ -423,15 +483,24 @@ export default function SmartTalkClient() {
     releaseCameraHardware();
     setCameraActive(false);
     setCameraStarting(false);
+    setCameraVideoReady(false);
   }, [releaseCameraHardware]);
 
   const captureFromCamera = useCallback(async () => {
     const el = videoRef.current;
-    if (!el || !cameraStreamRef.current || busyRef.current || photoPreparing) return;
+    if (
+      !el ||
+      !cameraStreamRef.current ||
+      !cameraVideoReady ||
+      busyRef.current ||
+      photoPreparing
+    )
+      return;
     try {
       const file = await compressVideoFrameToSmartTalkPhotoFile(el);
       releaseCameraHardware();
       setCameraActive(false);
+      setCameraVideoReady(false);
       photoPickSeqRef.current += 1;
       setPhotoFile(file);
       setPhotoSourceName("Snímka z kamery");
@@ -440,7 +509,7 @@ export default function SmartTalkClient() {
     } catch (err) {
       setError(messageForPreparePhotoError(err));
     }
-  }, [releaseCameraHardware, photoPreparing]);
+  }, [releaseCameraHardware, photoPreparing, cameraVideoReady]);
 
   const onPhotoFileChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.files?.[0] ?? null;
@@ -452,6 +521,17 @@ export default function SmartTalkClient() {
       setPhotoSourceName(null);
       setPhotoInfoLine(null);
       setError(null);
+      return;
+    }
+
+    if (isHeicOrHeifFile(raw)) {
+      photoPickSeqRef.current += 1;
+      setPhotoPreparing(false);
+      setPhotoFile(null);
+      setPhotoSourceName(null);
+      setPhotoInfoLine(null);
+      setError(MSG.photoHeicNotSupported);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
 
@@ -469,6 +549,7 @@ export default function SmartTalkClient() {
     releaseCameraHardware();
     setCameraActive(false);
     setCameraStarting(false);
+    setCameraVideoReady(false);
 
     const pickSeq = ++photoPickSeqRef.current;
     const startGen = generationRef.current;
@@ -731,9 +812,10 @@ export default function SmartTalkClient() {
             />
             <video
               ref={videoRef}
-              playsInline
               muted
+              playsInline
               autoPlay
+              controls={false}
               style={{
                 display: cameraActive ? "block" : "none",
                 width: "100%",
@@ -816,16 +898,32 @@ export default function SmartTalkClient() {
                 <button
                   type="button"
                   onClick={() => void captureFromCamera()}
-                  disabled={loading || photoPreparing}
+                  disabled={loading || photoPreparing || !cameraVideoReady}
                   style={{
                     ...photoLabelStyle,
-                    opacity: loading || photoPreparing ? 0.55 : 1,
-                    cursor: loading || photoPreparing ? "not-allowed" : "pointer",
+                    opacity:
+                      loading || photoPreparing || !cameraVideoReady ? 0.55 : 1,
+                    cursor:
+                      loading || photoPreparing || !cameraVideoReady
+                        ? "not-allowed"
+                        : "pointer",
                   }}
                 >
                   Odfotiť
                 </button>
               </div>
+            ) : null}
+            {cameraActive && !cameraVideoReady ? (
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 13,
+                  lineHeight: 1.45,
+                  color: "var(--muted2)",
+                }}
+              >
+                {MSG.cameraVideoPreparing}
+              </p>
             ) : null}
           </>
         ) : (
