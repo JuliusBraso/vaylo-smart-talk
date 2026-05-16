@@ -329,6 +329,139 @@ const APPEAL_RELATIVE_PHRASE_LEAK_PATTERNS: ReadonlyArray<RegExp> = [
   /\bwithin one month of notification of the decision\b/giu,
 ];
 
+type FabricationPatternGroup = Readonly<{ patterns: readonly RegExp[]; sourceCues: readonly string[] }>;
+
+/** Phase 7.9D — invented enforcement / escalation / post-deadline timing narration. */
+const FABRICATION_PATTERN_GROUPS: readonly FabricationPatternGroup[] = [
+  {
+    patterns: [
+      /\bvymáhan(?:ie|ia|iu|í)\b/giu,
+      /\bexekúcia\b/giu,
+      /\bexekucia\b/giu,
+      /\badministratívne opatrenia\b/giu,
+      /\badministrativne opatrenia\b/giu,
+      /\bnútený výkon\b/giu,
+      /\bnuteny vykon\b/giu,
+      /\bvollstreckung\b/giu,
+      /\bzwangsvollstreckung\b/giu,
+      /\bforced enforcement\b/giu,
+      /\bcompulsory execution\b/giu,
+    ],
+    sourceCues: ["vollstreckung", "zwangsvollstreckung"],
+  },
+  {
+    patterns: [
+      /\bďalší krok konania\b/giu,
+      /\bdalsi krok konania\b/giu,
+      /\bnasledujúca fáza\b/giu,
+      /\bnasledujuca fazu\b/giu,
+      /\bautomaticky dôjde\b/giu,
+      /\bautomaticky dojde\b/giu,
+      /\bnächste verfahrensstufe\b/giu,
+      /\bautomatisch erfolgt\b/giu,
+      /\bsubsequent stage of proceedings\b/giu,
+      /\bnext procedural stage\b/giu,
+    ],
+    sourceCues: [
+      "verfahrensstufe",
+      "verfahrensstufen",
+      "automatisch erfolgt",
+      "folgeverfahren",
+      "weiterverfahren",
+      "nächste stufe",
+    ],
+  },
+  {
+    patterns: [
+      /\bpo lehote splatnosti\b/giu,
+      /\bdo jedného mesiaca po lehote\b/giu,
+      /\bdo jedneho mesiaca po lehote\b/giu,
+      /\bv ďalšej fáze\b/giu,
+      /\bpo uplynutí splatnosti\b/giu,
+      /\bafter the payment deadline\b/giu,
+      /\bone month after expiry\b/giu,
+      /\bone month after expiration\b/giu,
+    ],
+    sourceCues: [
+      "nach ablauf der zahlungsfrist",
+      "nach ablauf der frist",
+      "nach der fälligkeit",
+      "nach der falligkeit",
+      "ein monat nach",
+      "einen monat nach",
+      "einem monat nach",
+      "ein monats nach",
+    ],
+  },
+];
+
+function fabricationCueGrounded(sourceLower: string, cues: readonly string[]): boolean {
+  return cues.some((cue) => sourceLower.includes(cue.toLowerCase()));
+}
+
+function proceduralLiteralismFallback(locale: SmartTalkLocale | undefined, round: number): string {
+  const i = ((round % 3) + 3) % 3;
+  if (locale === "de") {
+    const phrases = [
+      "Das Dokument beschreibt keine weiteren Schritte.",
+      "Das Dokument geht hier nicht weiter auf mögliche Folgen ein.",
+      "Das Dokument enthält hierzu nur die ausgedrückten Angaben.",
+    ];
+    return phrases[i];
+  }
+  if (locale === "en") {
+    const phrases = [
+      "The document does not describe further steps.",
+      "The document does not elaborate on additional consequences.",
+      "The document only states what is expressly written.",
+    ];
+    return phrases[i];
+  }
+  const phrases = [
+    "Dokument neuvádza ďalší postup.",
+    "Dokument bližšie nerozvádza ďalšie následky.",
+    "Dokument uvádza len základné informácie o postupe.",
+  ];
+  return phrases[i];
+}
+
+function sanitizeProceduralFabricationPatterns(
+  text: string,
+  source: string,
+  locale?: SmartTalkLocale,
+): string {
+  if (!text || !source.trim()) return text;
+  const srcLower = source.toLowerCase();
+  let out = text;
+  let iterations = 0;
+  while (iterations++ < 100) {
+    let bestIdx = Infinity;
+    let bestLen = 0;
+    let found = false;
+
+    for (const group of FABRICATION_PATTERN_GROUPS) {
+      for (const proto of group.patterns) {
+        const r = new RegExp(proto.source, proto.flags.includes("g") ? proto.flags : `${proto.flags}g`);
+        const m = r.exec(out);
+        if (!m) continue;
+        if (fabricationCueGrounded(srcLower, group.sourceCues)) continue;
+        const idx = m.index ?? 0;
+        if (!found || idx < bestIdx || (idx === bestIdx && m[0].length > bestLen)) {
+          bestIdx = idx;
+          bestLen = m[0].length;
+          found = true;
+        }
+      }
+    }
+
+    if (!found || bestIdx === Infinity) break;
+
+    const insert = proceduralLiteralismFallback(locale, iterations);
+    out = `${out.slice(0, bestIdx)}${insert}${out.slice(bestIdx + bestLen)}`;
+  }
+
+  return out.replace(/ {2,}/g, " ").trim();
+}
 function countDistinctLaneCueHits(haystackLower: string, cues: readonly string[]): number {
   let n = 0;
   for (const cue of cues) {
@@ -554,6 +687,7 @@ function sanitizeAppealRelativeLeakInPaymentLane(text: string, locale?: SmartTal
 function sanitizeUserVisibleProceduralProse(text: string, source: string, locale?: SmartTalkLocale): string {
   let s = sanitizeProceduralDateProse(text, source, locale);
   s = sanitizeAppealRelativeLeakInPaymentLane(s, locale);
+  s = sanitizeProceduralFabricationPatterns(s, source, locale);
   return s;
 }
 

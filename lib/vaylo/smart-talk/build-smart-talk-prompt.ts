@@ -64,6 +64,20 @@ const PROCEDURAL_LANE_ISOLATION_RULES = [
   "Do not reuse unrelated printed dates across lanes; if unsure which procedure a calendar token belongs to, omit it from output.",
 ].join(" ");
 
+/**
+ * Phase 7.9D — procedural literalism: forbid invented procedures, escalation, and implication chains.
+ */
+const PROCEDURAL_LITERALISM_RULES = [
+  "Procedural literalism (Phase 7.9D): Stay source-bound—you may explain or simplify wording already in the input, never fill in missing legal procedure or speculate about what authorities will do next.",
+  "NO procedural completion: If the transcript does not mention escalation ladders, enforcement, extra deadlines, successive Verfahrensstufen, or administrative fallout, do NOT invent them in summary/meaning, nextSteps, warnings, obligations, or consequences.",
+  "NO implied calendar deadlines: Never turn relative windows (innerhalb eines Monats nach Bekanntgabe etc.) into concrete DD.MM.YYYY; never derive objection or payment cutoff dates from issue dates, Steuerjahre, or postal guesses.",
+  "NO implied procedural sequences: Avoid “first … then …” chains unless the letter states that order; avoid invented Mahnstufen or legal narratives not printed.",
+  "Consequences must be literal (Phase 7.9D): Describe fees/risks the document names (e.g. Säumniszuschlag noted in text) without dramatizing; never output enforcement rhetoric (execution, forced collection) unless expressly present or unmistakably written.",
+  "If unsure → downgrade safety: Prefer calm generic uncertainty, shorten warnings/consequences/obligations, use stabilizers sparingly instead of hypothetical risks; empty arrays beats invention.",
+  "When confidenceLevel is medium/low or OCR is noisy, prioritize stabilizers for facts actually stated rather than hypothetical warnings about unstated escalation.",
+  "summary and meaning must paraphrase the letter—not simulate legal counselling or hypothetical next steps absent from the text.",
+].join(" ");
+
 /** Phase 7.8: procedural extraction — concise; no invention of rights/deadlines/penalties. */
 const PROCEDURAL_REASONING_RULES =
   "Procedural intelligence (7.8; ground strictly in source; not a lawyer): meaning should explain what kind of procedural situation this is (information vs obligation vs appeal window vs payment duty), weaving explicit deadlines and rights/obligations when stated—without fear amplification or dramatic legal claims.\n" +
@@ -156,6 +170,7 @@ export function buildSmartTalkMessages(params: {
       PROCEDURAL_REASONING_RULES,
       PROCEDURAL_ATTRIBUTION_RULES,
       PROCEDURAL_LANE_ISOLATION_RULES,
+      PROCEDURAL_LITERALISM_RULES,
       JSON_KEYS_TEXT,
     ].join(" ");
 
@@ -195,6 +210,7 @@ export function buildSmartTalkMessages(params: {
     PROCEDURAL_REASONING_RULES,
     PROCEDURAL_ATTRIBUTION_RULES,
     PROCEDURAL_LANE_ISOLATION_RULES,
+    PROCEDURAL_LITERALISM_RULES,
     JSON_KEYS_QUESTION,
   ].join(" ");
 
