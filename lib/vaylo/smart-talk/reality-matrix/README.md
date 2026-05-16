@@ -101,12 +101,34 @@ Skipping runtime avoids:
 
 ---
 
+## Phase 8.2B-1 — Rechnung / payment notice matrix
+
+The first **concrete** matrix is `matrices/rechnung.ts` → **`RECHNUNG_REALITY_MATRIX`** (`documentType: "rechnung_payment_notice"`). It was chosen first because the surface is **high-volume and comparatively low tail-risk** (billing, Zahlungsavis, Beitragsrechnung, Lastschriftavis), yet it still stresses **lane hygiene**, **payment-channel discrimination**, and **anti-escalation** (invoice → enforcement, informational Avis → threat).
+
+**What it validates architecturally**
+
+- `supportedRealities` / `blockedRealities` encode **hard negations** (for example no `enforcement_active` from this family without a deliberate matrix change).
+- `EvidenceCue` plus `EvidenceRule` can express **SEPA vs manual** and **informational vs mandatory payment**, with OCR fragility called out in human-readable fields only.
+- `forbiddenClaims` can **outlaw** entire claim classes (`enforcement_risk`, `benefit_risk`, `insurance_risk`, and similar) regardless of model output.
+- `HallucinationTrap` uses **`description`**, **`dangerousInference`**, and **`blockedInterpretationBehavior`** for audit-grade trap sheets.
+- `stabilizers` hold **calm, non-reassuring** example wordings aligned with “never invent safety.”
+
+**Known limitations (by design in this phase)**
+
+- `ClaimRule.requiredEvidenceRuleIds` does not yet encode **OR vs AND**; the Rechnung matrix uses **two rows** for `payment_required` to document **disjunctive** evidence paths until 8.2C defines evaluation semantics.
+- Cue hits are not deduplicated or proximity-scored; regex strings are not executed.
+- Matrices do not yet declare full **precedence** when `informational_only` and `payment_required` both partially match; `blockedBy` only hints.
+
+---
+
 ## File map
 
 | File | Purpose |
 |------|---------|
 | `types.ts` | Ontology: `EvidenceLevel`, lanes, claims, realities, cues, rules, traps, stabilizers, severity, `UniversalDocumentRealityMatrix`. |
 | `template.ts` | `UNIVERSAL_REALITY_MATRIX_TEMPLATE` + small example lane exports. |
+| `matrices/rechnung.ts` | **`RECHNUNG_REALITY_MATRIX`** — first production-shaped payment-notice matrix. |
+| `matrices/index.ts` | Re-exports concrete matrices (no runtime registry). |
 | `README.md` | Architecture and safety rationale (this file). |
 
 ---
@@ -126,4 +148,4 @@ Skipping runtime avoids:
 - No **OCR normalization** or fuzzy matching — `ocrSensitive` is a flag for future logic.
 - No **conflict resolution** when two rules fire (precedence order TBD in 8.2C).
 - No **mapping** to OpenAI JSON or `SmartTalkResult` — integration is a later contract.
-- No **i18n** of guard statements — English/Slovak surface strings remain in Smart Talk layers until explicitly bridged.
+- No **i18n** of trap or stabilizer example strings — surface copy remains owned by Smart Talk layers until explicitly bridged.

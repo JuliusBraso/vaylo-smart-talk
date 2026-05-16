@@ -32,17 +32,22 @@ const SHARED_PAYMENT_TRAPS: readonly HallucinationTrap[] = [
   {
     id: "trap_invoice_to_enforcement",
     kind: "invoice_to_enforcement",
-    summary: "Do not infer enforcement, Inkasso, or execution from invoice alone.",
-    guardStatement:
-      "Rechnung / Zahlungsavis establishes payment expectation, not Vollstreckung unless explicit text supports it.",
+    description: "Invoice / payment notice must not imply enforcement or execution.",
+    dangerousInference:
+      "Inferring Inkasso, Vollstreckung, Gerichtsvollzieher, or Betreibung from a routine Rechnung or Zahlungsavis alone.",
+    blockedInterpretationBehavior:
+      "Treat the document as establishing payment expectation only; do not assert enforcement paths unless separate explicit cues exist (not modeled on this matrix).",
     relatedClaimTypes: ["enforcement_risk"],
     relatedLanes: ["payment"],
   },
   {
     id: "trap_lane_contamination",
     kind: "lane_contamination",
-    summary: "Do not attach Bekanntgabe-relative appeal windows to payment due language.",
-    guardStatement: "Appeal lane cues must not borrow payment-lane calendar tokens and vice versa.",
+    description: "Keep appeal-relative windows off payment-only surfaces.",
+    dangerousInference:
+      "Attaching Bekanntgabe-relative objection timing to pure payment-due lines or mixing unrelated calendar tokens across lanes.",
+    blockedInterpretationBehavior:
+      "Keep payment-lane and appeal-lane evidence disjoint; never commute dates between lanes without co-occurrence proof (future gate).",
     relatedLanes: ["payment", "appeal"],
   },
 ];
@@ -148,17 +153,22 @@ export const UNIVERSAL_REALITY_MATRIX_TEMPLATE: UniversalDocumentRealityMatrix =
     {
       id: "trap_appeal_deadline_synthesis",
       kind: "appeal_deadline_synthesis",
-      summary: "Never synthesize calendar end date from issue date + relative rule.",
-      guardStatement:
-        "Relative Frist (e.g. innerhalb eines Monats nach Bekanntgabe) stays relative unless a cue-grounded printed calendar date exists.",
+      description: "No synthetic calendar end dates from issue date + relative rule.",
+      dangerousInference:
+        "Computing a concrete Frist-end day from Ausstellungsdatum, letter date, or Steuerjahr when only relative wording exists.",
+      blockedInterpretationBehavior:
+        "Keep relative windows relative; omit or hedge concrete DD.MM.YYYY unless cue-grounded in source (future gate).",
       relatedClaimTypes: ["deadline_present", "appeal_possible"],
       relatedLanes: ["appeal"],
     },
     {
       id: "trap_semantic_drift",
       kind: "semantic_drift",
-      summary: "Do not drift from printed modality (vorläufig, unter Vorbehalt) to final outcomes.",
-      guardStatement: "Preserve hedged / preliminary wording from source in any paraphrase.",
+      description: "Preserve printed modality; do not harden hedged language.",
+      dangerousInference:
+        "Turning vorläufig, unter Vorbehalt, or informational Avis into definitive sanctions or final refusals.",
+      blockedInterpretationBehavior:
+        "Paraphrase with matching certainty; prefer informational_payment_notice / informational_only when cues are weak.",
       relatedLanes: ["informational"],
     },
   ] as const satisfies readonly HallucinationTrap[],

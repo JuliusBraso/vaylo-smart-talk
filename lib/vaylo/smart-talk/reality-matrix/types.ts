@@ -68,18 +68,29 @@ export type ClaimType = (typeof KNOWN_CLAIM_TYPES)[number];
 
 /**
  * Coarse “what world-state the document plausibly establishes”.
- * Not UI copy; not enums sent to the client unless a later phase maps them.
+ * Members may appear in `supportedRealities` on one matrix and in `blockedRealities` on another
+ * (e.g. `reminder_notice` is out of scope for the Rechnung v1 matrix but valid for a Mahnung matrix later).
  */
 export const REALITY_TYPE_VALUES = [
   "invoice_issued",
   "payment_due",
+  "payment_scheduled",
   "direct_debit_scheduled",
+  "informational_payment_notice",
+  "recurring_contribution_notice",
   "tax_decision_issued",
   "reminder_notice",
   "appeal_window_exists",
   "informational_notice",
   "document_submission_expected",
   "appointment_scheduled",
+  /** Blocked / out-of-scope states for payment-notice matrices (explicit anti-hallucination). */
+  "enforcement_active",
+  "court_proceeding",
+  "criminal_investigation",
+  "immigration_risk",
+  "benefit_suspension",
+  "active_sanction",
   "unknown",
 ] as const;
 
@@ -151,6 +162,10 @@ export const HALLUCINATION_TRAP_KINDS = [
   "semantic_drift",
   "amount_deadline_swap",
   "bekanntgabe_date_invention",
+  "lastschrift_to_manual_payment",
+  "informational_notice_to_threat",
+  "insurance_notice_to_claim_event",
+  "generic_due_date_to_penalty",
 ] as const;
 
 export type HallucinationTrapKind = (typeof HALLUCINATION_TRAP_KINDS)[number];
@@ -161,9 +176,12 @@ export type HallucinationTrapKind = (typeof HALLUCINATION_TRAP_KINDS)[number];
 export interface HallucinationTrap {
   readonly id: string;
   readonly kind: HallucinationTrapKind;
-  readonly summary: string;
-  /** Human-readable guard: what must not be inferred without evidence. */
-  readonly guardStatement: string;
+  /** Short catalog line for humans / compliance reviews. */
+  readonly description: string;
+  /** Inference that must not be drawn without evidence beyond this document type. */
+  readonly dangerousInference: string;
+  /** Bounded output behavior: suppress, hedge, downgrade, or refuse the inference. */
+  readonly blockedInterpretationBehavior: string;
   /** Optional: claim or reality keys this trap primarily protects. */
   readonly relatedClaimTypes?: readonly ClaimType[];
   readonly relatedLanes?: readonly ProceduralLane[];
