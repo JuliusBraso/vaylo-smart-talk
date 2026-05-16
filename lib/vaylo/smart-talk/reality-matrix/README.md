@@ -199,6 +199,12 @@ Folder **`evidence-gates/`** exposes **`evaluateEvidenceGates`**, **`evaluateRul
 
 ---
 
+## Phase 8.2C-2 — Rule expression walker (structural only)
+
+`evaluateRuleExpression` recursively evaluates **boolean structure** (`allOf` / `anyOf` / `noneOf` / `not`). **Terminals** resolve only via explicit context (`terminalKey` + `terminalResults` / `resolveTerminal`) — **no** text scanning, **no** regex, **no** Smart Talk wiring. Unresolved branches propagate **conservatively** so absence is never treated as safety.
+
+---
+
 ## File map
 
 | File | Purpose |

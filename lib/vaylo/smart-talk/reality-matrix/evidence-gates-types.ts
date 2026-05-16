@@ -91,6 +91,17 @@ export type RuleExpression =
       readonly unless: RuleExpression;
     };
 
+/**
+ * External resolution for terminal `RuleExpression` nodes (8.2C-2).
+ * No document text — only precomputed maps or pure `resolveTerminal` callbacks.
+ */
+export interface RuleExpressionEvaluationContext {
+  /** Lookup by `terminalKey(expr)` — see `terminalKey` in evaluate-rule-expression.ts. */
+  readonly terminalResults?: Readonly<Record<string, RuleEvaluationResult>>;
+  /** Optional callback when `terminalResults` has no entry; must not scan OCR text. */
+  readonly resolveTerminal?: (expr: RuleExpression) => RuleEvaluationResult | undefined;
+}
+
 // ---------------------------------------------------------------------------
 // Output / decisions (§3)
 // ---------------------------------------------------------------------------
@@ -201,7 +212,7 @@ export interface ClaimAuthorizationSpec {
 }
 
 // ---------------------------------------------------------------------------
-// Rule evaluation result (8.2C-1 skeleton — returned by evaluateRuleExpression)
+// Rule evaluation result (8.2C-1+ — returned by evaluateRuleExpression)
 // ---------------------------------------------------------------------------
 
 export interface RuleEvaluationResult {
@@ -210,4 +221,15 @@ export interface RuleEvaluationResult {
   readonly evidenceLevel?: EvidenceLevel;
   readonly reason: string;
   readonly unsupportedFeatures?: readonly string[];
+  /** Which `RuleExpression` op produced this node (audit). */
+  readonly expressionKind?: RuleExpression["op"];
+  /** Direct child results for composite nodes (audit / debugging). */
+  readonly childResults?: readonly RuleEvaluationResult[];
+  /** Stable key for terminal nodes (`terminalKey` helper). */
+  readonly terminalKey?: string;
+  /**
+   * When true, parent composites must treat this branch as unknown — never as
+   * legal safety from absence (8.2C-2 conservative rules).
+   */
+  readonly unresolved?: boolean;
 }
