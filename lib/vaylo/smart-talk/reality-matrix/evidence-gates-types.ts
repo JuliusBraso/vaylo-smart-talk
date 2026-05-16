@@ -35,11 +35,32 @@ export interface TextSpan {
   readonly end: number;
 }
 
+/** Provenance for a cue observation (8.2C-3). Never implies automatic detection in this phase. */
+export type CueHitSource = "manual" | "external" | "future_runtime";
+
+/**
+ * CueHit is an observation, not an authorized claim.
+ *
+ * Externally supplied evidence candidate only: the evaluator must not treat presence of a hit
+ * as legal reality, matrix-supported reality, or claim authorization until later gate phases.
+ */
 export interface CueHit {
   readonly cueId: string;
-  readonly span: TextSpan;
-  /** After lane assignment stage (§15). */
-  readonly lane: ProceduralLane | "unassigned";
+  readonly matchedText?: string;
+  /** When set, must already be a valid {@link ProceduralLane}; the normalizer drops unknown values — it does not infer lanes. */
+  readonly lane?: ProceduralLane;
+  readonly confidence?: number;
+  readonly evidenceLevel?: EvidenceLevel;
+  readonly startOffset?: number;
+  readonly endOffset?: number;
+  readonly source?: CueHitSource;
+  readonly notes?: readonly string[];
+  /**
+   * Legacy span (8.2C-1); normalized output prefers `startOffset` / `endOffset`.
+   * Not read from document text by the gate skeleton.
+   */
+  readonly span?: TextSpan;
+  /** @deprecated Prefer `matchedText`; stripped from audit traces to reduce copy leakage. */
   readonly matchedKeyword?: string;
   readonly ocrFragile?: boolean;
 }
@@ -49,8 +70,11 @@ export interface EvidenceGateInput {
   readonly ocrQuality: OcrQualityHint;
   readonly matrixDocumentType: string;
   readonly matrixSchemaVersion: string;
-  /** Precomputed cue hits — produced by future stage 1; may be empty in sketches. */
-  readonly cueHits: readonly CueHit[];
+  /**
+   * Externally supplied cue hits (8.2C-3). Omitted or empty when none are injected.
+   * Never inferred from `documentText` inside `evaluateEvidenceGates`.
+   */
+  readonly cueHits?: readonly CueHit[];
   /**
    * Optional matrix snapshot (8.2C-1+). Skeleton uses only metadata + blocked/forbidden surfaces;
    * does not evaluate evidence rules against text.
@@ -192,6 +216,17 @@ export interface GateAuditTrace {
     readonly safetyPosture: string;
     readonly unsupportedFeatures?: readonly string[];
     readonly notes?: readonly string[];
+    /** Count after `normalizeCueHits` (8.2C-3). */
+    readonly cueHitCount?: number;
+    /** Distinct `cueId` values, first-seen order (8.2C-3). */
+    readonly normalizedCueIds?: readonly string[];
+    /** Distinct `source` values present on normalized hits (8.2C-3). */
+    readonly cueHitSources?: readonly CueHitSource[];
+    /**
+     * How many normalized hits had `matchedText` or `matchedKeyword` before trace redaction
+     * (8.2C-3 — avoids echoing raw snippets in `cueHits`).
+     */
+    readonly matchedTextObservationCount?: number;
   };
 }
 

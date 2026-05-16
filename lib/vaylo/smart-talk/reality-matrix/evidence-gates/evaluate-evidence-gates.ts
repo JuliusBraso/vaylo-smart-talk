@@ -14,6 +14,7 @@ import {
   SKELETON_SAFETY_POSTURE,
   TRACE_STAGE_SKELETON_NO_RUNTIME,
 } from "./constants";
+import { normalizeCueHits } from "./normalize-cue-hits";
 
 function namespacedClaim(claimType: string): NamespacedClaimId {
   return `claim:${claimType}` as NamespacedClaimId;
@@ -24,12 +25,15 @@ function namespacedReality(reality: string): NamespacedRealityId {
 }
 
 /**
- * Evidence Gate evaluator entry point (8.2C-1 **skeleton**).
+ * Evidence Gate evaluator entry point (8.2C-1 **skeleton**, 8.2C-3 cue ingestion).
  *
  * **Conservative default:** no claim is `allowed`. Matrix `allowedClaims` are surfaced only as
- * `uncertain` for traceability — not authorization. No regex, no proximity, no deadline math.
+ * `uncertain` for traceability — not authorization. Injected cue hits are **normalized and traced
+ * only** — never used to allow claims, infer realities, or run regex on `documentText`.
  */
 export function evaluateEvidenceGates(input: EvidenceGateInput): EvidenceGateDecision {
+  const normalizedCueHits = normalizeCueHits(input.cueHits);
+
   const matrixMismatchFlag =
     !!input.matrix &&
     (input.matrix.documentType !== input.matrixDocumentType ||
@@ -74,6 +78,7 @@ export function evaluateEvidenceGates(input: EvidenceGateInput): EvidenceGateDec
 
   const trace = buildGateAuditTrace({
     input,
+    normalizedCueHits,
     claimDecisions: uncertainClaims,
     realityDecisions: blockedRealityRows,
     ruleEvaluations,
@@ -91,10 +96,11 @@ export function evaluateEvidenceGates(input: EvidenceGateInput): EvidenceGateDec
       "forbidden_claim_resolution",
       "trap_engine",
       "severity_precedence_engine",
+      "claim_authorization_from_cue_hits",
     ],
     notes: [
       "Production authorization is INACTIVE.",
-      "Cue hits in input are recorded but not used to allow claims.",
+      `Cue hits (8.2C-3): ${normalizedCueHits.length} normalized; trace lists structural fields only — never used to allow claims.`,
       matrixMismatchFlag
         ? "WARNING: input.matrix documentType/schemaVersion does not match flat fields on EvidenceGateInput."
         : "Matrix snapshot optional; when absent, only flat matrixDocumentType/matrixSchemaVersion are traced.",

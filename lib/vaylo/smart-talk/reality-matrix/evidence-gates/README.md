@@ -61,3 +61,30 @@ See `../EVIDENCE_GATES_SPEC.md` and `../CONSOLIDATION_AUDIT.md`.
 **Conservative composition:** `allOf` and `noneOf` fail if any child is unresolved. `anyOf` can match only when at least one **resolved** child matches positively. `not` fails if the child is unresolved (`unresolved_not_child`). Negative logic must not treat unknown branches as proof of negation.
 
 This phase **does not** wire the walker into production, Smart Talk, or claim authorization; it is a **pure, auditable** building block (`expressionKind`, `childResults`, `terminalKey` on `RuleEvaluationResult` where applicable).
+
+---
+
+## Phase 8.2C-3 — Cue Hit Model + Manual Cue Injection
+
+**Cue hits are externally supplied observations** — not automatic cue detection. There is **no** scanning of `documentText`, **no** regex execution, and **no** Smart Talk wiring in this phase.
+
+Use `normalizeCueHits` from `./normalize-cue-hits` to sanitize arrays before tests or controlled evaluation. Defaults: empty `cueHits` is allowed; missing `source` becomes `"manual"`.
+
+**Cue hit ≠ claim** and **cue hit ≠ legal reality**. Even a high-confidence manual hit must **not** authorize a claim until future gate phases wire rule algebra, proximity, and matrix policy.
+
+`evaluateEvidenceGates` still never emits `disposition: "allowed"` for claims. Matrix `allowedClaims` rows continue to appear only as **`uncertain`**. **`allowedClaims` as an authorization list remains empty** in the sense that nothing is promoted to allowed — the skeleton does not populate supported realities or severity from hits.
+
+Example (Mahnung-style cue id only — still **does not** authorize `enforcement_risk`):
+
+```typescript
+cueHits: [
+  {
+    cueId: "cue_mah_vollstreckung_explicit",
+    lane: "escalation",
+    confidence: 0.95,
+    source: "manual",
+  },
+],
+```
+
+The audit trace lists **structural** cue fields (`cueId`, `lane`, `confidence`, offsets, `source`, `notes`); `matchedText` / `matchedKeyword` are **not** echoed on `trace.cueHits` (see `matchedTextObservationCount` in `traceMetadata`). A fixed note is always appended: `cue_hits_observed_but_not_authorized_in_8_2c_3`.

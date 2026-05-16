@@ -205,6 +205,12 @@ Folder **`evidence-gates/`** exposes **`evaluateEvidenceGates`**, **`evaluateRul
 
 ---
 
+## Phase 8.2C-3 — Cue Hit Model + Manual Cue Injection
+
+**Evidence input layer:** typed `CueHit`, optional `cueHits` on `EvidenceGateInput`, and `normalizeCueHits` ingest **manual / external** observations only — **no** OCR text scanning, **no** regex, **no** automatic claim authorization. Traces expose counts and cue ids; **supportedRealities** and **allowed** claim dispositions are still not driven from hits. Prepares lane binding, proximity, and full gate execution in later phases.
+
+---
+
 ## File map
 
 | File | Purpose |

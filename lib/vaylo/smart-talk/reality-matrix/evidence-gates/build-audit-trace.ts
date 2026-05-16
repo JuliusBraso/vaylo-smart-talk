@@ -1,5 +1,7 @@
 import type {
   ClaimAuthorization,
+  CueHit,
+  CueHitSource,
   EvidenceGateInput,
   GateAuditTrace,
   RealityAuthorization,
@@ -17,6 +19,8 @@ import {
 
 export interface BuildGateAuditTraceParams {
   readonly input: EvidenceGateInput;
+  /** Sanitized hits (8.2C-3); trace rows omit matched text fields. */
+  readonly normalizedCueHits: readonly CueHit[];
   readonly claimDecisions: readonly ClaimAuthorization[];
   readonly realityDecisions: readonly RealityAuthorization[];
   readonly ruleEvaluations: readonly RuleEvaluationRecord[];
@@ -28,16 +32,69 @@ export interface BuildGateAuditTraceParams {
   readonly notes: readonly string[];
 }
 
+const CUE_OBSERVATION_NOTE = "cue_hits_observed_but_not_authorized_in_8_2c_3";
+
+function uniqueCueIdsInOrder(hits: readonly CueHit[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const h of hits) {
+    if (seen.has(h.cueId)) continue;
+    seen.add(h.cueId);
+    out.push(h.cueId);
+  }
+  return out;
+}
+
+function uniqueSourcesSorted(hits: readonly CueHit[]): CueHitSource[] {
+  const seen = new Set<CueHitSource>();
+  for (const h of hits) {
+    seen.add(h.source ?? "manual");
+  }
+  return [...seen].sort();
+}
+
+function countMatchedTextObservations(hits: readonly CueHit[]): number {
+  let n = 0;
+  for (const h of hits) {
+    if (h.matchedText !== undefined && h.matchedText.length > 0) n += 1;
+  }
+  return n;
+}
+
+/** Avoid echoing OCR-adjacent snippets in the trace while keeping structural fields. */
+function cueHitForTrace(hit: CueHit): CueHit {
+  return {
+    cueId: hit.cueId,
+    source: hit.source ?? "manual",
+    ...(hit.lane !== undefined ? { lane: hit.lane } : {}),
+    ...(hit.confidence !== undefined ? { confidence: hit.confidence } : {}),
+    ...(hit.evidenceLevel !== undefined ? { evidenceLevel: hit.evidenceLevel } : {}),
+    ...(hit.startOffset !== undefined ? { startOffset: hit.startOffset } : {}),
+    ...(hit.endOffset !== undefined ? { endOffset: hit.endOffset } : {}),
+    ...(hit.notes !== undefined && hit.notes.length > 0 ? { notes: hit.notes } : {}),
+    ...(hit.ocrFragile !== undefined ? { ocrFragile: hit.ocrFragile } : {}),
+  };
+}
+
 /**
  * Assembles a `GateAuditTrace` for the evaluator skeleton.
  * Every evaluation path must produce a trace — even when all authorizations are empty.
  */
 export function buildGateAuditTrace(params: BuildGateAuditTraceParams): GateAuditTrace {
+  const normalized = params.normalizedCueHits;
+  const cueHitsForTrace = normalized.map(cueHitForTrace);
+  const cueHitCount = normalized.length;
+  const normalizedCueIds = uniqueCueIdsInOrder(normalized);
+  const cueHitSources = uniqueSourcesSorted(normalized);
+  const matchedTextObservationCount = countMatchedTextObservations(normalized);
+
+  const traceNotes = [...params.notes, CUE_OBSERVATION_NOTE];
+
   return {
     matrixDocumentType: params.input.matrixDocumentType,
     matrixSchemaVersion: params.input.matrixSchemaVersion,
     matrixMismatchFlag: params.matrixMismatchFlag,
-    cueHits: params.input.cueHits,
+    cueHits: cueHitsForTrace,
     ruleEvaluations: params.ruleEvaluations,
     claimDecisions: params.claimDecisions,
     realityDecisions: params.realityDecisions,
@@ -48,12 +105,17 @@ export function buildGateAuditTrace(params: BuildGateAuditTraceParams): GateAudi
       evaluatorVersion: EVIDENCE_GATE_EVALUATOR_VERSION,
       stages: [
         "input_validation",
+        "cue_hits_normalized",
         TRACE_STAGE_SKELETON_NO_RUNTIME,
         "audit_trace_assembled",
       ],
       safetyPosture: SKELETON_SAFETY_POSTURE,
       unsupportedFeatures: params.unsupportedFeatures,
-      notes: params.notes,
+      notes: traceNotes,
+      cueHitCount,
+      normalizedCueIds,
+      cueHitSources,
+      matchedTextObservationCount,
     },
   };
 }
