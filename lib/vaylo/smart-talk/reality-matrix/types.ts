@@ -74,11 +74,19 @@ export type ClaimType = (typeof KNOWN_CLAIM_TYPES)[number];
 export const REALITY_TYPE_VALUES = [
   "invoice_issued",
   "payment_due",
+  "tax_payment_due",
+  "tax_refund_due",
   "payment_scheduled",
   "direct_debit_scheduled",
   "informational_payment_notice",
   "recurring_contribution_notice",
+  "tax_assessment_issued",
+  "official_decision_issued",
   "tax_decision_issued",
+  "tax_calculation_present",
+  "provisional_tax_assessment",
+  "amended_tax_assessment",
+  "legal_remedy_information_present",
   "reminder_notice",
   "appeal_window_exists",
   "informational_notice",
@@ -90,7 +98,11 @@ export const REALITY_TYPE_VALUES = [
   "criminal_investigation",
   "immigration_risk",
   "benefit_suspension",
+  "jobcenter_sanction",
   "active_sanction",
+  "insurance_risk",
+  "final_unappealable_decision",
+  "tax_fraud_established",
   "unknown",
 ] as const;
 
@@ -166,6 +178,16 @@ export const HALLUCINATION_TRAP_KINDS = [
   "informational_notice_to_threat",
   "insurance_notice_to_claim_event",
   "generic_due_date_to_penalty",
+  /** Steuerbescheid / Finanzamt assessment (Phase 8.2B-2). */
+  "bescheid_date_to_appeal_deadline",
+  "payment_deadline_to_appeal_deadline",
+  "appeal_deadline_to_payment_deadline",
+  "rechtsbehelfsbelehrung_to_active_threat",
+  "steuerbescheid_to_enforcement",
+  "tax_assessment_to_criminal_case",
+  "refund_payment_confusion",
+  "finanzamt_to_jobcenter_confusion",
+  "provisional_to_final_decision",
 ] as const;
 
 export type HallucinationTrapKind = (typeof HALLUCINATION_TRAP_KINDS)[number];

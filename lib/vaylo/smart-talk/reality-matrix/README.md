@@ -121,6 +121,31 @@ The first **concrete** matrix is `matrices/rechnung.ts` → **`RECHNUNG_REALITY_
 
 ---
 
+## Phase 8.2B-2 — Steuerbescheid matrix
+
+The second concrete matrix is `matrices/steuerbescheid.ts` → **`STEUERBESCHEID_REALITY_MATRIX`** (`documentType: "steuerbescheid"`). It follows Rechnung because it **raises the difficulty**: official **Festsetzung**, **Nachzahlung vs Erstattung**, **Einspruch** / **Rechtsbehelfsbelehrung**, **relative Fristen**, and **vorläufig** language — the same areas where models most often **fabricate dates** or **merge lanes**.
+
+**Risks this matrix is designed to validate**
+
+- **Payment vs appeal lane isolation** (`payment`, `appeal`, `informational`, `submission`) with explicit anti-commutation traps.
+- **Deadline safety** encoded as evidence-rule labels + traps: no synthesis of **innerhalb eines Monats nach Bekanntgabe** into a calendar day; **Ausstellungsdatum / Steuerjahr** are not Fristen.
+- **Blocked realities** for enforcement, criminal, court, immigration, Jobcenter, insurance, **final unappealable** claims, and **tax fraud** — a normal Bescheid with remedy boilerplate must not become those worlds.
+- **`forbiddenClaims`** drops `enforcement_risk`, cross-domain risks, and `appointment_required` (not asserted from this matrix v1).
+
+**Deadline safety model (declarative)**
+
+- **Explicit payment date** → only `ev_stb_deadline_payment_explicit` (payment lane, cue-grounding deferred to 8.2C).
+- **Relative appeal window** → only `ev_stb_deadline_appeal_relative` (appeal lane, contextual evidence; **no synthetic end date** in copy — enforced conceptually via traps + stabilizers).
+- **Rechtsbehelfsbelehrung** → informational / appeal calm, not “active threat” (trap `rechtsbehelfsbelehrung_to_active_threat`).
+
+**Known limitations**
+
+- `severityRules` includes a **high** ceiling rule for rare explicit serious collection language; **8.2C** must prove token presence — the matrix only reserves the band.
+- **Überweisung / IBAN** on tax letters is not modeled as `payment_method_manual` (forbidden list removed); payment channel taxonomy may need a later `ClaimType` if product asks for it.
+- **OR paths** for `tax_assessment_issued` mirror Rechnung (two evidence rules); disjunctive evaluation remains **undefined at runtime**.
+
+---
+
 ## File map
 
 | File | Purpose |
@@ -128,6 +153,7 @@ The first **concrete** matrix is `matrices/rechnung.ts` → **`RECHNUNG_REALITY_
 | `types.ts` | Ontology: `EvidenceLevel`, lanes, claims, realities, cues, rules, traps, stabilizers, severity, `UniversalDocumentRealityMatrix`. |
 | `template.ts` | `UNIVERSAL_REALITY_MATRIX_TEMPLATE` + small example lane exports. |
 | `matrices/rechnung.ts` | **`RECHNUNG_REALITY_MATRIX`** — first production-shaped payment-notice matrix. |
+| `matrices/steuerbescheid.ts` | **`STEUERBESCHEID_REALITY_MATRIX`** — tax assessment / Finanzamt Bescheid matrix. |
 | `matrices/index.ts` | Re-exports concrete matrices (no runtime registry). |
 | `README.md` | Architecture and safety rationale (this file). |
 
