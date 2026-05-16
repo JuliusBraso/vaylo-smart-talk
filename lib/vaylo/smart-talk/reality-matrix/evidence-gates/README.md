@@ -7,6 +7,7 @@ A **pure-function** package under `reality-matrix/evidence-gates/` that introduc
 - `evaluateEvidenceGates` — entry point returning `EvidenceGateDecision` + **mandatory** `GateAuditTrace`
 - `evaluateRuleExpression` — partial **rule algebra** only (no document access)
 - `resolveEvidenceRules` — matrix `EvidenceRule[]` vs normalized `CueHit[]` (8.2C-4, observational only)
+- `resolveClaimRules` — matrix `ClaimRule[]` vs resolved evidence rules (8.2C-5 **dry-run** only)
 - `buildGateAuditTrace` — assembles trace metadata for debugging
 
 This is **not** full Evidence Gates. It is a **conservative runtime skeleton** so later stages can grow inside a stable module boundary.
@@ -101,3 +102,13 @@ The audit trace lists **structural** cue fields (`cueId`, `lane`, `confidence`, 
 **Gates:** `minimumEvidenceLevel` on the rule applies to each required hit’s `evidenceLevel`; hits **without** `evidenceLevel` cannot satisfy a rule. Optional matrix field `minConfidence` (`MatrixConfidenceFloor`) requires every required hit to declare numeric `confidence` meeting that floor. If `allowedLanes` is non-empty, each required hit must declare `lane` ∈ `allowedLanes` — **no lane inference** from text or `cueId`.
 
 **Not in this phase:** proximity, regex, `documentText` scanning, traps, stabilizers, severity from matches, `supportedRealities`, or changing claim rows from **`uncertain`** to **`allowed`**. When rules match, `evaluateEvidenceGates` still returns the same conservative claim posture; the trace adds `evidenceRuleResolutionResults`, `ruleEvaluations` pass/fail rows, and metadata (`evidenceRuleEvaluationCount`, `matchedEvidenceRuleIds`, `unmatchedEvidenceRuleIds`, `missingCueSummary`) plus the note `evidence_rules_resolved_but_claims_not_authorized_in_8_2c_4`.
+
+---
+
+## Phase 8.2C-5 — Claim Authorization Dry Run v1
+
+`resolveClaimRules({ claimRules, evidenceRuleResults, forbiddenClaimTypes? })` returns **`{ authorizations, unsupportedFeatures }`** — each authorization uses `disposition` **`candidate_allowed` | `candidate_blocked` | `candidate_uncertain`**, always with **`dryRun: true`**. This is **audit / simulation only**: no Smart Talk wiring, no user-visible explanations, no production `allowed` in `trace.claimDecisions`.
+
+**Semantics:** `requiredEvidenceRuleIds` on an allowed `ClaimRule` are **AND**-only; **OR** remains **duplicate `ClaimRule` rows** on the matrix. `ClaimRule.allowed === false` → `candidate_blocked` + `dryRunReason: "claim_rule_forbidden_by_matrix"`. Missing / unmatched required evidence → `candidate_uncertain` + `required_evidence_rules_not_satisfied`. Satisfied path still requires non-speculative evidence levels on matched rules and `ClaimRule.minimumConfidence` vs the **minimum** confidence among those rules — otherwise `candidate_uncertain`. **`blockedBy`:** conservative fixpoint over `candidate_allowed` peers; `forbiddenClaims` entries block peers; unresolved `blockedBy` targets (no `ClaimRule` row) → `candidate_uncertain` + `unsupportedFeatures` entries.
+
+**Trace:** `dryRunClaimAuthorizations` plus `traceMetadata` (`claimAuthorizationDryRunCount`, `candidateAllowedClaimIds`, …) and note `claim_authorization_dry_run_only_not_user_visible_in_8_2c_5`. **`trace.claimDecisions`** stays **`uncertain`** for matrix-allowed claim types only — **never** `allowed`. Proximity is still **not** implemented.

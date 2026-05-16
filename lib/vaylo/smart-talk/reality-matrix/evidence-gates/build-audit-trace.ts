@@ -24,6 +24,10 @@ export interface BuildGateAuditTraceParams {
   readonly normalizedCueHits: readonly CueHit[];
   /** When set (8.2C-4), merged into trace + metadata; does not authorize claims. */
   readonly evidenceRuleResolutionResults?: readonly RuleEvaluationResult[];
+  /**
+   * Claim-rule dry-run only (8.2C-5). Never production `allowed` / Smart Talk output.
+   */
+  readonly dryRunClaimAuthorizations?: readonly ClaimAuthorization[];
   readonly claimDecisions: readonly ClaimAuthorization[];
   readonly realityDecisions: readonly RealityAuthorization[];
   readonly ruleEvaluations: readonly RuleEvaluationRecord[];
@@ -37,6 +41,7 @@ export interface BuildGateAuditTraceParams {
 
 const CUE_OBSERVATION_NOTE = "cue_hits_observed_but_not_authorized_in_8_2c_3";
 const EVIDENCE_RULES_OBSERVATION_NOTE = "evidence_rules_resolved_but_claims_not_authorized_in_8_2c_4";
+const CLAIM_DRY_RUN_NOTE = "claim_authorization_dry_run_only_not_user_visible_in_8_2c_5";
 
 function uniqueCueIdsInOrder(hits: readonly CueHit[]): string[] {
   const seen = new Set<string>();
@@ -73,6 +78,21 @@ function buildMissingCueSummary(results: readonly RuleEvaluationResult[]): strin
   return [...s].sort();
 }
 
+function dryRunClaimMetadata(auths: readonly ClaimAuthorization[]) {
+  return {
+    claimAuthorizationDryRunCount: auths.length,
+    candidateAllowedClaimIds: auths
+      .filter((a) => a.disposition === "candidate_allowed")
+      .map((a) => a.namespaceId),
+    candidateBlockedClaimIds: auths
+      .filter((a) => a.disposition === "candidate_blocked")
+      .map((a) => a.namespaceId),
+    candidateUncertainClaimIds: auths
+      .filter((a) => a.disposition === "candidate_uncertain")
+      .map((a) => a.namespaceId),
+  };
+}
+
 /** Avoid echoing OCR-adjacent snippets in the trace while keeping structural fields. */
 function cueHitForTrace(hit: CueHit): CueHit {
   return {
@@ -106,6 +126,11 @@ export function buildGateAuditTrace(params: BuildGateAuditTraceParams): GateAudi
     traceNotes.push(EVIDENCE_RULES_OBSERVATION_NOTE);
   }
 
+  const dryRuns = params.dryRunClaimAuthorizations;
+  if (dryRuns !== undefined) {
+    traceNotes.push(CLAIM_DRY_RUN_NOTE);
+  }
+
   const resolutionMeta =
     resolution !== undefined
       ? {
@@ -116,6 +141,8 @@ export function buildGateAuditTrace(params: BuildGateAuditTraceParams): GateAudi
         }
       : {};
 
+  const dryRunMeta = dryRuns !== undefined ? dryRunClaimMetadata(dryRuns) : {};
+
   return {
     matrixDocumentType: params.input.matrixDocumentType,
     matrixSchemaVersion: params.input.matrixSchemaVersion,
@@ -123,6 +150,7 @@ export function buildGateAuditTrace(params: BuildGateAuditTraceParams): GateAudi
     cueHits: cueHitsForTrace,
     ruleEvaluations: params.ruleEvaluations,
     ...(resolution !== undefined ? { evidenceRuleResolutionResults: resolution } : {}),
+    ...(dryRuns !== undefined ? { dryRunClaimAuthorizations: dryRuns } : {}),
     claimDecisions: params.claimDecisions,
     realityDecisions: params.realityDecisions,
     traps: params.traps,
@@ -134,6 +162,7 @@ export function buildGateAuditTrace(params: BuildGateAuditTraceParams): GateAudi
         "input_validation",
         "cue_hits_normalized",
         ...(resolution !== undefined ? (["evidence_rules_resolved"] as const) : []),
+        ...(dryRuns !== undefined ? (["claim_authorization_dry_run"] as const) : []),
         TRACE_STAGE_SKELETON_NO_RUNTIME,
         "audit_trace_assembled",
       ],
@@ -145,6 +174,7 @@ export function buildGateAuditTrace(params: BuildGateAuditTraceParams): GateAudi
       cueHitSources,
       matchedTextObservationCount,
       ...resolutionMeta,
+      ...dryRunMeta,
     },
   };
 }

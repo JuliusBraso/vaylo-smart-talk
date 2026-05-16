@@ -130,7 +130,14 @@ export interface RuleExpressionEvaluationContext {
 // Output / decisions (§3)
 // ---------------------------------------------------------------------------
 
-export type ClaimDisposition = "allowed" | "blocked" | "uncertain";
+export type ClaimDisposition =
+  | "allowed"
+  | "blocked"
+  | "uncertain"
+  /** Dry-run only (8.2C-5) — not production authorization. */
+  | "candidate_allowed"
+  | "candidate_blocked"
+  | "candidate_uncertain";
 
 export type BlockReasonCode =
   | "forbidden_list"
@@ -146,7 +153,11 @@ export type BlockReasonCode =
   /** Evaluator skeleton: no claim may be treated as authorized until full pipeline exists. */
   | "skeleton_no_runtime_authorization"
   /** Reality listed in matrix.blockedRealities — not assertable for this document class. */
-  | "matrix_blocked_surface";
+  | "matrix_blocked_surface"
+  /** Claim-rule dry-run (8.2C-5) — not user-visible production authorization. */
+  | "dry_run_candidate_blocked"
+  /** Dry-run: required evidence included speculative-only path (8.2C-5). */
+  | "speculative_evidence_not_authorizing";
 
 export interface ClaimAuthorization {
   readonly namespaceId: NamespacedClaimId;
@@ -154,6 +165,16 @@ export interface ClaimAuthorization {
   readonly satisfiedRuleIds?: readonly string[];
   readonly blockReason?: BlockReasonCode;
   readonly notes?: string;
+  /**
+   * When true, this row is **audit / simulation only** (8.2C-5) — not production Smart Talk output.
+   */
+  readonly dryRun?: boolean;
+  /** Machine-oriented dry-run reason (8.2C-5); not a user-facing explanation. */
+  readonly dryRunReason?: string;
+  /** Dry-run aggregate confidence from satisfied evidence rules (8.2C-5). */
+  readonly confidence?: number;
+  /** Weakest evidence level among satisfied required evidence rules (8.2C-5). */
+  readonly evidenceLevel?: EvidenceLevel;
 }
 
 export interface RealityAuthorization {
@@ -204,6 +225,11 @@ export interface GateAuditTrace {
   readonly ruleEvaluations: readonly RuleEvaluationRecord[];
   /** Rich per-rule rows from `resolveEvidenceRules` (8.2C-4); claim authorization remains inactive. */
   readonly evidenceRuleResolutionResults?: readonly RuleEvaluationResult[];
+  /**
+   * Claim-rule **dry-run** only (8.2C-5): `candidate_*` dispositions + `dryRun: true` — never treat as
+   * production-allowed claims or Smart Talk output.
+   */
+  readonly dryRunClaimAuthorizations?: readonly ClaimAuthorization[];
   readonly claimDecisions: readonly ClaimAuthorization[];
   readonly realityDecisions: readonly RealityAuthorization[];
   readonly traps: readonly TrapActivation[];
@@ -237,6 +263,14 @@ export interface GateAuditTrace {
     readonly unmatchedEvidenceRuleIds?: readonly string[];
     /** Distinct required cue ids that were missing across failed rules (8.2C-4). */
     readonly missingCueSummary?: readonly string[];
+    /** Count of claim-rule dry-run rows (8.2C-5). */
+    readonly claimAuthorizationDryRunCount?: number;
+    /** `claim:*` ids with dry-run `candidate_allowed` (8.2C-5). */
+    readonly candidateAllowedClaimIds?: readonly string[];
+    /** `claim:*` ids with dry-run `candidate_blocked` (8.2C-5). */
+    readonly candidateBlockedClaimIds?: readonly string[];
+    /** `claim:*` ids with dry-run `candidate_uncertain` (8.2C-5). */
+    readonly candidateUncertainClaimIds?: readonly string[];
   };
 }
 

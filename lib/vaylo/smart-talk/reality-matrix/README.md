@@ -217,6 +217,12 @@ Matrix **`EvidenceRule`** rows are evaluated against normalized **`CueHit`**s vi
 
 ---
 
+## Phase 8.2C-5 — Claim Authorization Dry Run v1
+
+`resolveClaimRules` evaluates **`ClaimRule`** rows against **`RuleEvaluationResult[]`** from evidence resolution — **`candidate_*` dispositions**, **`dryRun: true`**, trace-only (`dryRunClaimAuthorizations`). **No** production `allowed` in `claimDecisions`, **no** Smart Talk, **no** user-visible claim emission. OR remains duplicate claim rows; proximity still future work.
+
+---
+
 ## File map
 
 | File | Purpose |
