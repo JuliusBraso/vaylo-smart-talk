@@ -236,6 +236,182 @@ function dateTokenOccurrenceCueGroundedInSource(token: string, source: string): 
   return false;
 }
 
+type ProceduralAttributionIntent = "appeal" | "payment" | "appointment" | "submission";
+
+/** Generated-side window around each calendar token for coarse intent (Phase 7.9B). */
+const GENERATED_ATTRIBUTION_RADIUS_CHARS = 110;
+
+/** Source-side cues near the date occurrence that must match generated intent (case-insensitive). */
+const SOURCE_APPEAL_ATTRIBUTION_CUES: readonly string[] = [
+  "einspruch",
+  "widerspruch",
+  "rechtsbehelf",
+  "rechtsbehelfsbelehrung",
+  "innerhalb",
+  "bekanntgabe",
+];
+
+const SOURCE_PAYMENT_ATTRIBUTION_CUES: readonly string[] = [
+  "zahlen",
+  "zahlung",
+  "zahlbar",
+  "fällig",
+  "fallig",
+  "faellig",
+  "fälligkeit",
+  "falligkeit",
+  "faelligkeit",
+  "spätestens",
+  "spaetestens",
+  "bis zum",
+  "säumnis",
+  "saumnis",
+  "säumniszuschlag",
+  "saumniszuschlag",
+];
+
+const SOURCE_SUBMISSION_ATTRIBUTION_CUES: readonly string[] = [
+  "unterlagen",
+  "nachweis",
+  "einreichen",
+  "nachreichen",
+  "mitwirkung",
+];
+
+const SOURCE_APPOINTMENT_ATTRIBUTION_CUES: readonly string[] = ["termin", "vorsprache", "erscheinen"];
+
+function sourceSliceMatchesAttributionIntent(slice: string, intent: ProceduralAttributionIntent): boolean {
+  const n = slice.toLowerCase();
+  const lists: Record<ProceduralAttributionIntent, readonly string[]> = {
+    appeal: SOURCE_APPEAL_ATTRIBUTION_CUES,
+    payment: SOURCE_PAYMENT_ATTRIBUTION_CUES,
+    submission: SOURCE_SUBMISSION_ATTRIBUTION_CUES,
+    appointment: SOURCE_APPOINTMENT_ATTRIBUTION_CUES,
+  };
+  return lists[intent].some((cue) => n.includes(cue.toLowerCase()));
+}
+
+function tokenOccurrenceMatchesAttributionIntent(
+  token: string,
+  source: string,
+  intent: ProceduralAttributionIntent,
+): boolean {
+  let from = 0;
+  while (from <= source.length) {
+    const i = source.indexOf(token, from);
+    if (i === -1) break;
+    const start = Math.max(0, i - DEADLINE_CUE_WINDOW_CHARS);
+    const end = Math.min(source.length, i + token.length + DEADLINE_CUE_WINDOW_CHARS);
+    if (sourceSliceMatchesAttributionIntent(source.slice(start, end), intent)) return true;
+    from = i + 1;
+  }
+  return false;
+}
+
+function dominantAttributionIntentAt(
+  generated: string,
+  dateStartIdx: number,
+  dateLen: number,
+): ProceduralAttributionIntent | null {
+  const ctxStart = Math.max(0, dateStartIdx - GENERATED_ATTRIBUTION_RADIUS_CHARS);
+  const ctxEnd = Math.min(generated.length, dateStartIdx + dateLen + GENERATED_ATTRIBUTION_RADIUS_CHARS);
+  const slice = generated.slice(ctxStart, ctxEnd);
+  const center = dateStartIdx + dateLen / 2;
+
+  const configs: Array<{ intent: ProceduralAttributionIntent; re: RegExp }> = [
+    {
+      intent: "appeal",
+      re: /\b(odvolanie|odvolania|odvolaní|einspruch|námietka|namietka|widerspruch|rechtsbehelf)\b/giu,
+    },
+    {
+      intent: "payment",
+      re: /\b(zaplatiť|zaplatit|zahlung|zahlen|fällig|faellig|splatné|splátne|splátka|nedoplatok|úhrada|uhrada|zahlungsbetrag)\b/giu,
+    },
+    {
+      intent: "appointment",
+      re: /\b(termín|termin)\b/giu,
+    },
+    {
+      intent: "submission",
+      re: /\b(doložiť|dolozit|unterlagen|nachreichung|mitwirkung|nachreichen|einreichen|einzureichen)\b/giu,
+    },
+  ];
+
+  let bestDist = Infinity;
+  let bestIntent: ProceduralAttributionIntent | null = null;
+
+  for (const { intent, re } of configs) {
+    const r = new RegExp(re.source, "giu");
+    let m: RegExpExecArray | null;
+    while ((m = r.exec(slice)) !== null) {
+      const ms = m.index ?? 0;
+      const kwCenter = ctxStart + ms + m[0].length / 2;
+      const dist = Math.abs(center - kwCenter);
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestIntent = intent;
+      }
+    }
+  }
+
+  return bestIntent;
+}
+
+function attributionFailureReplacement(locale: SmartTalkLocale | undefined, source: string): string {
+  const srcLower = source.toLowerCase();
+  const hasRelativeMonthWindow =
+    srcLower.includes("innerhalb eines monats") ||
+    srcLower.includes("nach bekanntgabe") ||
+    srcLower.includes("nach bekannmachung");
+
+  if (locale === "de") {
+    return hasRelativeMonthWindow
+      ? "innerhalb eines Monats nach Bekanntgabe (wie im Dokument angegeben)"
+      : "innerhalb der im Dokument genannten Frist";
+  }
+  if (locale === "en") {
+    return hasRelativeMonthWindow
+      ? "within one month of notification of the decision (as stated in the document)"
+      : "within the deadline stated in the document";
+  }
+  return hasRelativeMonthWindow ? "do jedného mesiaca od doručenia rozhodnutia" : "v lehote uvedenej v poučení";
+}
+
+function concreteDateGroundingDecision(
+  match: string,
+  offset: number,
+  fullGenerated: string,
+  source: string,
+): { keep: boolean; dominantIntent: ProceduralAttributionIntent | null } {
+  if (!source.includes(match)) return { keep: false, dominantIntent: null };
+  const dominantIntent = dominantAttributionIntentAt(fullGenerated, offset, match.length);
+  if (dominantIntent !== null) {
+    return {
+      keep: tokenOccurrenceMatchesAttributionIntent(match, source, dominantIntent),
+      dominantIntent,
+    };
+  }
+  return {
+    keep: calendarTokensProceduralCueGroundedInSource(match, source),
+    dominantIntent: null,
+  };
+}
+
+function itemCalendarTokensGrounded(item: string, source: string): boolean {
+  if (!source.trim()) return true;
+  const pairs: Array<{ match: string; offset: number }> = [];
+  const euRe = /\b\d{1,2}\.\d{1,2}\.\d{4}\b/g;
+  let em: RegExpExecArray | null;
+  while ((em = euRe.exec(item)) !== null) {
+    pairs.push({ match: em[0], offset: em.index });
+  }
+  const isoRe = /\b\d{4}-\d{2}-\d{2}\b/g;
+  while ((em = isoRe.exec(item)) !== null) {
+    pairs.push({ match: em[0], offset: em.index });
+  }
+  return pairs.every(({ match, offset }) => concreteDateGroundingDecision(match, offset, item, source).keep);
+}
+
 /**
  * Model output passes if it has no calendar tokens, OR every DD.MM.YYYY / ISO date
  * in the item occurs in source near a procedural cue (7.8C).
@@ -250,7 +426,7 @@ function calendarTokensProceduralCueGroundedInSource(item: string, source: strin
 
 function filterArrayByProceduralCalendarGrounding(items: string[], source: string): string[] {
   if (!source.trim()) return items;
-  return items.filter((s) => calendarTokensProceduralCueGroundedInSource(s, source));
+  return items.filter((s) => itemCalendarTokensGrounded(s, source));
 }
 
 function proceduralDateReplacementPhrase(locale: SmartTalkLocale | undefined): string {
@@ -260,8 +436,7 @@ function proceduralDateReplacementPhrase(locale: SmartTalkLocale | undefined): s
 }
 
 /**
- * Phase 7.8D: Replace DD.MM.YYYY / ISO dates in model prose when not cue-grounded
- * in source (same strict rule as filterArrayByProceduralCalendarGrounding).
+ * Phase 7.8D + 7.9B: Replace concrete dates when cue-grounding or procedural attribution fails.
  */
 function sanitizeProceduralDateProse(
   text: string,
@@ -269,16 +444,36 @@ function sanitizeProceduralDateProse(
   locale?: SmartTalkLocale,
 ): string {
   if (!text || !source.trim()) return text;
-  const replacement = proceduralDateReplacementPhrase(locale);
-  const euRe = /\b\d{1,2}\.\d{1,2}\.\d{4}\b/g;
-  let out = text.replace(euRe, (match) =>
-    calendarTokensProceduralCueGroundedInSource(match, source) ? match : replacement,
-  );
-  const isoRe = /\b\d{4}-\d{2}-\d{2}\b/g;
-  out = out.replace(isoRe, (match) =>
-    calendarTokensProceduralCueGroundedInSource(match, source) ? match : replacement,
-  );
-  return out;
+
+  const replaceMatch = (match: string, offset: number): string => {
+    const { keep, dominantIntent } = concreteDateGroundingDecision(match, offset, text, source);
+    if (keep) return match;
+    if (dominantIntent !== null) return attributionFailureReplacement(locale, source);
+    return proceduralDateReplacementPhrase(locale);
+  };
+
+  let accum = "";
+  let last = 0;
+  const euPass = /\b\d{1,2}\.\d{1,2}\.\d{4}\b/g;
+  let em: RegExpExecArray | null;
+  while ((em = euPass.exec(text)) !== null) {
+    accum += text.slice(last, em.index);
+    accum += replaceMatch(em[0], em.index);
+    last = em.index + em[0].length;
+  }
+  accum += text.slice(last);
+  text = accum;
+
+  accum = "";
+  last = 0;
+  const isoPass = /\b\d{4}-\d{2}-\d{2}\b/g;
+  while ((em = isoPass.exec(text)) !== null) {
+    accum += text.slice(last, em.index);
+    accum += replaceMatch(em[0], em.index);
+    last = em.index + em[0].length;
+  }
+  accum += text.slice(last);
+  return accum;
 }
 
 function sanitizeStringArrayFields(

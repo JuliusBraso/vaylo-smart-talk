@@ -42,12 +42,23 @@ const SEMANTIC_LOCALIZATION_RULES = [
   "Prefer natural modality matching the source: use measured wording (možné, treba / je potrebné, môže vzniknúť len ak to text uvádza). Prefer formulations such as Odvolanie je možné podať… over stiff must-heavy calques unless the letter clearly states a strict MUST requirement.",
 ].join(" ");
 
+/**
+ * Phase 7.9B — procedural semantic attribution: calendar tokens must match the claimed action in source.
+ */
+const PROCEDURAL_ATTRIBUTION_RULES = [
+  "Procedural semantic attribution (Phase 7.9B): A printed DD.MM.YYYY / ISO date may appear somewhere in OCR without belonging to the appeal (Einspruch/Widerspruch), payment, filing, hearing, or enforcement rule you are explaining.",
+  "Never attach a concrete calendar date to Einspruch/appeal/Widerspruch unless the transcript explicitly ties THAT date to the appeal/objection deadline—not merely because another unrelated date appears elsewhere.",
+  "When the letter states innerhalb eines Monats nach Bekanntgabe or similar relative windows, keep relative Slovak/German wording (e.g. one month from doručenie/Bekanntgabe)—never synthesize an end day from Ausstellungsdatum, letter date, or Steuerjahr.",
+  "Separate lanes clearly: payment due dates vs appeal/objection deadlines vs Steuerjahr vs Ausstellung/document dates vs unrelated Kontoauszug dates; do not reuse or commute them.",
+  "If attribution between date and obligation/right is unclear, prefer Phase 7.8 safe Slovak phrases (v lehote uvedenej v poučení / dokumente) or stay relative exactly as printed.",
+].join(" ");
+
 /** Phase 7.8: procedural extraction — concise; no invention of rights/deadlines/penalties. */
 const PROCEDURAL_REASONING_RULES =
   "Procedural intelligence (7.8; ground strictly in source; not a lawyer): meaning should explain what kind of procedural situation this is (information vs obligation vs appeal window vs payment duty), weaving explicit deadlines and rights/obligations when stated—without fear amplification or dramatic legal claims.\n" +
   "OCR procedural grounding (Phase 7.8C–D): Transcripts may misread digits or contain dates that belong to Kontoauszug/Überschrift rather than Pflicht—they are frequent false anchors. Never copy a stray DD.MM.YYYY into summary, meaning, stabilizers[], deadlines, nextSteps, warnings, obligations, or consequences as authoritative unless that exact substring appears in the source close to deadline/payment/appeal wording (e.g. Frist, innerhalb … Bekanntgabe, zahlbar, spätestens, Einspruch, Mahnung)—same cue-window rule the backend enforces.\n" +
   "Literal-first deadlines (7.8B — legal safety): deadlines[] MUST list only wording that is explicitly present or a direct short paraphrase of a printed rule (e.g. innerhalb eines Monats nach Bekanntgabe). NEVER calculate a calendar date from document date, postal delivery assumptions, notification assumptions, or issue date. NEVER convert relative windows into DD.MM.YYYY. If only a relative window is printed, store that phrase—not a synthesized end date. If tied to Bekanntgabe/Zugang without a calendar day, explain in meaning that the countdown runs from notification—NOT a fabricated date.\n" +
-  "Phase 7.8D prose calendar guard: User-visible prose must obey the same literal calendar-date rule as deadlines[] — no DD.MM.YYYY or YYYY-MM-DD in summary/meaning/stabilizers or array bullets unless that exact token appears in the source near procedural/payment cues. Paraphrase relative windows relatively (e.g. Slovak roughly \"do jedného mesiaca od doručenia rozhodnutia\" when the German text ties the Frist to Bekanntgabe)—never synthesize an end day. If you cannot safely anchor a calendar day, use Slovak \"v lehote uvedenej v dokumente\" / \"v lehote uvedenej v poučení\", German \"innerhalb der im Dokument genannten Frist\", English \"within the deadline stated in the document\".\n" +
+  "Phase 7.8D prose calendar guard: User-visible prose must obey the same literal calendar-date rule as deadlines[] — no DD.MM.YYYY or YYYY-MM-DD in summary/meaning/stabilizers or array bullets unless that exact token appears in the source near procedural/payment cues AND Phase 7.9B attribution matches (same date must belong to the same action lane—appeal vs payment vs filing vs Termin—not borrowed from elsewhere). Paraphrase relative windows relatively (e.g. Slovak roughly \"do jedného mesiaca od doručenia rozhodnutia\" when the German text ties the Frist to Bekanntgabe)—never synthesize an end day. If you cannot safely anchor a calendar day, use Slovak \"v lehote uvedenej v dokumente\" / \"v lehote uvedenej v poučení\", German \"innerhalb der im Dokument genannten Frist\", English \"within the deadline stated in the document\".\n" +
   "rights[] / obligations[] / consequences[]: explicit source support only—for Slovak locale apply Phase 7.9A semantic Slovak while staying faithful to the letter; when ambiguity remains, Slovak plus German in parentheses (e.g. odvolanie (Einspruch)). rights[] must not invent appeal end dates.\n" +
   "nextSteps[] / warnings[]: do NOT include calendar dates (DD.MM.YYYY or YYYY-MM-DD) unless that exact date string appears in the source text next to deadline/payment/procedural cues (7.8C); without cue proximity, use relative or generic guidance (e.g. lehota jeden mesiac od doručenia rozhodnutia when Bekanntgabe-based). For Finanzamt/Bescheid with Einspruch but no printed end date, use generic guidance—never 'do X by 31.01.2026' unless that date is printed and cue-grounded. Use 'môže vzniknúť' only when supported.\n" +
   "deadlines[]: each item must be traceable to the source—printed dates verbatim; printed relative periods as printed (or minimally translated); [] if unclear. Never invent deadlines.\n" +
@@ -132,6 +143,7 @@ export function buildSmartTalkMessages(params: {
       'warnings pattern examples when the source fits (paraphrase in output language; Slovak tone): Finanzamt — good: Aj pri podaní námietky môže zostať lehota platby aktívna; oneskorená úhrada môže viesť k dodatočným poplatkom. Avoid replacing specifics with: Skontrolujte čitateľnosť dokumentu. Bürgeramt — good: Ak sa nemôžete dostaviť osobne, kontaktujte úrad ešte pred termínom; chýbajúce dokumenty môžu oddialiť vybavenie prípadu. Krankenkasse — good: Neúplné dokumenty môžu predĺžiť spracovanie poistenia; poisťovňa môže vyžiadať doplňujúce potvrdenia. Mahnung/Inkasso — good: Po termíne môžu vzniknúť ďalšie poplatky; ak ste už zaplatili, uschovajte si potvrdenie o úhrade. Familienkasse Rückforderung — good: Lehota na vrátenie platí; nárok na výnimku počas námietky nie je automatický, ak to list výslovne neuvádza.',
       CLASSIFICATION_RULES_COMPACT,
       PROCEDURAL_REASONING_RULES,
+      PROCEDURAL_ATTRIBUTION_RULES,
       JSON_KEYS_TEXT,
     ].join(" ");
 
@@ -169,6 +181,7 @@ export function buildSmartTalkMessages(params: {
     "If the question is unclear or cannot be answered safely, explain what is missing in warnings and use urgency unknown when appropriate.",
     CLASSIFICATION_RULES_COMPACT,
     PROCEDURAL_REASONING_RULES,
+    PROCEDURAL_ATTRIBUTION_RULES,
     JSON_KEYS_QUESTION,
   ].join(" ");
 
