@@ -8,9 +8,11 @@ import type {
   RuleEvaluationRecord,
   RuleEvaluationResult,
   SeverityCandidate,
+  SeverityDerivation,
   StabilizerCandidate,
   TrapActivation,
 } from "../evidence-gates-types";
+import type { ProceduralSeverityBand } from "../types";
 import type { ProximityConstraint, ProximityObservation } from "./proximity-types";
 
 import {
@@ -26,6 +28,7 @@ import {
   TRACE_STAGE_INPUT_RECEIVED,
   TRACE_STAGE_PROXIMITY_SKELETON,
   TRACE_STAGE_REALITY_AUTHORIZATION_DRY_RUN,
+  TRACE_STAGE_SEVERITY_DERIVATION_DRY_RUN,
   TRACE_STAGE_SKELETON_NO_PRODUCTION_AUTHORIZATION,
   TRACE_STAGE_STABILIZER_CANDIDATE_DRY_RUN,
   TRACE_STAGE_TRAP_ACTIVATION_DRY_RUN,
@@ -47,6 +50,8 @@ export interface BuildGateAuditTraceParams {
   readonly dryRunTrapActivations?: readonly TrapActivation[];
   /** Stabilizer candidate dry-run only (8.2C-10). */
   readonly dryRunStabilizerCandidates?: readonly StabilizerCandidate[];
+  /** Severity derivation dry-run only (8.2C-11). */
+  readonly dryRunSeverityDerivations?: readonly SeverityDerivation[];
   readonly claimDecisions: readonly ClaimAuthorization[];
   readonly realityDecisions: readonly RealityAuthorization[];
   readonly ruleEvaluations: readonly RuleEvaluationRecord[];
@@ -160,6 +165,33 @@ function dryRunStabilizerMetadata(rows: readonly StabilizerCandidate[]) {
   };
 }
 
+const SEVERITY_BAND_ORDER: Record<ProceduralSeverityBand, number> = {
+  none: 0,
+  low: 1,
+  medium: 2,
+  high: 3,
+  critical: 4,
+};
+
+function uniqueSortedSeverityBands(bands: readonly ProceduralSeverityBand[]): ProceduralSeverityBand[] {
+  return [...new Set(bands)].sort((a, b) => SEVERITY_BAND_ORDER[a] - SEVERITY_BAND_ORDER[b]);
+}
+
+function dryRunSeverityMetadata(rows: readonly SeverityDerivation[]) {
+  return {
+    severityDerivationCount: rows.length,
+    candidateDerivedSeverityBands: uniqueSortedSeverityBands(
+      rows.filter((r) => r.disposition === "candidate_derived").map((r) => r.derivedSeverityBand),
+    ),
+    candidateUncertainSeverityBands: uniqueSortedSeverityBands(
+      rows.filter((r) => r.disposition === "candidate_uncertain").map((r) => r.derivedSeverityBand),
+    ),
+    candidateBlockedSeverityBands: uniqueSortedSeverityBands(
+      rows.filter((r) => r.disposition === "candidate_blocked").map((r) => r.derivedSeverityBand),
+    ),
+  };
+}
+
 /** Avoid echoing OCR-adjacent snippets in the trace while keeping structural fields. */
 function cueHitForTrace(hit: CueHit): CueHit {
   return {
@@ -192,6 +224,7 @@ export function buildGateAuditTrace(params: BuildGateAuditTraceParams): GateAudi
   const dryRunRealities = params.dryRunRealityAuthorizations;
   const dryRunTraps = params.dryRunTrapActivations;
   const dryRunStabilizers = params.dryRunStabilizerCandidates;
+  const dryRunSeverities = params.dryRunSeverityDerivations;
 
   const proxObs = params.proximityObservations;
   const proxCons = params.proximityConstraints;
@@ -209,6 +242,7 @@ export function buildGateAuditTrace(params: BuildGateAuditTraceParams): GateAudi
   if (dryRunRealities !== undefined) auditWarningExtras.push("reality_authorization_dry_run_only_not_user_visible_in_8_2c_8");
   if (dryRunTraps !== undefined) auditWarningExtras.push("trap_activation_dry_run_only_not_runtime_enforced_in_8_2c_9");
   if (dryRunStabilizers !== undefined) auditWarningExtras.push("stabilizer_candidates_dry_run_only_not_user_visible_in_8_2c_10");
+  if (dryRunSeverities !== undefined) auditWarningExtras.push("severity_derivation_dry_run_only_not_runtime_enforced_in_8_2c_11");
   if (proximityStageActive) auditWarningExtras.push("manual_proximity_only_no_text_scanning");
 
   const traceNotes = dedupeNotesOrdered([params.notes, auditWarningExtras]);
@@ -237,6 +271,7 @@ export function buildGateAuditTrace(params: BuildGateAuditTraceParams): GateAudi
   const dryRunRealityMeta = dryRunRealities !== undefined ? dryRunRealityMetadata(dryRunRealities) : {};
   const dryRunTrapMeta = dryRunTraps !== undefined ? dryRunTrapMetadata(dryRunTraps) : {};
   const dryRunStabilizerMeta = dryRunStabilizers !== undefined ? dryRunStabilizerMetadata(dryRunStabilizers) : {};
+  const dryRunSeverityMeta = dryRunSeverities !== undefined ? dryRunSeverityMetadata(dryRunSeverities) : {};
 
   const proximityMeta = {
     ...(proxObs !== undefined ? { proximityObservationCount: proxObs.length } : {}),
@@ -260,6 +295,7 @@ export function buildGateAuditTrace(params: BuildGateAuditTraceParams): GateAudi
     ...(dryRunRealities !== undefined ? [TRACE_STAGE_REALITY_AUTHORIZATION_DRY_RUN] : []),
     ...(dryRunTraps !== undefined ? [TRACE_STAGE_TRAP_ACTIVATION_DRY_RUN] : []),
     ...(dryRunStabilizers !== undefined ? [TRACE_STAGE_STABILIZER_CANDIDATE_DRY_RUN] : []),
+    ...(dryRunSeverities !== undefined ? [TRACE_STAGE_SEVERITY_DERIVATION_DRY_RUN] : []),
     ...(proximityStageActive ? [TRACE_STAGE_PROXIMITY_SKELETON] : []),
     TRACE_STAGE_AUDIT_TRACE_BUILT,
     TRACE_STAGE_SKELETON_NO_PRODUCTION_AUTHORIZATION,
@@ -276,6 +312,7 @@ export function buildGateAuditTrace(params: BuildGateAuditTraceParams): GateAudi
     ...(dryRunRealities !== undefined ? { dryRunRealityAuthorizations: dryRunRealities } : {}),
     ...(dryRunTraps !== undefined ? { dryRunTrapActivations: dryRunTraps } : {}),
     ...(dryRunStabilizers !== undefined ? { dryRunStabilizerCandidates: dryRunStabilizers } : {}),
+    ...(dryRunSeverities !== undefined ? { dryRunSeverityDerivations: dryRunSeverities } : {}),
     ...(proximityEval !== undefined ? { proximityConstraintEvaluationResults: proximityEval } : {}),
     claimDecisions: params.claimDecisions,
     realityDecisions: params.realityDecisions,
@@ -309,6 +346,7 @@ export function buildGateAuditTrace(params: BuildGateAuditTraceParams): GateAudi
       ...dryRunRealityMeta,
       ...dryRunTrapMeta,
       ...dryRunStabilizerMeta,
+      ...dryRunSeverityMeta,
       ...proximityMeta,
     },
   };

@@ -19,6 +19,7 @@ import { normalizeCueHits } from "./normalize-cue-hits";
 import { resolveClaimRules } from "./resolve-claim-rules";
 import { resolveEvidenceRules } from "./resolve-evidence-rules";
 import { resolveRealityAuthorizations } from "./resolve-reality-authorizations";
+import { resolveSeverityDerivations } from "./resolve-severity-derivations";
 import { resolveStabilizerCandidates } from "./resolve-stabilizer-candidates";
 import { resolveTrapActivations } from "./resolve-trap-activations";
 
@@ -42,7 +43,7 @@ function ruleResolutionToRecord(r: RuleEvaluationResult): RuleEvaluationRecord {
 }
 
 /**
- * Evidence Gate evaluator entry point (8.2C-1 skeleton through **8.2C-10 stabilizer dry-run**).
+ * Evidence Gate evaluator entry point (8.2C-1 skeleton through **8.2C-11 severity derivation dry-run**).
  *
  * **Production posture:** `trace.claimDecisions` still carries matrix `allowedClaims` as **`uncertain`**
  * only (never `allowed`). **`trace.dryRunClaimAuthorizations`** holds `candidate_*` + `dryRun: true`
@@ -51,7 +52,9 @@ function ruleResolutionToRecord(r: RuleEvaluationResult): RuleEvaluationRecord {
  * matrix-blocked rows remain `blocked` for the constitutional surface. **`trace.dryRunTrapActivations`**
  * (8.2C-9) holds hallucination trap **`candidate_*`** signals only — not runtime suppression or Smart Talk.
  * **`trace.dryRunStabilizerCandidates`** (8.2C-10) holds stabilizer governance **candidates only** — never
- * user-visible matrix wording, Smart Talk, or explanation rewrites.
+ * user-visible matrix wording, Smart Talk, or explanation rewrites. **`trace.dryRunSeverityDerivations`**
+ * (8.2C-11) holds severity **dry-run** rows only — `trace.severity` remains the inert skeleton (`band: "none"`);
+ * no runtime escalation, UI urgency, dashboard priority, or Smart Talk wiring.
  */
 export function evaluateEvidenceGates(input: EvidenceGateInput): EvidenceGateDecision {
   const normalizedCueHits = normalizeCueHits(input.cueHits);
@@ -117,6 +120,17 @@ export function evaluateEvidenceGates(input: EvidenceGateInput): EvidenceGateDec
     return rows.length > 0 ? rows : undefined;
   })();
 
+  const dryRunSeverityDerivations =
+    input.matrix && input.matrix.severityRules.length > 0
+      ? resolveSeverityDerivations({
+          matrix: input.matrix,
+          evidenceRuleResults: evidenceRuleResolutionResults ?? [],
+          claimAuthorizations: dryRunClaimAuthorizations ?? [],
+          realityAuthorizations: dryRunRealityAuthorizations ?? [],
+          trapActivations: dryRunTrapActivations ?? [],
+        })
+      : undefined;
+
   const uncertainClaimNotes = dryRunClaimAuthorizations?.some((r) => r.disposition === "candidate_allowed")
     ? "Skeleton: production claim not authorized — dry-run shows candidate_allowed in trace only (8.2C-5); Smart Talk / user-visible claims remain inactive."
     : evidenceRuleResolutionResults !== undefined && evidenceRuleResolutionResults.some((r) => r.matched)
@@ -159,6 +173,7 @@ export function evaluateEvidenceGates(input: EvidenceGateInput): EvidenceGateDec
     dryRunRealityAuthorizations,
     dryRunTrapActivations,
     dryRunStabilizerCandidates,
+    dryRunSeverityDerivations,
     claimDecisions: uncertainClaims,
     realityDecisions: blockedRealityRows,
     ruleEvaluations,
@@ -183,6 +198,7 @@ export function evaluateEvidenceGates(input: EvidenceGateInput): EvidenceGateDec
       "reality_authorization_dry_run_v1_not_production",
       "trap_activation_dry_run_v1_not_runtime_enforced",
       "stabilizer_candidate_dry_run_v1_not_user_visible",
+      "severity_derivation_dry_run_v1_not_runtime_enforced_8_2c_11",
       ...dryRunClaimUnsupported,
     ],
     notes: [
@@ -205,6 +221,9 @@ export function evaluateEvidenceGates(input: EvidenceGateInput): EvidenceGateDec
       dryRunStabilizerCandidates !== undefined
         ? `Stabilizer dry-run (8.2C-10): ${dryRunStabilizerCandidates.length} catalog-rule candidates — trace ids only, not user-visible stabilizer text.`
         : "Stabilizer dry-run (8.2C-10): skipped — no qualifying governance bundle or no matrix snapshot.",
+      dryRunSeverityDerivations !== undefined
+        ? `Severity derivation dry-run (8.2C-11): ${dryRunSeverityDerivations.length} SeverityRule rows — trace-only governance; trace.severity unchanged; not runtime/UI/Smart Talk.`
+        : "Severity derivation dry-run (8.2C-11): skipped — no matrix snapshot or matrix declares no severityRules.",
       matrixMismatchFlag
         ? "WARNING: input.matrix documentType/schemaVersion does not match flat fields on EvidenceGateInput."
         : "Matrix snapshot optional; when absent, only flat matrixDocumentType/matrixSchemaVersion are traced.",

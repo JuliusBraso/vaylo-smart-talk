@@ -12,6 +12,7 @@ A **pure-function** package under `reality-matrix/evidence-gates/` that introduc
 - `resolveRealityAuthorizations` — matrix realities vs evidence + claim dry-run (8.2C-8 **dry-run only**)
 - `resolveTrapActivations` — matrix `HallucinationTrap[]` vs dry-run claims/realities + evidence (8.2C-9 **dry-run only**)
 - `resolveStabilizerCandidates` — matrix `StabilizerRule[]` vs dry-run governance bundle (8.2C-10 **dry-run only**)
+- `resolveSeverityDerivations` — matrix `SeverityRule[]` vs dry-run claims/realities/traps/evidence (8.2C-11 **dry-run only**)
 
 This is **not** full Evidence Gates. It is a **conservative runtime skeleton** so later stages can grow inside a stable module boundary.
 
@@ -30,7 +31,7 @@ This is **not** full Evidence Gates. It is a **conservative runtime skeleton** s
 - Never sets a claim to **`allowed`**
 - Emits matrix **`allowedClaims`** claim types only as **`uncertain`** (for traceability when `input.matrix` is provided)
 - Records **`blockedRealities`** from the matrix as **`blocked`** reality rows (declarative surface only)
-- Sets severity to **`none`** until a real severity engine exists
+- Sets **`trace.severity`** to **`none`** (inert skeleton); **8.2C-11** adds separate **`trace.dryRunSeverityDerivations`** only — never UI/Smart Talk/runtime escalation from this path
 
 **Default posture:** *uncertain / blocked, not allowed.*
 
@@ -184,4 +185,20 @@ The evaluator still does **not** populate any production **`supportedRealities`*
 - **Audit:** `traceMetadata` adds **`stabilizerCandidateCount`**, **`candidateStabilizerIds`**, stage **`stabilizer_candidate_dry_run`**, and note **`stabilizer_candidates_dry_run_only_not_user_visible_in_8_2c_10`**.
 
 > **Stabilizer candidate ≠ user message ≠ legal conclusion ≠ safety guarantee.**
+
+---
+
+## PHASE 8.2C-11 — Severity Derivation Dry Run v1
+
+`resolveSeverityDerivations({ matrix, evidenceRuleResults, claimAuthorizations, realityAuthorizations, trapActivations })` returns one **`SeverityDerivation`** row per matrix **`SeverityRule`** when `severityRules.length > 0`, each with **`dryRun: true`**, **`neverUserVisible: true`**, **`authorizationMode: "dry_run"`**, optional **`sourceKind: "severity_derivation"`**, and disposition **`candidate_derived` \| `candidate_uncertain` \| `candidate_blocked`**. Rows are stored only in **`trace.dryRunSeverityDerivations`** with **`traceMetadata`** (`severityDerivationCount`, `candidateDerivedSeverityBands`, `candidateUncertainSeverityBands`, `candidateBlockedSeverityBands`), stage **`severity_derivation_dry_run`**, and audit token **`severity_derivation_dry_run_only_not_runtime_enforced_in_8_2c_11`**.
+
+- **Structured inputs only:** trigger **`realitiesThatMayTrigger`** must be dry-run **`candidate_supported`**; trigger **`claimTypesThatMayTrigger`** must be dry-run **`candidate_allowed`**; supporting evidence is the **intersection** of `satisfiedRuleIds` across those anchors, each id must appear in **matched non-speculative** evidence-rule resolution — **no** `documentText`, **no** regex, **no** tone/uppercase/emotion heuristics.
+- **Speculative protection:** if any evidence matched but **no** non-speculative matched rows exist, **`candidate_derived` is forbidden**; use **`candidate_uncertain`** with **`reason: "speculative_evidence_not_deriving_severity"`** (mandatory).
+- **Trap governance:** any dry-run trap with **`candidate_triggered`** or **`candidate_uncertain`** forces **`candidate_uncertain`** severity rows (with **`supportingTrapIds`**) — traps constrain escalation; they never strengthen user-visible urgency here (there is none).
+- **blockedWhenRealities:** when the same rule’s **`claimTypesThatMayTrigger`** overlaps **`candidate_allowed`** and a **`blockedWhenRealities`** entry is **`candidate_supported`**, emit **`candidate_uncertain`** (`dry_run_severity_blocked_when_realities_conflict`) — **not** `candidate_derived`.
+- **Confidence:** **`candidate_derived`** uses the **minimum** confidence among supporting non-speculative evidence rows; **`candidate_uncertain`** uses **0**; **`candidate_blocked`** for matrix-blocked reality anchors uses **1**.
+
+**`trace.severity`** remains **`{ band: "none", derivedFromRuleIds: [] }`** in `evaluateEvidenceGates` — dry-run bands are **not** wired into that field.
+
+> **Severity derivation candidates are bounded procedural governance signals, not legal urgency guarantees.**
 

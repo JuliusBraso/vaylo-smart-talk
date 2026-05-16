@@ -287,9 +287,30 @@ export interface SeverityCandidate {
   readonly cappedByTrapIds?: readonly string[];
 }
 
-// ---------------------------------------------------------------------------
-// Audit trace (§16)
-// ---------------------------------------------------------------------------
+/** Dry-run only (8.2C-11) — not runtime escalation, UI, or Smart Talk. */
+export type SeverityDerivationDisposition = "candidate_derived" | "candidate_uncertain" | "candidate_blocked";
+
+/**
+ * Severity **dry-run** derivation row (8.2C-11): procedural governance signal only — not user-visible
+ * urgency, not legal guarantees, not dashboard priority.
+ */
+export interface SeverityDerivation {
+  readonly severityRuleId: string;
+  /** Target band from the matrix `SeverityRule` under evaluation (audit). */
+  readonly derivedSeverityBand: ProceduralSeverityBand;
+  readonly disposition: SeverityDerivationDisposition;
+  readonly dryRun: true;
+  readonly authorizationMode: "dry_run";
+  readonly neverUserVisible: true;
+  readonly reason: string;
+  readonly confidence: number;
+  readonly supportingClaimIds?: readonly NamespacedClaimId[];
+  readonly supportingRealityIds?: readonly NamespacedRealityId[];
+  readonly supportingTrapIds?: readonly string[];
+  readonly supportingEvidenceRuleIds?: readonly string[];
+  readonly notes?: string;
+  readonly sourceKind?: "severity_derivation";
+}
 
 export interface RuleEvaluationRecord {
   readonly evidenceRuleId: string;
@@ -326,6 +347,11 @@ export interface GateAuditTrace {
    * or runtime emission.
    */
   readonly dryRunStabilizerCandidates?: readonly StabilizerCandidate[];
+  /**
+   * Severity **dry-run** derivations only (8.2C-11): governance observability — not runtime escalation,
+   * not Smart Talk, not UI urgency.
+   */
+  readonly dryRunSeverityDerivations?: readonly SeverityDerivation[];
   /**
    * Manual proximity **skeleton** evaluation rows (8.2C-6) — not OCR, layout, or distance-based proof.
    */
@@ -395,6 +421,14 @@ export interface GateAuditTrace {
     readonly stabilizerCandidateCount?: number;
     /** Matrix `StabilizerRule.id` values for dry-run stabilizer candidates (8.2C-10). */
     readonly candidateStabilizerIds?: readonly string[];
+    /** Count of severity dry-run derivation rows (8.2C-11). */
+    readonly severityDerivationCount?: number;
+    /** Distinct `derivedSeverityBand` values where disposition is `candidate_derived` (8.2C-11). */
+    readonly candidateDerivedSeverityBands?: readonly ProceduralSeverityBand[];
+    /** Distinct `derivedSeverityBand` values where disposition is `candidate_uncertain` (8.2C-11). */
+    readonly candidateUncertainSeverityBands?: readonly ProceduralSeverityBand[];
+    /** Distinct `derivedSeverityBand` values where disposition is `candidate_blocked` (8.2C-11). */
+    readonly candidateBlockedSeverityBands?: readonly ProceduralSeverityBand[];
     /** Count of externally supplied proximity observations passed to trace builder (8.2C-6). */
     readonly proximityObservationCount?: number;
     /** Constraint ids with `matched: true` from manual proximity skeleton evaluation (8.2C-6). */

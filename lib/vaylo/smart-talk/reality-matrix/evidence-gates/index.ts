@@ -19,6 +19,7 @@ export {
   TRACE_STAGE_INPUT_RECEIVED,
   TRACE_STAGE_PROXIMITY_SKELETON,
   TRACE_STAGE_REALITY_AUTHORIZATION_DRY_RUN,
+  TRACE_STAGE_SEVERITY_DERIVATION_DRY_RUN,
   TRACE_STAGE_SKELETON_NO_PRODUCTION_AUTHORIZATION,
   TRACE_STAGE_STABILIZER_CANDIDATE_DRY_RUN,
   TRACE_STAGE_TRAP_ACTIVATION_DRY_RUN,
@@ -47,3 +48,5 @@ export { resolveTrapActivations } from "./resolve-trap-activations";
 export type { ResolveTrapActivationsParams } from "./resolve-trap-activations";
 export { resolveStabilizerCandidates } from "./resolve-stabilizer-candidates";
 export type { ResolveStabilizerCandidatesParams } from "./resolve-stabilizer-candidates";
+export { resolveSeverityDerivations } from "./resolve-severity-derivations";
+export type { ResolveSeverityDerivationsParams } from "./resolve-severity-derivations";
