@@ -193,7 +193,7 @@ Optional type sketches: **`evidence-gates-types.ts`** (`RuleExpression`, `GateAu
 
 Folder **`evidence-gates/`** exposes **`evaluateEvidenceGates`**, **`evaluateRuleExpression`**, and **`buildGateAuditTrace`** — **pure functions only**, **not** connected to Smart Talk, OCR, or APIs.
 
-**Posture:** no claim is **`allowed`**; matrix claim types appear as **`uncertain`** when a matrix snapshot is passed; **`blockedRealities`** are copied as blocked reality rows; every run includes **`traceMetadata`** (evaluator version, unsupported feature list, safety posture).
+**Posture:** no claim is **`allowed`**; matrix claim types appear as **`uncertain`** when a matrix snapshot is passed; **`blockedRealities`** are copied as blocked reality rows; **`trace.dryRunRealityAuthorizations`** (8.2C-8) holds reality **`candidate_*`** hypotheses only — not production supported realities; every run includes **`traceMetadata`** (evaluator version, unsupported feature list, safety posture).
 
 **Next:** implement cue detection, lane binding, proximity, and authorization per `EVIDENCE_GATES_SPEC.md` — then optional Smart Talk wiring.
 
@@ -207,7 +207,7 @@ Folder **`evidence-gates/`** exposes **`evaluateEvidenceGates`**, **`evaluateRul
 
 ## Phase 8.2C-3 — Cue Hit Model + Manual Cue Injection
 
-**Evidence input layer:** typed `CueHit`, optional `cueHits` on `EvidenceGateInput`, and `normalizeCueHits` ingest **manual / external** observations only — **no** OCR text scanning, **no** regex, **no** automatic claim authorization. Traces expose counts and cue ids; **supportedRealities** and **allowed** claim dispositions are still not driven from hits. Prepares lane binding, proximity, and full gate execution in later phases.
+**Evidence input layer:** typed `CueHit`, optional `cueHits` on `EvidenceGateInput`, and `normalizeCueHits` ingest **manual / external** observations only — **no** OCR text scanning, **no** regex, **no** automatic claim authorization. Traces expose counts and cue ids; production **`supportedRealities`** and **allowed** claim dispositions are still not driven from hits (8.2C-8 adds **dry-run** reality candidates in the trace only). Prepares lane binding, proximity, and full gate execution in later phases.
 
 ---
 
@@ -246,6 +246,8 @@ Matrix **`EvidenceRule`** rows are evaluated against normalized **`CueHit`**s vi
 | `README.md` | Architecture and safety rationale (this file). |
 
 **Phase 8.2C-7 (Evidence Gates):** audit-only hardening of `GateAuditTrace` — stable trace stage labels, explicit `sourceKind` / `evidenceRuleId` vs `proximityConstraintId` vs `terminalKey`, dry-run claim metadata, and static `traceMetadata` flags that **do not** enable production authorization or Smart Talk wiring. See `evidence-gates/README.md`.
+
+**Phase 8.2C-8 (Evidence Gates):** `resolveRealityAuthorizations` adds **`trace.dryRunRealityAuthorizations`** (`candidate_*` + `dryRun: true` only) — bounded procedural hypotheses, not production supported realities or legal truth; matrix `blockedRealities` stay authoritative. See `evidence-gates/README.md`.
 
 ---
 

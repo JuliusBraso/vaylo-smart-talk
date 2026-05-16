@@ -18,6 +18,7 @@ export {
   TRACE_STAGE_EVIDENCE_RULES_RESOLVED,
   TRACE_STAGE_INPUT_RECEIVED,
   TRACE_STAGE_PROXIMITY_SKELETON,
+  TRACE_STAGE_REALITY_AUTHORIZATION_DRY_RUN,
   TRACE_STAGE_SKELETON_NO_PRODUCTION_AUTHORIZATION,
 } from "./trace-constants";
 
@@ -36,3 +37,7 @@ export { evaluateEvidenceGates } from "./evaluate-evidence-gates";
 export { resolveEvidenceRules } from "./resolve-evidence-rules";
 export { resolveClaimRules } from "./resolve-claim-rules";
 export type { ResolveClaimRulesOutput, ResolveClaimRulesParams } from "./resolve-claim-rules";
+export { resolveRealityAuthorizations } from "./resolve-reality-authorizations";
+export type {
+  ResolveRealityAuthorizationsParams,
+} from "./resolve-reality-authorizations";

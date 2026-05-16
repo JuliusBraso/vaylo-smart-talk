@@ -9,7 +9,7 @@ A **pure-function** package under `reality-matrix/evidence-gates/` that introduc
 - `resolveEvidenceRules` — matrix `EvidenceRule[]` vs normalized `CueHit[]` (8.2C-4, observational only)
 - `resolveClaimRules` — matrix `ClaimRule[]` vs resolved evidence rules (8.2C-5 **dry-run** only)
 - `evaluateProximityConstraints` — manual observations vs constraints, equality-only (8.2C-6 **skeleton**)
-- `buildGateAuditTrace` — assembles trace metadata for debugging
+- `resolveRealityAuthorizations` — matrix realities vs evidence + claim dry-run (8.2C-8 **dry-run only**)
 
 This is **not** full Evidence Gates. It is a **conservative runtime skeleton** so later stages can grow inside a stable module boundary.
 
@@ -126,7 +126,7 @@ Types live in **`proximity-types.ts`** (`ProximityObservation`, `ProximityConstr
 
 **Rule algebra:** for `RuleExpression` nodes with `op: "proximity"`, `evaluateRuleExpression` may read **`context.proximityEvaluationByTerminalKey[terminalKey(expr)]`** after `resolveTerminal` / `terminalResults` — still **no** `documentText`.
 
-**Audit:** when `buildGateAuditTrace` receives optional `proximityObservations` / `proximityConstraints`, it runs the skeleton evaluator when **both** lists are non-empty, sets `trace.proximityConstraintEvaluationResults`, and adds `traceMetadata` (`proximityObservationCount`, `matchedProximityConstraintIds`, `unresolvedProximityConstraintIds`) plus the canonical audit token `manual_proximity_only_no_text_scanning` when proximity parameters are present (8.2C-7). **`evaluateEvidenceGates` is unchanged** in this phase — no claim dry-run or production authorization changes.
+**Audit:** when `buildGateAuditTrace` receives optional `proximityObservations` / `proximityConstraints`, it runs the skeleton evaluator when **both** lists are non-empty, sets `trace.proximityConstraintEvaluationResults`, and adds `traceMetadata` (`proximityObservationCount`, `matchedProximityConstraintIds`, `unresolvedProximityConstraintIds`) plus the canonical audit token `manual_proximity_only_no_text_scanning` when proximity parameters are present (8.2C-7). Later phases (e.g. **8.2C-8**) extend the trace with additional dry-run surfaces without changing proximity matching semantics here.
 
 ---
 
@@ -140,3 +140,19 @@ This phase adds **no new reasoning behavior**, **no production claim authorizati
 - **Dry-run claims:** `resolveClaimRules` rows always include `dryRun: true`, `authorizationMode: "dry_run"`, and `neverUserVisible: true`. Canonical notes include `claim_candidates_are_dry_run_only` alongside caller-supplied prose.
 - **Namespaces:** `candidate*ClaimIds` and `blockedRealityIds` in `traceMetadata` use `claim:*` and `reality:*` namespace ids (same as `namespaceId` on authorization rows) — raw `ClaimType` / `RealityType` labels are not flattened into separate parallel arrays.
 - **Static metadata flags:** `productionAuthorizationActive`, `productionWiringActive`, `textScanningActive`, `regexExecutionActive`, `cueDetectionMode`, `claimAuthorizationMode`, and `proximityMode` are **documentation-only** fields on the trace; they do not alter evaluation outcomes.
+
+---
+
+## PHASE 8.2C-8 — Reality Authorization Dry Run v1
+
+`resolveRealityAuthorizations({ matrix, evidenceRuleResults, claimAuthorizations })` returns **`RealityAuthorization[]`** with `disposition` in **`candidate_supported` \| `candidate_blocked` \| `candidate_uncertain`**, always with **`dryRun: true`**, **`authorizationMode: "dry_run"`**, and **`neverUserVisible: true`**. Rows are written only to **`trace.dryRunRealityAuthorizations`** (and related `traceMetadata` id lists) — **not** production supported realities, **not** Smart Talk, **not** user-visible truth.
+
+- **Matrix blocked:** every `matrix.blockedRealities` entry yields **`candidate_blocked`**, **`dryRunReason: "reality_blocked_by_matrix"`**, **`confidence: 1`**, **`namespaceId: reality:<type>`**. The constitutional surface **`trace.realityDecisions`** still carries matrix-blocked rows as **`blocked`** (non–dry-run trace slice) for backward compatibility.
+- **Supported list:** each `matrix.supportedRealities` entry not already covered by blocked logic is evaluated conservatively from **matched non-speculative** `EvidenceRule` resolution rows, **`SeverityRule`** bridges (`realitiesThatMayTrigger` / `blockedWhenRealities` vs `claimTypesThatMayTrigger`), and **`candidate_allowed`** claim dry-run rows. There is **no** OCR, **no** `documentText` scan, **no** regex execution, **no** cue inference, **no** trap/stabilizer engine, and **no** explanation generator.
+- **Speculative evidence:** if only speculative (or evidence-level–missing) matches exist, **`candidate_supported` is never emitted**; rows use **`candidate_uncertain`** with **`dryRunReason: "speculative_evidence_not_authorizing_reality"`** (mandatory).
+- **Contradictions:** `blockedWhenRealities` on a `SeverityRule` with overlapping `claimTypesThatMayTrigger` vs `candidate_allowed` forces **`candidate_uncertain`** for that reality (not supported). When `candidate_allowed` claims exist but no severity rule declares a bridge for a supported reality, the resolver stays **`candidate_uncertain`** (`dry_run_claims_present_reality_bridge_not_declared`).
+- **Confidence:** `candidate_supported` uses the **minimum** confidence among supporting non-speculative matched rules (or **0** if none numeric); `candidate_uncertain` uses **0**; matrix-blocked dry-run rows use **1** as specified.
+
+> **Reality authorization candidates are bounded procedural hypotheses, not legal truth.**
+
+The evaluator still does **not** populate any production **`supportedRealities`** field on `EvidenceGateDecision` (that concept remains outside this trace-only dry-run list).

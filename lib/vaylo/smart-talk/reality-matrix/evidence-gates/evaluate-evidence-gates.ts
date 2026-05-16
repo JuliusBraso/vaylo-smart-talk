@@ -18,6 +18,7 @@ import {
 import { normalizeCueHits } from "./normalize-cue-hits";
 import { resolveClaimRules } from "./resolve-claim-rules";
 import { resolveEvidenceRules } from "./resolve-evidence-rules";
+import { resolveRealityAuthorizations } from "./resolve-reality-authorizations";
 
 function namespacedClaim(claimType: string): NamespacedClaimId {
   return `claim:${claimType}` as NamespacedClaimId;
@@ -39,11 +40,13 @@ function ruleResolutionToRecord(r: RuleEvaluationResult): RuleEvaluationRecord {
 }
 
 /**
- * Evidence Gate evaluator entry point (8.2C-1 skeleton through **8.2C-5 claim dry-run**).
+ * Evidence Gate evaluator entry point (8.2C-1 skeleton through **8.2C-8 reality dry-run**).
  *
  * **Production posture:** `trace.claimDecisions` still carries matrix `allowedClaims` as **`uncertain`**
  * only (never `allowed`). **`trace.dryRunClaimAuthorizations`** holds `candidate_*` + `dryRun: true`
- * — audit-only, not Smart Talk or user-visible authorization.
+ * — audit-only, not Smart Talk or user-visible authorization. **`trace.dryRunRealityAuthorizations`**
+ * holds reality `candidate_*` rows (8.2C-8) — never production supported realities; `realityDecisions`
+ * matrix-blocked rows remain `blocked` for the constitutional surface.
  */
 export function evaluateEvidenceGates(input: EvidenceGateInput): EvidenceGateDecision {
   const normalizedCueHits = normalizeCueHits(input.cueHits);
@@ -80,6 +83,14 @@ export function evaluateEvidenceGates(input: EvidenceGateInput): EvidenceGateDec
 
   const dryRunClaimAuthorizations = dryRunOutcome?.authorizations;
   const dryRunClaimUnsupported = dryRunOutcome?.unsupportedFeatures ?? [];
+
+  const dryRunRealityAuthorizations = input.matrix
+    ? resolveRealityAuthorizations({
+        matrix: input.matrix,
+        evidenceRuleResults: evidenceRuleResolutionResults ?? [],
+        claimAuthorizations: dryRunClaimAuthorizations ?? [],
+      })
+    : undefined;
 
   const uncertainClaimNotes = dryRunClaimAuthorizations?.some((r) => r.disposition === "candidate_allowed")
     ? "Skeleton: production claim not authorized — dry-run shows candidate_allowed in trace only (8.2C-5); Smart Talk / user-visible claims remain inactive."
@@ -120,6 +131,7 @@ export function evaluateEvidenceGates(input: EvidenceGateInput): EvidenceGateDec
     normalizedCueHits,
     evidenceRuleResolutionResults,
     dryRunClaimAuthorizations,
+    dryRunRealityAuthorizations,
     claimDecisions: uncertainClaims,
     realityDecisions: blockedRealityRows,
     ruleEvaluations,
@@ -141,6 +153,7 @@ export function evaluateEvidenceGates(input: EvidenceGateInput): EvidenceGateDec
       "claim_authorization_from_matched_evidence_rules",
       "or_within_single_evidence_rule_not_supported",
       "claim_authorization_dry_run_v1_not_production",
+      "reality_authorization_dry_run_v1_not_production",
       ...dryRunClaimUnsupported,
     ],
     notes: [
@@ -154,6 +167,9 @@ export function evaluateEvidenceGates(input: EvidenceGateInput): EvidenceGateDec
       dryRunClaimAuthorizations !== undefined
         ? `Claim dry-run (8.2C-5): ${dryRunClaimAuthorizations.length} ClaimRule rows evaluated — candidate_* rows are trace-only, not production.`
         : "Claim dry-run (8.2C-5): skipped — no ClaimRule rows on matrix.",
+      dryRunRealityAuthorizations !== undefined
+        ? `Reality dry-run (8.2C-8): ${dryRunRealityAuthorizations.length} rows — candidate_* realities are trace-only hypotheses, not production supportedRealities.`
+        : "Reality dry-run (8.2C-8): skipped — no matrix snapshot on input.",
       matrixMismatchFlag
         ? "WARNING: input.matrix documentType/schemaVersion does not match flat fields on EvidenceGateInput."
         : "Matrix snapshot optional; when absent, only flat matrixDocumentType/matrixSchemaVersion are traced.",

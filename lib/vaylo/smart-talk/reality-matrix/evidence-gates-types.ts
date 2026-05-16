@@ -144,7 +144,9 @@ export type ClaimDisposition =
   /** Dry-run only (8.2C-5) — not production authorization. */
   | "candidate_allowed"
   | "candidate_blocked"
-  | "candidate_uncertain";
+  | "candidate_uncertain"
+  /** Dry-run only (8.2C-8) — reality hypothesis, not production supported reality. */
+  | "candidate_supported";
 
 export type BlockReasonCode =
   | "forbidden_list"
@@ -164,7 +166,13 @@ export type BlockReasonCode =
   /** Claim-rule dry-run (8.2C-5) — not user-visible production authorization. */
   | "dry_run_candidate_blocked"
   /** Dry-run: required evidence included speculative-only path (8.2C-5). */
-  | "speculative_evidence_not_authorizing";
+  | "speculative_evidence_not_authorizing"
+  /** Matrix `blockedRealities` — dry-run reality row only (8.2C-8). */
+  | "reality_blocked_by_matrix"
+  /** Dry-run: `SeverityRule` declares this reality blocked when present claim candidates fire (8.2C-8). */
+  | "dry_run_severity_blocks_reality"
+  /** Dry-run: claim candidates exist but matrix does not declare a severity bridge to this reality (8.2C-8). */
+  | "dry_run_claim_reality_bridge_pending";
 
 export interface ClaimAuthorization {
   readonly namespaceId: NamespacedClaimId;
@@ -197,6 +205,21 @@ export interface RealityAuthorization {
   readonly blockReason?: BlockReasonCode;
   /** Optional human-readable detail for audit logs. */
   readonly notes?: string;
+  /**
+   * When true, this row is **audit / simulation only** (8.2C-8) — not production Smart Talk output
+   * or user-visible supported reality.
+   */
+  readonly dryRun?: boolean;
+  /** Always `"dry_run"` when {@link dryRun} is true on dry-run reality rows (8.2C-8). */
+  readonly authorizationMode?: "dry_run";
+  /** When true, consumers must not treat this row as production truth (8.2C-8). */
+  readonly neverUserVisible?: boolean;
+  /** Machine-oriented dry-run reason (8.2C-8); not a user-facing explanation. */
+  readonly dryRunReason?: string;
+  /** Conservative aggregate confidence for dry-run rows (8.2C-8). */
+  readonly confidence?: number;
+  /** Weakest supporting evidence level among contributing matched rules (8.2C-8). */
+  readonly evidenceLevel?: EvidenceLevel;
 }
 
 export type TrapDisposition = "triggered" | "advisory" | "skipped";
@@ -244,6 +267,11 @@ export interface GateAuditTrace {
    */
   readonly dryRunClaimAuthorizations?: readonly ClaimAuthorization[];
   /**
+   * Reality **dry-run** only (8.2C-8): `candidate_*` + `dryRun: true` — never production supported realities,
+   * Smart Talk output, or legal truth.
+   */
+  readonly dryRunRealityAuthorizations?: readonly RealityAuthorization[];
+  /**
    * Manual proximity **skeleton** evaluation rows (8.2C-6) — not OCR, layout, or distance-based proof.
    */
   readonly proximityConstraintEvaluationResults?: readonly ProximityEvaluationResult[];
@@ -288,6 +316,16 @@ export interface GateAuditTrace {
     readonly candidateBlockedClaimIds?: readonly string[];
     /** `claim:*` ids with dry-run `candidate_uncertain` (8.2C-5). */
     readonly candidateUncertainClaimIds?: readonly string[];
+    /** Count of reality dry-run rows (8.2C-8). */
+    readonly realityAuthorizationDryRunCount?: number;
+    /** `reality:*` ids with dry-run `candidate_supported` (8.2C-8). */
+    readonly candidateSupportedRealityIds?: readonly string[];
+    /** `reality:*` ids with dry-run `candidate_blocked` (8.2C-8; includes matrix-blocked surfaces). */
+    readonly candidateBlockedRealityIds?: readonly string[];
+    /** `reality:*` ids with dry-run `candidate_uncertain` (8.2C-8). */
+    readonly candidateUncertainRealityIds?: readonly string[];
+    /** How reality rows were interpreted in this trace (8.2C-8). */
+    readonly realityAuthorizationMode?: "dry_run" | "not_applicable";
     /** Count of externally supplied proximity observations passed to trace builder (8.2C-6). */
     readonly proximityObservationCount?: number;
     /** Constraint ids with `matched: true` from manual proximity skeleton evaluation (8.2C-6). */
