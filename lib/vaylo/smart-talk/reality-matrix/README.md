@@ -76,6 +76,10 @@ German letters often place **unrelated dates** near **payment**, **appeal**, or 
 
 End-to-end **documentation audit** of the 8.2C evidence-gates dry-run stack (coupling, leakage, namespaces, trace stages, production boundaries). See **`EVIDENCE_GATES_DRY_RUN_AUDIT.md`**. No runtime feature work in that phase.
 
+### Phase 8.2D-0 — Reality Simulation Before Explanation Spec
+
+**Architecture spec only** (no runtime integration): defines how a future **Reality Simulation** layer will consume Evidence Gates **dry-run traces** to build a safe **pre-explanation** governance product (`RealitySimulationResult` — still not user-visible prose). See **`REALITY_SIMULATION_SPEC.md`**. Optional type sketches: **`reality-simulation-types.ts`** (marked **SPEC ONLY — NOT RUNTIME**).
+
 ---
 
 ## 8. Why this phase avoids runtime implementation
@@ -99,7 +103,7 @@ Skipping runtime avoids:
 | Phase | Focus |
 |-------|--------|
 | **8.2C Evidence gates** | Deterministic evaluation: cue matching, evidence levels, claim allow/deny, speculative suppression before model or after structured output. |
-| **8.2D Reality simulation** | Offline simulation: given OCR text + matrix, assert expected supported/blocked realities for tests. |
+| **8.2D Reality simulation** | **8.2D-0** spec + optional types; **8.2D-1+** map gate trace → `RealitySimulationResult` (pre-explanation governance, not user copy) — see `REALITY_SIMULATION_SPEC.md`. |
 | **Regression corpus** | Frozen snippets per document family with expected matrix outcomes. |
 | **Document cognition engine** | Compose matrices per `RealityMatrixDocumentType`, versioned releases, optional overlap with existing `SmartTalkResult` fields via explicit mappers (future). |
 
