@@ -146,6 +146,29 @@ The second concrete matrix is `matrices/steuerbescheid.ts` → **`STEUERBESCHEID
 
 ---
 
+## Phase 8.2B-3 — Mahnung matrix
+
+The third matrix is `matrices/mahnung.ts` → **`MAHNUNG_REALITY_MATRIX`** (`documentType: "mahnung"`). It is deliberately **last among the first three** because dunning is where models most often **amplify fear**: Mahnung → Vollstreckung, **weitere Schritte** → invented Inkasso timelines, overdue rent-like wording → **eviction**, fees → **Strafverfahren**.
+
+**Escalation governance philosophy**
+
+- **Lanes**: `payment`, **`escalation`** (fees, Androhung, explicit collection), `informational`, **`clarification`** (already paid, contact, Widerspruch-style clarification) — payment reminder **≠** enforcement.
+- **`enforcement_risk`** is **conditionally allowed** only via three **explicit-token** evidence rules (`Vollstreckung`, `Gerichtsvollzieher`, explicit **Inkasso** process wording), each with **`minimumConfidence: "high"`** at claim level; generic Mahnung / letzte Mahnung / weitere Schritte **do not** satisfy them.
+- **`forbiddenClaims`** aggressively blocks cross-domain panic claims (`immigration_risk`, `account_seizure`, `eviction_risk`, `criminal_accusation`, `automatic_salary_garnishment`, etc.) and **`blockedRealities`** block corresponding world-states (e.g. `health_insurance_termination`, `active_inkasso_case` as *asserted realities* — explicit Inkasso **language** still routes through `enforcement_risk` + traps, not `active_inkasso_case` reality without a future schema decision).
+- **Severity**: default **low/medium**; **high** only with `final_reminder_notice` / explicit escalation surface; **`critical`** only when an `enforcement_risk` claim path is admissible — **not** because the tone sounds strict.
+
+**Panic suppression rationale**
+
+Stabilizers document **calm, accurate** lines (no Vollstreckung if absent; **weitere Schritte** is ambiguous; if explicit enforcement text exists, **quote carefully** without denying risk). Forbidden wording blocks **false reassurance** and **fabricated enforcement**.
+
+**Known limitations**
+
+- **`active_inkasso_case`** is a **blocked reality** to block asserting “case already open” as a world-state; **explicit** Inkasso wording still uses **`enforcement_risk`** + traps — 8.2C may need to split “Inkasso mentioned” vs “Inkasso case established” more finely.
+- **Disjunctive** `payment_required` / `clarification_possible` again use **multiple `ClaimRule` rows**.
+- **Ontology**: new `ProceduralLane` values (`escalation`, `clarification`) extend the global lane union; older matrices remain valid (they use subsets).
+
+---
+
 ## File map
 
 | File | Purpose |
@@ -154,6 +177,7 @@ The second concrete matrix is `matrices/steuerbescheid.ts` → **`STEUERBESCHEID
 | `template.ts` | `UNIVERSAL_REALITY_MATRIX_TEMPLATE` + small example lane exports. |
 | `matrices/rechnung.ts` | **`RECHNUNG_REALITY_MATRIX`** — first production-shaped payment-notice matrix. |
 | `matrices/steuerbescheid.ts` | **`STEUERBESCHEID_REALITY_MATRIX`** — tax assessment / Finanzamt Bescheid matrix. |
+| `matrices/mahnung.ts` | **`MAHNUNG_REALITY_MATRIX`** — dunning / escalation-safe reminder matrix. |
 | `matrices/index.ts` | Re-exports concrete matrices (no runtime registry). |
 | `README.md` | Architecture and safety rationale (this file). |
 

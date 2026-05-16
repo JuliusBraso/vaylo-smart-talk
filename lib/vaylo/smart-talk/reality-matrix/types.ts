@@ -32,13 +32,16 @@ export type EvidenceLevel =
 /**
  * Procedural lane: which obligation/right cluster a cue or claim belongs to.
  * Lane isolation prevents payment language from absorbing appeal windows (etc.).
+ * `escalation` / `clarification` added in Phase 8.2B-3 for Mahnung / dunning cognition.
  */
 export type ProceduralLane =
   | "payment"
   | "appeal"
   | "submission"
   | "appointment"
-  | "informational";
+  | "informational"
+  | "escalation"
+  | "clarification";
 
 // ---------------------------------------------------------------------------
 // C) ClaimType — bounded taxonomy (extend by appending to KNOWN_CLAIM_TYPES)
@@ -57,6 +60,14 @@ export const KNOWN_CLAIM_TYPES = [
   "benefit_risk",
   "insurance_risk",
   "informational_only",
+  /** Mahnung / clarification surfaces (Phase 8.2B-3). */
+  "clarification_possible",
+  /** Panic-prone cross-domain claims — typically forbidden on Mahnung matrix. */
+  "immigration_risk",
+  "automatic_salary_garnishment",
+  "account_seizure",
+  "eviction_risk",
+  "criminal_accusation",
 ] as const;
 
 /** Expand the taxonomy by adding entries to KNOWN_CLAIM_TYPES in versioned releases. */
@@ -88,6 +99,13 @@ export const REALITY_TYPE_VALUES = [
   "amended_tax_assessment",
   "legal_remedy_information_present",
   "reminder_notice",
+  "overdue_payment_notice",
+  "repeated_payment_request",
+  "payment_deadline_present",
+  "payment_followup_notice",
+  "possible_late_fee_notice",
+  "escalation_warning_present",
+  "final_reminder_notice",
   "appeal_window_exists",
   "informational_notice",
   "document_submission_expected",
@@ -103,6 +121,12 @@ export const REALITY_TYPE_VALUES = [
   "insurance_risk",
   "final_unappealable_decision",
   "tax_fraud_established",
+  /** Mahnung-matrix blocked outcomes (Phase 8.2B-3) — do not assert without different document class. */
+  "account_seizure",
+  "automatic_salary_garnishment",
+  "active_inkasso_case",
+  "eviction_risk",
+  "health_insurance_termination",
   "unknown",
 ] as const;
 
@@ -188,6 +212,18 @@ export const HALLUCINATION_TRAP_KINDS = [
   "refund_payment_confusion",
   "finanzamt_to_jobcenter_confusion",
   "provisional_to_final_decision",
+  /** Mahnung / dunning (Phase 8.2B-3). */
+  "mahnung_to_vollstreckung",
+  "mahnung_to_gerichtsvollzieher",
+  "payment_reminder_to_account_seizure",
+  "generic_escalation_to_legal_disaster",
+  "letzte_mahnung_to_active_enforcement",
+  "weitere_schritte_to_forced_collection",
+  "late_fee_to_criminal_case",
+  "insurance_reminder_to_loss_of_coverage",
+  "overdue_payment_to_eviction",
+  "overdue_payment_to_salary_garnishment",
+  "emotional_language_amplification",
 ] as const;
 
 export type HallucinationTrapKind = (typeof HALLUCINATION_TRAP_KINDS)[number];
