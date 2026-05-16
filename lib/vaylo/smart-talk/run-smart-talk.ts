@@ -166,10 +166,6 @@ function normalizeDocumentTypeLabel(raw: unknown): string {
   return raw.trim().slice(0, 200);
 }
 
-const EU_CALENDAR_DATE = /\b\d{1,2}\.\d{1,2}\.\d{4}\b/g;
-const ISO_CALENDAR_DATE = /\b\d{4}-\d{2}-\d{2}\b/g;
-
-/** Chars before/after each date occurrence in source to scan for procedural cues (Phase 7.8C). */
 const DEADLINE_CUE_WINDOW_CHARS = 200;
 
 /** German (and OCR-tolerant) substrings; matching is case-insensitive on source slices. */
@@ -210,8 +206,8 @@ const GERMAN_DEADLINE_CUE_FRAGMENTS: readonly string[] = [
 ];
 
 function uniqueCalendarTokens(text: string): string[] {
-  const eu = text.match(EU_CALENDAR_DATE) ?? [];
-  const iso = text.match(ISO_CALENDAR_DATE) ?? [];
+  const eu = [...text.matchAll(/\b\d{1,2}\.\d{1,2}\.\d{4}\b/g)].map((m) => m[0]);
+  const iso = [...text.matchAll(/\b\d{4}-\d{2}-\d{2}\b/g)].map((m) => m[0]);
   return [...new Set([...eu, ...iso])];
 }
 
@@ -252,29 +248,56 @@ function calendarTokensProceduralCueGroundedInSource(item: string, source: strin
   );
 }
 
-/**
- * Drops strings that cite DD.MM.YYYY / YYYY-MM-DD when those exact tokens
- * do not appear in the source transcript (Phase 7.8B; used for rights[]).
- */
-function calendarTokensPresenceOnlyInSource(text: string, source: string): boolean {
-  const tokens = uniqueCalendarTokens(text);
-  if (tokens.length === 0) return true;
-  return tokens.every((tok) => source.includes(tok));
-}
-
 function filterArrayByProceduralCalendarGrounding(items: string[], source: string): string[] {
   if (!source.trim()) return items;
   return items.filter((s) => calendarTokensProceduralCueGroundedInSource(s, source));
 }
 
-function filterArrayByPresenceCalendarGrounding(items: string[], source: string): string[] {
-  if (!source.trim()) return items;
-  return items.filter((s) => calendarTokensPresenceOnlyInSource(s, source));
+function proceduralDateReplacementPhrase(locale: SmartTalkLocale | undefined): string {
+  if (locale === "de") return "innerhalb der im Dokument genannten Frist";
+  if (locale === "en") return "within the deadline stated in the document";
+  return "v lehote uvedenej v dokumente";
+}
+
+/**
+ * Phase 7.8D: Replace DD.MM.YYYY / ISO dates in model prose when not cue-grounded
+ * in source (same strict rule as filterArrayByProceduralCalendarGrounding).
+ */
+function sanitizeProceduralDateProse(
+  text: string,
+  source: string,
+  locale?: SmartTalkLocale,
+): string {
+  if (!text || !source.trim()) return text;
+  const replacement = proceduralDateReplacementPhrase(locale);
+  const euRe = /\b\d{1,2}\.\d{1,2}\.\d{4}\b/g;
+  let out = text.replace(euRe, (match) =>
+    calendarTokensProceduralCueGroundedInSource(match, source) ? match : replacement,
+  );
+  const isoRe = /\b\d{4}-\d{2}-\d{2}\b/g;
+  out = out.replace(isoRe, (match) =>
+    calendarTokensProceduralCueGroundedInSource(match, source) ? match : replacement,
+  );
+  return out;
+}
+
+function sanitizeStringArrayFields(
+  items: string[],
+  source: string,
+  locale?: SmartTalkLocale,
+): string[] {
+  const out: string[] = [];
+  for (const item of items) {
+    const s = sanitizeProceduralDateProse(item, source, locale).trim();
+    if (s) out.push(s);
+  }
+  return out;
 }
 
 function normalizeParsedObject(
   obj: Record<string, unknown>,
   groundSourceText?: string,
+  locale?: SmartTalkLocale,
 ): SmartTalkResult {
   const ground = typeof groundSourceText === "string" ? groundSourceText : "";
 
@@ -353,12 +376,21 @@ function normalizeParsedObject(
   const obligationsRaw = parseStringArray(obj.obligations, 10, 400);
   const consequencesRaw = parseStringArray(obj.consequences, 10, 400);
 
-  const warnings = filterArrayByProceduralCalendarGrounding(warningsRaw, ground);
-  const nextSteps = filterArrayByProceduralCalendarGrounding(nextStepsRaw, ground);
-  const deadlines = filterArrayByProceduralCalendarGrounding(deadlinesRaw, ground);
-  const rights = filterArrayByPresenceCalendarGrounding(rightsRaw, ground);
-  const obligations = filterArrayByProceduralCalendarGrounding(obligationsRaw, ground);
-  const consequences = filterArrayByProceduralCalendarGrounding(consequencesRaw, ground);
+  const deadlinesFiltered = filterArrayByProceduralCalendarGrounding(deadlinesRaw, ground);
+  const deadlines = sanitizeStringArrayFields(deadlinesFiltered, ground, locale);
+
+  const warnings = sanitizeStringArrayFields(warningsRaw, ground, locale);
+  const nextSteps = sanitizeStringArrayFields(nextStepsRaw, ground, locale);
+  const rights = sanitizeStringArrayFields(rightsRaw, ground, locale);
+  const obligations = sanitizeStringArrayFields(obligationsRaw, ground, locale);
+  const consequences = sanitizeStringArrayFields(consequencesRaw, ground, locale);
+
+  const stabilizersSanitized = sanitizeStringArrayFields(stabilizers, ground, locale).slice(0, 2);
+
+  summary = sanitizeProceduralDateProse(summary, ground, locale).trim();
+  if (!summary) summary = "Nepodarilo sa získať zhrnutie z výstupu modelu.";
+  meaning = sanitizeProceduralDateProse(meaning, ground, locale).trim();
+  if (!meaning) meaning = "Ďalšie informácie nájdete v zhrnutí a upozorneniach.";
 
   return {
     summary: summary.slice(0, 8000),
@@ -366,7 +398,7 @@ function normalizeParsedObject(
     urgency,
     nextSteps,
     warnings,
-    stabilizers,
+    stabilizers: stabilizersSanitized,
     confidenceLevel,
     consequencePhase,
     documentQuality,
@@ -480,7 +512,7 @@ export async function runSmartTalk(params: {
       return { ok: true, result: fallbackInvalidJson() };
     }
 
-    return { ok: true, result: normalizeParsedObject(parsed as Record<string, unknown>, params.text) };
+    return { ok: true, result: normalizeParsedObject(parsed as Record<string, unknown>, params.text, params.locale) };
   } catch {
     return { ok: false, error: { kind: "openai_http", status: 0 } };
   } finally {
