@@ -53,6 +53,17 @@ const PROCEDURAL_ATTRIBUTION_RULES = [
   "If attribution between date and obligation/right is unclear, prefer Phase 7.8 safe Slovak phrases (v lehote uvedenej v poučení / dokumente) or stay relative exactly as printed.",
 ].join(" ");
 
+/**
+ * Phase 7.9C — procedural lane isolation (payment vs appeal vs submission vs appointment).
+ */
+const PROCEDURAL_LANE_ISOLATION_RULES = [
+  "Procedural lane isolation (Phase 7.9C): Never attach objection/appeal/Einspruch timing language to payment obligations, and never attach payment deadlines to appeal/objection guidance unless the transcript explicitly binds them together.",
+  "Keep lanes separate in prose and bullets: PAYMENT (zahlen/Zahlung/fällig/spätestens …) vs APPEAL/Einspruch (innerhalb eines Monats nach Bekanntgabe, Rechtsbehelfsbelehrung …) vs DOCUMENT SUBMISSION vs Termin/hearing appearances.",
+  "innerhalb eines Monats nach Bekanntgabe describes objection timing in typical Finanzamt/Bescheid Poučenie—not the tax payment due date—unless the letter expressly ties that relative window to paying.",
+  "If a payment deadline is unclear, use generic payment-safe wording (document-stated payment deadline), not Bekanntgabe-relative objection wording.",
+  "Do not reuse unrelated printed dates across lanes; if unsure which procedure a calendar token belongs to, omit it from output.",
+].join(" ");
+
 /** Phase 7.8: procedural extraction — concise; no invention of rights/deadlines/penalties. */
 const PROCEDURAL_REASONING_RULES =
   "Procedural intelligence (7.8; ground strictly in source; not a lawyer): meaning should explain what kind of procedural situation this is (information vs obligation vs appeal window vs payment duty), weaving explicit deadlines and rights/obligations when stated—without fear amplification or dramatic legal claims.\n" +
@@ -144,6 +155,7 @@ export function buildSmartTalkMessages(params: {
       CLASSIFICATION_RULES_COMPACT,
       PROCEDURAL_REASONING_RULES,
       PROCEDURAL_ATTRIBUTION_RULES,
+      PROCEDURAL_LANE_ISOLATION_RULES,
       JSON_KEYS_TEXT,
     ].join(" ");
 
@@ -182,6 +194,7 @@ export function buildSmartTalkMessages(params: {
     CLASSIFICATION_RULES_COMPACT,
     PROCEDURAL_REASONING_RULES,
     PROCEDURAL_ATTRIBUTION_RULES,
+    PROCEDURAL_LANE_ISOLATION_RULES,
     JSON_KEYS_QUESTION,
   ].join(" ");
 

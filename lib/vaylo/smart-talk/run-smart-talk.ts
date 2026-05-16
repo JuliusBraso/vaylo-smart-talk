@@ -236,128 +236,176 @@ function dateTokenOccurrenceCueGroundedInSource(token: string, source: string): 
   return false;
 }
 
-type ProceduralAttributionIntent = "appeal" | "payment" | "appointment" | "submission";
+/** Phase 7.9C — procedural lanes (internal); isolate payment vs appeal vs submission vs appointment. */
+type ProceduralLane = "payment" | "appeal" | "submission" | "appointment";
 
-/** Generated-side window around each calendar token for coarse intent (Phase 7.9B). */
-const GENERATED_ATTRIBUTION_RADIUS_CHARS = 110;
+const GENERATED_LANE_SCAN_RADIUS_CHARS = 110;
 
-/** Source-side cues near the date occurrence that must match generated intent (case-insensitive). */
-const SOURCE_APPEAL_ATTRIBUTION_CUES: readonly string[] = [
-  "einspruch",
-  "widerspruch",
-  "rechtsbehelf",
-  "rechtsbehelfsbelehrung",
-  "innerhalb",
-  "bekanntgabe",
-];
-
-const SOURCE_PAYMENT_ATTRIBUTION_CUES: readonly string[] = [
+const LANE_PAYMENT_CUES: readonly string[] = [
   "zahlen",
   "zahlung",
   "zahlbar",
-  "fällig",
-  "fallig",
-  "faellig",
   "fälligkeit",
   "falligkeit",
   "faelligkeit",
-  "spätestens",
-  "spaetestens",
-  "bis zum",
   "säumnis",
   "saumnis",
   "säumniszuschlag",
   "saumniszuschlag",
+  "vollstreckung",
+  "überweisung",
+  "ueberweisung",
+  "lastschrift",
+  "abbuchung",
+  "steuer zahlen",
+  "bitte zahlen",
+  "zaplatiť",
+  "zaplatit",
+  "platba",
+  "úhrada",
+  "uhrada",
+  "splatnosť",
+  "splatnost",
+  "omeškanie",
+  "omeskanie",
+  "poplatok",
+  "prevod",
+  "uhradiť",
+  "daň zaplatiť",
+  "dan zaplatit",
 ];
 
-const SOURCE_SUBMISSION_ATTRIBUTION_CUES: readonly string[] = [
+const LANE_APPEAL_CUES: readonly string[] = [
+  "einspruch",
+  "rechtsbehelf",
+  "rechtsbehelfsbelehrung",
+  "bekanntgabe",
+  "widerspruch",
+  "anfechtung",
+  "odvolanie",
+  "námietka",
+  "namietka",
+  "poučenie",
+  "poucenie",
+  "napadnúť rozhodnutie",
+  "napadnut rozhodnutie",
+];
+
+const LANE_SUBMISSION_CUES: readonly string[] = [
   "unterlagen",
-  "nachweis",
-  "einreichen",
   "nachreichen",
   "mitwirkung",
+  "einreichen",
+  "abgeben",
+  "doložiť",
+  "dolozit",
+  "predložiť",
+  "predlozit",
+  "odoslať dokumenty",
+  "odoslat dokumenty",
 ];
 
-const SOURCE_APPOINTMENT_ATTRIBUTION_CUES: readonly string[] = ["termin", "vorsprache", "erscheinen"];
+const LANE_APPOINTMENT_CUES: readonly string[] = [
+  "termin",
+  "vorsprache",
+  "erscheinen",
+  "termín",
+  "dostaviť sa",
+  "dostavit sa",
+];
 
-function sourceSliceMatchesAttributionIntent(slice: string, intent: ProceduralAttributionIntent): boolean {
-  const n = slice.toLowerCase();
-  const lists: Record<ProceduralAttributionIntent, readonly string[]> = {
-    appeal: SOURCE_APPEAL_ATTRIBUTION_CUES,
-    payment: SOURCE_PAYMENT_ATTRIBUTION_CUES,
-    submission: SOURCE_SUBMISSION_ATTRIBUTION_CUES,
-    appointment: SOURCE_APPOINTMENT_ATTRIBUTION_CUES,
-  };
-  return lists[intent].some((cue) => n.includes(cue.toLowerCase()));
+const LANE_ORDER: readonly ProceduralLane[] = ["payment", "appeal", "submission", "appointment"];
+
+/** Appeal-relative wording must not appear in payment-focused fragments (Phase 7.9C leakage guard). */
+const APPEAL_RELATIVE_PHRASE_LEAK_PATTERNS: ReadonlyArray<RegExp> = [
+  /\binnerhalb eines Monats nach Bekanntgabe\b/giu,
+  /do jedného mesiaca od doručenia rozhodnutia/giu,
+  /\bdo jedného mesiaca od doručenia\b/giu,
+  /\bjedného mesiaca od doručenia rozhodnutia\b/giu,
+  /\bjeden mesiac od doručenia\b/giu,
+  /\bjedného mesiaca od doručenia\b/giu,
+  /do jedného mesiaca od oznámenia/giu,
+  /\bjedného mesiaca od oznámenia\b/giu,
+  /\bwithin one month of notification of the decision\b/giu,
+];
+
+function countDistinctLaneCueHits(haystackLower: string, cues: readonly string[]): number {
+  let n = 0;
+  for (const cue of cues) {
+    if (haystackLower.includes(cue.toLowerCase())) n += 1;
+  }
+  return n;
 }
 
-function tokenOccurrenceMatchesAttributionIntent(
-  token: string,
-  source: string,
-  intent: ProceduralAttributionIntent,
-): boolean {
+/** Strongest lane by cue hits; ties PAYMENT > APPEAL > SUBMISSION > APPOINTMENT (Phase 7.9C). */
+function detectProceduralLane(fragment: string): ProceduralLane | null {
+  const h = fragment.toLowerCase();
+  const scores: Record<ProceduralLane, number> = {
+    payment: countDistinctLaneCueHits(h, LANE_PAYMENT_CUES),
+    appeal: countDistinctLaneCueHits(h, LANE_APPEAL_CUES),
+    submission: countDistinctLaneCueHits(h, LANE_SUBMISSION_CUES),
+    appointment: countDistinctLaneCueHits(h, LANE_APPOINTMENT_CUES),
+  };
+  let max = -1;
+  for (const lane of LANE_ORDER) max = Math.max(max, scores[lane]);
+  if (max <= 0) return null;
+  for (const lane of LANE_ORDER) {
+    if (scores[lane] === max) return lane;
+  }
+  return null;
+}
+
+function fragmentAroundGenerated(generated: string, idx: number, spanLen: number): string {
+  const ctxStart = Math.max(0, idx - GENERATED_LANE_SCAN_RADIUS_CHARS);
+  const ctxEnd = Math.min(generated.length, idx + spanLen + GENERATED_LANE_SCAN_RADIUS_CHARS);
+  return generated.slice(ctxStart, ctxEnd);
+}
+
+function detectProceduralLaneAt(generated: string, dateStartIdx: number, dateLen: number): ProceduralLane | null {
+  return detectProceduralLane(fragmentAroundGenerated(generated, dateStartIdx, dateLen));
+}
+
+function laneCuesFor(lane: ProceduralLane): readonly string[] {
+  const map: Record<ProceduralLane, readonly string[]> = {
+    payment: LANE_PAYMENT_CUES,
+    appeal: LANE_APPEAL_CUES,
+    submission: LANE_SUBMISSION_CUES,
+    appointment: LANE_APPOINTMENT_CUES,
+  };
+  return map[lane];
+}
+
+function sourceSliceMatchesLane(slice: string, lane: ProceduralLane): boolean {
+  const h = slice.toLowerCase();
+  return laneCuesFor(lane).some((cue) => h.includes(cue.toLowerCase()));
+}
+
+function tokenOccurrenceMatchesLane(token: string, source: string, lane: ProceduralLane): boolean {
   let from = 0;
   while (from <= source.length) {
     const i = source.indexOf(token, from);
     if (i === -1) break;
     const start = Math.max(0, i - DEADLINE_CUE_WINDOW_CHARS);
     const end = Math.min(source.length, i + token.length + DEADLINE_CUE_WINDOW_CHARS);
-    if (sourceSliceMatchesAttributionIntent(source.slice(start, end), intent)) return true;
+    if (sourceSliceMatchesLane(source.slice(start, end), lane)) return true;
     from = i + 1;
   }
   return false;
 }
 
-function dominantAttributionIntentAt(
-  generated: string,
-  dateStartIdx: number,
-  dateLen: number,
-): ProceduralAttributionIntent | null {
-  const ctxStart = Math.max(0, dateStartIdx - GENERATED_ATTRIBUTION_RADIUS_CHARS);
-  const ctxEnd = Math.min(generated.length, dateStartIdx + dateLen + GENERATED_ATTRIBUTION_RADIUS_CHARS);
-  const slice = generated.slice(ctxStart, ctxEnd);
-  const center = dateStartIdx + dateLen / 2;
-
-  const configs: Array<{ intent: ProceduralAttributionIntent; re: RegExp }> = [
-    {
-      intent: "appeal",
-      re: /\b(odvolanie|odvolania|odvolaní|einspruch|námietka|namietka|widerspruch|rechtsbehelf)\b/giu,
-    },
-    {
-      intent: "payment",
-      re: /\b(zaplatiť|zaplatit|zahlung|zahlen|fällig|faellig|splatné|splátne|splátka|nedoplatok|úhrada|uhrada|zahlungsbetrag)\b/giu,
-    },
-    {
-      intent: "appointment",
-      re: /\b(termín|termin)\b/giu,
-    },
-    {
-      intent: "submission",
-      re: /\b(doložiť|dolozit|unterlagen|nachreichung|mitwirkung|nachreichen|einreichen|einzureichen)\b/giu,
-    },
-  ];
-
-  let bestDist = Infinity;
-  let bestIntent: ProceduralAttributionIntent | null = null;
-
-  for (const { intent, re } of configs) {
-    const r = new RegExp(re.source, "giu");
-    let m: RegExpExecArray | null;
-    while ((m = r.exec(slice)) !== null) {
-      const ms = m.index ?? 0;
-      const kwCenter = ctxStart + ms + m[0].length / 2;
-      const dist = Math.abs(center - kwCenter);
-      if (dist < bestDist) {
-        bestDist = dist;
-        bestIntent = intent;
-      }
-    }
-  }
-
-  return bestIntent;
+function proceduralDateReplacementPhrase(locale: SmartTalkLocale | undefined): string {
+  if (locale === "de") return "innerhalb der im Dokument genannten Frist";
+  if (locale === "en") return "within the deadline stated in the document";
+  return "v lehote uvedenej v dokumente";
 }
 
-function attributionFailureReplacement(locale: SmartTalkLocale | undefined, source: string): string {
+function paymentLaneSafePhrase(locale: SmartTalkLocale | undefined): string {
+  if (locale === "de") return "innerhalb der im Dokument genannten Zahlungsfrist";
+  if (locale === "en") return "within the payment deadline stated in the document";
+  return "v lehote uvedenej v dokumente";
+}
+
+function appealLaneSafePhrase(locale: SmartTalkLocale | undefined, source: string): string {
   const srcLower = source.toLowerCase();
   const hasRelativeMonthWindow =
     srcLower.includes("innerhalb eines monats") ||
@@ -377,23 +425,33 @@ function attributionFailureReplacement(locale: SmartTalkLocale | undefined, sour
   return hasRelativeMonthWindow ? "do jedného mesiaca od doručenia rozhodnutia" : "v lehote uvedenej v poučení";
 }
 
+function laneMismatchConcreteDateReplacement(
+  locale: SmartTalkLocale | undefined,
+  source: string,
+  lane: ProceduralLane | null,
+): string {
+  if (lane === "payment") return paymentLaneSafePhrase(locale);
+  if (lane === "appeal") return appealLaneSafePhrase(locale, source);
+  return proceduralDateReplacementPhrase(locale);
+}
+
 function concreteDateGroundingDecision(
   match: string,
   offset: number,
   fullGenerated: string,
   source: string,
-): { keep: boolean; dominantIntent: ProceduralAttributionIntent | null } {
-  if (!source.includes(match)) return { keep: false, dominantIntent: null };
-  const dominantIntent = dominantAttributionIntentAt(fullGenerated, offset, match.length);
-  if (dominantIntent !== null) {
+): { keep: boolean; lane: ProceduralLane | null } {
+  if (!source.includes(match)) return { keep: false, lane: null };
+  const lane = detectProceduralLaneAt(fullGenerated, offset, match.length);
+  if (lane !== null) {
     return {
-      keep: tokenOccurrenceMatchesAttributionIntent(match, source, dominantIntent),
-      dominantIntent,
+      keep: tokenOccurrenceMatchesLane(match, source, lane),
+      lane,
     };
   }
   return {
     keep: calendarTokensProceduralCueGroundedInSource(match, source),
-    dominantIntent: null,
+    lane: null,
   };
 }
 
@@ -429,14 +487,8 @@ function filterArrayByProceduralCalendarGrounding(items: string[], source: strin
   return items.filter((s) => itemCalendarTokensGrounded(s, source));
 }
 
-function proceduralDateReplacementPhrase(locale: SmartTalkLocale | undefined): string {
-  if (locale === "de") return "innerhalb der im Dokument genannten Frist";
-  if (locale === "en") return "within the deadline stated in the document";
-  return "v lehote uvedenej v dokumente";
-}
-
 /**
- * Phase 7.8D + 7.9B: Replace concrete dates when cue-grounding or procedural attribution fails.
+ * Phase 7.8D + 7.9B/C: Replace concrete dates when cue-grounding or procedural lane isolation fails.
  */
 function sanitizeProceduralDateProse(
   text: string,
@@ -446,10 +498,9 @@ function sanitizeProceduralDateProse(
   if (!text || !source.trim()) return text;
 
   const replaceMatch = (match: string, offset: number): string => {
-    const { keep, dominantIntent } = concreteDateGroundingDecision(match, offset, text, source);
+    const { keep, lane } = concreteDateGroundingDecision(match, offset, text, source);
     if (keep) return match;
-    if (dominantIntent !== null) return attributionFailureReplacement(locale, source);
-    return proceduralDateReplacementPhrase(locale);
+    return laneMismatchConcreteDateReplacement(locale, source, lane);
   };
 
   let accum = "";
@@ -476,6 +527,36 @@ function sanitizeProceduralDateProse(
   return accum;
 }
 
+/** Strip Bekanntgabe-style relative appeal windows beside payment wording (Phase 7.9C). */
+function sanitizeAppealRelativeLeakInPaymentLane(text: string, locale?: SmartTalkLocale): string {
+  let out = text;
+  let guard = 0;
+  while (guard++ < 80) {
+    let best: { idx: number; len: number } | null = null;
+    for (const proto of APPEAL_RELATIVE_PHRASE_LEAK_PATTERNS) {
+      const r = new RegExp(proto.source, proto.flags.includes("g") ? proto.flags : `${proto.flags}g`);
+      const m = r.exec(out);
+      if (!m) continue;
+      const idx = m.index;
+      const lane = detectProceduralLane(fragmentAroundGenerated(out, idx, m[0].length));
+      if (lane !== "payment") continue;
+      if (!best || idx < best.idx || (idx === best.idx && m[0].length > best.len)) {
+        best = { idx, len: m[0].length };
+      }
+    }
+    if (!best) break;
+    const insert = paymentLaneSafePhrase(locale);
+    out = out.slice(0, best.idx) + insert + out.slice(best.idx + best.len);
+  }
+  return out;
+}
+
+function sanitizeUserVisibleProceduralProse(text: string, source: string, locale?: SmartTalkLocale): string {
+  let s = sanitizeProceduralDateProse(text, source, locale);
+  s = sanitizeAppealRelativeLeakInPaymentLane(s, locale);
+  return s;
+}
+
 function sanitizeStringArrayFields(
   items: string[],
   source: string,
@@ -483,7 +564,7 @@ function sanitizeStringArrayFields(
 ): string[] {
   const out: string[] = [];
   for (const item of items) {
-    const s = sanitizeProceduralDateProse(item, source, locale).trim();
+    const s = sanitizeUserVisibleProceduralProse(item, source, locale).trim();
     if (s) out.push(s);
   }
   return out;
@@ -582,9 +663,9 @@ function normalizeParsedObject(
 
   const stabilizersSanitized = sanitizeStringArrayFields(stabilizers, ground, locale).slice(0, 2);
 
-  summary = sanitizeProceduralDateProse(summary, ground, locale).trim();
+  summary = sanitizeUserVisibleProceduralProse(summary, ground, locale).trim();
   if (!summary) summary = "Nepodarilo sa získať zhrnutie z výstupu modelu.";
-  meaning = sanitizeProceduralDateProse(meaning, ground, locale).trim();
+  meaning = sanitizeUserVisibleProceduralProse(meaning, ground, locale).trim();
   if (!meaning) meaning = "Ďalšie informácie nájdete v zhrnutí a upozorneniach.";
 
   return {
