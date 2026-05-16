@@ -301,6 +301,8 @@ This spec is **compatible** with existing matrices (`rechnung`, `steuerbescheid`
 
 **Optional type sketches:** `evidence-gates-types.ts` (same folder) — discriminated union for `RuleExpression`, audit trace shapes; **no functions**.
 
+**Evaluator skeleton (8.2C-1):** `evidence-gates/` — `evaluateEvidenceGates`, `evaluateRuleExpression`, `buildGateAuditTrace` (pure functions, **not** wired to Smart Talk). See `evidence-gates/README.md`.
+
 ---
 
 ## Critical success condition (answer)

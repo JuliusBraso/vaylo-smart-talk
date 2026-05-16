@@ -189,6 +189,16 @@ Optional type sketches: **`evidence-gates-types.ts`** (`RuleExpression`, `GateAu
 
 ---
 
+## Phase 8.2C-1 — Evidence Gate evaluator skeleton
+
+Folder **`evidence-gates/`** exposes **`evaluateEvidenceGates`**, **`evaluateRuleExpression`**, and **`buildGateAuditTrace`** — **pure functions only**, **not** connected to Smart Talk, OCR, or APIs.
+
+**Posture:** no claim is **`allowed`**; matrix claim types appear as **`uncertain`** when a matrix snapshot is passed; **`blockedRealities`** are copied as blocked reality rows; every run includes **`traceMetadata`** (evaluator version, unsupported feature list, safety posture).
+
+**Next:** implement cue detection, lane binding, proximity, and authorization per `EVIDENCE_GATES_SPEC.md` — then optional Smart Talk wiring.
+
+---
+
 ## File map
 
 | File | Purpose |
@@ -197,7 +207,8 @@ Optional type sketches: **`evidence-gates-types.ts`** (`RuleExpression`, `GateAu
 | `template.ts` | `UNIVERSAL_REALITY_MATRIX_TEMPLATE` + small example lane exports. |
 | `CONSOLIDATION_AUDIT.md` | **Phase 8.2B-4** — consolidation audit before Evidence Gates. |
 | `EVIDENCE_GATES_SPEC.md` | **Phase 8.2C-0** — formal Evidence Gates specification (no runtime). |
-| `evidence-gates-types.ts` | **8.2C-0** — type sketches for gates (`SPEC ONLY` in file header). |
+| `evidence-gates-types.ts` | Gate input/output / `RuleExpression` / audit types; optional `matrix` on input (8.2C-1). |
+| `evidence-gates/` | **Phase 8.2C-1** — evaluator skeleton (`evaluateEvidenceGates`, etc.). |
 | `matrices/rechnung.ts` | **`RECHNUNG_REALITY_MATRIX`** — first production-shaped payment-notice matrix. |
 | `matrices/steuerbescheid.ts` | **`STEUERBESCHEID_REALITY_MATRIX`** — tax assessment / Finanzamt Bescheid matrix. |
 | `matrices/mahnung.ts` | **`MAHNUNG_REALITY_MATRIX`** — dunning / escalation-safe reminder matrix. |

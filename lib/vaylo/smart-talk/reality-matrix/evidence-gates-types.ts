@@ -1,7 +1,8 @@
 /**
- * PHASE 8.2C-0 — Evidence Gates: TYPE SKETCHES ONLY.
+ * Evidence Gates shared types (8.2C-0 sketches + 8.2C-1 evaluator I/O).
  *
- * SPEC ONLY — NOT RUNTIME. No functions. No evaluation logic.
+ * Pure type definitions — no runtime in this file.
+ * Evaluator skeleton: `evidence-gates/evaluate-evidence-gates.ts`.
  * See EVIDENCE_GATES_SPEC.md for behavioral contract.
  */
 
@@ -12,6 +13,7 @@ import type {
   ProceduralLane,
   ProceduralSeverityBand,
   RealityType,
+  UniversalDocumentRealityMatrix,
 } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -49,6 +51,11 @@ export interface EvidenceGateInput {
   readonly matrixSchemaVersion: string;
   /** Precomputed cue hits — produced by future stage 1; may be empty in sketches. */
   readonly cueHits: readonly CueHit[];
+  /**
+   * Optional matrix snapshot (8.2C-1+). Skeleton uses only metadata + blocked/forbidden surfaces;
+   * does not evaluate evidence rules against text.
+   */
+  readonly matrix?: UniversalDocumentRealityMatrix;
 }
 
 // ---------------------------------------------------------------------------
@@ -100,7 +107,11 @@ export type BlockReasonCode =
   | "insufficient_confidence"
   | "negative_cue"
   | "trap_cap"
-  | "matrix_mismatch";
+  | "matrix_mismatch"
+  /** Evaluator skeleton: no claim may be treated as authorized until full pipeline exists. */
+  | "skeleton_no_runtime_authorization"
+  /** Reality listed in matrix.blockedRealities — not assertable for this document class. */
+  | "matrix_blocked_surface";
 
 export interface ClaimAuthorization {
   readonly namespaceId: NamespacedClaimId;
@@ -115,6 +126,8 @@ export interface RealityAuthorization {
   readonly disposition: ClaimDisposition;
   readonly satisfiedRuleIds?: readonly string[];
   readonly blockReason?: BlockReasonCode;
+  /** Optional human-readable detail for audit logs. */
+  readonly notes?: string;
 }
 
 export type TrapDisposition = "triggered" | "advisory" | "skipped";
@@ -159,6 +172,16 @@ export interface GateAuditTrace {
   readonly traps: readonly TrapActivation[];
   readonly stabilizerCandidates: readonly StabilizerCandidate[];
   readonly severity: SeverityCandidate;
+  /**
+   * Phase 8.2C-1 skeleton / runtime metadata (mandatory for trust-grade debugging once populated).
+   */
+  readonly traceMetadata?: {
+    readonly evaluatorVersion: string;
+    readonly stages: readonly string[];
+    readonly safetyPosture: string;
+    readonly unsupportedFeatures?: readonly string[];
+    readonly notes?: readonly string[];
+  };
 }
 
 /** Bundle returned by future gate orchestrator — SPEC shape only. */
@@ -175,4 +198,16 @@ export interface ClaimAuthorizationSpec {
   readonly claimType: ClaimType;
   readonly expression: RuleExpression;
   readonly minimumConfidence: MatrixConfidenceFloor;
+}
+
+// ---------------------------------------------------------------------------
+// Rule evaluation result (8.2C-1 skeleton — returned by evaluateRuleExpression)
+// ---------------------------------------------------------------------------
+
+export interface RuleEvaluationResult {
+  readonly matched: boolean;
+  readonly confidence: number;
+  readonly evidenceLevel?: EvidenceLevel;
+  readonly reason: string;
+  readonly unsupportedFeatures?: readonly string[];
 }
