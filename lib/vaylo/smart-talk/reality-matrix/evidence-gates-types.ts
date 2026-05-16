@@ -222,13 +222,38 @@ export interface RealityAuthorization {
   readonly evidenceLevel?: EvidenceLevel;
 }
 
-export type TrapDisposition = "triggered" | "advisory" | "skipped";
+export type TrapDisposition =
+  | "triggered"
+  | "advisory"
+  | "skipped"
+  /** Dry-run only (8.2C-9) — governance signal, not runtime suppression. */
+  | "candidate_triggered"
+  | "candidate_not_triggered"
+  | "candidate_uncertain";
 
 export interface TrapActivation {
   readonly trapId: string;
   readonly trapKind: string;
   readonly disposition: TrapDisposition;
+  /** Legacy / human-facing audit line; kept for all rows. */
   readonly rationale: string;
+  /**
+   * When true, this row is **audit / simulation only** (8.2C-9) — not runtime trap enforcement,
+   * not Smart Talk, not user-visible warnings.
+   */
+  readonly dryRun?: boolean;
+  readonly neverUserVisible?: boolean;
+  readonly authorizationMode?: "dry_run";
+  /** Machine-oriented dry-run reason (8.2C-9). */
+  readonly reason?: string;
+  /** Conservative confidence for dry-run trigger rows (8.2C-9). */
+  readonly confidence?: number;
+  readonly supportingClaimIds?: readonly NamespacedClaimId[];
+  readonly supportingRealityIds?: readonly NamespacedRealityId[];
+  readonly supportingEvidenceRuleIds?: readonly string[];
+  readonly notes?: string;
+  /** Provenance discriminator for audit consumers (8.2C-9). */
+  readonly sourceKind?: "hallucination_trap";
 }
 
 export interface StabilizerCandidate {
@@ -271,6 +296,11 @@ export interface GateAuditTrace {
    * Smart Talk output, or legal truth.
    */
   readonly dryRunRealityAuthorizations?: readonly RealityAuthorization[];
+  /**
+   * Hallucination trap **dry-run** only (8.2C-9): `candidate_*` dispositions — observability only,
+   * not runtime suppression or explanation rewriting.
+   */
+  readonly dryRunTrapActivations?: readonly TrapActivation[];
   /**
    * Manual proximity **skeleton** evaluation rows (8.2C-6) — not OCR, layout, or distance-based proof.
    */
@@ -326,6 +356,16 @@ export interface GateAuditTrace {
     readonly candidateUncertainRealityIds?: readonly string[];
     /** How reality rows were interpreted in this trace (8.2C-8). */
     readonly realityAuthorizationMode?: "dry_run" | "not_applicable";
+    /** Count of trap dry-run activation rows (8.2C-9). */
+    readonly trapActivationDryRunCount?: number;
+    /** Trap ids with dry-run `candidate_triggered` (8.2C-9). */
+    readonly candidateTriggeredTrapIds?: readonly string[];
+    /** Trap ids with dry-run `candidate_uncertain` (8.2C-9). */
+    readonly candidateUncertainTrapIds?: readonly string[];
+    /** Trap ids with dry-run `candidate_not_triggered` (8.2C-9). */
+    readonly candidateNonTriggeredTrapIds?: readonly string[];
+    /** How trap rows were interpreted in this trace (8.2C-9). */
+    readonly trapAuthorizationMode?: "dry_run" | "not_applicable";
     /** Count of externally supplied proximity observations passed to trace builder (8.2C-6). */
     readonly proximityObservationCount?: number;
     /** Constraint ids with `matched: true` from manual proximity skeleton evaluation (8.2C-6). */

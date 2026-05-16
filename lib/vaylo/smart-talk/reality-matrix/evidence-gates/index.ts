@@ -20,6 +20,7 @@ export {
   TRACE_STAGE_PROXIMITY_SKELETON,
   TRACE_STAGE_REALITY_AUTHORIZATION_DRY_RUN,
   TRACE_STAGE_SKELETON_NO_PRODUCTION_AUTHORIZATION,
+  TRACE_STAGE_TRAP_ACTIVATION_DRY_RUN,
 } from "./trace-constants";
 
 export { buildGateAuditTrace } from "./build-audit-trace";
@@ -41,3 +42,5 @@ export { resolveRealityAuthorizations } from "./resolve-reality-authorizations";
 export type {
   ResolveRealityAuthorizationsParams,
 } from "./resolve-reality-authorizations";
+export { resolveTrapActivations } from "./resolve-trap-activations";
+export type { ResolveTrapActivationsParams } from "./resolve-trap-activations";

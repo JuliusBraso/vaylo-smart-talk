@@ -10,6 +10,7 @@ A **pure-function** package under `reality-matrix/evidence-gates/` that introduc
 - `resolveClaimRules` — matrix `ClaimRule[]` vs resolved evidence rules (8.2C-5 **dry-run** only)
 - `evaluateProximityConstraints` — manual observations vs constraints, equality-only (8.2C-6 **skeleton**)
 - `resolveRealityAuthorizations` — matrix realities vs evidence + claim dry-run (8.2C-8 **dry-run only**)
+- `resolveTrapActivations` — matrix `HallucinationTrap[]` vs dry-run claims/realities + evidence (8.2C-9 **dry-run only**)
 
 This is **not** full Evidence Gates. It is a **conservative runtime skeleton** so later stages can grow inside a stable module boundary.
 
@@ -126,7 +127,7 @@ Types live in **`proximity-types.ts`** (`ProximityObservation`, `ProximityConstr
 
 **Rule algebra:** for `RuleExpression` nodes with `op: "proximity"`, `evaluateRuleExpression` may read **`context.proximityEvaluationByTerminalKey[terminalKey(expr)]`** after `resolveTerminal` / `terminalResults` — still **no** `documentText`.
 
-**Audit:** when `buildGateAuditTrace` receives optional `proximityObservations` / `proximityConstraints`, it runs the skeleton evaluator when **both** lists are non-empty, sets `trace.proximityConstraintEvaluationResults`, and adds `traceMetadata` (`proximityObservationCount`, `matchedProximityConstraintIds`, `unresolvedProximityConstraintIds`) plus the canonical audit token `manual_proximity_only_no_text_scanning` when proximity parameters are present (8.2C-7). Later phases (e.g. **8.2C-8**) extend the trace with additional dry-run surfaces without changing proximity matching semantics here.
+**Audit:** when `buildGateAuditTrace` receives optional `proximityObservations` / `proximityConstraints`, it runs the skeleton evaluator when **both** lists are non-empty, sets `trace.proximityConstraintEvaluationResults`, and adds `traceMetadata` (`proximityObservationCount`, `matchedProximityConstraintIds`, `unresolvedProximityConstraintIds`) plus the canonical audit token `manual_proximity_only_no_text_scanning` when proximity parameters are present (8.2C-7). Later phases (e.g. **8.2C-8**, **8.2C-9**) extend the trace with additional dry-run surfaces without changing proximity matching semantics here.
 
 ---
 
@@ -156,3 +157,18 @@ This phase adds **no new reasoning behavior**, **no production claim authorizati
 > **Reality authorization candidates are bounded procedural hypotheses, not legal truth.**
 
 The evaluator still does **not** populate any production **`supportedRealities`** field on `EvidenceGateDecision` (that concept remains outside this trace-only dry-run list).
+
+---
+
+## PHASE 8.2C-9 — Trap Activation Dry Run v1
+
+`resolveTrapActivations({ matrix, evidenceRuleResults, claimAuthorizations, realityAuthorizations })` returns **`TrapActivation[]`** with **`disposition`** in **`candidate_triggered` \| `candidate_not_triggered` \| `candidate_uncertain`**, always **`dryRun: true`**, **`neverUserVisible: true`**, **`authorizationMode: "dry_run"`**, and **`sourceKind: "hallucination_trap"`**. Rows are stored only in **`trace.dryRunTrapActivations`** — **`trace.traps`** remains the non–dry-run slice (still empty in the skeleton entry path).
+
+- **Inputs only:** matrix **`HallucinationTrap`** catalog, **`candidate_allowed`** claim dry-run rows, **`candidate_supported`** reality dry-run rows where relevant, and **matched non-speculative** evidence rule resolution rows. **No** `documentText`, **no** regex, **no** OCR inference, **no** NLP on `dangerousInference` prose, **no** Smart Talk wiring, **no** runtime suppression of claims/realities/explanations.
+- **Enforcement-cluster traps:** a conservative allow-list of trap **`kind`** values plus `relatedClaimTypes` containing **`enforcement_risk`** requires a **payment/escalation reality anchor** (`candidate_supported` reality type in a fixed anchor set aligned with matrix vocabulary) before **`candidate_triggered`**; otherwise **`candidate_uncertain`** (`dry_run_trap_enforcement_cluster_without_reality_anchor`).
+- **Other traps with `relatedClaimTypes` overlap:** **`candidate_triggered`** with **`dry_run_related_claim_with_evidence_signal`** when non-speculative matched evidence exists.
+- **Speculative-only (or missing evidence level) matches:** **`candidate_triggered` is never emitted**; use **`candidate_uncertain`** with **`reason: "speculative_evidence_not_triggering_trap"`** when claim overlap exists but no non-speculative matched evidence path.
+- **Audit:** `traceMetadata` adds `trapActivationDryRunCount`, `candidateTriggeredTrapIds`, `candidateUncertainTrapIds`, `candidateNonTriggeredTrapIds`, `trapAuthorizationMode`, stage **`trap_activation_dry_run`**, and note **`trap_activation_dry_run_only_not_runtime_enforced_in_8_2c_9`**.
+
+> **Trap activation candidates are governance observations, not legal conclusions.**
+

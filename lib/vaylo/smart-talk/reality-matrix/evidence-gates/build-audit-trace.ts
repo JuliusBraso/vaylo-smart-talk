@@ -27,6 +27,7 @@ import {
   TRACE_STAGE_PROXIMITY_SKELETON,
   TRACE_STAGE_REALITY_AUTHORIZATION_DRY_RUN,
   TRACE_STAGE_SKELETON_NO_PRODUCTION_AUTHORIZATION,
+  TRACE_STAGE_TRAP_ACTIVATION_DRY_RUN,
 } from "./trace-constants";
 
 export interface BuildGateAuditTraceParams {
@@ -41,6 +42,8 @@ export interface BuildGateAuditTraceParams {
   readonly dryRunClaimAuthorizations?: readonly ClaimAuthorization[];
   /** Reality dry-run only (8.2C-8). */
   readonly dryRunRealityAuthorizations?: readonly RealityAuthorization[];
+  /** Trap activation dry-run only (8.2C-9). */
+  readonly dryRunTrapActivations?: readonly TrapActivation[];
   readonly claimDecisions: readonly ClaimAuthorization[];
   readonly realityDecisions: readonly RealityAuthorization[];
   readonly ruleEvaluations: readonly RuleEvaluationRecord[];
@@ -138,6 +141,15 @@ function dryRunRealityMetadata(auths: readonly RealityAuthorization[]) {
   };
 }
 
+function dryRunTrapMetadata(rows: readonly TrapActivation[]) {
+  return {
+    trapActivationDryRunCount: rows.length,
+    candidateTriggeredTrapIds: rows.filter((t) => t.disposition === "candidate_triggered").map((t) => t.trapId),
+    candidateUncertainTrapIds: rows.filter((t) => t.disposition === "candidate_uncertain").map((t) => t.trapId),
+    candidateNonTriggeredTrapIds: rows.filter((t) => t.disposition === "candidate_not_triggered").map((t) => t.trapId),
+  };
+}
+
 /** Avoid echoing OCR-adjacent snippets in the trace while keeping structural fields. */
 function cueHitForTrace(hit: CueHit): CueHit {
   return {
@@ -168,6 +180,7 @@ export function buildGateAuditTrace(params: BuildGateAuditTraceParams): GateAudi
   const resolution = params.evidenceRuleResolutionResults;
   const dryRuns = params.dryRunClaimAuthorizations;
   const dryRunRealities = params.dryRunRealityAuthorizations;
+  const dryRunTraps = params.dryRunTrapActivations;
 
   const proxObs = params.proximityObservations;
   const proxCons = params.proximityConstraints;
@@ -183,6 +196,7 @@ export function buildGateAuditTrace(params: BuildGateAuditTraceParams): GateAudi
   const auditWarningExtras: string[] = ["no_production_authorization_active", "cue_hits_are_observations_not_claims"];
   if (dryRuns !== undefined) auditWarningExtras.push("claim_candidates_are_dry_run_only");
   if (dryRunRealities !== undefined) auditWarningExtras.push("reality_authorization_dry_run_only_not_user_visible_in_8_2c_8");
+  if (dryRunTraps !== undefined) auditWarningExtras.push("trap_activation_dry_run_only_not_runtime_enforced_in_8_2c_9");
   if (proximityStageActive) auditWarningExtras.push("manual_proximity_only_no_text_scanning");
 
   const traceNotes = dedupeNotesOrdered([params.notes, auditWarningExtras]);
@@ -209,6 +223,7 @@ export function buildGateAuditTrace(params: BuildGateAuditTraceParams): GateAudi
 
   const dryRunMeta = dryRuns !== undefined ? dryRunClaimMetadata(dryRuns) : {};
   const dryRunRealityMeta = dryRunRealities !== undefined ? dryRunRealityMetadata(dryRunRealities) : {};
+  const dryRunTrapMeta = dryRunTraps !== undefined ? dryRunTrapMetadata(dryRunTraps) : {};
 
   const proximityMeta = {
     ...(proxObs !== undefined ? { proximityObservationCount: proxObs.length } : {}),
@@ -230,6 +245,7 @@ export function buildGateAuditTrace(params: BuildGateAuditTraceParams): GateAudi
     ...(resolution !== undefined ? [TRACE_STAGE_EVIDENCE_RULES_RESOLVED] : []),
     ...(dryRuns !== undefined ? [TRACE_STAGE_CLAIM_AUTHORIZATION_DRY_RUN] : []),
     ...(dryRunRealities !== undefined ? [TRACE_STAGE_REALITY_AUTHORIZATION_DRY_RUN] : []),
+    ...(dryRunTraps !== undefined ? [TRACE_STAGE_TRAP_ACTIVATION_DRY_RUN] : []),
     ...(proximityStageActive ? [TRACE_STAGE_PROXIMITY_SKELETON] : []),
     TRACE_STAGE_AUDIT_TRACE_BUILT,
     TRACE_STAGE_SKELETON_NO_PRODUCTION_AUTHORIZATION,
@@ -244,6 +260,7 @@ export function buildGateAuditTrace(params: BuildGateAuditTraceParams): GateAudi
     ...(resolution !== undefined ? { evidenceRuleResolutionResults: resolution } : {}),
     ...(dryRuns !== undefined ? { dryRunClaimAuthorizations: dryRuns } : {}),
     ...(dryRunRealities !== undefined ? { dryRunRealityAuthorizations: dryRunRealities } : {}),
+    ...(dryRunTraps !== undefined ? { dryRunTrapActivations: dryRunTraps } : {}),
     ...(proximityEval !== undefined ? { proximityConstraintEvaluationResults: proximityEval } : {}),
     claimDecisions: params.claimDecisions,
     realityDecisions: params.realityDecisions,
@@ -264,6 +281,7 @@ export function buildGateAuditTrace(params: BuildGateAuditTraceParams): GateAudi
       productionWiringActive: false,
       claimAuthorizationMode: dryRuns !== undefined ? "dry_run" : "not_applicable",
       realityAuthorizationMode: dryRunRealities !== undefined ? "dry_run" : "not_applicable",
+      trapAuthorizationMode: dryRunTraps !== undefined ? "dry_run" : "not_applicable",
       proximityMode: proximityStageActive ? "manual_only" : "not_applicable",
       cueDetectionMode: "external_manual_only",
       textScanningActive: false,
@@ -274,6 +292,7 @@ export function buildGateAuditTrace(params: BuildGateAuditTraceParams): GateAudi
       ...resolutionMeta,
       ...dryRunMeta,
       ...dryRunRealityMeta,
+      ...dryRunTrapMeta,
       ...proximityMeta,
     },
   };
