@@ -169,12 +169,23 @@ Stabilizers document **calm, accurate** lines (no Vollstreckung if absent; **wei
 
 ---
 
+## Phase 8.2B-4 — Matrix consolidation audit
+
+After the three production matrices, **`CONSOLIDATION_AUDIT.md`** records a **critical architecture audit** (naming collisions, rule-algebra gaps, lane model, cross-matrix consistency). **No runtime logic** was added.
+
+**Conclusion:** The ontology is **fit to start 8.2C (Evidence Gates)** only if gates implement **explicit AND/OR semantics**, **proximity / lane binding**, **homonym-safe telemetry**, and **severity precedence** — see the audit §1 and §12.
+
+**Next:** Phase **8.2C** — Evidence Gates (evaluator spec + implementation), not matrix expansion.
+
+---
+
 ## File map
 
 | File | Purpose |
 |------|---------|
 | `types.ts` | Ontology: `EvidenceLevel`, lanes, claims, realities, cues, rules, traps, stabilizers, severity, `UniversalDocumentRealityMatrix`. |
 | `template.ts` | `UNIVERSAL_REALITY_MATRIX_TEMPLATE` + small example lane exports. |
+| `CONSOLIDATION_AUDIT.md` | **Phase 8.2B-4** — consolidation audit before Evidence Gates. |
 | `matrices/rechnung.ts` | **`RECHNUNG_REALITY_MATRIX`** — first production-shaped payment-notice matrix. |
 | `matrices/steuerbescheid.ts` | **`STEUERBESCHEID_REALITY_MATRIX`** — tax assessment / Finanzamt Bescheid matrix. |
 | `matrices/mahnung.ts` | **`MAHNUNG_REALITY_MATRIX`** — dunning / escalation-safe reminder matrix. |

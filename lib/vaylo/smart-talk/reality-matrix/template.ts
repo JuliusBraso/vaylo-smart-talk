@@ -4,6 +4,8 @@
  * Not loaded by Smart Talk at runtime. Safe placeholders + realistic skeleton rows.
  * TODO(8.2C): Evidence gates consume typed cues/rules.
  * TODO(8.2D): Reality simulation / regression corpus references this shape.
+ *
+ * Consolidation audit: see `CONSOLIDATION_AUDIT.md` (Phase 8.2B-4).
  */
 
 import type {

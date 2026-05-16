@@ -47,6 +47,17 @@ export type ProceduralLane =
 // C) ClaimType — bounded taxonomy (extend by appending to KNOWN_CLAIM_TYPES)
 // ---------------------------------------------------------------------------
 
+/**
+ * Assertions the cognition layer may emit about the user-facing situation (not UI copy).
+ *
+ * **Namespace (Phase 8.2B-4):** Several string tokens also exist on {@link RealityType}
+ * (e.g. `insurance_risk`, `immigration_risk`, `account_seizure`, `eviction_risk`). They are
+ * **different TypeScript types** — logs, gates, and telemetry must prefix or wrap so they
+ * are never mixed in a single string keyed map. See `CONSOLIDATION_AUDIT.md`.
+ *
+ * TODO(8.2C): Evaluator must define how `ClaimRule.requiredEvidenceRuleIds` composes
+ * (AND vs OR vs `anyOf`) — matrices use duplicate `ClaimRule` rows for OR today.
+ */
 export const KNOWN_CLAIM_TYPES = [
   "payment_required",
   "payment_overdue",
@@ -81,6 +92,11 @@ export type ClaimType = (typeof KNOWN_CLAIM_TYPES)[number];
  * Coarse “what world-state the document plausibly establishes”.
  * Members may appear in `supportedRealities` on one matrix and in `blockedRealities` on another
  * (e.g. `reminder_notice` is out of scope for the Rechnung v1 matrix but valid for a Mahnung matrix later).
+ *
+ * **Namespace (Phase 8.2B-4):** Homonyms with {@link ClaimType} exist (`insurance_risk`,
+ * `immigration_risk`, `account_seizure`, `eviction_risk`). Realities describe **world-state**;
+ * claims describe **what the assistant may assert** — do not conflate in 8.2C gates.
+ * Related asymmetric pair: `benefit_suspension` (reality) vs `benefit_risk` (claim).
  */
 export const REALITY_TYPE_VALUES = [
   "invoice_issued",
@@ -157,6 +173,9 @@ export interface EvidenceCue {
 
 /**
  * Defines what evidence must exist before a claim or reality is admissible.
+ *
+ * TODO(8.2C): `requiredCueIds` default semantics must be specified (typically AND of matches).
+ * Matrices may document OR paths via alternate rule ids or prose in `label`.
  */
 export interface EvidenceRule {
   readonly id: string;
@@ -175,6 +194,10 @@ export type MatrixConfidenceFloor = "low" | "medium" | "high";
 
 /**
  * Declares whether a claim type may appear in bounded output and under what proof.
+ *
+ * **Composition (Phase 8.2B-4):** `minimumConfidence` is orthogonal to `EvidenceRule.minimumEvidenceLevel`;
+ * 8.2C must define whether both must pass, either, or weighted. Duplicate rows with the same
+ * `claimType` express **disjunctive** evidence paths until rule algebra exists.
  */
 export interface ClaimRule {
   readonly claimType: ClaimType;
