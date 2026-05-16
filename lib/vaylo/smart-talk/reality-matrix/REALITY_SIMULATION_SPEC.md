@@ -4,7 +4,7 @@
 
 **Related:** `EVIDENCE_GATES_SPEC.md`, `EVIDENCE_GATES_DRY_RUN_AUDIT.md`, `evidence-gates/` (8.2C dry-run pipeline).
 
-**Optional type sketches:** `reality-simulation-types.ts` — **SPEC ONLY — NOT RUNTIME**; no functions, not imported by production paths until a later phase explicitly allows it.
+**Optional type sketches:** `reality-simulation-types.ts` — governance types; **`reality-simulation/run-reality-simulation.ts`** (8.2D-1) adds the pure **`runRealitySimulation`** skeleton — still not user-visible output.
 
 ---
 
@@ -37,7 +37,9 @@ A future **Reality Simulation** implementation may **read** (v1 contract):
 | Input | Role |
 |-------|------|
 | `EvidenceGateDecision` (including **`trace`**) | Canonical bundle from `evaluateEvidenceGates`. |
-| `trace.dryRunClaimAuthorizations` | Claim **candidates** — audit / simulation only. |
+| `trace.claimDecisions` | Skeleton claim slice (e.g. `uncertain`) — **8.2D-1** uses when dry-run claim rows absent. |
+| `trace.realityDecisions` | Constitutional `blocked` surface — available for future phases; **8.2D-1** skeleton focuses on dry-run reality rows. |
+| `trace.dryRunClaimAuthorizations` | Claim **candidates** — audit / simulation only; primary source for claim candidate mapping in **8.2D-1**. |
 | `trace.dryRunRealityAuthorizations` | Reality **candidates** — not production truth. |
 | `trace.dryRunTrapActivations` | Trap governance signals — not runtime suppression. |
 | `trace.dryRunStabilizerCandidates` | Stabilizer **need** candidates — not wording. |
@@ -69,6 +71,7 @@ Simulation output is **still not user-visible prose**. It is an intermediate **g
 | `explanationBoundaries` | Tokens such as “do not calculate deadline” (see §7). |
 | `forbiddenExplanationMoves` | Hard bans on classes of communicative moves (e.g. assert enforcement). |
 | `auditTraceRef` | Opaque reference or echo of `traceMetadata.evaluatorVersion` + stable hash/summary pointer for audit replay. |
+| `reviewFlags` | Governance identifiers only (8.2D-1+) — not user wording. |
 
 **Naming discipline:** Prefer **`*Candidates`**, **`PostureCandidate`**, **`Needs`** over language that sounds user-final.
 

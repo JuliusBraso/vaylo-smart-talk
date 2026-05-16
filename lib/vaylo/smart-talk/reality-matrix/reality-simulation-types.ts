@@ -1,11 +1,8 @@
 /**
- * =============================================================================
- * SPEC ONLY — NOT RUNTIME (Phase 8.2D-0)
- * =============================================================================
+ * Reality Simulation — types (Phase 8.2D-0 spec + **8.2D-1 skeleton runtime**).
  *
- * Type sketches for "Reality Simulation Before Explanation". No functions.
- * Do not import this module from production Smart Talk, APIs, or UI paths
- * until a later phase explicitly promotes it.
+ * `RealitySimulationResult` and related shapes are **governance-only**: not user-visible copy,
+ * not Smart Talk output, not production legal truth.
  *
  * Canonical prose: `REALITY_SIMULATION_SPEC.md`
  */
@@ -14,21 +11,23 @@ import type { EvidenceGateDecision } from "./evidence-gates-types";
 import type { ClaimType, ProceduralSeverityBand, RealityType } from "./types";
 
 // ---------------------------------------------------------------------------
-// Input (future simulation consumer)
+// Input
 // ---------------------------------------------------------------------------
 
 /**
- * Future inputs for simulation — v1 forbids reading raw `documentText` here;
- * structured gate output + matrix identity + quality hints only.
+ * Extended input (optional) — v1 skeleton uses {@link RunRealitySimulationParams} only.
+ * Structured gate output + matrix identity + quality hints only; no raw `documentText`.
  */
 export interface RealitySimulationInput {
-  /** Gate evaluation bundle; dry-run slices live under `trace`. */
   readonly gateDecision: EvidenceGateDecision;
-  /** Echo / snapshot identity for policy selection and audit. */
   readonly matrixDocumentType: string;
   readonly matrixSchemaVersion: string;
-  /** Structured OCR / capture quality — never full raw text in v1. */
   readonly documentQualityHints?: Readonly<Record<string, string | number | boolean>>;
+}
+
+/** 8.2D-1 pure simulation entry — `EvidenceGateDecision` bundle only. */
+export interface RunRealitySimulationParams {
+  readonly evidenceGateDecision: EvidenceGateDecision;
 }
 
 // ---------------------------------------------------------------------------
@@ -40,7 +39,6 @@ export type SimulationRealityDisposition = "supported_candidate" | "blocked" | "
 export interface SimulationRealityCandidate {
   readonly realityType: RealityType;
   readonly disposition: SimulationRealityDisposition;
-  /** Machine-oriented code — not user-facing explanation. */
   readonly reasonCode: string;
   readonly notes?: string;
 }
@@ -64,23 +62,33 @@ export type ExplanationBoundary =
   | "do_not_claim_enforcement"
   | "do_not_claim_finality"
   | "do_not_merge_payment_and_appeal"
+  | "do_not_merge_lanes"
   | "do_not_present_dry_run_as_fact"
+  | "do_not_present_speculation_as_fact"
+  | "require_uncertainty_wording"
   | "use_relative_deadline_wording_only"
   | "mention_uncertainty_if_ocr_noisy"
-  | "recommend_human_review_for_high_risk";
+  | "recommend_human_review_for_high_risk"
+  | "recommend_human_review_high_risk";
 
 export interface SimulationUncertaintyReason {
   readonly code: string;
   readonly detail?: string;
 }
 
-export type SimulationReviewFlagKind =
+/** Governance identifiers only — no user-facing wording. */
+export type SimulationGovernanceFlagId =
   | "human_review_recommended"
   | "professional_advice_recommended"
-  | "authority_contact_recommended";
+  | "authority_contact_recommended"
+  | "high_consequence_domain"
+  | "escalation_ambiguity"
+  | "matrix_mismatch_detected"
+  | "speculative_support_present"
+  | "contradictory_world_state";
 
 export interface SimulationReviewFlag {
-  readonly kind: SimulationReviewFlagKind;
+  readonly flagId: SimulationGovernanceFlagId;
   readonly reasonCode: string;
   readonly notes?: string;
 }
@@ -136,5 +144,6 @@ export interface RealitySimulationResult {
   readonly severityPostureCandidate?: SeverityPostureCandidate;
   readonly explanationBoundaries?: readonly ExplanationBoundary[];
   readonly forbiddenExplanationMoves?: readonly string[];
+  readonly reviewFlags?: readonly SimulationReviewFlag[];
   readonly auditTraceRef?: string;
 }
