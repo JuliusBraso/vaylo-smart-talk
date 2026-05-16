@@ -2,6 +2,7 @@ import type {
   RuleExpression,
   RuleExpressionEvaluationContext,
   RuleEvaluationResult,
+  RuleEvaluationSourceKind,
 } from "../evidence-gates-types";
 import type { ProximityEvaluationResult } from "./proximity-types";
 import type { EvidenceLevel } from "../types";
@@ -104,6 +105,8 @@ function proximitySkeletonToRuleResult(
     ...base,
     unresolved: false,
     ruleId: prox.constraintId,
+    proximityConstraintId: prox.constraintId,
+    sourceKind: "proximity_constraint",
     unsupportedFeatures: mergeFeatures(prox.unsupportedFeatures, ["proximity_external_result_8_2c_6"]),
     childResults: undefined,
   };
@@ -156,6 +159,22 @@ function resolveTerminalNode(
     unsupportedFeatures: [`terminal:${expr.op}`],
     ...base,
   };
+}
+
+/**
+ * Fills `sourceKind` on rule-expression tree nodes when absent so `ruleId` is never the only
+ * discriminator between evidence rules, proximity constraints, and AST terminals (8.2C-7).
+ */
+function attachRuleExpressionSourceKinds(node: RuleEvaluationResult): RuleEvaluationResult {
+  const children = node.childResults?.map(attachRuleExpressionSourceKinds);
+  const base =
+    children !== undefined
+      ? ({ ...node, childResults: children } as RuleEvaluationResult)
+      : ({ ...node } as RuleEvaluationResult);
+  if (base.sourceKind !== undefined) return base;
+  const sk: RuleEvaluationSourceKind =
+    base.expressionKind === "proximity" ? "proximity_constraint" : "rule_expression";
+  return { ...base, sourceKind: sk };
 }
 
 function walk(expr: RuleExpression, context?: RuleExpressionEvaluationContext): RuleEvaluationResult {
@@ -350,10 +369,14 @@ function walk(expr: RuleExpression, context?: RuleExpressionEvaluationContext): 
  *   manual skeleton) — never from document text, regex, or OCR.
  *
  * Without `context`, every terminal is **unresolved** (`matched: false`, `unresolved: true`).
+ *
+ * Each returned node carries `sourceKind` when absent on child rows: `rule_expression` for AST / boolean
+ * composition, `proximity_constraint` for `op: "proximity"` (including manual skeleton results), while
+ * `resolveEvidenceRules` rows use `sourceKind: "evidence_rule"` (8.2C-7 audit hygiene).
  */
 export function evaluateRuleExpression(
   expr: RuleExpression,
   context?: RuleExpressionEvaluationContext,
 ): RuleEvaluationResult {
-  return walk(expr, context);
+  return attachRuleExpressionSourceKinds(walk(expr, context));
 }

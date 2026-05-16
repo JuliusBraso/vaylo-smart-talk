@@ -23,7 +23,8 @@ function namespacedClaim(claimType: ClaimType): NamespacedClaimId {
 function matchedEvidenceById(results: readonly RuleEvaluationResult[]): ReadonlyMap<string, RuleEvaluationResult> {
   const m = new Map<string, RuleEvaluationResult>();
   for (const r of results) {
-    if (r.matched && r.ruleId) m.set(r.ruleId, r);
+    const key = r.evidenceRuleId ?? r.ruleId;
+    if (r.matched && key) m.set(key, r);
   }
   return m;
 }
@@ -70,7 +71,12 @@ function claimConfidenceFloorMet(floor: MatrixConfidenceFloor, minObserved: numb
 
 function pass1ForRule(rule: ClaimRule, byId: ReadonlyMap<string, RuleEvaluationResult>): ClaimAuthorization {
   const ns = namespacedClaim(rule.claimType);
-  const dryBase = { dryRun: true as const, namespaceId: ns };
+  const dryBase = {
+    dryRun: true as const,
+    authorizationMode: "dry_run" as const,
+    neverUserVisible: true as const,
+    namespaceId: ns,
+  };
 
   if (!rule.allowed) {
     return {
@@ -107,7 +113,7 @@ function pass1ForRule(rule: ClaimRule, byId: ReadonlyMap<string, RuleEvaluationR
     };
   }
 
-  const satisfiedIds = matched.map((m) => m.ruleId!).filter(Boolean);
+  const satisfiedIds = matched.map((m) => m.evidenceRuleId ?? m.ruleId!).filter(Boolean);
 
   if (matched.some((m) => !m.evidenceLevel)) {
     return {

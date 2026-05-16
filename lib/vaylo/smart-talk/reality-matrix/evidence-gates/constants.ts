@@ -1,5 +1,5 @@
 /** Evidence Gate evaluator package version (skeleton). */
-export const EVIDENCE_GATE_EVALUATOR_VERSION = "8.2c-6-proximity-skeleton-v1";
+export const EVIDENCE_GATE_EVALUATOR_VERSION = "8.2c-7-trace-hardening-v1";
 
 /** Skeleton does not emit numeric authorization confidence. */
 export const DEFAULT_SKELETON_CONFIDENCE = 0;
@@ -11,5 +11,19 @@ export const DEFAULT_SKELETON_CONFIDENCE = 0;
 export const SKELETON_SAFETY_POSTURE =
   "no_claim_authorization_without_full_gate_evaluation";
 
-/** Audit / trace stage id when no rule pipeline has run. */
-export const TRACE_STAGE_SKELETON_NO_RUNTIME = "skeleton_no_runtime_authorization";
+/**
+ * Placeholder `RuleEvaluationRecord.evidenceRuleId` when no matrix evidence rules were evaluated —
+ * must not be confused with a real matrix `EvidenceRule.id` or a trace stage label.
+ */
+export const SKELETON_AUDIT_RULE_EVALUATION_ID = "skeleton_no_evidence_rule_resolution_row";
+
+export {
+  TRACE_STAGE_AUDIT_TRACE_BUILT,
+  TRACE_STAGE_CLAIM_AUTHORIZATION_DRY_RUN,
+  TRACE_STAGE_CUE_HITS_NORMALIZED,
+  TRACE_STAGE_EVIDENCE_RULES_RESOLVED,
+  TRACE_STAGE_INPUT_RECEIVED,
+  TRACE_STAGE_PROXIMITY_SKELETON,
+  TRACE_STAGE_SKELETON_NO_PRODUCTION_AUTHORIZATION,
+  TRACE_STAGE_SKELETON_NO_RUNTIME,
+} from "./trace-constants";

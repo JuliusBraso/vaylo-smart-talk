@@ -176,6 +176,12 @@ export interface ClaimAuthorization {
    * When true, this row is **audit / simulation only** (8.2C-5) — not production Smart Talk output.
    */
   readonly dryRun?: boolean;
+  /** Always `"dry_run"` when {@link dryRun} is true (8.2C-7 audit clarity). */
+  readonly authorizationMode?: "dry_run";
+  /**
+   * When true, consumers must not surface this row as user-visible authorization (8.2C-7).
+   */
+  readonly neverUserVisible?: boolean;
   /** Machine-oriented dry-run reason (8.2C-5); not a user-facing explanation. */
   readonly dryRunReason?: string;
   /** Dry-run aggregate confidence from satisfied evidence rules (8.2C-5). */
@@ -288,6 +294,26 @@ export interface GateAuditTrace {
     readonly matchedProximityConstraintIds?: readonly string[];
     /** Constraint ids with `matched: false` from manual proximity skeleton evaluation (8.2C-6). */
     readonly unresolvedProximityConstraintIds?: readonly string[];
+    /** `reality:*` ids for matrix-blocked reality surfaces (8.2C-7). */
+    readonly blockedRealityIds?: readonly string[];
+    /** Audit-only: production claim authorization is never active in this skeleton (8.2C-7). */
+    readonly productionAuthorizationActive?: boolean;
+    /** Audit-only: no Smart Talk or downstream production wiring from this evaluator (8.2C-7). */
+    readonly productionWiringActive?: boolean;
+    /** How claim-rule rows were interpreted in this trace (8.2C-7). */
+    readonly claimAuthorizationMode?: "dry_run" | "not_applicable";
+    /** How proximity was evaluated for this trace (8.2C-7). */
+    readonly proximityMode?: "manual_only" | "not_applicable";
+    /** Cue hits are external / manual only in this package (8.2C-7). */
+    readonly cueDetectionMode?: "external_manual_only";
+    /** Audit-only — always false here; no `documentText` scanning in gates (8.2C-7). */
+    readonly textScanningActive?: boolean;
+    /** Audit-only — always false here (8.2C-7). */
+    readonly regexExecutionActive?: boolean;
+    /** Echo of `GateAuditTrace.matrixDocumentType` for single-object trace dumps (8.2C-7). */
+    readonly matrixDocumentType?: string;
+    /** Echo of `GateAuditTrace.matrixSchemaVersion` for single-object trace dumps (8.2C-7). */
+    readonly matrixSchemaVersion?: string;
   };
 }
 
@@ -311,6 +337,13 @@ export interface ClaimAuthorizationSpec {
 // Rule evaluation result (8.2C-1+ — returned by evaluateRuleExpression)
 // ---------------------------------------------------------------------------
 
+/** Provenance of a `RuleEvaluationResult` row for disambiguating generic `ruleId` (8.2C-7). */
+export type RuleEvaluationSourceKind =
+  | "evidence_rule"
+  | "rule_expression"
+  | "proximity_constraint"
+  | "skeleton";
+
 export interface RuleEvaluationResult {
   readonly matched: boolean;
   readonly confidence: number;
@@ -328,8 +361,17 @@ export interface RuleEvaluationResult {
    * legal safety from absence (8.2C-2 conservative rules).
    */
   readonly unresolved?: boolean;
-  /** Set by `resolveEvidenceRules` (8.2C-4) — {@link EvidenceRule.id}. */
+  /**
+   * Legacy / ambiguous: may mirror {@link evidenceRuleId} on evidence-rule rows or
+   * {@link proximityConstraintId} on manual proximity skeleton rows — prefer the explicit ids (8.2C-7).
+   */
   readonly ruleId?: string;
+  /** Set by `resolveEvidenceRules` (8.2C-4) — equals the matrix `EvidenceRule.id` when present. */
+  readonly evidenceRuleId?: string;
+  /** Manual proximity skeleton (8.2C-6) — {@link ProximityEvaluationResult.constraintId}; never an evidence rule id. */
+  readonly proximityConstraintId?: string;
+  /** How this row was produced (8.2C-7). */
+  readonly sourceKind?: RuleEvaluationSourceKind;
   readonly requiredCueIds?: readonly string[];
   readonly matchedRequiredCueIds?: readonly string[];
   readonly missingRequiredCueIds?: readonly string[];

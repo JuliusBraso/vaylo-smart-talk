@@ -245,6 +245,8 @@ Matrix **`EvidenceRule`** rows are evaluated against normalized **`CueHit`**s vi
 | `matrices/index.ts` | Re-exports concrete matrices (no runtime registry). |
 | `README.md` | Architecture and safety rationale (this file). |
 
+**Phase 8.2C-7 (Evidence Gates):** audit-only hardening of `GateAuditTrace` — stable trace stage labels, explicit `sourceKind` / `evidenceRuleId` vs `proximityConstraintId` vs `terminalKey`, dry-run claim metadata, and static `traceMetadata` flags that **do not** enable production authorization or Smart Talk wiring. See `evidence-gates/README.md`.
+
 ---
 
 ## Extension points

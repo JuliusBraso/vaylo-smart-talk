@@ -16,9 +16,17 @@ import type { ProximityConstraint, ProximityObservation } from "./proximity-type
 import {
   EVIDENCE_GATE_EVALUATOR_VERSION,
   SKELETON_SAFETY_POSTURE,
-  TRACE_STAGE_SKELETON_NO_RUNTIME,
 } from "./constants";
 import { evaluateProximityConstraints } from "./evaluate-proximity-constraints";
+import {
+  TRACE_STAGE_AUDIT_TRACE_BUILT,
+  TRACE_STAGE_CLAIM_AUTHORIZATION_DRY_RUN,
+  TRACE_STAGE_CUE_HITS_NORMALIZED,
+  TRACE_STAGE_EVIDENCE_RULES_RESOLVED,
+  TRACE_STAGE_INPUT_RECEIVED,
+  TRACE_STAGE_PROXIMITY_SKELETON,
+  TRACE_STAGE_SKELETON_NO_PRODUCTION_AUTHORIZATION,
+} from "./trace-constants";
 
 export interface BuildGateAuditTraceParams {
   readonly input: EvidenceGateInput;
@@ -45,10 +53,18 @@ export interface BuildGateAuditTraceParams {
   readonly proximityConstraints?: readonly ProximityConstraint[];
 }
 
-const CUE_OBSERVATION_NOTE = "cue_hits_observed_but_not_authorized_in_8_2c_3";
-const EVIDENCE_RULES_OBSERVATION_NOTE = "evidence_rules_resolved_but_claims_not_authorized_in_8_2c_4";
-const CLAIM_DRY_RUN_NOTE = "claim_authorization_dry_run_only_not_user_visible_in_8_2c_5";
-const PROXIMITY_MANUAL_ONLY_NOTE = "manual_proximity_constraints_only_in_8_2c_6";
+function dedupeNotesOrdered(chunks: readonly (readonly string[])[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const chunk of chunks) {
+    for (const n of chunk) {
+      if (seen.has(n)) continue;
+      seen.add(n);
+      out.push(n);
+    }
+  }
+  return out;
+}
 
 function uniqueCueIdsInOrder(hits: readonly CueHit[]): string[] {
   const seen = new Set<string>();
@@ -83,6 +99,10 @@ function buildMissingCueSummary(results: readonly RuleEvaluationResult[]): strin
     for (const id of r.missingRequiredCueIds ?? []) s.add(id);
   }
   return [...s].sort();
+}
+
+function evidenceRuleRowId(r: RuleEvaluationResult): string | undefined {
+  return r.evidenceRuleId ?? r.ruleId;
 }
 
 function dryRunClaimMetadata(auths: readonly ClaimAuthorization[]) {
@@ -128,18 +148,11 @@ export function buildGateAuditTrace(params: BuildGateAuditTraceParams): GateAudi
   const matchedTextObservationCount = countMatchedTextObservations(normalized);
 
   const resolution = params.evidenceRuleResolutionResults;
-  const traceNotes = [...params.notes, CUE_OBSERVATION_NOTE];
-  if (resolution !== undefined) {
-    traceNotes.push(EVIDENCE_RULES_OBSERVATION_NOTE);
-  }
-
   const dryRuns = params.dryRunClaimAuthorizations;
-  if (dryRuns !== undefined) {
-    traceNotes.push(CLAIM_DRY_RUN_NOTE);
-  }
 
   const proxObs = params.proximityObservations;
   const proxCons = params.proximityConstraints;
+  const proximityStageActive = proxObs !== undefined || proxCons !== undefined;
   const proximityEval =
     proxCons !== undefined &&
     proxCons.length > 0 &&
@@ -148,16 +161,28 @@ export function buildGateAuditTrace(params: BuildGateAuditTraceParams): GateAudi
       ? evaluateProximityConstraints({ constraints: proxCons, observations: proxObs })
       : undefined;
 
-  if (proxObs !== undefined || proxCons !== undefined) {
-    traceNotes.push(PROXIMITY_MANUAL_ONLY_NOTE);
-  }
+  const auditWarningExtras: string[] = ["no_production_authorization_active", "cue_hits_are_observations_not_claims"];
+  if (dryRuns !== undefined) auditWarningExtras.push("claim_candidates_are_dry_run_only");
+  if (proximityStageActive) auditWarningExtras.push("manual_proximity_only_no_text_scanning");
+
+  const traceNotes = dedupeNotesOrdered([params.notes, auditWarningExtras]);
 
   const resolutionMeta =
     resolution !== undefined
       ? {
           evidenceRuleEvaluationCount: resolution.length,
-          matchedEvidenceRuleIds: resolution.filter((r) => r.matched).flatMap((r) => (r.ruleId ? [r.ruleId] : [])),
-          unmatchedEvidenceRuleIds: resolution.filter((r) => !r.matched).flatMap((r) => (r.ruleId ? [r.ruleId] : [])),
+          matchedEvidenceRuleIds: resolution
+            .filter((r) => r.matched)
+            .flatMap((r) => {
+              const id = evidenceRuleRowId(r);
+              return id ? [id] : [];
+            }),
+          unmatchedEvidenceRuleIds: resolution
+            .filter((r) => !r.matched)
+            .flatMap((r) => {
+              const id = evidenceRuleRowId(r);
+              return id ? [id] : [];
+            }),
           missingCueSummary: buildMissingCueSummary(resolution),
         }
       : {};
@@ -173,6 +198,20 @@ export function buildGateAuditTrace(params: BuildGateAuditTraceParams): GateAudi
         }
       : {}),
   };
+
+  const blockedRealityIds = params.realityDecisions
+    .filter((r) => r.disposition === "blocked")
+    .map((r) => r.namespaceId);
+
+  const stages: string[] = [
+    TRACE_STAGE_INPUT_RECEIVED,
+    TRACE_STAGE_CUE_HITS_NORMALIZED,
+    ...(resolution !== undefined ? [TRACE_STAGE_EVIDENCE_RULES_RESOLVED] : []),
+    ...(dryRuns !== undefined ? [TRACE_STAGE_CLAIM_AUTHORIZATION_DRY_RUN] : []),
+    ...(proximityStageActive ? [TRACE_STAGE_PROXIMITY_SKELETON] : []),
+    TRACE_STAGE_AUDIT_TRACE_BUILT,
+    TRACE_STAGE_SKELETON_NO_PRODUCTION_AUTHORIZATION,
+  ];
 
   return {
     matrixDocumentType: params.input.matrixDocumentType,
@@ -190,17 +229,7 @@ export function buildGateAuditTrace(params: BuildGateAuditTraceParams): GateAudi
     severity: params.severity,
     traceMetadata: {
       evaluatorVersion: EVIDENCE_GATE_EVALUATOR_VERSION,
-      stages: [
-        "input_validation",
-        "cue_hits_normalized",
-        ...(resolution !== undefined ? (["evidence_rules_resolved"] as const) : []),
-        ...(dryRuns !== undefined ? (["claim_authorization_dry_run"] as const) : []),
-        ...(proxObs !== undefined || proxCons !== undefined
-          ? (["proximity_skeleton"] as const)
-          : []),
-        TRACE_STAGE_SKELETON_NO_RUNTIME,
-        "audit_trace_assembled",
-      ],
+      stages,
       safetyPosture: SKELETON_SAFETY_POSTURE,
       unsupportedFeatures: params.unsupportedFeatures,
       notes: traceNotes,
@@ -208,6 +237,16 @@ export function buildGateAuditTrace(params: BuildGateAuditTraceParams): GateAudi
       normalizedCueIds,
       cueHitSources,
       matchedTextObservationCount,
+      productionAuthorizationActive: false,
+      productionWiringActive: false,
+      claimAuthorizationMode: dryRuns !== undefined ? "dry_run" : "not_applicable",
+      proximityMode: proximityStageActive ? "manual_only" : "not_applicable",
+      cueDetectionMode: "external_manual_only",
+      textScanningActive: false,
+      regexExecutionActive: false,
+      matrixDocumentType: params.input.matrixDocumentType,
+      matrixSchemaVersion: params.input.matrixSchemaVersion,
+      ...(blockedRealityIds.length > 0 ? { blockedRealityIds } : {}),
       ...resolutionMeta,
       ...dryRunMeta,
       ...proximityMeta,

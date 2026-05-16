@@ -12,8 +12,8 @@ import type {
 import { buildGateAuditTrace } from "./build-audit-trace";
 import {
   EVIDENCE_GATE_EVALUATOR_VERSION,
+  SKELETON_AUDIT_RULE_EVALUATION_ID,
   SKELETON_SAFETY_POSTURE,
-  TRACE_STAGE_SKELETON_NO_RUNTIME,
 } from "./constants";
 import { normalizeCueHits } from "./normalize-cue-hits";
 import { resolveClaimRules } from "./resolve-claim-rules";
@@ -29,8 +29,9 @@ function namespacedReality(reality: string): NamespacedRealityId {
 
 function ruleResolutionToRecord(r: RuleEvaluationResult): RuleEvaluationRecord {
   const missing = r.missingRequiredCueIds?.length ? `; missing=${r.missingRequiredCueIds.join(",")}` : "";
+  const id = r.evidenceRuleId ?? r.ruleId;
   return {
-    evidenceRuleId: r.ruleId ?? "unknown_evidence_rule",
+    evidenceRuleId: id ?? "unknown_evidence_rule",
     outcome: r.matched ? "pass" : "fail",
     contributingHitIndices: r.contributingCueHitIndices,
     subexpressionNotes: `${r.reason}${missing}`,
@@ -62,7 +63,7 @@ export function evaluateEvidenceGates(input: EvidenceGateInput): EvidenceGateDec
       ? evidenceRuleResolutionResults.map(ruleResolutionToRecord)
       : [
           {
-            evidenceRuleId: TRACE_STAGE_SKELETON_NO_RUNTIME,
+            evidenceRuleId: SKELETON_AUDIT_RULE_EVALUATION_ID,
             outcome: "uncertain",
             subexpressionNotes: `Evaluator ${EVIDENCE_GATE_EVALUATOR_VERSION}: ${SKELETON_SAFETY_POSTURE}`,
           },
