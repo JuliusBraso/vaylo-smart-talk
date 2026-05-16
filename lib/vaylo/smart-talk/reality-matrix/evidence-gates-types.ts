@@ -257,8 +257,28 @@ export interface TrapActivation {
 }
 
 export interface StabilizerCandidate {
+  /** Matrix `StabilizerRule.id` (stable catalog reference). */
   readonly stabilizerRuleId: string;
+  /**
+   * Stable dry-run row key (8.2C-10); mirrors {@link stabilizerRuleId} unless a future phase assigns
+   * alternate row ids.
+   */
+  readonly stabilizerId?: string;
+  /** Short audit line — must not embed matrix example wording or user-facing copy (8.2C-10). */
   readonly rationale: string;
+  /** When true, this row is **trace-only** (8.2C-10) — not Smart Talk output or user-visible text. */
+  readonly dryRun?: boolean;
+  readonly authorizationMode?: "dry_run";
+  readonly neverUserVisible?: boolean;
+  /** Machine-oriented dry-run reason (8.2C-10). */
+  readonly reason?: string;
+  /** Conservative governance confidence (8.2C-10). */
+  readonly confidence?: number;
+  readonly supportingTrapIds?: readonly string[];
+  readonly supportingClaimIds?: readonly NamespacedClaimId[];
+  readonly supportingRealityIds?: readonly NamespacedRealityId[];
+  readonly notes?: string;
+  readonly sourceKind?: "stabilizer";
 }
 
 export interface SeverityCandidate {
@@ -301,6 +321,11 @@ export interface GateAuditTrace {
    * not runtime suppression or explanation rewriting.
    */
   readonly dryRunTrapActivations?: readonly TrapActivation[];
+  /**
+   * Stabilizer **dry-run** only (8.2C-10): governance candidates — never user-visible wording, Smart Talk,
+   * or runtime emission.
+   */
+  readonly dryRunStabilizerCandidates?: readonly StabilizerCandidate[];
   /**
    * Manual proximity **skeleton** evaluation rows (8.2C-6) — not OCR, layout, or distance-based proof.
    */
@@ -366,6 +391,10 @@ export interface GateAuditTrace {
     readonly candidateNonTriggeredTrapIds?: readonly string[];
     /** How trap rows were interpreted in this trace (8.2C-9). */
     readonly trapAuthorizationMode?: "dry_run" | "not_applicable";
+    /** Count of stabilizer dry-run candidate rows (8.2C-10). */
+    readonly stabilizerCandidateCount?: number;
+    /** Matrix `StabilizerRule.id` values for dry-run stabilizer candidates (8.2C-10). */
+    readonly candidateStabilizerIds?: readonly string[];
     /** Count of externally supplied proximity observations passed to trace builder (8.2C-6). */
     readonly proximityObservationCount?: number;
     /** Constraint ids with `matched: true` from manual proximity skeleton evaluation (8.2C-6). */

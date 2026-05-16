@@ -11,6 +11,7 @@ A **pure-function** package under `reality-matrix/evidence-gates/` that introduc
 - `evaluateProximityConstraints` — manual observations vs constraints, equality-only (8.2C-6 **skeleton**)
 - `resolveRealityAuthorizations` — matrix realities vs evidence + claim dry-run (8.2C-8 **dry-run only**)
 - `resolveTrapActivations` — matrix `HallucinationTrap[]` vs dry-run claims/realities + evidence (8.2C-9 **dry-run only**)
+- `resolveStabilizerCandidates` — matrix `StabilizerRule[]` vs dry-run governance bundle (8.2C-10 **dry-run only**)
 
 This is **not** full Evidence Gates. It is a **conservative runtime skeleton** so later stages can grow inside a stable module boundary.
 
@@ -103,7 +104,7 @@ The audit trace lists **structural** cue fields (`cueId`, `lane`, `confidence`, 
 
 **Gates:** `minimumEvidenceLevel` on the rule applies to each required hit’s `evidenceLevel`; hits **without** `evidenceLevel` cannot satisfy a rule. Optional matrix field `minConfidence` (`MatrixConfidenceFloor`) requires every required hit to declare numeric `confidence` meeting that floor. If `allowedLanes` is non-empty, each required hit must declare `lane` ∈ `allowedLanes` — **no lane inference** from text or `cueId`.
 
-**Not in this phase:** a **full** proximity engine, regex, `documentText` scanning, traps, stabilizers, severity from matches, `supportedRealities`, or changing claim rows from **`uncertain`** to **`allowed`**. When rules match, `evaluateEvidenceGates` still returns the same conservative claim posture; the trace adds `evidenceRuleResolutionResults`, `ruleEvaluations` pass/fail rows, and metadata (`evidenceRuleEvaluationCount`, `matchedEvidenceRuleIds`, `unmatchedEvidenceRuleIds`, `missingCueSummary`) keyed by `evidenceRuleId ?? ruleId` (8.2C-7).
+**Not in this phase:** a **full** proximity engine, regex, `documentText` scanning, **production** trap/stabilizer engines, severity from matches, `supportedRealities`, or changing claim rows from **`uncertain`** to **`allowed`**. When rules match, `evaluateEvidenceGates` still returns the same conservative claim posture; the trace adds `evidenceRuleResolutionResults`, `ruleEvaluations` pass/fail rows, and metadata (`evidenceRuleEvaluationCount`, `matchedEvidenceRuleIds`, `unmatchedEvidenceRuleIds`, `missingCueSummary`) keyed by `evidenceRuleId ?? ruleId` (8.2C-7). Later phases add **dry-run** trap/stabilizer trace surfaces only (8.2C-9 / 8.2C-10).
 
 ---
 
@@ -171,4 +172,16 @@ The evaluator still does **not** populate any production **`supportedRealities`*
 - **Audit:** `traceMetadata` adds `trapActivationDryRunCount`, `candidateTriggeredTrapIds`, `candidateUncertainTrapIds`, `candidateNonTriggeredTrapIds`, `trapAuthorizationMode`, stage **`trap_activation_dry_run`**, and note **`trap_activation_dry_run_only_not_runtime_enforced_in_8_2c_9`**.
 
 > **Trap activation candidates are governance observations, not legal conclusions.**
+
+---
+
+## PHASE 8.2C-10 — Stabilizer Candidate Dry Run v1
+
+`resolveStabilizerCandidates({ matrix, claimAuthorizations, realityAuthorizations, trapActivations })` returns **`StabilizerCandidate[]`** only when **all** of the following structural gates pass: the matrix declares **≥1 `StabilizerRule`**, **`blockedRealities`** is non-empty (forbidden world-states exist for the document class), at least one dry-run trap is **`candidate_triggered`** or **`candidate_uncertain`**, and dry-run **claim/reality** signals show interpretation pressure (**`candidate_allowed`** claims and/or **`candidate_supported`** realities). Each row carries **`dryRun: true`**, **`neverUserVisible: true`**, **`authorizationMode: "dry_run"`**, **`sourceKind: "stabilizer"`**, **`stabilizerRuleId`**, stable **`stabilizerId`** (`dry_run_stabilizer:<ruleId>`), **`reason`**, **`confidence`** (derived conservatively from risk-trap confidences), and optional **`supportingTrapIds` / `supportingClaimIds` / `supportingRealityIds`**.
+
+- **No matrix example wording:** `allowedWordingExamples` / `forbiddenWordingExamples` / `triggerConditions` prose from the matrix is **never** copied into the trace — only **catalog ids** and audit-safe **`rationale` / `notes`** strings.
+- **No runtime:** rows are written only to **`trace.dryRunStabilizerCandidates`**; **`trace.stabilizerCandidates`** stays empty in the skeleton path. **No** Smart Talk wiring, **no** explanation rewrite, **no** user-visible stabilizer output.
+- **Audit:** `traceMetadata` adds **`stabilizerCandidateCount`**, **`candidateStabilizerIds`**, stage **`stabilizer_candidate_dry_run`**, and note **`stabilizer_candidates_dry_run_only_not_user_visible_in_8_2c_10`**.
+
+> **Stabilizer candidate ≠ user message ≠ legal conclusion ≠ safety guarantee.**
 

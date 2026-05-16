@@ -1,5 +1,5 @@
 /** Evidence Gate evaluator package version (skeleton). */
-export const EVIDENCE_GATE_EVALUATOR_VERSION = "8.2c-9-trap-dry-run-v1";
+export const EVIDENCE_GATE_EVALUATOR_VERSION = "8.2c-10-stabilizer-dry-run-v1";
 
 /** Skeleton does not emit numeric authorization confidence. */
 export const DEFAULT_SKELETON_CONFIDENCE = 0;
@@ -27,5 +27,6 @@ export {
   TRACE_STAGE_REALITY_AUTHORIZATION_DRY_RUN,
   TRACE_STAGE_SKELETON_NO_PRODUCTION_AUTHORIZATION,
   TRACE_STAGE_SKELETON_NO_RUNTIME,
+  TRACE_STAGE_STABILIZER_CANDIDATE_DRY_RUN,
   TRACE_STAGE_TRAP_ACTIVATION_DRY_RUN,
 } from "./trace-constants";
