@@ -179,6 +179,16 @@ After the three production matrices, **`CONSOLIDATION_AUDIT.md`** records a **cr
 
 ---
 
+## Phase 8.2C-0 — Evidence Gates specification
+
+**`EVIDENCE_GATES_SPEC.md`** defines how gates **authorize** claims and realities (lane binding, proximity, rule algebra, conditional forbids, audit traces) — **not** keyword matching as sufficient proof. **No runtime** is implemented in 8.2C-0.
+
+Optional type sketches: **`evidence-gates-types.ts`** (`RuleExpression`, `GateAuditTrace`, namespaced ids) — **SPEC ONLY**, no functions.
+
+**Critical property:** Gates sit between OCR/matrix data and downstream explanation; they **withhold or mark uncertain** rather than invent.
+
+---
+
 ## File map
 
 | File | Purpose |
@@ -186,6 +196,8 @@ After the three production matrices, **`CONSOLIDATION_AUDIT.md`** records a **cr
 | `types.ts` | Ontology: `EvidenceLevel`, lanes, claims, realities, cues, rules, traps, stabilizers, severity, `UniversalDocumentRealityMatrix`. |
 | `template.ts` | `UNIVERSAL_REALITY_MATRIX_TEMPLATE` + small example lane exports. |
 | `CONSOLIDATION_AUDIT.md` | **Phase 8.2B-4** — consolidation audit before Evidence Gates. |
+| `EVIDENCE_GATES_SPEC.md` | **Phase 8.2C-0** — formal Evidence Gates specification (no runtime). |
+| `evidence-gates-types.ts` | **8.2C-0** — type sketches for gates (`SPEC ONLY` in file header). |
 | `matrices/rechnung.ts` | **`RECHNUNG_REALITY_MATRIX`** — first production-shaped payment-notice matrix. |
 | `matrices/steuerbescheid.ts` | **`STEUERBESCHEID_REALITY_MATRIX`** — tax assessment / Finanzamt Bescheid matrix. |
 | `matrices/mahnung.ts` | **`MAHNUNG_REALITY_MATRIX`** — dunning / escalation-safe reminder matrix. |
