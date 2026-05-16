@@ -184,6 +184,11 @@ export interface EvidenceRule {
   readonly optionalCueIds?: readonly string[];
   readonly minimumEvidenceLevel: EvidenceLevel;
   readonly allowedLanes: readonly ProceduralLane[];
+  /**
+   * When set (8.2C-4+), every required cue hit used to satisfy this rule must declare numeric
+   * `CueHit.confidence` at or above this floor. Omitted = no numeric confidence gate on hits.
+   */
+  readonly minConfidence?: MatrixConfidenceFloor;
 }
 
 // ---------------------------------------------------------------------------

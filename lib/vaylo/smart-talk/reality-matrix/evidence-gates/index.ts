@@ -13,3 +13,4 @@ export {
 export { buildGateAuditTrace } from "./build-audit-trace";
 export { evaluateRuleExpression } from "./evaluate-rule-expression";
 export { evaluateEvidenceGates } from "./evaluate-evidence-gates";
+export { resolveEvidenceRules } from "./resolve-evidence-rules";

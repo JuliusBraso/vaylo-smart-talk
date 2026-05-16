@@ -6,6 +6,7 @@ import type {
   GateAuditTrace,
   RealityAuthorization,
   RuleEvaluationRecord,
+  RuleEvaluationResult,
   SeverityCandidate,
   StabilizerCandidate,
   TrapActivation,
@@ -21,6 +22,8 @@ export interface BuildGateAuditTraceParams {
   readonly input: EvidenceGateInput;
   /** Sanitized hits (8.2C-3); trace rows omit matched text fields. */
   readonly normalizedCueHits: readonly CueHit[];
+  /** When set (8.2C-4), merged into trace + metadata; does not authorize claims. */
+  readonly evidenceRuleResolutionResults?: readonly RuleEvaluationResult[];
   readonly claimDecisions: readonly ClaimAuthorization[];
   readonly realityDecisions: readonly RealityAuthorization[];
   readonly ruleEvaluations: readonly RuleEvaluationRecord[];
@@ -33,6 +36,7 @@ export interface BuildGateAuditTraceParams {
 }
 
 const CUE_OBSERVATION_NOTE = "cue_hits_observed_but_not_authorized_in_8_2c_3";
+const EVIDENCE_RULES_OBSERVATION_NOTE = "evidence_rules_resolved_but_claims_not_authorized_in_8_2c_4";
 
 function uniqueCueIdsInOrder(hits: readonly CueHit[]): string[] {
   const seen = new Set<string>();
@@ -59,6 +63,14 @@ function countMatchedTextObservations(hits: readonly CueHit[]): number {
     if (h.matchedText !== undefined && h.matchedText.length > 0) n += 1;
   }
   return n;
+}
+
+function buildMissingCueSummary(results: readonly RuleEvaluationResult[]): string[] {
+  const s = new Set<string>();
+  for (const r of results) {
+    for (const id of r.missingRequiredCueIds ?? []) s.add(id);
+  }
+  return [...s].sort();
 }
 
 /** Avoid echoing OCR-adjacent snippets in the trace while keeping structural fields. */
@@ -88,7 +100,21 @@ export function buildGateAuditTrace(params: BuildGateAuditTraceParams): GateAudi
   const cueHitSources = uniqueSourcesSorted(normalized);
   const matchedTextObservationCount = countMatchedTextObservations(normalized);
 
+  const resolution = params.evidenceRuleResolutionResults;
   const traceNotes = [...params.notes, CUE_OBSERVATION_NOTE];
+  if (resolution !== undefined) {
+    traceNotes.push(EVIDENCE_RULES_OBSERVATION_NOTE);
+  }
+
+  const resolutionMeta =
+    resolution !== undefined
+      ? {
+          evidenceRuleEvaluationCount: resolution.length,
+          matchedEvidenceRuleIds: resolution.filter((r) => r.matched).flatMap((r) => (r.ruleId ? [r.ruleId] : [])),
+          unmatchedEvidenceRuleIds: resolution.filter((r) => !r.matched).flatMap((r) => (r.ruleId ? [r.ruleId] : [])),
+          missingCueSummary: buildMissingCueSummary(resolution),
+        }
+      : {};
 
   return {
     matrixDocumentType: params.input.matrixDocumentType,
@@ -96,6 +122,7 @@ export function buildGateAuditTrace(params: BuildGateAuditTraceParams): GateAudi
     matrixMismatchFlag: params.matrixMismatchFlag,
     cueHits: cueHitsForTrace,
     ruleEvaluations: params.ruleEvaluations,
+    ...(resolution !== undefined ? { evidenceRuleResolutionResults: resolution } : {}),
     claimDecisions: params.claimDecisions,
     realityDecisions: params.realityDecisions,
     traps: params.traps,
@@ -106,6 +133,7 @@ export function buildGateAuditTrace(params: BuildGateAuditTraceParams): GateAudi
       stages: [
         "input_validation",
         "cue_hits_normalized",
+        ...(resolution !== undefined ? (["evidence_rules_resolved"] as const) : []),
         TRACE_STAGE_SKELETON_NO_RUNTIME,
         "audit_trace_assembled",
       ],
@@ -116,6 +144,7 @@ export function buildGateAuditTrace(params: BuildGateAuditTraceParams): GateAudi
       normalizedCueIds,
       cueHitSources,
       matchedTextObservationCount,
+      ...resolutionMeta,
     },
   };
 }

@@ -202,6 +202,8 @@ export interface GateAuditTrace {
   readonly matrixMismatchFlag?: boolean;
   readonly cueHits: readonly CueHit[];
   readonly ruleEvaluations: readonly RuleEvaluationRecord[];
+  /** Rich per-rule rows from `resolveEvidenceRules` (8.2C-4); claim authorization remains inactive. */
+  readonly evidenceRuleResolutionResults?: readonly RuleEvaluationResult[];
   readonly claimDecisions: readonly ClaimAuthorization[];
   readonly realityDecisions: readonly RealityAuthorization[];
   readonly traps: readonly TrapActivation[];
@@ -227,6 +229,14 @@ export interface GateAuditTrace {
      * (8.2C-3 — avoids echoing raw snippets in `cueHits`).
      */
     readonly matchedTextObservationCount?: number;
+    /** Count of `EvidenceRule` rows evaluated in 8.2C-4 (same as resolution result length when matrix present). */
+    readonly evidenceRuleEvaluationCount?: number;
+    /** Rule ids with `matched: true` in 8.2C-4 resolution. */
+    readonly matchedEvidenceRuleIds?: readonly string[];
+    /** Rule ids with `matched: false` in 8.2C-4 resolution. */
+    readonly unmatchedEvidenceRuleIds?: readonly string[];
+    /** Distinct required cue ids that were missing across failed rules (8.2C-4). */
+    readonly missingCueSummary?: readonly string[];
   };
 }
 
@@ -267,4 +277,14 @@ export interface RuleEvaluationResult {
    * legal safety from absence (8.2C-2 conservative rules).
    */
   readonly unresolved?: boolean;
+  /** Set by `resolveEvidenceRules` (8.2C-4) — {@link EvidenceRule.id}. */
+  readonly ruleId?: string;
+  readonly requiredCueIds?: readonly string[];
+  readonly matchedRequiredCueIds?: readonly string[];
+  readonly missingRequiredCueIds?: readonly string[];
+  readonly matchedOptionalCueIds?: readonly string[];
+  /** Indices into the normalized `cueHits` array supplied to `resolveEvidenceRules`. */
+  readonly contributingCueHitIndices?: readonly number[];
+  /** Lane-related failure detail for required cues (8.2C-4). */
+  readonly requiredCueLaneNotes?: readonly string[];
 }

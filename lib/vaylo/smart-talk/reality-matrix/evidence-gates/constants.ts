@@ -1,5 +1,5 @@
 /** Evidence Gate evaluator package version (skeleton). */
-export const EVIDENCE_GATE_EVALUATOR_VERSION = "8.2c-1-skeleton";
+export const EVIDENCE_GATE_EVALUATOR_VERSION = "8.2c-4-evidence-rules-v1";
 
 /** Skeleton does not emit numeric authorization confidence. */
 export const DEFAULT_SKELETON_CONFIDENCE = 0;

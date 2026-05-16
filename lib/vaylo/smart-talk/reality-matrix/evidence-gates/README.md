@@ -6,6 +6,7 @@ A **pure-function** package under `reality-matrix/evidence-gates/` that introduc
 
 - `evaluateEvidenceGates` — entry point returning `EvidenceGateDecision` + **mandatory** `GateAuditTrace`
 - `evaluateRuleExpression` — partial **rule algebra** only (no document access)
+- `resolveEvidenceRules` — matrix `EvidenceRule[]` vs normalized `CueHit[]` (8.2C-4, observational only)
 - `buildGateAuditTrace` — assembles trace metadata for debugging
 
 This is **not** full Evidence Gates. It is a **conservative runtime skeleton** so later stages can grow inside a stable module boundary.
@@ -88,3 +89,15 @@ cueHits: [
 ```
 
 The audit trace lists **structural** cue fields (`cueId`, `lane`, `confidence`, offsets, `source`, `notes`); `matchedText` / `matchedKeyword` are **not** echoed on `trace.cueHits` (see `matchedTextObservationCount` in `traceMetadata`). A fixed note is always appended: `cue_hits_observed_but_not_authorized_in_8_2c_3`.
+
+---
+
+## Phase 8.2C-4 — Evidence Rule Resolution v1
+
+`resolveEvidenceRules({ rules, cueHits })` compares **normalized** `CueHit[]` to matrix **`EvidenceRule[]`** and returns `RuleEvaluationResult[]` — **evidence-rule resolution only**, not claim authorization.
+
+**Semantics (v1):** each rule’s `requiredCueIds` are **AND**-conjoined (every id must have at least one qualifying hit). **OR** within a single rule is **not** implemented — disjunction stays **separate matrix rows**, per consolidation notes. `optionalCueIds` are **observed** in `matchedOptionalCueIds` only; they never force a match.
+
+**Gates:** `minimumEvidenceLevel` on the rule applies to each required hit’s `evidenceLevel`; hits **without** `evidenceLevel` cannot satisfy a rule. Optional matrix field `minConfidence` (`MatrixConfidenceFloor`) requires every required hit to declare numeric `confidence` meeting that floor. If `allowedLanes` is non-empty, each required hit must declare `lane` ∈ `allowedLanes` — **no lane inference** from text or `cueId`.
+
+**Not in this phase:** proximity, regex, `documentText` scanning, traps, stabilizers, severity from matches, `supportedRealities`, or changing claim rows from **`uncertain`** to **`allowed`**. When rules match, `evaluateEvidenceGates` still returns the same conservative claim posture; the trace adds `evidenceRuleResolutionResults`, `ruleEvaluations` pass/fail rows, and metadata (`evidenceRuleEvaluationCount`, `matchedEvidenceRuleIds`, `unmatchedEvidenceRuleIds`, `missingCueSummary`) plus the note `evidence_rules_resolved_but_claims_not_authorized_in_8_2c_4`.

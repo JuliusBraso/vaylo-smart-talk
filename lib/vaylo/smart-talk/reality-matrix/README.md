@@ -211,6 +211,12 @@ Folder **`evidence-gates/`** exposes **`evaluateEvidenceGates`**, **`evaluateRul
 
 ---
 
+## Phase 8.2C-4 — Evidence Rule Resolution v1
+
+Matrix **`EvidenceRule`** rows are evaluated against normalized **`CueHit`**s via `resolveEvidenceRules` — **AND-only required cues**, optional cues observed only, **no** claim authorization, **no** proximity, **no** regex, **no** text scanning. Matched rules appear in the audit trace only; claim rows stay **`uncertain`**.
+
+---
+
 ## File map
 
 | File | Purpose |
