@@ -5,6 +5,39 @@ export type SmartTalkInputType = "text" | "question";
 /** Provenance for document paste: photo OCR pipeline vs ordinary text. */
 export type SmartTalkTextSource = "photo_ocr";
 
+/** Phase 8.0B — internal reasoning protocol (not exposed in API schema). */
+export type SmartTalkReasoningProtocol =
+  | "strict_document"
+  | "bureaucratic_guide"
+  | "educational_explainer";
+
+const EDUCATIONAL_QUESTION_HINTS: readonly string[] = [
+  "čo znamená",
+  "čo je ",
+  "rozdiel medzi",
+  "vysvetli pojem",
+  "meaning of",
+  "difference between",
+  "was bedeutet",
+  "čo je rozdiel",
+];
+
+/**
+ * Maps transport params to reasoning protocol. Photo OCR uses inputType "text" + source photo_ocr → strict_document.
+ */
+export function deriveSmartTalkReasoningProtocol(params: {
+  inputType: SmartTalkInputType;
+  source?: SmartTalkTextSource;
+  text: string;
+}): SmartTalkReasoningProtocol {
+  if (params.inputType === "text") return "strict_document";
+  const q = params.text.toLowerCase();
+  for (const hint of EDUCATIONAL_QUESTION_HINTS) {
+    if (q.includes(hint)) return "educational_explainer";
+  }
+  return "bureaucratic_guide";
+}
+
 /** Shared reasoning rules for document and question modes to limit mode drift. */
 const EPISTEMIC_AND_STABILIZER_LINES = [
   "Epistemic discipline (both modes; keep every field concise): Distinguish in your reasoning and wording: confirmed facts stated in the input; possible risks; conditional or future consequences; consequences already active now; protective or stabilizing clauses (e.g. no final decision yet, review or objection still open, payments or status continue during Prüfung, coverage or lawful stay valid for now, Bearbeitung unfinished). summary and meaning must not sound more certain than the source.",
@@ -40,6 +73,36 @@ const SEMANTIC_LOCALIZATION_RULES = [
   "Keep institutional realism: Finanzamt, Jobcenter, Krankenkasse, Familienkasse—users recognize these names; pair them with short plain Slovak gloss only when it helps.",
   "When safest wording or procedure-type is uncertain, keep the German term once in parentheses after Slovak (e.g. odvolanie (Einspruch)). Never imply Slovak law replaces German procedure.",
   "Prefer natural modality matching the source: use measured wording (možné, treba / je potrebné, môže vzniknúť len ak to text uvádza). Prefer formulations such as Odvolanie je možné podať… over stiff must-heavy calques unless the letter clearly states a strict MUST requirement.",
+].join(" ");
+
+/**
+ * Slovak semantic localization for guide/explainer — pedagogical gloss without binding prose to “the letter”.
+ */
+const SEMANTIC_LOCALIZATION_GUIDE_RULES = [
+  "Semantic localization — Slovak locale only (guide/explainer): Write like a calm Slovak assistant explaining German bureaucracy—not a lawyer.",
+  "Use Slovak wording plus German term in parentheses when it helps (examples: odvolanie (Einspruch), rozhodnutie úradu (Bescheid), poučenie o odvolaní (Rechtsbehelfsbelehrung)).",
+  "Do not imply Slovak law replaces German procedure; avoid dumping unexplained German jargon unless paired with a short gloss.",
+].join(" ");
+
+/** Practical Q&A — workflows, offices, typical steps with hedging. */
+const BUREAUCRATIC_GUIDE_RULES = [
+  "Bureaucratic guide mode (Phase 8.0B): Explain typical German bureaucracy workflows; answer practically and calmly.",
+  'Use hedged wording when reality varies: typicky, zvyčajne, často; závisí od Bundeslandu / úradu / konkrétneho prípadu (or equivalent in the output locale).',
+  "Do NOT invent user-specific deadlines, amounts, IBANs, or obligations.",
+  "Do NOT pretend you know the user's actual document or scan; never phrase answers as if describing their letter unless they pasted excerpt text.",
+  "Do NOT create fake legal certainty or authoritative legal conclusions.",
+  'Unless the user pasted document text, do NOT use document-only openers such as "dokument uvádza", "list hovorí", or similar.',
+  "Remain non-lawyer; practical orientation only.",
+  'Compact example — User: "Ako funguje Anmeldung?" Good: "Anmeldung je registrácia adresy v Nemecku. Typicky ju riešite na Bürgeramte po nasťahovaní. Potrebujete občiansky/preukaz totožnosti, Wohnungsgeberbestätigung a niekedy formulár. Presný postup závisí od mesta." Bad: starting with "Dokument uvádza..." or claiming "Musíte to podať do konkrétneho dátumu..." unless the user gave such a fact.',
+].join(" ");
+
+/** Terminology and concept comparisons — pedagogical. */
+const EDUCATIONAL_EXPLAINER_RULES = [
+  "Educational explainer mode (Phase 8.0B): Explain German bureaucracy terms and contrasts clearly and pedagogically.",
+  "Use Slovak plus German term in parentheses where helpful (odvolanie (Einspruch), rozhodnutie úradu (Bescheid), poučenie o odvolaní (Rechtsbehelfsbelehrung)).",
+  "Compare concepts when asked; short illustrative examples allowed.",
+  "No fake legal advice; no user-specific deadlines; remind the user that concrete Fristen follow their own decision letter or official guidance when timing varies.",
+  'Compact example — User: "Aký je rozdiel medzi Einspruch a Widerspruch?" Good: explain both signal disagreement with an authority decision but apply in different areas—tax Finanzamt decisions often use Einspruch; many social/admin decisions use Widerspruch—always follow the Rechtsbehelfsbelehrung on the specific letter. Bad: fabricated calendar deadlines or pretending you saw their document.',
 ].join(" ");
 
 /**
@@ -116,24 +179,44 @@ const JSON_KEYS_TEXT = [
   'consequences (string[]): stated or clearly implied negative outcomes/fees/interruptions—not speculative; align tone with warnings (calm); empty if none.',
 ].join(" ");
 
-const JSON_KEYS_QUESTION = [
+const JSON_KEYS_BUREAUCRATIC_GUIDE = [
   "Return a single JSON object only (no markdown fences). Keys:",
-  'summary (string): short plain-language overview; Phase 7.8D — same calendar-token discipline when quoting or summarizing letters: no fabricated DD.MM.YYYY / ISO dates unless cue-grounded in the pasted excerpt.',
-  'meaning (string): practical explanation; if quoted excerpt uses relative procedural windows, say they depend on notification/delivery unless a calendar date is quoted; never imply a fabricated end date.',
+  'summary (string): short plain-language overview of your practical answer—natural prose; no fabricated DD.MM.YYYY / ISO calendar dates unless that exact substring appears in the user question (or pasted excerpt).',
+  'meaning (string): practical explanation with calibrated hedging when procedures vary; do not imply you saw the user\'s letter unless they pasted text; never invent personal deadlines.',
   'urgency (string): one of "low", "medium", "high", or "unknown"; apply the question-mode urgency calibration rules from the system instructions.',
-  'nextSteps (string[]): same calendar + cue proximity rules as document mode (7.8C)—no stray OCR dates as deadlines.',
-  'warnings (string[]): 1–2 short calm items (material risks, deadlines, procedures); at most one may be a brief stabilizing clarification only if the question or described facts explicitly support it; prioritize contextual consequences over generic hygiene; empty array only when genuinely none apply. Same 7.8C date/cue rule as document mode.',
-  'stabilizers (string[]): 0–2 very short items: protective or stabilizing facts explicitly stated in the question or quoted letter (same rules as document mode). [] when none. Never invent reassurance. Prefer stabilizers for these facts; keep warnings primarily for risks; minimize duplication.',
-  'confidenceLevel (string): one of "low", "medium", "high". high = clear question and facts. medium = some ambiguity or conditional wording. low = garbled paste, missing context, contradiction, or incomplete.',
-  'consequencePhase (string): one of "none", "possible", "conditional", "active" — classify the user-described situation like document mode; active only when the described facts support something already in effect.',
-  'documentQuality (string): one of "clear", "noisy", "ocr_damaged", "unknown" — judge the user input text the same way as document mode.',
-  'documentKind (string): same enum as document mode when the question quotes or embeds a German bureaucracy document; if there is no document excerpt, use "unknown".',
-  'domain (string): same enum as document mode when classifying quoted/pasted document text; otherwise "unknown".',
-  'documentTypeLabel (string): German heading if clearly quoted; else "".',
-  'paymentChannel (string): same enum as document mode when payment cues exist in quoted text; else "not_applicable" or "unclear".',
-  'proceduralState (string): same enum as document mode when the question or quoted letter supports it; else "unknown".',
-  'legalSeverity (string): same enum as document mode when grounded; else "none".',
-  'deadlines, rights, obligations, consequences (string[]): document-mode literal rules; deadlines[] strictly source-backed—no inferred calendar dates; otherwise use [] when no excerpt.',
+  'nextSteps (string[]): concrete orientation steps where helpful; no fabricated calendar dates unless explicitly present in the user text.',
+  'warnings (string[]): 1–2 short calm contextual items when realistic risks apply; empty [] when none meaningful; never invent penalties or authorities.',
+  'stabilizers (string[]): 0–2 very short factual stabilizers only when explicitly supported by the question or pasted excerpt; [] otherwise.',
+  'confidenceLevel (string): one of "low", "medium", "high".',
+  'consequencePhase (string): one of "none", "possible", "conditional", "active" — match the scenario the user describes; prefer "none" for purely informational guidance.',
+  'documentQuality (string): one of "clear", "noisy", "ocr_damaged", "unknown" — judge readability of the user input; use "clear" for ordinary short questions without paste.',
+  'documentKind (string): infer cautiously only when the question clearly implies a document type; otherwise "unknown".',
+  'domain (string): infer cautiously only when the topic clearly implies a domain (tax, municipal, etc.); otherwise "unknown".',
+  'documentTypeLabel (string): German heading only when clearly quoted from user text; else "".',
+  'paymentChannel (string): "not_applicable" unless payment method is clearly discussed or quoted; then use the standard enum.',
+  'proceduralState (string): prefer "informational" or "unknown" for general how-it-works questions unless the user describes a concrete pending procedure.',
+  'legalSeverity (string): prefer "none" or "low" unless the question describes concrete serious stakes grounded in what they wrote.',
+  'deadlines, rights, obligations, consequences (string[]): leave empty [] unless the question clearly asks about those concepts in general terms—then short generic educational bullets without invented dates or fake certainty.',
+].join(" ");
+
+const JSON_KEYS_EDUCATIONAL_EXPLAINER = [
+  "Return a single JSON object only (no markdown fences). Keys:",
+  'summary (string): concise takeaway defining or contrasting the term(s)—natural Slovak/de/en per locale line; no fabricated DD.MM.YYYY / ISO dates unless verbatim in the user question.',
+  'meaning (string): pedagogical explanation with Slovak gloss + German term in parentheses where helpful; compare concepts when asked; short examples allowed; remind users concrete rules follow official notices when relevant.',
+  'urgency (string): one of "low", "medium", "high", or "unknown"; prefer "low" or "unknown" for definitional questions unless embedded concrete risk.',
+  'nextSteps (string[]): optional short pointers (e.g. check letter heading, official glossary)—not fabricated procedural deadlines.',
+  'warnings (string[]): usually [] for pure vocabulary questions; add 1 calm item only when misunderstanding could cause harm and it is grounded in general bureaucracy reality—never invent user-specific deadlines.',
+  'stabilizers (string[]): typically []; fill only when the question explicitly states a stabilizing fact.',
+  'confidenceLevel (string): one of "low", "medium", "high".',
+  'consequencePhase (string): usually "none" for definitional comparisons unless the user embeds an active situation.',
+  'documentQuality (string): one of "clear", "noisy", "ocr_damaged", "unknown".',
+  'documentKind (string): usually "unknown" unless the question quotes document wording that fits an enum value.',
+  'domain (string): cautiously inferred when obvious from terminology (e.g. tax vs social); otherwise "unknown".',
+  'documentTypeLabel (string): "" unless clearly quoted.',
+  'paymentChannel (string): usually "not_applicable".',
+  'proceduralState (string): prefer "informational" or "unknown".',
+  'legalSeverity (string): prefer "none" or "low".',
+  'deadlines, rights, obligations, consequences (string[]): empty [] unless the question asks generally about appeals/deadlines—then generic educational wording without invented calendar dates.',
 ].join(" ");
 
 /**
@@ -152,7 +235,9 @@ export function buildSmartTalkMessages(params: {
         ? "Write summary, meaning, nextSteps, warnings, stabilizers, and the short strings inside deadlines / rights / obligations / consequences arrays in German unless quoting other language. Keep proceduralState and legalSeverity as the English enum tokens required by JSON."
         : "Write summary, meaning, nextSteps, warnings, stabilizers, and the short strings inside deadlines / rights / obligations / consequences arrays in English unless quoting German source text. Keep proceduralState and legalSeverity as the English enum tokens required by JSON.";
 
-  if (params.inputType === "text") {
+  const protocol = deriveSmartTalkReasoningProtocol(params);
+
+  if (protocol === "strict_document") {
     const system = [
       "You explain German bureaucracy documents. You are not a lawyer. Do not invent facts. Return JSON only.",
       "Do not invent dates, amounts, or requirements not supported by the input.",
@@ -186,6 +271,10 @@ export function buildSmartTalkMessages(params: {
   const redirectSk =
     "Vaylo Smart Talk je určený na otázky o nemeckej byrokracii. Skúste otázku preformulovať v tomto kontexte.";
 
+  const educational = protocol === "educational_explainer";
+  const modeRules = educational ? EDUCATIONAL_EXPLAINER_RULES : BUREAUCRATIC_GUIDE_RULES;
+  const jsonKeysGuide = educational ? JSON_KEYS_EDUCATIONAL_EXPLAINER : JSON_KEYS_BUREAUCRATIC_GUIDE;
+
   const system = [
     "You answer practical questions about German bureaucracy for everyday life in Germany (forms, offices, taxes, residence, benefits, letters from authorities, etc.).",
     "You are not a lawyer and do not provide official legal advice. Give practical orientation only; avoid authoritative legal wording. Do not invent facts; say when details depend on the Bundesland, employer, or individual case.",
@@ -199,7 +288,7 @@ export function buildSmartTalkMessages(params: {
     "If the question is clearly outside German bureaucracy, politely decline by centering summary and meaning on this exact Slovak sentence (you may add one short clarifying phrase after it): " +
       redirectSk,
     EPISTEMIC_AND_STABILIZER_LINES,
-    ...(params.locale === "sk" ? [SEMANTIC_LOCALIZATION_RULES] : []),
+    ...(params.locale === "sk" ? [SEMANTIC_LOCALIZATION_GUIDE_RULES] : []),
     'Urgency calibration (question mode): Reflect practical stakes calmly—not emotional alarm. HIGH when the user scenario involves repayment obligations, Mahnung or Inkasso, official payment deadlines, stated risk of fees or penalties, enforcement-oriented demands, repayment despite appeal/objection unless clearly paused, or cancellations with clear financial consequences—especially deadline plus monetary pressure. HIGH may also apply when the scenario the user describes credibly threatens essential needs: healthcare interruption or emergency-only coverage, livelihood or benefit cuts affecting basic income, residence or work-permit jeopardy, housing loss or enforcement tied to housing, active enforcement already underway—only when the question or quoted letter content supports it; do not invent. MEDIUM for document requests, administrative updates, missing paperwork without immediate fines or basic-needs jeopardy, appointment scheduling, non-financial procedural asks (e.g. Krankenkasse asking for more proofs, Bürgeramt registration documents). LOW for informational confirmations, general guidance, optional actions, status explanations without pressure. Prefer LOW for purely educational questions unless they embed concrete payment/deadline or essential-needs risk in the wording. UNKNOWN when unclear. Do not default everything to MEDIUM or LOW when serious grounded risk is present. Examples mapping (not automatic rules): HIGH — Familienkasse repayment with deadline; Inkasso warning; Mahnung with possible fees; Finanzamt payment notice with payable amount and deadline; repayment still due during Einspruch unless stated otherwise. MEDIUM — Krankenkasse missing documents; Bürgeramt requesting Meldeunterlagen; scheduling Termin. LOW — informational confirmation without required payment. Do NOT invent legal threats, deportation risks, penalties, or consequences absent from the question.',
     "warnings intelligence (question mode): Tie warnings to the user's concrete scenario and realistic risks for that institution/process—not generic hygiene. Prioritize: payment consequences; deadlines; appeal vs payment obligations when relevant; procedural delays; missing requirements; plausible fees only if implied; reliance on another authority; open or non-final procedure when it changes how to read risk. Use at most one stabilizing clarification among the 1–2 lines only when the question or facts described explicitly support it—never instead of a material risk the user raised. Tone remains calm, short, trustworthy, non-legalistic. Align urgency and legalSeverity with the same evidence—do not escalate beyond what is stated or strongly implied. Do NOT invent penalties, deadlines, authorities, legal outcomes, or reassurance unless clearly implied by the question (use hedged wording when needed). Prefer 1–2 items; use [] only when no meaningful contextual warning exists.",
     'warnings pattern examples when the topic matches (paraphrase in output language; Slovak tone): Finanzamt/BZSt — Aj pri podaní námietky môže zostať lehota platby aktívna; oneskorená úhrada môže viesť k dodatočným poplatkom. Bürgeramt — Ak sa nemôžete dostaviť osobne, kontaktujte úrad ešte pred termínom; chýbajúce dokumenty môžu oddialiť vybavenie. Krankenkasse — Neúplné dokumenty môžu predĺžiť spracovanie; poisťovňa môže vyžiadať doplňujúce potvrdenia. Mahnung/Inkasso — Po termíne môžu vzniknúť ďalšie poplatky; ak ste už zaplatili, uschovajte si potvrdenie o úhrade. Familienkasse spätná platba — Lehota na vrátenie platí; námietka automaticky neznamená, že nemusíte platiť, ak to list výslovne nehovorí.',
@@ -207,11 +296,8 @@ export function buildSmartTalkMessages(params: {
     "warnings should also mention residual uncertainty and when to verify on official sources or with the relevant authority—without sounding alarming.",
     "If the question is unclear or cannot be answered safely, explain what is missing in warnings and use urgency unknown when appropriate.",
     CLASSIFICATION_RULES_COMPACT,
-    PROCEDURAL_REASONING_RULES,
-    PROCEDURAL_ATTRIBUTION_RULES,
-    PROCEDURAL_LANE_ISOLATION_RULES,
-    PROCEDURAL_LITERALISM_RULES,
-    JSON_KEYS_QUESTION,
+    modeRules,
+    jsonKeysGuide,
   ].join(" ");
 
   const user = [localeLine, "", "User question:", params.text].join("\n");

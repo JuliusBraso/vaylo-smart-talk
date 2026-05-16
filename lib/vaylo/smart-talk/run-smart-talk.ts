@@ -1,7 +1,9 @@
 import {
   buildSmartTalkMessages,
+  deriveSmartTalkReasoningProtocol,
   type SmartTalkInputType,
   type SmartTalkLocale,
+  type SmartTalkReasoningProtocol,
   type SmartTalkTextSource,
 } from "./build-smart-talk-prompt";
 
@@ -704,10 +706,41 @@ function sanitizeStringArrayFields(
   return out;
 }
 
+/** Phase 8.0B — question protocols: strip invented concrete calendar dates not verbatim in user text; no document-source sanitizers. */
+function lightUnsupportedCalendarPhrase(locale?: SmartTalkLocale): string {
+  if (locale === "de") return "Ein konkretes Datum nennen wir hier nicht — es hängt von Behörde und Einzelfall ab.";
+  if (locale === "en") return "We do not state a specific calendar date here—it depends on the office and your situation.";
+  return "Konkrétny kalendárny dátum tu neuvádzame — závisí od úradu a situácie.";
+}
+
+function lightSanitizeQuestionProse(text: string, source: string, locale?: SmartTalkLocale): string {
+  if (!text) return text;
+  let out = text;
+  const euRe = /\b\d{1,2}\.\d{1,2}\.\d{4}\b/g;
+  out = out.replace(euRe, (m) => (source.includes(m) ? m : lightUnsupportedCalendarPhrase(locale)));
+  const isoRe = /\b\d{4}-\d{2}-\d{2}\b/g;
+  out = out.replace(isoRe, (m) => (source.includes(m) ? m : lightUnsupportedCalendarPhrase(locale)));
+  return out.replace(/\s{2,}/g, " ").trim();
+}
+
+function sanitizeStringArrayFieldsLight(
+  items: string[],
+  source: string,
+  locale?: SmartTalkLocale,
+): string[] {
+  const out: string[] = [];
+  for (const item of items) {
+    const s = lightSanitizeQuestionProse(item, source, locale).trim();
+    if (s) out.push(s);
+  }
+  return out;
+}
+
 function normalizeParsedObject(
   obj: Record<string, unknown>,
   groundSourceText?: string,
   locale?: SmartTalkLocale,
+  protocol: SmartTalkReasoningProtocol = "strict_document",
 ): SmartTalkResult {
   const ground = typeof groundSourceText === "string" ? groundSourceText : "";
 
@@ -786,20 +819,28 @@ function normalizeParsedObject(
   const obligationsRaw = parseStringArray(obj.obligations, 10, 400);
   const consequencesRaw = parseStringArray(obj.consequences, 10, 400);
 
-  const deadlinesFiltered = filterArrayByProceduralCalendarGrounding(deadlinesRaw, ground);
-  const deadlines = sanitizeStringArrayFields(deadlinesFiltered, ground, locale);
+  const strictDoc = protocol === "strict_document";
 
-  const warnings = sanitizeStringArrayFields(warningsRaw, ground, locale);
-  const nextSteps = sanitizeStringArrayFields(nextStepsRaw, ground, locale);
-  const rights = sanitizeStringArrayFields(rightsRaw, ground, locale);
-  const obligations = sanitizeStringArrayFields(obligationsRaw, ground, locale);
-  const consequences = sanitizeStringArrayFields(consequencesRaw, ground, locale);
+  const deadlinesFiltered = strictDoc
+    ? filterArrayByProceduralCalendarGrounding(deadlinesRaw, ground)
+    : deadlinesRaw;
 
-  const stabilizersSanitized = sanitizeStringArrayFields(stabilizers, ground, locale).slice(0, 2);
+  const sanitizeArrays = strictDoc ? sanitizeStringArrayFields : sanitizeStringArrayFieldsLight;
+  const sanitizeVisibleProse = strictDoc ? sanitizeUserVisibleProceduralProse : lightSanitizeQuestionProse;
 
-  summary = sanitizeUserVisibleProceduralProse(summary, ground, locale).trim();
+  const deadlines = sanitizeArrays(deadlinesFiltered, ground, locale);
+
+  const warnings = sanitizeArrays(warningsRaw, ground, locale);
+  const nextSteps = sanitizeArrays(nextStepsRaw, ground, locale);
+  const rights = sanitizeArrays(rightsRaw, ground, locale);
+  const obligations = sanitizeArrays(obligationsRaw, ground, locale);
+  const consequences = sanitizeArrays(consequencesRaw, ground, locale);
+
+  const stabilizersSanitized = sanitizeArrays(stabilizers, ground, locale).slice(0, 2);
+
+  summary = sanitizeVisibleProse(summary, ground, locale).trim();
   if (!summary) summary = "Nepodarilo sa získať zhrnutie z výstupu modelu.";
-  meaning = sanitizeUserVisibleProceduralProse(meaning, ground, locale).trim();
+  meaning = sanitizeVisibleProse(meaning, ground, locale).trim();
   if (!meaning) meaning = "Ďalšie informácie nájdete v zhrnutí a upozorneniach.";
 
   return {
@@ -922,7 +963,17 @@ export async function runSmartTalk(params: {
       return { ok: true, result: fallbackInvalidJson() };
     }
 
-    return { ok: true, result: normalizeParsedObject(parsed as Record<string, unknown>, params.text, params.locale) };
+    const protocol = deriveSmartTalkReasoningProtocol(params);
+
+    return {
+      ok: true,
+      result: normalizeParsedObject(
+        parsed as Record<string, unknown>,
+        params.text,
+        params.locale,
+        protocol,
+      ),
+    };
   } catch {
     return { ok: false, error: { kind: "openai_http", status: 0 } };
   } finally {
