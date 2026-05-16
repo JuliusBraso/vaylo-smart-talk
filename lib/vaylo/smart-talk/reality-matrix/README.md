@@ -80,9 +80,9 @@ End-to-end **documentation audit** of the 8.2C evidence-gates dry-run stack (cou
 
 **Architecture spec only** (no runtime integration): defines how a future **Reality Simulation** layer will consume Evidence Gates **dry-run traces** to build a safe **pre-explanation** governance product (`RealitySimulationResult` — still not user-visible prose). See **`REALITY_SIMULATION_SPEC.md`**. Optional type sketches: **`reality-simulation-types.ts`** (governance types; not user copy).
 
-### Phase 8.2D-1 — Reality Simulation Skeleton v1
+### Phase 8.2D-2 — Simulation Boundary Mapping Audit
 
-**Pure skeleton:** **`runRealitySimulation({ evidenceGateDecision })`** in **`reality-simulation/`** maps trace + dry-run slices to **`RealitySimulationResult`** (boundaries, flags, candidates) — **no** explanations, **no** Smart Talk, **no** `documentText` / cue hit inspection. See **`reality-simulation/README.md`**.
+**Governance audit only** (no runtime behavior changes): boundary-token inventory, trap/stabilizer/severity influence review, dry-run leakage and review-flag risk notes. See **`SIMULATION_BOUNDARY_MAPPING_AUDIT.md`**. **Critical:** `enforcementTrapHeuristic` in the 8.2D-1 skeleton is **substring-based** and **not production-safe** for explanation policy.
 
 ---
 
@@ -107,7 +107,7 @@ Skipping runtime avoids:
 | Phase | Focus |
 |-------|--------|
 | **8.2C Evidence gates** | Deterministic evaluation: cue matching, evidence levels, claim allow/deny, speculative suppression before model or after structured output. |
-| **8.2D Reality simulation** | **8.2D-0** spec + types; **8.2D-1** `runRealitySimulation` skeleton (`reality-simulation/`) — trace → `RealitySimulationResult` only; **8.2D-2+** per `REALITY_SIMULATION_SPEC.md`. |
+| **8.2D Reality simulation** | **8.2D-0** spec; **8.2D-1** `runRealitySimulation`; **8.2D-2** boundary mapping audit (`SIMULATION_BOUNDARY_MAPPING_AUDIT.md`) — no behavior change in 8.2D-2. |
 | **Regression corpus** | Frozen snippets per document family with expected matrix outcomes. |
 | **Document cognition engine** | Compose matrices per `RealityMatrixDocumentType`, versioned releases, optional overlap with existing `SmartTalkResult` fields via explicit mappers (future). |
 

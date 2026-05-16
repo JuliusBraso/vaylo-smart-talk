@@ -1,4 +1,4 @@
-# Reality Simulation (Phase 8.2D-1)
+# Reality Simulation (8.2D-1 skeleton · 8.2D-2 audit)
 
 ## What this is
 
@@ -32,6 +32,14 @@ If dry-run realities are uncertain, traps are ambiguous, metadata suggests specu
 - **Traps** → `trapWarnings`, boundaries, uncertainty — **not** output suppression.  
 - **Stabilizers** → `stabilizerNeeds` with **catalog ids / categories** — **not** matrix example wording.  
 - **Severity derivations** → `severityPostureCandidate` with **`neverUserVisible: true`** — **not** UI urgency.
+
+## PHASE 8.2D-2 — Simulation Boundary Mapping Audit
+
+**Audit-only phase:** no changes to `run-reality-simulation.ts`, gate resolvers, or simulation types. Documents how boundary tokens, trap/stabilizer/severity influence, review flags, and dry-run leakage risks behave in the **8.2D-1** skeleton.
+
+**Key caveat:** **`enforcementTrapHeuristic`** (`trapKind` substring checks) is **skeleton-only** and **must not** drive production explanation boundaries — replace with **structured trap metadata** before production coupling.
+
+**Canonical audit:** [`../SIMULATION_BOUNDARY_MAPPING_AUDIT.md`](../SIMULATION_BOUNDARY_MAPPING_AUDIT.md).
 
 ---
 
