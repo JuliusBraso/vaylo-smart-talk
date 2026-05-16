@@ -219,7 +219,13 @@ Matrix **`EvidenceRule`** rows are evaluated against normalized **`CueHit`**s vi
 
 ## Phase 8.2C-5 — Claim Authorization Dry Run v1
 
-`resolveClaimRules` evaluates **`ClaimRule`** rows against **`RuleEvaluationResult[]`** from evidence resolution — **`candidate_*` dispositions**, **`dryRun: true`**, trace-only (`dryRunClaimAuthorizations`). **No** production `allowed` in `claimDecisions`, **no** Smart Talk, **no** user-visible claim emission. OR remains duplicate claim rows; proximity still future work.
+`resolveClaimRules` evaluates **`ClaimRule`** rows against **`RuleEvaluationResult[]`** from evidence resolution — **`candidate_*` dispositions**, **`dryRun: true`**, trace-only (`dryRunClaimAuthorizations`). **No** production `allowed` in `claimDecisions`, **no** Smart Talk, **no** user-visible claim emission. OR remains duplicate claim rows; proximity remains a **manual structural skeleton** only (8.2C-6).
+
+---
+
+## Phase 8.2C-6 — Proximity skeleton (manual only)
+
+**`proximity-types`** + **`evaluateProximityConstraints`**: equality-only checks of external **observations** vs **constraints** — **no** text scanning, numeric distance, or layout engine. **`RuleExpressionEvaluationContext.proximityEvaluationByTerminalKey`** feeds **`proximity`** terminals in `evaluateRuleExpression`. Optional **`buildGateAuditTrace`** inputs record counts and matched/unresolved constraint ids in **`traceMetadata`**.
 
 ---
 

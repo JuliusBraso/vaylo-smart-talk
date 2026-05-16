@@ -15,6 +15,7 @@ import type {
   RealityType,
   UniversalDocumentRealityMatrix,
 } from "./types";
+import type { ProximityEvaluationResult } from "./evidence-gates/proximity-types";
 
 // ---------------------------------------------------------------------------
 // Namespace-safe identifiers (§10 EVIDENCE_GATES_SPEC)
@@ -124,6 +125,12 @@ export interface RuleExpressionEvaluationContext {
   readonly terminalResults?: Readonly<Record<string, RuleEvaluationResult>>;
   /** Optional callback when `terminalResults` has no entry; must not scan OCR text. */
   readonly resolveTerminal?: (expr: RuleExpression) => RuleEvaluationResult | undefined;
+  /**
+   * Precomputed proximity **skeleton** results keyed by `terminalKey` of `proximity` nodes (8.2C-6).
+   * No document text — caller supplies equality-only evaluation output from `evaluateProximityConstraints`
+   * or another external pipeline, mapped to each AST node's `terminalKey`.
+   */
+  readonly proximityEvaluationByTerminalKey?: Readonly<Record<string, ProximityEvaluationResult>>;
 }
 
 // ---------------------------------------------------------------------------
@@ -230,6 +237,10 @@ export interface GateAuditTrace {
    * production-allowed claims or Smart Talk output.
    */
   readonly dryRunClaimAuthorizations?: readonly ClaimAuthorization[];
+  /**
+   * Manual proximity **skeleton** evaluation rows (8.2C-6) — not OCR, layout, or distance-based proof.
+   */
+  readonly proximityConstraintEvaluationResults?: readonly ProximityEvaluationResult[];
   readonly claimDecisions: readonly ClaimAuthorization[];
   readonly realityDecisions: readonly RealityAuthorization[];
   readonly traps: readonly TrapActivation[];
@@ -271,6 +282,12 @@ export interface GateAuditTrace {
     readonly candidateBlockedClaimIds?: readonly string[];
     /** `claim:*` ids with dry-run `candidate_uncertain` (8.2C-5). */
     readonly candidateUncertainClaimIds?: readonly string[];
+    /** Count of externally supplied proximity observations passed to trace builder (8.2C-6). */
+    readonly proximityObservationCount?: number;
+    /** Constraint ids with `matched: true` from manual proximity skeleton evaluation (8.2C-6). */
+    readonly matchedProximityConstraintIds?: readonly string[];
+    /** Constraint ids with `matched: false` from manual proximity skeleton evaluation (8.2C-6). */
+    readonly unresolvedProximityConstraintIds?: readonly string[];
   };
 }
 

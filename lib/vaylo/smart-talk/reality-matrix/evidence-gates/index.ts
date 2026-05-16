@@ -11,7 +11,16 @@ export {
 } from "./constants";
 
 export { buildGateAuditTrace } from "./build-audit-trace";
-export { evaluateRuleExpression } from "./evaluate-rule-expression";
+export { evaluateRuleExpression, terminalKey } from "./evaluate-rule-expression";
+export { evaluateProximityConstraints } from "./evaluate-proximity-constraints";
+export type { EvaluateProximityConstraintsParams } from "./evaluate-proximity-constraints";
+export type {
+  ProximityAnchorType,
+  ProximityConstraint,
+  ProximityEvaluationResult,
+  ProximityObservation,
+  ProximityRelationship,
+} from "./proximity-types";
 export { evaluateEvidenceGates } from "./evaluate-evidence-gates";
 export { resolveEvidenceRules } from "./resolve-evidence-rules";
 export { resolveClaimRules } from "./resolve-claim-rules";

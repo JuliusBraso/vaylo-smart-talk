@@ -8,6 +8,7 @@ A **pure-function** package under `reality-matrix/evidence-gates/` that introduc
 - `evaluateRuleExpression` — partial **rule algebra** only (no document access)
 - `resolveEvidenceRules` — matrix `EvidenceRule[]` vs normalized `CueHit[]` (8.2C-4, observational only)
 - `resolveClaimRules` — matrix `ClaimRule[]` vs resolved evidence rules (8.2C-5 **dry-run** only)
+- `evaluateProximityConstraints` — manual observations vs constraints, equality-only (8.2C-6 **skeleton**)
 - `buildGateAuditTrace` — assembles trace metadata for debugging
 
 This is **not** full Evidence Gates. It is a **conservative runtime skeleton** so later stages can grow inside a stable module boundary.
@@ -101,7 +102,7 @@ The audit trace lists **structural** cue fields (`cueId`, `lane`, `confidence`, 
 
 **Gates:** `minimumEvidenceLevel` on the rule applies to each required hit’s `evidenceLevel`; hits **without** `evidenceLevel` cannot satisfy a rule. Optional matrix field `minConfidence` (`MatrixConfidenceFloor`) requires every required hit to declare numeric `confidence` meeting that floor. If `allowedLanes` is non-empty, each required hit must declare `lane` ∈ `allowedLanes` — **no lane inference** from text or `cueId`.
 
-**Not in this phase:** proximity, regex, `documentText` scanning, traps, stabilizers, severity from matches, `supportedRealities`, or changing claim rows from **`uncertain`** to **`allowed`**. When rules match, `evaluateEvidenceGates` still returns the same conservative claim posture; the trace adds `evidenceRuleResolutionResults`, `ruleEvaluations` pass/fail rows, and metadata (`evidenceRuleEvaluationCount`, `matchedEvidenceRuleIds`, `unmatchedEvidenceRuleIds`, `missingCueSummary`) plus the note `evidence_rules_resolved_but_claims_not_authorized_in_8_2c_4`.
+**Not in this phase:** a **full** proximity engine, regex, `documentText` scanning, traps, stabilizers, severity from matches, `supportedRealities`, or changing claim rows from **`uncertain`** to **`allowed`**. When rules match, `evaluateEvidenceGates` still returns the same conservative claim posture; the trace adds `evidenceRuleResolutionResults`, `ruleEvaluations` pass/fail rows, and metadata (`evidenceRuleEvaluationCount`, `matchedEvidenceRuleIds`, `unmatchedEvidenceRuleIds`, `missingCueSummary`) plus the note `evidence_rules_resolved_but_claims_not_authorized_in_8_2c_4`.
 
 ---
 
@@ -111,4 +112,18 @@ The audit trace lists **structural** cue fields (`cueId`, `lane`, `confidence`, 
 
 **Semantics:** `requiredEvidenceRuleIds` on an allowed `ClaimRule` are **AND**-only; **OR** remains **duplicate `ClaimRule` rows** on the matrix. `ClaimRule.allowed === false` → `candidate_blocked` + `dryRunReason: "claim_rule_forbidden_by_matrix"`. Missing / unmatched required evidence → `candidate_uncertain` + `required_evidence_rules_not_satisfied`. Satisfied path still requires non-speculative evidence levels on matched rules and `ClaimRule.minimumConfidence` vs the **minimum** confidence among those rules — otherwise `candidate_uncertain`. **`blockedBy`:** conservative fixpoint over `candidate_allowed` peers; `forbiddenClaims` entries block peers; unresolved `blockedBy` targets (no `ClaimRule` row) → `candidate_uncertain` + `unsupportedFeatures` entries.
 
-**Trace:** `dryRunClaimAuthorizations` plus `traceMetadata` (`claimAuthorizationDryRunCount`, `candidateAllowedClaimIds`, …) and note `claim_authorization_dry_run_only_not_user_visible_in_8_2c_5`. **`trace.claimDecisions`** stays **`uncertain`** for matrix-allowed claim types only — **never** `allowed`. Proximity is still **not** implemented.
+**Trace:** `dryRunClaimAuthorizations` plus `traceMetadata` (`claimAuthorizationDryRunCount`, `candidateAllowedClaimIds`, …) and note `claim_authorization_dry_run_only_not_user_visible_in_8_2c_5`. **`trace.claimDecisions`** stays **`uncertain`** for matrix-allowed claim types only — **never** `allowed`. A **structural proximity skeleton** exists from **8.2C-6** (manual observations only — not a distance engine).
+
+---
+
+## Phase 8.2C-6 — Proximity Constraint Skeleton v1
+
+Types live in **`proximity-types.ts`** (`ProximityObservation`, `ProximityConstraint`, `ProximityEvaluationResult`, `ProximityAnchorType`, `ProximityRelationship`). Observations are **injected manually or by an external system** — there is **no** OCR, token distance, layout parsing, regex proximity, or automatic IBAN / deadline / Vollstreckung association in this repo phase.
+
+**`evaluateProximityConstraints({ constraints, observations })`** returns one `ProximityEvaluationResult` per constraint: a row **matches** only when an observation has the **same** `sourceCueId`, `targetCueId`, and `relationship` (and, if the constraint sets `anchorType`, the observation must declare the **same** `anchorType`). Confidence on a match is the **max** of matching observation confidences (0 if none declared). This exists so future engines cannot silently treat unrelated cue co-occurrence as legal proximity.
+
+> **Proximity observations are not proof of legal meaning.**
+
+**Rule algebra:** for `RuleExpression` nodes with `op: "proximity"`, `evaluateRuleExpression` may read **`context.proximityEvaluationByTerminalKey[terminalKey(expr)]`** after `resolveTerminal` / `terminalResults` — still **no** `documentText`.
+
+**Audit:** when `buildGateAuditTrace` receives optional `proximityObservations` / `proximityConstraints`, it runs the skeleton evaluator when **both** lists are non-empty, sets `trace.proximityConstraintEvaluationResults`, and adds `traceMetadata` (`proximityObservationCount`, `matchedProximityConstraintIds`, `unresolvedProximityConstraintIds`) plus the note `manual_proximity_constraints_only_in_8_2c_6`. **`evaluateEvidenceGates` is unchanged** in this phase — no claim dry-run or production authorization changes.

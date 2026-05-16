@@ -3,6 +3,7 @@ import type {
   RuleExpressionEvaluationContext,
   RuleEvaluationResult,
 } from "../evidence-gates-types";
+import type { ProximityEvaluationResult } from "./proximity-types";
 import type { EvidenceLevel } from "../types";
 
 import { DEFAULT_SKELETON_CONFIDENCE } from "./constants";
@@ -92,6 +93,22 @@ export function terminalKey(expr: RuleExpression): string {
   }
 }
 
+function proximitySkeletonToRuleResult(
+  prox: ProximityEvaluationResult,
+  base: { readonly expressionKind: RuleExpression["op"]; readonly terminalKey: string },
+): RuleEvaluationResult {
+  return {
+    matched: prox.matched,
+    confidence: prox.confidence,
+    reason: prox.reason,
+    ...base,
+    unresolved: false,
+    ruleId: prox.constraintId,
+    unsupportedFeatures: mergeFeatures(prox.unsupportedFeatures, ["proximity_external_result_8_2c_6"]),
+    childResults: undefined,
+  };
+}
+
 function resolveTerminalNode(
   expr: RuleExpression,
   context: RuleExpressionEvaluationContext | undefined,
@@ -122,6 +139,13 @@ function resolveTerminalNode(
       unresolved: fromMap.unresolved ?? false,
       childResults: undefined,
     };
+  }
+
+  if (expr.op === "proximity") {
+    const prox = context?.proximityEvaluationByTerminalKey?.[key];
+    if (prox) {
+      return proximitySkeletonToRuleResult(prox, base);
+    }
   }
 
   return {
@@ -321,8 +345,9 @@ function walk(expr: RuleExpression, context?: RuleExpressionEvaluationContext): 
  * Recursive structural evaluator for `RuleExpression` (8.2C-2).
  *
  * - Boolean ops: `allOf`, `anyOf`, `noneOf`, `not` recurse into children.
- * - Terminals: resolved **only** via `context.terminalResults[terminalKey]` or `context.resolveTerminal`
- *   — never from document text, regex, or OCR.
+ * - Terminals: resolved via `context.resolveTerminal`, then `context.terminalResults[terminalKey]`,
+ *   then (for `proximity` only) `context.proximityEvaluationByTerminalKey[terminalKey]` (8.2C-6
+ *   manual skeleton) — never from document text, regex, or OCR.
  *
  * Without `context`, every terminal is **unresolved** (`matched: false`, `unresolved: true`).
  */

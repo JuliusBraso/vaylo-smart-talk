@@ -11,12 +11,14 @@ import type {
   StabilizerCandidate,
   TrapActivation,
 } from "../evidence-gates-types";
+import type { ProximityConstraint, ProximityObservation } from "./proximity-types";
 
 import {
   EVIDENCE_GATE_EVALUATOR_VERSION,
   SKELETON_SAFETY_POSTURE,
   TRACE_STAGE_SKELETON_NO_RUNTIME,
 } from "./constants";
+import { evaluateProximityConstraints } from "./evaluate-proximity-constraints";
 
 export interface BuildGateAuditTraceParams {
   readonly input: EvidenceGateInput;
@@ -37,11 +39,16 @@ export interface BuildGateAuditTraceParams {
   readonly matrixMismatchFlag?: boolean;
   readonly unsupportedFeatures: readonly string[];
   readonly notes: readonly string[];
+  /** Externally supplied proximity observations (8.2C-6); never scanned from `documentText`. */
+  readonly proximityObservations?: readonly ProximityObservation[];
+  /** Declared proximity constraints to check against observations (8.2C-6). */
+  readonly proximityConstraints?: readonly ProximityConstraint[];
 }
 
 const CUE_OBSERVATION_NOTE = "cue_hits_observed_but_not_authorized_in_8_2c_3";
 const EVIDENCE_RULES_OBSERVATION_NOTE = "evidence_rules_resolved_but_claims_not_authorized_in_8_2c_4";
 const CLAIM_DRY_RUN_NOTE = "claim_authorization_dry_run_only_not_user_visible_in_8_2c_5";
+const PROXIMITY_MANUAL_ONLY_NOTE = "manual_proximity_constraints_only_in_8_2c_6";
 
 function uniqueCueIdsInOrder(hits: readonly CueHit[]): string[] {
   const seen = new Set<string>();
@@ -131,6 +138,20 @@ export function buildGateAuditTrace(params: BuildGateAuditTraceParams): GateAudi
     traceNotes.push(CLAIM_DRY_RUN_NOTE);
   }
 
+  const proxObs = params.proximityObservations;
+  const proxCons = params.proximityConstraints;
+  const proximityEval =
+    proxCons !== undefined &&
+    proxCons.length > 0 &&
+    proxObs !== undefined &&
+    proxObs.length > 0
+      ? evaluateProximityConstraints({ constraints: proxCons, observations: proxObs })
+      : undefined;
+
+  if (proxObs !== undefined || proxCons !== undefined) {
+    traceNotes.push(PROXIMITY_MANUAL_ONLY_NOTE);
+  }
+
   const resolutionMeta =
     resolution !== undefined
       ? {
@@ -143,6 +164,16 @@ export function buildGateAuditTrace(params: BuildGateAuditTraceParams): GateAudi
 
   const dryRunMeta = dryRuns !== undefined ? dryRunClaimMetadata(dryRuns) : {};
 
+  const proximityMeta = {
+    ...(proxObs !== undefined ? { proximityObservationCount: proxObs.length } : {}),
+    ...(proximityEval !== undefined
+      ? {
+          matchedProximityConstraintIds: proximityEval.filter((p) => p.matched).map((p) => p.constraintId),
+          unresolvedProximityConstraintIds: proximityEval.filter((p) => !p.matched).map((p) => p.constraintId),
+        }
+      : {}),
+  };
+
   return {
     matrixDocumentType: params.input.matrixDocumentType,
     matrixSchemaVersion: params.input.matrixSchemaVersion,
@@ -151,6 +182,7 @@ export function buildGateAuditTrace(params: BuildGateAuditTraceParams): GateAudi
     ruleEvaluations: params.ruleEvaluations,
     ...(resolution !== undefined ? { evidenceRuleResolutionResults: resolution } : {}),
     ...(dryRuns !== undefined ? { dryRunClaimAuthorizations: dryRuns } : {}),
+    ...(proximityEval !== undefined ? { proximityConstraintEvaluationResults: proximityEval } : {}),
     claimDecisions: params.claimDecisions,
     realityDecisions: params.realityDecisions,
     traps: params.traps,
@@ -163,6 +195,9 @@ export function buildGateAuditTrace(params: BuildGateAuditTraceParams): GateAudi
         "cue_hits_normalized",
         ...(resolution !== undefined ? (["evidence_rules_resolved"] as const) : []),
         ...(dryRuns !== undefined ? (["claim_authorization_dry_run"] as const) : []),
+        ...(proxObs !== undefined || proxCons !== undefined
+          ? (["proximity_skeleton"] as const)
+          : []),
         TRACE_STAGE_SKELETON_NO_RUNTIME,
         "audit_trace_assembled",
       ],
@@ -175,6 +210,7 @@ export function buildGateAuditTrace(params: BuildGateAuditTraceParams): GateAudi
       matchedTextObservationCount,
       ...resolutionMeta,
       ...dryRunMeta,
+      ...proximityMeta,
     },
   };
 }
