@@ -72,6 +72,10 @@ German letters often place **unrelated dates** near **payment**, **appeal**, or 
 
 `ProceduralSeverityBand` (`none` … `critical`) is tied to **document-stated procedural weight** (e.g. Mahnung with fees vs plain informational notice), **not** to user anxiety or marketing urgency. `SeverityRule` references realities and claim types — not “how scared the user should feel.” The evidence-gates package (Phase **8.2C-11**) may emit **`dryRunSeverityDerivations`** rows for audit only; they are **not** user-visible, **not** wired to Smart Talk, and **`trace.severity`** stays the inert **`none`** skeleton until a future explicit runtime phase chooses otherwise.
 
+### Phase 8.2C-12 — Dry-Run Integration Audit
+
+End-to-end **documentation audit** of the 8.2C evidence-gates dry-run stack (coupling, leakage, namespaces, trace stages, production boundaries). See **`EVIDENCE_GATES_DRY_RUN_AUDIT.md`**. No runtime feature work in that phase.
+
 ---
 
 ## 8. Why this phase avoids runtime implementation

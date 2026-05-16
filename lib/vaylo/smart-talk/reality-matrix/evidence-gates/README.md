@@ -202,3 +202,11 @@ The evaluator still does **not** populate any production **`supportedRealities`*
 
 > **Severity derivation candidates are bounded procedural governance signals, not legal urgency guarantees.**
 
+---
+
+## PHASE 8.2C-12 — Dry-Run Integration Audit
+
+**Not a feature phase.** Consolidated **governance / safety audit** of the full 8.2C dry-run pipeline: architectural integrity, dry-run vs production boundaries, type and namespace collision risks, trace consistency, and production-readiness labels. **No** new evaluator behavior, **no** Smart Talk wiring, **no** OCR/regex/runtime authorization changes.
+
+**Canonical document:** [`../EVIDENCE_GATES_DRY_RUN_AUDIT.md`](../EVIDENCE_GATES_DRY_RUN_AUDIT.md) (matrix root).
+
