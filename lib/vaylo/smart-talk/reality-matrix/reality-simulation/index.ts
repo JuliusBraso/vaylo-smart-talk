@@ -27,3 +27,4 @@ export {
   type BoundaryRegressionScaffoldResult,
 } from "./boundary-emission-regression";
 export type { RunRealitySimulationParams } from "../reality-simulation-types";
+export { KNOWN_EXPLANATION_BOUNDARIES } from "../reality-simulation-types";

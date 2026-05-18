@@ -86,6 +86,37 @@ Adds two new modules:
 
 **Not wired into `runRealitySimulation`** — scaffold only, ready for future test runners or CI.
 
+## PHASE 8.2D-4A — Known Explanation Boundaries Registry
+
+**Registry + validation upgrade only — runtime simulation behavior unchanged.**
+
+### Problem this phase solves
+
+TypeScript unions (`ExplanationBoundary`) cannot be iterated at runtime. Without a concrete list of live tokens, it is impossible to perform two-way consistency checks at runtime — e.g., detecting that a policy-table entry has drifted away from the union, or verifying that no deprecated alias has crept back in.
+
+### What was added
+
+- **`KNOWN_EXPLANATION_BOUNDARIES`** (`reality-simulation-types.ts`) — a `readonly` `as const` array listing every live `ExplanationBoundary` token, typed with `satisfies readonly ExplanationBoundary[]` to ensure compile-time correctness.
+- **`validateBoundaryEmissions` upgraded** (`validate-boundary-emissions.ts`) — now accepts an optional `knownBoundaries` parameter (defaults to `KNOWN_EXPLANATION_BOUNDARIES`) and returns four new result fields:
+  - `knownBoundaryIds` — the registry used for two-way checks.
+  - `missingPolicyForKnownBoundaryIds` — live boundaries with no non-deprecated policy entry.
+  - `policyBoundaryIdsMissingFromKnownRegistry` — non-deprecated policy entries absent from the registry.
+  - `deprecatedPolicyIdsPresentInKnownRegistry` — critical: deprecated ids incorrectly in the registry.
+- **Regression scaffold extended** (`boundary-emission-regression.ts`) — adds a `registryConsistencyCheck` block to `runBoundaryEmissionRegressionScaffold` verifying all four two-way conditions.
+- **`KNOWN_EXPLANATION_BOUNDARIES` exported** from `index.ts`.
+
+### Invariant
+
+`KNOWN_EXPLANATION_BOUNDARIES` must always contain exactly the same members as `ExplanationBoundary`. The `satisfies` constraint enforces this at compile time. The deprecated alias `"recommend_human_review_for_high_risk"` (removed in 8.2D-2B) must **never** appear in this array — it exists solely as historical metadata in `BOUNDARY_POLICY_TABLE_V1`.
+
+### Five two-way validation rules
+
+1. Every emitted boundary exists in a non-deprecated policy-table entry.
+2. No emitted boundary is deprecated.
+3. Every known live boundary has a non-deprecated policy entry (registry → table).
+4. Every non-deprecated policy entry has a corresponding known boundary (table → registry).
+5. Deprecated policy entries must NOT appear in the known registry.
+
 ---
 
 > **Reality simulation models safe explanation space, not legal truth.**

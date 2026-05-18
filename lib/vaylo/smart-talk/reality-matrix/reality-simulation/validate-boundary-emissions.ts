@@ -1,11 +1,15 @@
 /**
- * Boundary emission validator (Phase 8.2D-4).
+ * Boundary emission validator (Phase 8.2D-4 / upgraded 8.2D-4A).
  *
  * Pure validation helper — no explanation generation, no runtime enforcement, no Smart Talk wiring.
- * Cross-checks emitted ExplanationBoundary ids against BOUNDARY_POLICY_TABLE_V1 metadata.
+ * Cross-checks emitted ExplanationBoundary ids against BOUNDARY_POLICY_TABLE_V1 metadata and the
+ * KNOWN_EXPLANATION_BOUNDARIES registry for full two-way policy/union consistency.
  */
 
-import type { ExplanationBoundary } from "../reality-simulation-types";
+import {
+  KNOWN_EXPLANATION_BOUNDARIES,
+  type ExplanationBoundary,
+} from "../reality-simulation-types";
 import type { BoundaryPolicyDefinition, DeprecatedBoundaryId } from "./boundary-policy-types";
 
 export interface BoundaryEmissionValidationResult {
@@ -13,6 +17,10 @@ export interface BoundaryEmissionValidationResult {
   readonly valid: boolean;
   /** The emitted ids that were supplied for validation. */
   readonly emittedBoundaryIds: readonly ExplanationBoundary[];
+  /**
+   * All live boundary ids from the known registry that was used (default: KNOWN_EXPLANATION_BOUNDARIES).
+   */
+  readonly knownBoundaryIds: readonly ExplanationBoundary[];
   /**
    * Emitted ids that have no matching entry in the policy table.
    * Indicates unregistered or misspelled tokens.
@@ -24,53 +32,81 @@ export interface BoundaryEmissionValidationResult {
    */
   readonly deprecatedBoundaryIds: readonly string[];
   /**
-   * Non-deprecated ExplanationBoundary ids that are absent from the policy table.
-   * Indicates union/table drift.
+   * Known live boundaries that are absent from the policy table (as a non-deprecated entry).
+   * Indicates policy-table under-coverage relative to the live union.
    */
-  readonly missingPolicyBoundaryIds: readonly ExplanationBoundary[];
+  readonly missingPolicyForKnownBoundaryIds: readonly ExplanationBoundary[];
   /**
-   * Policy-table entries that are deprecated, meaning they exist only as historical metadata
-   * and must not appear in ExplanationBoundary or be emitted.
+   * Non-deprecated policy entries whose boundaryId is absent from the known registry.
+   * Indicates policy-table over-coverage or a registry omission.
+   */
+  readonly policyBoundaryIdsMissingFromKnownRegistry: readonly string[];
+  /**
+   * Policy-table entries that are deprecated and must NOT appear in the known registry.
    */
   readonly deprecatedPolicyOnlyIds: readonly DeprecatedBoundaryId[];
+  /**
+   * Deprecated policy ids that were incorrectly found in the known registry.
+   * Should always be empty; non-empty indicates a critical registry contamination.
+   */
+  readonly deprecatedPolicyIdsPresentInKnownRegistry: readonly string[];
+  /**
+   * Non-deprecated ExplanationBoundary ids (from emitted set) that are absent from the policy table.
+   * @deprecated Superseded by missingPolicyForKnownBoundaryIds for full two-way checks; kept for
+   * backward compatibility with 8.2D-4 consumers.
+   */
+  readonly missingPolicyBoundaryIds: readonly ExplanationBoundary[];
   readonly notes: readonly string[];
 }
 
 export interface ValidateBoundaryEmissionsParams {
   readonly emittedBoundaries: readonly ExplanationBoundary[];
   readonly policyTable: readonly BoundaryPolicyDefinition[];
+  /**
+   * Live boundary registry to use for two-way consistency checks.
+   * Defaults to KNOWN_EXPLANATION_BOUNDARIES from reality-simulation-types.ts.
+   */
+  readonly knownBoundaries?: readonly ExplanationBoundary[];
 }
 
 /**
- * Validates that a set of emitted ExplanationBoundary ids is consistent with policy table metadata.
+ * Validates emitted ExplanationBoundary ids against policy table metadata and the live registry.
  *
- * Rules enforced:
- * 1. Every emitted id must have a corresponding policy-table entry.
+ * Rules enforced (8.2D-4A upgrade):
+ * 1. Every emitted id must have a corresponding non-deprecated policy-table entry.
  * 2. No emitted id may map to a deprecated policy entry.
- * 3. Every non-deprecated ExplanationBoundary token should have a policy entry (union/table drift check).
- * 4. Deprecated historical entries are allowed in the table but must not appear in the emitted set.
+ * 3. Every known live boundary has a non-deprecated policy entry (registry → table direction).
+ * 4. Every non-deprecated policy entry has a corresponding entry in the known registry
+ *    (table → registry direction).
+ * 5. Deprecated policy entries must NOT appear in the known boundary registry.
  *
  * This function does not modify inputs, emit side effects, or change simulation behavior.
  */
 export function validateBoundaryEmissions({
   emittedBoundaries,
   policyTable,
+  knownBoundaries = KNOWN_EXPLANATION_BOUNDARIES,
 }: ValidateBoundaryEmissionsParams): BoundaryEmissionValidationResult {
-  // Build lookup maps from the policy table.
+  // Build lookup structures from the policy table.
   const policyById = new Map<string, BoundaryPolicyDefinition>();
   for (const entry of policyTable) {
     policyById.set(entry.boundaryId, entry);
   }
 
-  // Collect deprecated ids from the policy table (historical metadata only).
+  const nonDeprecatedPolicyIds = new Set<string>(
+    [...policyById.values()].filter((e) => !e.deprecated).map((e) => e.boundaryId),
+  );
+
+  // Collect deprecated policy ids (historical metadata only).
   const deprecatedPolicyOnlyIds: DeprecatedBoundaryId[] = [];
   for (const entry of policyTable) {
     if (entry.deprecated) {
       deprecatedPolicyOnlyIds.push(entry.boundaryId as DeprecatedBoundaryId);
     }
   }
+  const deprecatedPolicyIdSet = new Set<string>(deprecatedPolicyOnlyIds);
 
-  // Check each emitted id.
+  // RULE 1+2: Check each emitted id.
   const unknownBoundaryIds: string[] = [];
   const deprecatedBoundaryIds: string[] = [];
   for (const id of emittedBoundaries) {
@@ -82,17 +118,36 @@ export function validateBoundaryEmissions({
     }
   }
 
-  // Detect union/table drift: live union members that have no policy entry.
-  // We infer the live ExplanationBoundary members from the non-deprecated policy entries.
-  // The ExplanationBoundary type itself is validated by TypeScript; here we check the policy table
-  // covers every emitted token (approximation without iterating the TS union at runtime).
-  const nonDeprecatedPolicyIds = new Set<string>(
-    [...policyById.values()].filter((e) => !e.deprecated).map((e) => e.boundaryId),
-  );
+  // Backward-compat: missingPolicyBoundaryIds (8.2D-4 field, now superseded by full checks below).
   const missingPolicyBoundaryIds: ExplanationBoundary[] = [];
   for (const id of emittedBoundaries) {
     if (!nonDeprecatedPolicyIds.has(id) && !unknownBoundaryIds.includes(id)) {
       missingPolicyBoundaryIds.push(id);
+    }
+  }
+
+  // RULE 3: Every known live boundary must have a non-deprecated policy entry.
+  const missingPolicyForKnownBoundaryIds: ExplanationBoundary[] = [];
+  for (const id of knownBoundaries) {
+    if (!nonDeprecatedPolicyIds.has(id)) {
+      missingPolicyForKnownBoundaryIds.push(id);
+    }
+  }
+
+  // RULE 4: Every non-deprecated policy entry must have a corresponding known registry entry.
+  const knownSet = new Set<string>(knownBoundaries);
+  const policyBoundaryIdsMissingFromKnownRegistry: string[] = [];
+  for (const id of nonDeprecatedPolicyIds) {
+    if (!knownSet.has(id)) {
+      policyBoundaryIdsMissingFromKnownRegistry.push(id);
+    }
+  }
+
+  // RULE 5: Deprecated policy ids must NOT appear in the known registry.
+  const deprecatedPolicyIdsPresentInKnownRegistry: string[] = [];
+  for (const id of deprecatedPolicyIdSet) {
+    if (knownSet.has(id as ExplanationBoundary)) {
+      deprecatedPolicyIdsPresentInKnownRegistry.push(id);
     }
   }
 
@@ -108,18 +163,36 @@ export function validateBoundaryEmissions({
       `Deprecated boundary ids emitted (must not be emitted): ${deprecatedBoundaryIds.join(", ")} — update emitter to canonical replacement.`,
     );
   }
-  if (missingPolicyBoundaryIds.length > 0) {
+  if (missingPolicyForKnownBoundaryIds.length > 0) {
     notes.push(
-      `Emitted boundary ids with no non-deprecated policy entry: ${missingPolicyBoundaryIds.join(", ")} — add to policy table.`,
+      `Known live boundaries with no non-deprecated policy entry: ${missingPolicyForKnownBoundaryIds.join(", ")} — add to policy table.`,
+    );
+  }
+  if (policyBoundaryIdsMissingFromKnownRegistry.length > 0) {
+    notes.push(
+      `Non-deprecated policy entries missing from known registry: ${policyBoundaryIdsMissingFromKnownRegistry.join(", ")} — add to KNOWN_EXPLANATION_BOUNDARIES.`,
+    );
+  }
+  if (deprecatedPolicyIdsPresentInKnownRegistry.length > 0) {
+    notes.push(
+      `CRITICAL: Deprecated policy ids found in known registry: ${deprecatedPolicyIdsPresentInKnownRegistry.join(", ")} — must be removed from KNOWN_EXPLANATION_BOUNDARIES.`,
     );
   }
   if (deprecatedPolicyOnlyIds.length > 0) {
     notes.push(
-      `Deprecated policy-only (historical) entries: ${deprecatedPolicyOnlyIds.join(", ")} — retained as governance metadata only; must not be emitted.`,
+      `Deprecated policy-only (historical) entries: ${deprecatedPolicyOnlyIds.join(", ")} — retained as governance metadata only; must not be emitted or in known registry.`,
     );
   }
-  if (unknownBoundaryIds.length === 0 && deprecatedBoundaryIds.length === 0 && missingPolicyBoundaryIds.length === 0) {
-    notes.push("All emitted boundary ids are valid, non-deprecated, and registered in the policy table.");
+  if (
+    unknownBoundaryIds.length === 0 &&
+    deprecatedBoundaryIds.length === 0 &&
+    missingPolicyForKnownBoundaryIds.length === 0 &&
+    policyBoundaryIdsMissingFromKnownRegistry.length === 0 &&
+    deprecatedPolicyIdsPresentInKnownRegistry.length === 0
+  ) {
+    notes.push(
+      "All emitted boundary ids are valid, non-deprecated, and registered. Known registry and policy table are fully consistent.",
+    );
   }
 
   const valid =
@@ -130,10 +203,14 @@ export function validateBoundaryEmissions({
   return {
     valid,
     emittedBoundaryIds: emittedBoundaries,
+    knownBoundaryIds: knownBoundaries,
     unknownBoundaryIds,
     deprecatedBoundaryIds,
-    missingPolicyBoundaryIds,
+    missingPolicyForKnownBoundaryIds,
+    policyBoundaryIdsMissingFromKnownRegistry,
     deprecatedPolicyOnlyIds,
+    deprecatedPolicyIdsPresentInKnownRegistry,
+    missingPolicyBoundaryIds,
     notes,
   };
 }

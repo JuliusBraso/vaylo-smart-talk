@@ -1,12 +1,15 @@
 /**
- * Boundary emission regression scaffold (Phase 8.2D-4).
+ * Boundary emission regression scaffold (Phase 8.2D-4 / upgraded 8.2D-4A).
  *
  * Controlled sample checks for use in future test runners, CI, or development-only assertions.
  * This file does NOT run automatically or connect to production simulation.
  * No Smart Talk, no explanation generation, no runtime enforcement.
  */
 
-import type { ExplanationBoundary } from "../reality-simulation-types";
+import {
+  KNOWN_EXPLANATION_BOUNDARIES,
+  type ExplanationBoundary,
+} from "../reality-simulation-types";
 import { BOUNDARY_POLICY_TABLE_V1 } from "./boundary-policy-table";
 import {
   validateBoundaryEmissions,
@@ -100,6 +103,23 @@ export interface BoundaryRegressionScaffoldResult {
     readonly deprecatedAliasOnlyInHistoricalMetadata: boolean;
     readonly deprecatedPolicyOnlyIds: readonly string[];
   };
+  /**
+   * Registry consistency check (8.2D-4A): two-way validation between KNOWN_EXPLANATION_BOUNDARIES
+   * and BOUNDARY_POLICY_TABLE_V1.
+   */
+  readonly registryConsistencyCheck: {
+    /** True when policy table fully covers all live known boundaries (no missing entries). */
+    readonly allKnownBoundariesCoveredByPolicy: boolean;
+    /** True when known registry fully covers all non-deprecated policy entries. */
+    readonly allNonDeprecatedPolicyEntriesCoveredByRegistry: boolean;
+    /** True when the deprecated alias is absent from KNOWN_EXPLANATION_BOUNDARIES. */
+    readonly deprecatedAliasAbsentFromRegistry: boolean;
+    /** True when the canonical token is present in KNOWN_EXPLANATION_BOUNDARIES. */
+    readonly canonicalTokenInRegistry: boolean;
+    readonly missingPolicyForKnownBoundaryIds: readonly string[];
+    readonly policyBoundaryIdsMissingFromKnownRegistry: readonly string[];
+    readonly deprecatedPolicyIdsPresentInKnownRegistry: readonly string[];
+  };
   readonly notes: readonly string[];
 }
 
@@ -108,6 +128,7 @@ export interface BoundaryRegressionScaffoldResult {
  *
  * Not a Jest/Vitest test — returns structured results for use by any runner.
  * Does not modify policy table or simulation behavior.
+ * Includes 8.2D-4A registry consistency checks.
  */
 export function runBoundaryEmissionRegressionScaffold(): BoundaryRegressionScaffoldResult {
   const caseResults: BoundaryRegressionCaseResult[] = [];
@@ -128,8 +149,6 @@ export function runBoundaryEmissionRegressionScaffold(): BoundaryRegressionScaff
   }
 
   // Canonical alias check: the deprecated alias must appear in deprecatedPolicyOnlyIds.
-  // We do this by running validateBoundaryEmissions with an empty emission set; the deprecated
-  // historical entries are surfaced via deprecatedPolicyOnlyIds regardless of what is emitted.
   const aliasAudit = validateBoundaryEmissions({
     emittedBoundaries: [],
     policyTable: BOUNDARY_POLICY_TABLE_V1,
@@ -146,8 +165,33 @@ export function runBoundaryEmissionRegressionScaffold(): BoundaryRegressionScaff
   });
   const canonicalTokenAccepted = canonicalCheck.valid;
 
+  // 8.2D-4A — Registry consistency: run a full two-way check using KNOWN_EXPLANATION_BOUNDARIES.
+  const registryCheck = validateBoundaryEmissions({
+    emittedBoundaries: KNOWN_EXPLANATION_BOUNDARIES,
+    policyTable: BOUNDARY_POLICY_TABLE_V1,
+    knownBoundaries: KNOWN_EXPLANATION_BOUNDARIES,
+  });
+
+  const deprecatedAliasAbsentFromRegistry = !(KNOWN_EXPLANATION_BOUNDARIES as readonly string[]).includes(
+    "recommend_human_review_for_high_risk",
+  );
+  const canonicalTokenInRegistry = (KNOWN_EXPLANATION_BOUNDARIES as readonly string[]).includes(
+    "recommend_human_review_high_risk",
+  );
+
   const passCount = caseResults.filter((r) => r.passed).length;
   const failCount = caseResults.length - passCount;
+
+  const registryConsistencyCheck = {
+    allKnownBoundariesCoveredByPolicy: registryCheck.missingPolicyForKnownBoundaryIds.length === 0,
+    allNonDeprecatedPolicyEntriesCoveredByRegistry:
+      registryCheck.policyBoundaryIdsMissingFromKnownRegistry.length === 0,
+    deprecatedAliasAbsentFromRegistry,
+    canonicalTokenInRegistry,
+    missingPolicyForKnownBoundaryIds: [...registryCheck.missingPolicyForKnownBoundaryIds],
+    policyBoundaryIdsMissingFromKnownRegistry: [...registryCheck.policyBoundaryIdsMissingFromKnownRegistry],
+    deprecatedPolicyIdsPresentInKnownRegistry: [...registryCheck.deprecatedPolicyIdsPresentInKnownRegistry],
+  };
 
   const notes: string[] = [];
   if (failCount === 0) {
@@ -174,9 +218,45 @@ export function runBoundaryEmissionRegressionScaffold(): BoundaryRegressionScaff
     );
   }
 
+  // 8.2D-4A registry notes.
+  if (registryConsistencyCheck.allKnownBoundariesCoveredByPolicy) {
+    notes.push("REGISTRY CHECK: All known live boundaries are covered by the policy table.");
+  } else {
+    notes.push(
+      `REGISTRY CHECK FAIL: Known boundaries missing from policy table: ${registryConsistencyCheck.missingPolicyForKnownBoundaryIds.join(", ")}.`,
+    );
+  }
+  if (registryConsistencyCheck.allNonDeprecatedPolicyEntriesCoveredByRegistry) {
+    notes.push("REGISTRY CHECK: All non-deprecated policy entries are present in KNOWN_EXPLANATION_BOUNDARIES.");
+  } else {
+    notes.push(
+      `REGISTRY CHECK FAIL: Non-deprecated policy entries absent from registry: ${registryConsistencyCheck.policyBoundaryIdsMissingFromKnownRegistry.join(", ")}.`,
+    );
+  }
+  if (registryConsistencyCheck.deprecatedAliasAbsentFromRegistry) {
+    notes.push('REGISTRY CHECK: Deprecated alias "recommend_human_review_for_high_risk" is NOT in KNOWN_EXPLANATION_BOUNDARIES.');
+  } else {
+    notes.push('REGISTRY CHECK FAIL: Deprecated alias "recommend_human_review_for_high_risk" was found in KNOWN_EXPLANATION_BOUNDARIES — must be removed.');
+  }
+  if (registryConsistencyCheck.canonicalTokenInRegistry) {
+    notes.push('REGISTRY CHECK: Canonical token "recommend_human_review_high_risk" IS in KNOWN_EXPLANATION_BOUNDARIES.');
+  } else {
+    notes.push('REGISTRY CHECK FAIL: Canonical token "recommend_human_review_high_risk" is MISSING from KNOWN_EXPLANATION_BOUNDARIES.');
+  }
+
+  const registryConsistencyPassed =
+    registryConsistencyCheck.allKnownBoundariesCoveredByPolicy &&
+    registryConsistencyCheck.allNonDeprecatedPolicyEntriesCoveredByRegistry &&
+    registryConsistencyCheck.deprecatedAliasAbsentFromRegistry &&
+    registryConsistencyCheck.canonicalTokenInRegistry;
+
   return {
-    scaffoldVersion: "8.2d-4-boundary-emission-regression-v1",
-    allPassed: failCount === 0 && canonicalTokenAccepted && deprecatedAliasOnlyInHistoricalMetadata,
+    scaffoldVersion: "8.2d-4a-boundary-emission-regression-v2",
+    allPassed:
+      failCount === 0 &&
+      canonicalTokenAccepted &&
+      deprecatedAliasOnlyInHistoricalMetadata &&
+      registryConsistencyPassed,
     passCount,
     failCount,
     caseResults,
@@ -185,6 +265,7 @@ export function runBoundaryEmissionRegressionScaffold(): BoundaryRegressionScaff
       deprecatedAliasOnlyInHistoricalMetadata,
       deprecatedPolicyOnlyIds,
     },
+    registryConsistencyCheck,
     notes,
   };
 }

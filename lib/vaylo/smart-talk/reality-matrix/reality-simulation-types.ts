@@ -89,6 +89,33 @@ export type ExplanationBoundary =
   /** Canonical human-review escalation boundary (8.2D-2B). */
   | "recommend_human_review_high_risk";
 
+/**
+ * Runtime-enumerable registry of every live `ExplanationBoundary` token (8.2D-4A).
+ *
+ * The TypeScript `ExplanationBoundary` union cannot be iterated at runtime; this constant fills
+ * that gap for policy-drift detection, regression scaffolds, and future test runners.
+ *
+ * INVARIANT: must include exactly the same members as `ExplanationBoundary` — no more, no fewer.
+ * The `satisfies readonly ExplanationBoundary[]` constraint enforces that all entries are valid
+ * live tokens at compile time, preventing deprecated aliases from being re-introduced here.
+ *
+ * DO NOT add `"recommend_human_review_for_high_risk"` — that alias was removed in 8.2D-2B and
+ * exists only as historical policy metadata in `BOUNDARY_POLICY_TABLE_V1`.
+ */
+export const KNOWN_EXPLANATION_BOUNDARIES = [
+  "do_not_calculate_deadline",
+  "do_not_claim_enforcement",
+  "do_not_claim_finality",
+  "do_not_merge_payment_and_appeal",
+  "do_not_merge_lanes",
+  "do_not_present_dry_run_as_fact",
+  "do_not_present_speculation_as_fact",
+  "require_uncertainty_wording",
+  "use_relative_deadline_wording_only",
+  "mention_uncertainty_if_ocr_noisy",
+  "recommend_human_review_high_risk",
+] as const satisfies readonly ExplanationBoundary[];
+
 export interface SimulationUncertaintyReason {
   readonly code: string;
   readonly detail?: string;

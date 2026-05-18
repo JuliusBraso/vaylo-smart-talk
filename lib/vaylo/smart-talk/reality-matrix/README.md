@@ -96,6 +96,10 @@ End-to-end **documentation audit** of the 8.2C evidence-gates dry-run stack (cou
 
 **Scaffold only — no runtime behavior changed.** Adds `validateBoundaryEmissions()` (cross-checks emitted ids against the policy table; detects unknown tokens, deprecated aliases, and union/table drift) and `runBoundaryEmissionRegressionScaffold()` (structured pass/fail cases). Not wired into simulation runtime; ready for future test runners. See **`reality-simulation/README.md`**.
 
+### Phase 8.2D-4A — Known Explanation Boundaries Registry
+
+**Registry + validation upgrade only — no runtime behavior changed.** Adds `KNOWN_EXPLANATION_BOUNDARIES` (a runtime-enumerable `as const` array of all live `ExplanationBoundary` tokens, typed with `satisfies readonly ExplanationBoundary[]`) to close the gap that TypeScript unions cannot be iterated at runtime. Upgrades `validateBoundaryEmissions()` with five two-way consistency rules between the live registry and `BOUNDARY_POLICY_TABLE_V1`. Deprecated alias `"recommend_human_review_for_high_risk"` is explicitly excluded from the registry. Regression scaffold extended with `registryConsistencyCheck`. See **`reality-simulation/README.md`**.
+
 ---
 
 ## 8. Why this phase avoids runtime implementation
@@ -119,7 +123,7 @@ Skipping runtime avoids:
 | Phase | Focus |
 |-------|--------|
 | **8.2C Evidence gates** | Deterministic evaluation: cue matching, evidence levels, claim allow/deny, speculative suppression before model or after structured output. |
-| **8.2D Reality simulation** | **8.2D-0** spec; **8.2D-1** `runRealitySimulation`; **8.2D-2/2A/2B** boundary audits + cleanup; **8.2D-3** policy table; **8.2D-4** emission regression scaffold — metadata + scaffold only. |
+| **8.2D Reality simulation** | **8.2D-0** spec; **8.2D-1** `runRealitySimulation`; **8.2D-2/2A/2B** boundary audits + cleanup; **8.2D-3** policy table; **8.2D-4** emission regression scaffold; **8.2D-4A** known-boundary registry + two-way policy/registry validation — metadata + scaffold only. |
 | **Regression corpus** | Frozen snippets per document family with expected matrix outcomes. |
 | **Document cognition engine** | Compose matrices per `RealityMatrixDocumentType`, versioned releases, optional overlap with existing `SmartTalkResult` fields via explicit mappers (future). |
 
