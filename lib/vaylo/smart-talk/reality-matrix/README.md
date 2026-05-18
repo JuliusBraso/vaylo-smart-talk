@@ -84,6 +84,10 @@ End-to-end **documentation audit** of the 8.2C evidence-gates dry-run stack (cou
 
 **Governance audit only** (no runtime behavior changes): boundary-token inventory, trap/stabilizer/severity influence review, dry-run leakage and review-flag risk notes. See **`SIMULATION_BOUNDARY_MAPPING_AUDIT.md`**. **Critical:** `enforcementTrapHeuristic` in the 8.2D-1 skeleton is **substring-based** and **not production-safe** for explanation policy.
 
+### Phase 8.2D-2A — Boundary Vocabulary Consolidation Audit
+
+**Vocabulary audit only — no runtime behavior changed.** Identified alias defect (`recommend_human_review_for_high_risk` vs `recommend_human_review_high_risk`), four never-emitted tokens, two emitted-but-unspecified tokens, naming inconsistencies, and canonical category model. Type union updated with JSDoc deprecation note on the spec-name alias. See **`BOUNDARY_VOCABULARY_AUDIT.md`**.
+
 ---
 
 ## 8. Why this phase avoids runtime implementation

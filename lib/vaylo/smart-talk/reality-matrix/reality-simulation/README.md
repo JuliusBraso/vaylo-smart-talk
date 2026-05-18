@@ -41,6 +41,18 @@ If dry-run realities are uncertain, traps are ambiguous, metadata suggests specu
 
 **Canonical audit:** [`../SIMULATION_BOUNDARY_MAPPING_AUDIT.md`](../SIMULATION_BOUNDARY_MAPPING_AUDIT.md).
 
+## PHASE 8.2D-2A — Boundary Vocabulary Consolidation Audit
+
+**Vocabulary audit only — no runtime behavior changed.**
+
+Key findings:
+- **`recommend_human_review_for_high_risk`** (spec §7 name) vs **`recommend_human_review_high_risk`** (runtime-emitted): **alias defect** — these are two distinct union members; the spec name is never emitted; the runtime token is not in the spec table. Canonical form going forward: **`recommend_human_review_high_risk`**. The spec-name variant is marked `@deprecated` in the type JSDoc.
+- **Four tokens never emitted** by skeleton v1: `do_not_claim_finality`, `use_relative_deadline_wording_only`, `mention_uncertainty_if_ocr_noisy`, `recommend_human_review_for_high_risk` — defined in union / spec; wiring pending.
+- **Two tokens emitted but absent from spec §7**: `do_not_present_speculation_as_fact`, `do_not_merge_lanes`.
+- Consumers must treat boundary tokens as **machine constraints**, never as user text.
+
+**Canonical audit:** [`../BOUNDARY_VOCABULARY_AUDIT.md`](../BOUNDARY_VOCABULARY_AUDIT.md).
+
 ---
 
 > **Reality simulation models safe explanation space, not legal truth.**

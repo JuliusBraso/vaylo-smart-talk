@@ -56,18 +56,42 @@ export interface SimulationClaimCandidate {
 // Boundaries, uncertainty, review (governance — not prose)
 // ---------------------------------------------------------------------------
 
-/** Machine tokens for downstream explanation governance — see REALITY_SIMULATION_SPEC.md §7. */
+/**
+ * Machine tokens for downstream explanation governance — see REALITY_SIMULATION_SPEC.md §7
+ * and BOUNDARY_VOCABULARY_AUDIT.md (8.2D-2A) for canonical category model and consumer safety policy.
+ *
+ * Token status notes (8.2D-2A):
+ * - Tokens emitted unconditionally by the skeleton:
+ *   `do_not_calculate_deadline`, `do_not_merge_payment_and_appeal`,
+ *   `do_not_present_dry_run_as_fact`, `do_not_present_speculation_as_fact`
+ * - Tokens emitted conditionally (trap / speculative / mismatch signals):
+ *   `do_not_claim_enforcement`, `do_not_merge_lanes`,
+ *   `require_uncertainty_wording`, `recommend_human_review_high_risk`
+ * - Tokens defined but NOT YET EMITTED by skeleton v1 (wiring pending):
+ *   `do_not_claim_finality`, `use_relative_deadline_wording_only`, `mention_uncertainty_if_ocr_noisy`
+ * - `recommend_human_review_for_high_risk` — spec §7 name; NOT emitted by runtime.
+ *   Canonical runtime token is `recommend_human_review_high_risk` (see BOUNDARY_VOCABULARY_AUDIT.md §4.1).
+ *   TODO(8.2D-3): deprecate `recommend_human_review_for_high_risk` from this union after consumer migration.
+ */
 export type ExplanationBoundary =
   | "do_not_calculate_deadline"
   | "do_not_claim_enforcement"
+  /** Not yet emitted by skeleton v1 — wiring to finality-related gate signals pending (8.2D-2A). */
   | "do_not_claim_finality"
   | "do_not_merge_payment_and_appeal"
   | "do_not_merge_lanes"
   | "do_not_present_dry_run_as_fact"
   | "do_not_present_speculation_as_fact"
   | "require_uncertainty_wording"
+  /** Not yet emitted by skeleton v1 — wiring to deadline reality candidates pending (8.2D-2A). */
   | "use_relative_deadline_wording_only"
+  /** Not yet emitted by skeleton v1 — requires OCR quality input wiring (8.2D-2A). */
   | "mention_uncertainty_if_ocr_noisy"
+  /**
+   * Spec §7 form of the human-review recommendation — NOT emitted by the 8.2D-1 runtime.
+   * Runtime emits `recommend_human_review_high_risk` instead.
+   * @deprecated prefer `recommend_human_review_high_risk` going forward; see BOUNDARY_VOCABULARY_AUDIT.md §4.1.
+   */
   | "recommend_human_review_for_high_risk"
   | "recommend_human_review_high_risk";
 
