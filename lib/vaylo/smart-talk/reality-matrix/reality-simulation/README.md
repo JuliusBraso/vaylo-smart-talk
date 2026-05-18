@@ -117,6 +117,40 @@ TypeScript unions (`ExplanationBoundary`) cannot be iterated at runtime. Without
 4. Every non-deprecated policy entry has a corresponding known boundary (table → registry).
 5. Deprecated policy entries must NOT appear in the known registry.
 
+## PHASE 8.2D-4B — Boundary Validation Full Consistency Flag
+
+**Validation hardening only — no runtime behavior changed, no simulation output changed.**
+
+### What was added
+
+A single new boolean field on `BoundaryEmissionValidationResult`:
+
+```
+fullyConsistent: boolean
+```
+
+### `valid` vs `fullyConsistent`
+
+| Flag | Rules covered | Use case |
+|------|--------------|----------|
+| `valid` | Rules 1–2 + legacy rule 3: emitted ids are known, non-deprecated, and have a policy entry | Emitted-set safety — safe to use wherever only the current emission is being checked |
+| `fullyConsistent` | All five two-way rules | Full governance integrity — registry ↔ policy-table parity, deprecated-alias exclusion, plus all `valid` conditions |
+
+`valid` is **unchanged** for backward compatibility. It will continue to return `true` for any set of clean, canonical emitted tokens, regardless of whether the live registry or policy table have drifted from each other.
+
+`fullyConsistent` is `true` only when **all six violation arrays are empty**:
+
+- `unknownBoundaryIds`
+- `deprecatedBoundaryIds`
+- `missingPolicyBoundaryIds` *(emitted-set coverage)*
+- `missingPolicyForKnownBoundaryIds` *(registry → table)*
+- `policyBoundaryIdsMissingFromKnownRegistry` *(table → registry)*
+- `deprecatedPolicyIdsPresentInKnownRegistry` *(deprecated exclusion)*
+
+### Regression scaffold update
+
+`runBoundaryEmissionRegressionScaffold` now surfaces `fullyConsistentResult` inside `registryConsistencyCheck`. A note in the `notes` array explains the distinction between the two flags. The `allPassed` gate now requires `fullyConsistentResult` to be `true` in addition to all prior conditions.
+
 ---
 
 > **Reality simulation models safe explanation space, not legal truth.**

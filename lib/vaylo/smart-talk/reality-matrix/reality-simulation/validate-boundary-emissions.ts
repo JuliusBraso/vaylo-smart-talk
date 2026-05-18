@@ -1,9 +1,14 @@
 /**
- * Boundary emission validator (Phase 8.2D-4 / upgraded 8.2D-4A).
+ * Boundary emission validator (Phase 8.2D-4 / upgraded 8.2D-4A / 8.2D-4B).
  *
  * Pure validation helper — no explanation generation, no runtime enforcement, no Smart Talk wiring.
  * Cross-checks emitted ExplanationBoundary ids against BOUNDARY_POLICY_TABLE_V1 metadata and the
  * KNOWN_EXPLANATION_BOUNDARIES registry for full two-way policy/union consistency.
+ *
+ * Two consistency levels (8.2D-4B):
+ *   `valid`          — emitted-set safety: unknown / deprecated / missing-policy for the emitted set.
+ *   `fullyConsistent` — all five two-way rules: encompasses `valid` plus registry ↔ policy-table
+ *                       consistency and deprecated-alias exclusion checks.
  */
 
 import {
@@ -13,8 +18,30 @@ import {
 import type { BoundaryPolicyDefinition, DeprecatedBoundaryId } from "./boundary-policy-types";
 
 export interface BoundaryEmissionValidationResult {
-  /** True only when every emitted id is canonical, non-deprecated, and registered in the policy table. */
+  /**
+   * Emitted-set safety flag (legacy / backward-compatible).
+   * True when all of the following are empty:
+   *   - `unknownBoundaryIds`
+   *   - `deprecatedBoundaryIds`
+   *   - `missingPolicyBoundaryIds`
+   *
+   * Does NOT cover registry ↔ policy-table two-way consistency.
+   * Use `fullyConsistent` when full governance integrity is required.
+   */
   readonly valid: boolean;
+  /**
+   * Full five-rule consistency flag (8.2D-4B).
+   * True only when ALL of the following are empty:
+   *   - `unknownBoundaryIds`
+   *   - `deprecatedBoundaryIds`
+   *   - `missingPolicyBoundaryIds`          (emitted-set coverage)
+   *   - `missingPolicyForKnownBoundaryIds`  (registry → table)
+   *   - `policyBoundaryIdsMissingFromKnownRegistry` (table → registry)
+   *   - `deprecatedPolicyIdsPresentInKnownRegistry` (deprecated exclusion)
+   *
+   * Stricter than `valid`; use this for policy-drift detection and registry audits.
+   */
+  readonly fullyConsistent: boolean;
   /** The emitted ids that were supplied for validation. */
   readonly emittedBoundaryIds: readonly ExplanationBoundary[];
   /**
@@ -200,8 +227,16 @@ export function validateBoundaryEmissions({
     deprecatedBoundaryIds.length === 0 &&
     missingPolicyBoundaryIds.length === 0;
 
+  // All five two-way rules must pass for full consistency (8.2D-4B).
+  const fullyConsistent =
+    valid &&
+    missingPolicyForKnownBoundaryIds.length === 0 &&
+    policyBoundaryIdsMissingFromKnownRegistry.length === 0 &&
+    deprecatedPolicyIdsPresentInKnownRegistry.length === 0;
+
   return {
     valid,
+    fullyConsistent,
     emittedBoundaryIds: emittedBoundaries,
     knownBoundaryIds: knownBoundaries,
     unknownBoundaryIds,

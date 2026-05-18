@@ -1,9 +1,14 @@
 /**
- * Boundary emission regression scaffold (Phase 8.2D-4 / upgraded 8.2D-4A).
+ * Boundary emission regression scaffold (Phase 8.2D-4 / upgraded 8.2D-4A / 8.2D-4B).
  *
  * Controlled sample checks for use in future test runners, CI, or development-only assertions.
  * This file does NOT run automatically or connect to production simulation.
  * No Smart Talk, no explanation generation, no runtime enforcement.
+ *
+ * Two consistency levels checked (8.2D-4B):
+ *   `valid`           — per-case emitted-set safety (existing behaviour, unchanged).
+ *   `fullyConsistent` — full five-rule two-way registry/policy consistency; inspected by the
+ *                       registryConsistencyCheck block at the end of the scaffold runner.
  */
 
 import {
@@ -104,8 +109,11 @@ export interface BoundaryRegressionScaffoldResult {
     readonly deprecatedPolicyOnlyIds: readonly string[];
   };
   /**
-   * Registry consistency check (8.2D-4A): two-way validation between KNOWN_EXPLANATION_BOUNDARIES
-   * and BOUNDARY_POLICY_TABLE_V1.
+   * Registry consistency check (8.2D-4A / 8.2D-4B): two-way validation between
+   * KNOWN_EXPLANATION_BOUNDARIES and BOUNDARY_POLICY_TABLE_V1.
+   *
+   * `fullyConsistentResult` is the `fullyConsistent` flag from the registry validation run —
+   * true only when all five two-way rules pass simultaneously.
    */
   readonly registryConsistencyCheck: {
     /** True when policy table fully covers all live known boundaries (no missing entries). */
@@ -116,6 +124,11 @@ export interface BoundaryRegressionScaffoldResult {
     readonly deprecatedAliasAbsentFromRegistry: boolean;
     /** True when the canonical token is present in KNOWN_EXPLANATION_BOUNDARIES. */
     readonly canonicalTokenInRegistry: boolean;
+    /**
+     * `fullyConsistent` flag from the validateBoundaryEmissions run over KNOWN_EXPLANATION_BOUNDARIES.
+     * True only when all five two-way rules pass. Stricter than `valid`.
+     */
+    readonly fullyConsistentResult: boolean;
     readonly missingPolicyForKnownBoundaryIds: readonly string[];
     readonly policyBoundaryIdsMissingFromKnownRegistry: readonly string[];
     readonly deprecatedPolicyIdsPresentInKnownRegistry: readonly string[];
@@ -188,6 +201,7 @@ export function runBoundaryEmissionRegressionScaffold(): BoundaryRegressionScaff
       registryCheck.policyBoundaryIdsMissingFromKnownRegistry.length === 0,
     deprecatedAliasAbsentFromRegistry,
     canonicalTokenInRegistry,
+    fullyConsistentResult: registryCheck.fullyConsistent,
     missingPolicyForKnownBoundaryIds: [...registryCheck.missingPolicyForKnownBoundaryIds],
     policyBoundaryIdsMissingFromKnownRegistry: [...registryCheck.policyBoundaryIdsMissingFromKnownRegistry],
     deprecatedPolicyIdsPresentInKnownRegistry: [...registryCheck.deprecatedPolicyIdsPresentInKnownRegistry],
@@ -243,15 +257,28 @@ export function runBoundaryEmissionRegressionScaffold(): BoundaryRegressionScaff
   } else {
     notes.push('REGISTRY CHECK FAIL: Canonical token "recommend_human_review_high_risk" is MISSING from KNOWN_EXPLANATION_BOUNDARIES.');
   }
+  if (registryConsistencyCheck.fullyConsistentResult) {
+    notes.push(
+      "FULL CONSISTENCY CHECK (fullyConsistent=true): All five two-way rules pass — emitted-set, registry→table, table→registry, deprecated exclusion all clean.",
+    );
+  } else {
+    notes.push(
+      "FULL CONSISTENCY CHECK (fullyConsistent=false): One or more of the five two-way rules failed — see missingPolicyForKnownBoundaryIds, policyBoundaryIdsMissingFromKnownRegistry, or deprecatedPolicyIdsPresentInKnownRegistry.",
+    );
+  }
+  notes.push(
+    "NOTE: `valid` checks only the emitted set (rules 1–2 + legacy rule 3). `fullyConsistent` additionally enforces registry↔policy-table two-way parity and deprecated-alias exclusion (all five rules).",
+  );
 
   const registryConsistencyPassed =
     registryConsistencyCheck.allKnownBoundariesCoveredByPolicy &&
     registryConsistencyCheck.allNonDeprecatedPolicyEntriesCoveredByRegistry &&
     registryConsistencyCheck.deprecatedAliasAbsentFromRegistry &&
-    registryConsistencyCheck.canonicalTokenInRegistry;
+    registryConsistencyCheck.canonicalTokenInRegistry &&
+    registryConsistencyCheck.fullyConsistentResult;
 
   return {
-    scaffoldVersion: "8.2d-4a-boundary-emission-regression-v2",
+    scaffoldVersion: "8.2d-4b-boundary-emission-regression-v3",
     allPassed:
       failCount === 0 &&
       canonicalTokenAccepted &&
