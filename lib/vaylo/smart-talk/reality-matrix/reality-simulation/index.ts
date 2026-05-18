@@ -36,3 +36,22 @@ export type {
   TrapConsumerConstraint,
   TrapMetadataDefinition,
 } from "./trap-metadata-types";
+export type {
+  AttentionLevelPreview,
+  ConfidencePosture,
+  ExplanationAccessTier,
+  ExplicitDeadlineSignal,
+  ExplicitDeadlineSignalKind,
+  ExplicitFinancialSignal,
+  ExplicitFinancialSignalKind,
+  ForbiddenExplanationMove,
+  FreePreviewFields,
+  FreePreviewSimulationExplanationContract,
+  InstitutionSignal,
+  PaidExplanationFields,
+  PaidSimulationExplanationContract,
+  RequiredExplanationConstraint,
+  SimulationExplanationContract,
+  SimulationExplanationContractVersion,
+  UncertaintyRequirement,
+} from "./explanation-contract-types";

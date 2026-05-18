@@ -221,6 +221,55 @@ to `uncertaintyReasons`.
 
 **Canonical doc:** [`../TRAP_METADATA_FOUNDATION.md`](../TRAP_METADATA_FOUNDATION.md).
 
+## PHASE 8.2D-6 — Simulation -> Explanation Contract v1
+
+**Contract / type specification only — no runtime behavior changed, no Smart Talk wiring, no payment logic.**
+
+### What was added
+
+- **`explanation-contract-types.ts`** — defines `SimulationExplanationContract`, access tiers, free-preview fields, paid-explanation fields, forbidden explanation moves, required explanation constraints, and uncertainty requirements.
+- **`SIMULATION_EXPLANATION_CONTRACT.md`** — documents the free-vs-paid handoff boundary, monetization constraints, boundary mapping policy, and non-goals.
+
+### Access tier separation
+
+`SimulationExplanationContract` is a discriminated union:
+
+- `free_preview` contracts may carry only `freePreviewFields`; `paidExplanationFields?: never`.
+- `paid_explanation` contracts may carry `paidExplanationFields`, but still cannot carry calculated deadlines, legal certainty, generated prose, raw document text, or unrestricted extraction.
+
+### Free preview restrictions
+
+Free preview is limited to safe teaser metadata:
+
+- document type candidate / label
+- safe sender category
+- whether financial or deadline signals exist
+- bounded attention preview
+- human review suggestion
+- bounded confidence posture
+
+It must not include exact amounts, exact dates, legal conclusions, action steps, risk triggers, personal data, or raw text.
+
+### Paid explanation restrictions
+
+Paid explanation may carry deeper structured signals such as explicit financial/deadline mentions, institution signals, authorized claim candidates, supported reality candidates, uncertainty reasons, boundary ids, review flags, and trap warning ids.
+
+Paid still does **not** allow calculated deadlines, legal certainty, guaranteed outcomes, autonomous form submission, unrestricted extraction, or boundary bypass.
+
+### Boundary mapping policy
+
+The contract documents future mapping only:
+
+| Boundary id | Contract implication |
+|-------------|----------------------|
+| `do_not_calculate_deadline` | `no_deadline_calculation_when_forbidden` |
+| `do_not_claim_enforcement` | `no_enforcement_claim_when_forbidden` |
+| `require_uncertainty_wording` | `required_uncertainty_wording` |
+
+No runtime mapper or explanation builder is introduced in this phase.
+
+**Canonical doc:** [`../SIMULATION_EXPLANATION_CONTRACT.md`](../SIMULATION_EXPLANATION_CONTRACT.md).
+
 ---
 
 > **Reality simulation models safe explanation space, not legal truth.**
