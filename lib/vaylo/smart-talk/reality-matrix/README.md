@@ -86,7 +86,7 @@ End-to-end **documentation audit** of the 8.2C evidence-gates dry-run stack (cou
 
 ### Phase 8.2D-2A — Boundary Vocabulary Consolidation Audit
 
-**Vocabulary audit only — no runtime behavior changed.** Identified alias defect (`recommend_human_review_for_high_risk` vs `recommend_human_review_high_risk`), four never-emitted tokens, two emitted-but-unspecified tokens, naming inconsistencies, and canonical category model. Type union updated with JSDoc deprecation note on the spec-name alias. See **`BOUNDARY_VOCABULARY_AUDIT.md`**.
+**Vocabulary audit (8.2D-2A) + alias consolidation fix (8.2D-2B).** Identified and removed `recommend_human_review_for_high_risk` alias; canonical boundary token is now `recommend_human_review_high_risk` only. Three pending-wiring tokens and two emitted-but-unspecified tokens also documented. See **`BOUNDARY_VOCABULARY_AUDIT.md`**.
 
 ---
 

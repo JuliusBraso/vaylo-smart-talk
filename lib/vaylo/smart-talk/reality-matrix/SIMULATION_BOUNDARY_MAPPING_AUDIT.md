@@ -45,9 +45,9 @@
 | `do_not_claim_finality` | Policy placeholder — **gap**: skeleton never adds it. |
 | `use_relative_deadline_wording_only` | Not wired to trace signals in v1. |
 | `mention_uncertainty_if_ocr_noisy` | No OCR noise field consumed in v1. |
-| `recommend_human_review_for_high_risk` | Cousin token to `recommend_human_review_high_risk` — **naming duplication risk** for downstream parsers. |
+| ~~`recommend_human_review_for_high_risk`~~ | **Removed in 8.2D-2B** — alias token consolidated into `recommend_human_review_high_risk`. |
 
-**Consistency note:** Skeleton always adds `recommend_human_review_high_risk` (not `…_for_high_risk`). Consumers must not assume the union is exhaustively produced.
+**Consistency note (updated 8.2D-2B):** `recommend_human_review_high_risk` is now the **single canonical token** in the union. The alias `recommend_human_review_for_high_risk` was removed — it was never emitted and had no production consumers.
 
 ---
 

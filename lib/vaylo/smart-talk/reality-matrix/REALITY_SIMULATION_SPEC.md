@@ -134,7 +134,7 @@ Simulation emits **machine-oriented boundary tokens** (examples — final enum i
 | `do_not_present_dry_run_as_fact` | Dry-run rows are not user truth. |
 | `use_relative_deadline_wording_only` | Relative Frist language only where policy allows. |
 | `mention_uncertainty_if_ocr_noisy` | Structured OCR quality drives hedging policy. |
-| `recommend_human_review_for_high_risk` | Escalation to human/pro review (see §11). |
+| `recommend_human_review_high_risk` | Escalation to human/pro review hint (see §11). **Canonical token** (8.2D-2B). |
 
 Downstream explanation engines **must** consume these as **constraints**, not as suggestions to ignore.
 

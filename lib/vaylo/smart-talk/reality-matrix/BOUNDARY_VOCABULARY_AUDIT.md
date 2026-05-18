@@ -10,16 +10,16 @@
 
 **Verdict: conditionally safe for dry-run simulation only**, with **one high-priority vocabulary defect** requiring consolidation before any production explanation pipeline consumes boundary tokens.
 
-**Primary defect:** the `ExplanationBoundary` union contains **two near-identical tokens** that diverged between the spec and the runtime:
+**Primary defect (resolved in 8.2D-2B):** the `ExplanationBoundary` union had **two near-identical tokens** that diverged between the spec and the runtime:
 
-| Token in union | Defined in spec §7 | Emitted by `buildExplanationBoundaries` |
-|---|---|---|
-| `"recommend_human_review_for_high_risk"` | ✅ yes | ❌ **never** |
-| `"recommend_human_review_high_risk"` | ❌ no | ✅ **always** (on mismatch/speculative) |
+| Token | Defined in spec §7 | Emitted by runtime | Resolution |
+|---|---|---|---|
+| `"recommend_human_review_for_high_risk"` | ✅ yes (now updated) | ❌ never | **Removed** from union in 8.2D-2B |
+| `"recommend_human_review_high_risk"` | ✅ updated | ✅ always (on mismatch/speculative) | **Canonical** — retained |
 
-A downstream parser checking for the spec-defined token will **never find a match** from the current runtime. A parser checking for the runtime token will **not match** the spec wording. Both strings are valid TypeScript members of the union — the compiler cannot catch this.
+The alias token has been **removed from the type union** in 8.2D-2B; `recommend_human_review_high_risk` is now the single canonical member. No production consumers existed.
 
-**Secondary defects:** four additional tokens are defined in the union and/or the spec but are **never emitted** by the skeleton runtime. These are not bugs today but represent vocabulary debt.
+**Secondary defects (still open):** three tokens are defined in the union but are **never emitted** by the skeleton runtime — not bugs today but vocabulary debt.
 
 ---
 
@@ -39,8 +39,8 @@ A downstream parser checking for the spec-defined token will **never find a matc
 | `require_uncertainty_wording` | ✅ | ❌ | ✅ conditional | **Skeleton** | Broad trigger: any uncertain reality or trap or speculative flag |
 | `use_relative_deadline_wording_only` | ✅ | ✅ | ❌ never | **Gap** | Defined; not wired to any trace signal in v1 |
 | `mention_uncertainty_if_ocr_noisy` | ✅ | ✅ | ❌ never | **Gap** | Requires OCR quality field on input; not consumed in 8.2D-1 |
-| `recommend_human_review_for_high_risk` | ✅ | ✅ | ❌ **never** | ⚠️ **Alias defect** | Spec name; runtime uses different string |
-| `recommend_human_review_high_risk` | ✅ | ❌ | ✅ conditional | ⚠️ **Alias defect** | Runtime name; spec uses different string |
+| ~~`recommend_human_review_for_high_risk`~~ | — | — | — | **Removed in 8.2D-2B** | Alias token; never emitted; no consumers |
+| `recommend_human_review_high_risk` | ✅ | ✅ (updated) | ✅ conditional | **Canonical** | Single canonical form post-8.2D-2B |
 
 ### 2.2 Per-token analysis
 
@@ -124,17 +124,14 @@ A downstream parser checking for the spec-defined token will **never find a matc
 - **Alias risk:** none  
 - **Production readiness:** **gap** — needs OCR quality input wiring in 8.2D-2+ or later
 
-#### `recommend_human_review_for_high_risk` ⚠️ ALIAS DEFECT
-- **Purpose (spec intent):** human/professional review escalation hint  
-- **Source trigger:** **never emitted** by skeleton  
-- **Alias risk:** **CRITICAL** — runtime emits `recommend_human_review_high_risk` (no `_for`) instead  
-- **Production readiness:** **confusing** — spec name that the runtime doesn't produce
+#### ~~`recommend_human_review_for_high_risk`~~ — **Removed in 8.2D-2B**
+This alias token has been removed from the `ExplanationBoundary` union. It was the spec §7 name that diverged from the runtime-emitted token and was never produced by `buildExplanationBoundaries`. No production consumers existed. See §4.1.
 
-#### `recommend_human_review_high_risk` ⚠️ ALIAS DEFECT
-- **Purpose (runtime):** same as above  
+#### `recommend_human_review_high_risk` — **Canonical (post 8.2D-2B)**
+- **Purpose:** human/professional review escalation hint  
 - **Source trigger:** `critical` severity band **or** matrix mismatch **or** speculative `unsupportedFeatures` substring  
-- **Alias risk:** **CRITICAL** — consumers following the spec name find no match from runtime  
-- **Production readiness:** **skeleton** — trigger conditions need tuning regardless of name fix
+- **Alias risk:** none — single member in union now  
+- **Production readiness:** **skeleton** — trigger conditions need tuning in a future phase
 
 ---
 
@@ -152,7 +149,7 @@ A downstream parser checking for the spec-defined token will **never find a matc
 
 ### 3.2 Problems found
 
-1. **`recommend_human_review_for_high_risk`** vs **`recommend_human_review_high_risk`**: same semantic intent, different forms in the same string union. One is never emitted.  
+1. **`recommend_human_review_for_high_risk`** vs **`recommend_human_review_high_risk`**: same semantic intent, two different strings in the union — one never emitted. **Resolved in 8.2D-2B**: alias token removed; `recommend_human_review_high_risk` is now the single canonical form.  
 2. **`use_*` vs `require_*`**: both constrain downstream wording choice. `use_relative_deadline_wording_only` reads like a prescriptive policy, not a prohibition — yet it lives alongside `do_not_*` prohibitions with no distinguishing category.  
 3. **`mention_*` implies softer advisory** — a consumer might treat `mention_uncertainty_if_ocr_noisy` as optional, whereas the intent is a **required** hedge when applicable.  
 4. **`do_not_merge_payment_and_appeal`** and **`do_not_merge_lanes`** are partially redundant — the former is an always-on subset of the latter's intent, but the conditional/unconditional split is invisible in the type.
@@ -163,19 +160,18 @@ A downstream parser checking for the spec-defined token will **never find a matc
 
 ### 4.1 The `recommend_human_review_*` pair — priority finding
 
+**Before 8.2D-2B:**
 ```
 "recommend_human_review_for_high_risk"   ← in union; in spec §7; NEVER emitted by runtime
-"recommend_human_review_high_risk"        ← in union; NOT in spec §7; ALWAYS emitted by runtime
-                                                                       (on critical/mismatch/speculative)
+"recommend_human_review_high_risk"        ← in union; NOT in spec §7; emitted by runtime
 ```
 
-**Risk:** a consumer written to the spec will check for `recommend_human_review_for_high_risk` and find it **never present** in a real simulation result, silently skipping human-review escalation. This is a **silent contract break** at the consumer boundary.
+**After 8.2D-2B (current state):**
+```
+"recommend_human_review_high_risk"        ← single canonical token in union; emitted by runtime; in spec §7
+```
 
-**Recommended consolidation path** (for a future TS-safe phase):
-- Deprecate `"recommend_human_review_for_high_risk"` in the union (JSDoc `@deprecated` + note pointing to canonical form).
-- Canonical form: **`"recommend_human_review_high_risk"`** (matches runtime; shorter; consistent with `high_consequence_domain` review flag naming).
-- Update spec §7 table to use the canonical form.
-- Do **not** rename in this phase without a dedicated TS migration plan to avoid breaking consumers already checking the spec name.
+The alias was removed from the `ExplanationBoundary` union with no runtime behavior change (the runtime never emitted it). Spec §7 table and this audit updated to reflect the single canonical token.
 
 ### 4.2 Deadline-related pair overlap
 
@@ -197,7 +193,7 @@ Proposed categories for future typed discriminated union or boundary registry:
 | **prohibition** | `do_not_calculate_deadline`, `do_not_claim_enforcement`, `do_not_claim_finality`, `do_not_merge_payment_and_appeal`, `do_not_merge_lanes`, `do_not_present_dry_run_as_fact`, `do_not_present_speculation_as_fact` | Hard bans — downstream must not perform the named action |
 | **required_wording_constraint** | `require_uncertainty_wording`, `use_relative_deadline_wording_only` | Downstream must use hedged / constrained wording when this boundary is present |
 | **conditional_advisory** | `mention_uncertainty_if_ocr_noisy` | Advisory wording requirement conditional on a runtime quality signal |
-| **escalation_recommendation** | `recommend_human_review_high_risk`, `recommend_human_review_for_high_risk` | Non-binding review hint — **never legal advice** |
+| **escalation_recommendation** | `recommend_human_review_high_risk` | Non-binding review hint — **never legal advice** |
 
 **Naming policy consequence:**
 - `required_wording_constraint` tokens should use `require_*` prefix consistently; `use_*` should be renamed `require_relative_deadline_wording` in a future migration.
@@ -222,8 +218,9 @@ Downstream consumers of `RealitySimulationResult.explanationBoundaries` **must**
 
 | Recommendation | Priority | Notes |
 |----------------|----------|-------|
-| Deprecate `recommend_human_review_for_high_risk` in type union JSDoc, point to `recommend_human_review_high_risk` | **High** | Safe minimal change; no runtime effect |
-| Update spec §7 table to use `recommend_human_review_high_risk` as canonical | **High** | Alignment with emitter |
+| ~~Deprecate `recommend_human_review_for_high_risk` in type union JSDoc~~ | **Done — 8.2D-2A** | — |
+| ~~Remove `recommend_human_review_for_high_risk` from union~~ | **Done — 8.2D-2B** | Alias removed; canonical token is `recommend_human_review_high_risk` |
+| ~~Update spec §7 table to use `recommend_human_review_high_risk` as canonical~~ | **Done — 8.2D-2B** | — |
 | Add missing tokens to spec §7: `do_not_present_speculation_as_fact`, `do_not_merge_lanes`, `do_not_merge_payment_and_appeal` | **Medium** | Spec completeness |
 | Wire `do_not_claim_finality` to blocked-reality / matrix signals | **Medium** | Currently a gap |
 | Wire `use_relative_deadline_wording_only` to deadline-related reality candidates | **Medium** | Gap |
