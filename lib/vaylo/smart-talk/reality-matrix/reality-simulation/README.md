@@ -180,11 +180,44 @@ traps using coarse `trapKind` substring checks (`"enforcement"`, `"vollstreckung
 - A doc-only comment was added to `enforcementTrapHeuristic` marking it as skeleton-only
   with an explicit replacement pointer. **No behavior changed.**
 
-### What was NOT done (intentionally)
+**Canonical doc:** [`../TRAP_METADATA_FOUNDATION.md`](../TRAP_METADATA_FOUNDATION.md).
 
-- `enforcementTrapHeuristic` was **not replaced** — that is Phase 8.2D-5A.
-- `runRealitySimulation` was **not modified** — behavior is strictly unchanged.
-- No boundary emission, review flag, or severity behavior changed.
+## PHASE 8.2D-5A — Replace enforcementTrapHeuristic With Structured Trap Metadata
+
+**Targeted governance refactor — no Smart Talk, no user-visible behavior, no explanation generation.**
+
+### What changed
+
+- **`trap-metadata-registry.ts` refactored** — cluster arrays replaced by `TRAP_METADATA_BY_KIND`,
+  a record typed with `satisfies Record<HallucinationTrapKind, TrapMetadataDefinition>`.
+  Missing any registered trap kind is now a **compile-time error**. `TRAP_METADATA_REGISTRY_V1`
+  is derived from `Object.values(TRAP_METADATA_BY_KIND)` for backward-compatible iteration.
+
+- **`run-reality-simulation.ts` updated:**
+  - `enforcementTrapHeuristic` (substring-based) **removed**.
+  - `buildTrapGovernanceFlags(traps)` **added** — looks up each active trap's `trapKind` in
+    `TRAP_METADATA_BY_KIND`; ORs `isEnforcementRelated`, `isEscalationRelated`,
+    `isDeadlineRelated`, `isLaneContaminationRelated` across all triggered/uncertain traps.
+  - `buildExplanationBoundaries` now accepts `trapFlags: TrapGovernanceFlags`.
+
+### Boundary logic improvements (simulation-internal only)
+
+| Boundary | Old trigger | New trigger |
+|----------|-------------|-------------|
+| `do_not_claim_enforcement` | Any active trap + substring match | Only traps with `isEnforcementRelated: true` |
+| `do_not_merge_lanes` | Any active trap | Only traps with `isLaneContaminationRelated: true` |
+| `require_uncertainty_wording` | Uncertainty/speculative signals | Same + `isEscalationRelated: true` traps |
+
+**Gap closures:** Four enforcement traps previously missed — `payment_reminder_to_account_seizure`,
+`weitere_schritte_to_forced_collection`, `overdue_payment_to_salary_garnishment`,
+`overdue_payment_to_eviction` — now correctly trigger `do_not_claim_enforcement`.
+
+**Semantic fix:** `generic_escalation_to_legal_disaster` no longer triggers the enforcement
+boundary; it correctly triggers `require_uncertainty_wording` only.
+
+**Missing metadata fallback:** An unregistered `trapKind` at runtime applies a conservative
+enforcement + escalation fallback and appends `{ code: "unregistered_trap_metadata", detail: trapKind }`
+to `uncertaintyReasons`.
 
 **Canonical doc:** [`../TRAP_METADATA_FOUNDATION.md`](../TRAP_METADATA_FOUNDATION.md).
 

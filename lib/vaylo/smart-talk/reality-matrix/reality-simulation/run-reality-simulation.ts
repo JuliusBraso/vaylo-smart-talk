@@ -6,7 +6,8 @@ import type {
   StabilizerCandidate,
   TrapActivation,
 } from "../evidence-gates-types";
-import type { ClaimType, ProceduralSeverityBand, RealityType } from "../types";
+import type { ClaimType, HallucinationTrapKind, ProceduralSeverityBand, RealityType } from "../types";
+import { TRAP_METADATA_BY_KIND } from "./trap-metadata-registry";
 import type {
   ExplanationBoundary,
   RealitySimulationResult,
@@ -296,63 +297,119 @@ function dedupeReviewFlags(flags: readonly SimulationReviewFlag[]): SimulationRe
   return out;
 }
 
+/** Aggregate governance flags derived from active trap activations via structured metadata. */
+interface TrapGovernanceFlags {
+  readonly isEnforcementRelated: boolean;
+  readonly isEscalationRelated: boolean;
+  readonly isDeadlineRelated: boolean;
+  readonly isLaneContaminationRelated: boolean;
+  /** trapKind strings not present in TRAP_METADATA_BY_KIND at runtime. */
+  readonly unregisteredTrapKinds: readonly string[];
+}
+
+/**
+ * Derives structured governance flags from active trap activations by looking up each
+ * `trapKind` in `TRAP_METADATA_BY_KIND` (Phase 8.2D-5A — replaces `enforcementTrapHeuristic`).
+ *
+ * Behavior:
+ * - Only `candidate_triggered` and `candidate_uncertain` traps contribute flags.
+ * - For each active trap: look up metadata by trapKind. OR the boolean flags across all matches.
+ * - If a trapKind is absent from the registry (runtime string not in HallucinationTrapKind):
+ *     conservative fallback — treat as enforcement + escalation; record in unregisteredTrapKinds.
+ *     Callers must surface unregisteredTrapKinds as an uncertainty reason.
+ *
+ * No string parsing. No substring checks. No regex.
+ * No modification of trap activation semantics or Evidence Gate resolver behavior.
+ */
+function buildTrapGovernanceFlags(traps: readonly TrapActivation[] | undefined): TrapGovernanceFlags {
+  if (!traps) {
+    return {
+      isEnforcementRelated: false,
+      isEscalationRelated: false,
+      isDeadlineRelated: false,
+      isLaneContaminationRelated: false,
+      unregisteredTrapKinds: [],
+    };
+  }
+
+  let isEnforcementRelated = false;
+  let isEscalationRelated = false;
+  let isDeadlineRelated = false;
+  let isLaneContaminationRelated = false;
+  const unregisteredTrapKinds: string[] = [];
+
+  for (const t of traps) {
+    if (t.disposition !== "candidate_triggered" && t.disposition !== "candidate_uncertain") continue;
+
+    // Look up metadata by key. TrapActivation.trapKind is `string`; cast is safe because
+    // TRAP_METADATA_BY_KIND is a complete Record over every registered HallucinationTrapKind —
+    // a lookup for an unregistered kind returns `undefined` at runtime.
+    const meta =
+      t.trapKind in TRAP_METADATA_BY_KIND
+        ? TRAP_METADATA_BY_KIND[t.trapKind as HallucinationTrapKind]
+        : undefined;
+
+    if (!meta) {
+      // Conservative fallback for unregistered trap kinds — assume enforcement + escalation
+      // until the registry is updated. Callers add an uncertainty reason for each such kind.
+      isEnforcementRelated = true;
+      isEscalationRelated = true;
+      unregisteredTrapKinds.push(t.trapKind);
+      continue;
+    }
+
+    if (meta.isEnforcementRelated) isEnforcementRelated = true;
+    if (meta.isEscalationRelated) isEscalationRelated = true;
+    if (meta.isDeadlineRelated) isDeadlineRelated = true;
+    if (meta.isLaneContaminationRelated) isLaneContaminationRelated = true;
+  }
+
+  return { isEnforcementRelated, isEscalationRelated, isDeadlineRelated, isLaneContaminationRelated, unregisteredTrapKinds };
+}
+
+/**
+ * Maps governance flags to ExplanationBoundary tokens for RealitySimulationResult.
+ *
+ * Phase 8.2D-5A changes vs skeleton:
+ * - `do_not_claim_enforcement` is now driven by `trapFlags.isEnforcementRelated` (precise)
+ *   rather than any active trap (broad) + substring heuristic (coarse).
+ * - `do_not_merge_lanes` is now driven by `trapFlags.isLaneContaminationRelated` (precise)
+ *   rather than any active trap (broad).
+ * - `require_uncertainty_wording` now also fires when `trapFlags.isEscalationRelated` is set.
+ * - `do_not_calculate_deadline` remains unconditional (it was already; `isDeadlineRelated`
+ *   is available for future scoped deadline governance).
+ */
 function buildExplanationBoundaries(params: {
   readonly hasUncertainRealities: boolean;
-  readonly trapTriggered: boolean;
   readonly trapUncertain: boolean;
   readonly speculativeFeature: boolean;
   readonly matrixMismatch: boolean;
-  readonly enforcementTrapHeuristic: boolean;
+  readonly trapFlags: TrapGovernanceFlags;
 }): ExplanationBoundary[] {
   const set = new Set<ExplanationBoundary>();
   set.add("do_not_present_dry_run_as_fact");
   set.add("do_not_present_speculation_as_fact");
-  if (params.hasUncertainRealities || params.trapUncertain || params.speculativeFeature) {
-    set.add("require_uncertainty_wording");
-  }
-  if (params.trapTriggered || params.trapUncertain) {
-    set.add("do_not_claim_enforcement");
-    set.add("do_not_merge_lanes");
-  }
-  if (params.enforcementTrapHeuristic) {
-    set.add("do_not_claim_enforcement");
-  }
   set.add("do_not_calculate_deadline");
   set.add("do_not_merge_payment_and_appeal");
+
+  if (params.trapFlags.isEnforcementRelated) {
+    set.add("do_not_claim_enforcement");
+  }
+  if (params.trapFlags.isLaneContaminationRelated) {
+    set.add("do_not_merge_lanes");
+  }
+  if (
+    params.hasUncertainRealities ||
+    params.trapUncertain ||
+    params.speculativeFeature ||
+    params.trapFlags.isEscalationRelated
+  ) {
+    set.add("require_uncertainty_wording");
+  }
   if (params.matrixMismatch || params.speculativeFeature) {
     set.add("recommend_human_review_high_risk");
   }
   return [...set];
-}
-
-/**
- * SKELETON-ONLY — DO NOT PROMOTE TO PRODUCTION.
- *
- * This heuristic uses coarse `trapKind` substring checks and has two known problems:
- *   1. Silent coverage gaps: `payment_reminder_to_account_seizure`,
- *      `weitere_schritte_to_forced_collection`, `overdue_payment_to_salary_garnishment`,
- *      and `overdue_payment_to_eviction` are enforcement traps but contain none of the
- *      matched substrings.
- *   2. Semantic conflation: `generic_escalation_to_legal_disaster` is matched by "escalation"
- *      but is an escalation/panic trap, not an enforcement trap.
- *
- * Replacement plan (Phase 8.2D-5A):
- *   Use `TrapMetadataDefinition.isEnforcementRelated` from `TRAP_METADATA_REGISTRY_V1`
- *   for a fully typed, gap-free policy lookup.
- *   See: TRAP_METADATA_FOUNDATION.md §4.
- *
- * NO BEHAVIOR CHANGE — function body is intentionally unchanged.
- */
-function enforcementTrapHeuristic(traps: readonly TrapActivation[] | undefined): boolean {
-  if (!traps) return false;
-  return traps.some(
-    (t) =>
-      (t.disposition === "candidate_triggered" || t.disposition === "candidate_uncertain") &&
-      (t.trapKind.includes("enforcement") ||
-        t.trapKind.includes("vollstreckung") ||
-        t.trapKind.includes("mahnung") ||
-        t.trapKind.includes("escalation")),
-  );
 }
 
 function speculativeUnsupportedFeature(meta: GateAuditTrace["traceMetadata"]): boolean {
@@ -399,14 +456,18 @@ export function runRealitySimulation(params: RunRealitySimulationParams): Realit
   const trapTriggered = trapRows?.some((t) => t.disposition === "candidate_triggered") ?? false;
   const trapUncertain = trapRows?.some((t) => t.disposition === "candidate_uncertain") ?? false;
   const speculativeF = speculativeUnsupportedFeature(meta);
-  const enfTrap = enforcementTrapHeuristic(trapRows);
+  const trapFlags = buildTrapGovernanceFlags(trapRows);
 
+  // Build base uncertainty reasons then append any for unregistered trap kinds.
   const uncertaintyReasons = buildUncertaintyReasons({
     uncertainRealities: uncertain,
     uncertainTraps: trapUncertain,
     speculativeFeature: speculativeF,
     matrixMismatch,
   });
+  for (const kind of trapFlags.unregisteredTrapKinds) {
+    uncertaintyReasons.push({ code: "unregistered_trap_metadata", detail: kind });
+  }
 
   const reviewFlags = buildReviewFlags({
     matrixMismatch,
@@ -419,11 +480,10 @@ export function runRealitySimulation(params: RunRealitySimulationParams): Realit
 
   const explanationBoundaries = buildExplanationBoundaries({
     hasUncertainRealities: uncertain.length > 0,
-    trapTriggered,
     trapUncertain,
     speculativeFeature: speculativeF,
     matrixMismatch,
-    enforcementTrapHeuristic: enfTrap,
+    trapFlags,
   });
 
   const forbiddenExplanationMoves: readonly string[] = [

@@ -1,30 +1,37 @@
 /**
- * Structured trap metadata registry — TRAP_METADATA_REGISTRY_V1 (Phase 8.2D-5).
+ * Structured trap metadata registry — TRAP_METADATA_REGISTRY_V1 (Phase 8.2D-5 / 8.2D-5A).
  *
- * Central, readonly, versioned metadata table for every registered `HallucinationTrapKind`.
- * This registry provides the structured governance annotations that will replace the coarse
- * `enforcementTrapHeuristic` substring checks once Phase 8.2D-5A is implemented.
+ * The primary export is `TRAP_METADATA_BY_KIND`: a Record keyed by every
+ * `HallucinationTrapKind` and typed with `satisfies Record<HallucinationTrapKind, TrapMetadataDefinition>`.
+ * This ensures compile-time completeness — adding a new `HallucinationTrapKind` without a
+ * corresponding registry entry becomes a TypeScript error.
  *
- * IMPORTANT:
- * - This registry is METADATA ONLY. It does not execute, suppress, rewrite, or govern any
- *   runtime explanation output in this phase.
- * - Do NOT wire this into runRealitySimulation until Phase 8.2D-5A.
- * - All entries are conservatively marked `metadata_foundation` or `dry_run_only`.
- * - See TRAP_METADATA_FOUNDATION.md for the replacement strategy.
+ * `TRAP_METADATA_REGISTRY_V1` is derived from the record for backward-compatible iteration.
+ *
+ * Phase 8.2D-5A: this registry is now wired into `run-reality-simulation.ts` via
+ * `buildTrapGovernanceFlags`, which replaced the skeleton-only `enforcementTrapHeuristic`.
+ *
+ * Consumer obligations — see TRAP_METADATA_FOUNDATION.md §5.
+ * No explanation generation. No runtime suppression. No Smart Talk wiring.
  */
 
+import type { HallucinationTrapKind } from "../types";
 import type { TrapMetadataDefinition } from "./trap-metadata-types";
 
-export const TRAP_METADATA_REGISTRY_VERSION = "8.2d-5-trap-metadata-registry-v1";
+export const TRAP_METADATA_REGISTRY_VERSION = "8.2d-5a-trap-metadata-registry-v2";
 
 // ---------------------------------------------------------------------------
-// Enforcement cluster
-// Traps that the current enforcementTrapHeuristic catches via substring matching.
-// Marked isEnforcementRelated: true — these will drive the structured replacement.
+// Compile-time-complete record — every HallucinationTrapKind must have an entry.
+// The `satisfies` operator enforces exhaustiveness without widening the inferred type.
 // ---------------------------------------------------------------------------
 
-const ENFORCEMENT_CLUSTER: readonly TrapMetadataDefinition[] = [
-  {
+export const TRAP_METADATA_BY_KIND = {
+  // ── Enforcement cluster ──────────────────────────────────────────────────
+  // Traps that represent or lead to legal enforcement actions (Vollstreckung,
+  // garnishment, account seizure, eviction, forced collection).
+  // isEnforcementRelated: true drives the do_not_claim_enforcement boundary.
+
+  invoice_to_enforcement: {
     trapKind: "invoice_to_enforcement",
     domains: ["enforcement", "payment"],
     riskClasses: ["over_escalation", "legal_conclusion"],
@@ -41,13 +48,14 @@ const ENFORCEMENT_CLUSTER: readonly TrapMetadataDefinition[] = [
       "requires_structured_policy_before_runtime",
     ],
     notes: [
-      "Caught by enforcementTrapHeuristic substring 'enforcement'. Will be the primary driver of the structured replacement in 8.2D-5A.",
+      "Previously caught by enforcementTrapHeuristic substring 'enforcement' (8.2D-5A: now via isEnforcementRelated).",
     ],
     introducedInPhase: "8.2D-5",
     futurePolicyUse:
-      "Use isEnforcementRelated=true to set do_not_claim_enforcement boundary; replace trapKind.includes('enforcement') check.",
+      "Use isEnforcementRelated=true to set do_not_claim_enforcement boundary.",
   },
-  {
+
+  mahnung_to_vollstreckung: {
     trapKind: "mahnung_to_vollstreckung",
     domains: ["enforcement", "payment"],
     riskClasses: ["over_escalation", "legal_conclusion"],
@@ -64,12 +72,13 @@ const ENFORCEMENT_CLUSTER: readonly TrapMetadataDefinition[] = [
       "requires_structured_policy_before_runtime",
     ],
     notes: [
-      "Caught by enforcementTrapHeuristic substrings 'mahnung' and 'vollstreckung'.",
+      "Previously caught by enforcementTrapHeuristic substrings 'mahnung' and 'vollstreckung'.",
     ],
     introducedInPhase: "8.2D-5",
-    futurePolicyUse: "Use isEnforcementRelated=true to replace trapKind.includes('vollstreckung' | 'mahnung') check.",
+    futurePolicyUse: "Use isEnforcementRelated=true.",
   },
-  {
+
+  mahnung_to_gerichtsvollzieher: {
     trapKind: "mahnung_to_gerichtsvollzieher",
     domains: ["enforcement", "payment"],
     riskClasses: ["over_escalation", "legal_conclusion"],
@@ -86,12 +95,13 @@ const ENFORCEMENT_CLUSTER: readonly TrapMetadataDefinition[] = [
       "requires_structured_policy_before_runtime",
     ],
     notes: [
-      "Caught by enforcementTrapHeuristic substring 'mahnung'. Gerichtsvollzieher = judicial enforcement officer.",
+      "Previously caught by enforcementTrapHeuristic substring 'mahnung'. Gerichtsvollzieher = judicial enforcement officer.",
     ],
     introducedInPhase: "8.2D-5",
-    futurePolicyUse: "Use isEnforcementRelated=true to replace trapKind.includes('mahnung') check.",
+    futurePolicyUse: "Use isEnforcementRelated=true.",
   },
-  {
+
+  letzte_mahnung_to_active_enforcement: {
     trapKind: "letzte_mahnung_to_active_enforcement",
     domains: ["enforcement", "payment"],
     riskClasses: ["over_escalation", "legal_conclusion"],
@@ -108,12 +118,13 @@ const ENFORCEMENT_CLUSTER: readonly TrapMetadataDefinition[] = [
       "requires_structured_policy_before_runtime",
     ],
     notes: [
-      "Caught by enforcementTrapHeuristic substrings 'mahnung' and 'enforcement'.",
+      "Previously caught by enforcementTrapHeuristic substrings 'mahnung' and 'enforcement'.",
     ],
     introducedInPhase: "8.2D-5",
-    futurePolicyUse: "Use isEnforcementRelated=true to replace both substring matches.",
+    futurePolicyUse: "Use isEnforcementRelated=true.",
   },
-  {
+
+  steuerbescheid_to_enforcement: {
     trapKind: "steuerbescheid_to_enforcement",
     domains: ["enforcement", "tax"],
     riskClasses: ["over_escalation", "legal_conclusion"],
@@ -130,12 +141,13 @@ const ENFORCEMENT_CLUSTER: readonly TrapMetadataDefinition[] = [
       "requires_structured_policy_before_runtime",
     ],
     notes: [
-      "Caught by enforcementTrapHeuristic substring 'enforcement'.",
+      "Previously caught by enforcementTrapHeuristic substring 'enforcement'.",
     ],
     introducedInPhase: "8.2D-5",
-    futurePolicyUse: "Use isEnforcementRelated=true and domains includes 'tax' to scope tax-specific enforcement boundary.",
+    futurePolicyUse: "Use isEnforcementRelated=true; domains includes 'tax' to scope tax-specific enforcement boundary.",
   },
-  {
+
+  payment_reminder_to_account_seizure: {
     trapKind: "payment_reminder_to_account_seizure",
     domains: ["enforcement", "payment"],
     riskClasses: ["over_escalation", "legal_conclusion"],
@@ -152,13 +164,14 @@ const ENFORCEMENT_CLUSTER: readonly TrapMetadataDefinition[] = [
       "requires_structured_policy_before_runtime",
     ],
     notes: [
-      "NOT caught by current enforcementTrapHeuristic — no matching substring. This is a gap in the skeleton heuristic.",
-      "Account seizure (Kontopfändung) is an enforcement action; must be treated as enforcement-related.",
+      "NOT caught by old enforcementTrapHeuristic — no matching substring (8.2D-5A gap closure).",
+      "Account seizure (Kontopfändung) is a legal enforcement action.",
     ],
     introducedInPhase: "8.2D-5",
-    futurePolicyUse: "Use isEnforcementRelated=true to close the gap the substring heuristic misses.",
+    futurePolicyUse: "Use isEnforcementRelated=true — this entry closes a gap the old heuristic missed.",
   },
-  {
+
+  weitere_schritte_to_forced_collection: {
     trapKind: "weitere_schritte_to_forced_collection",
     domains: ["enforcement", "payment"],
     riskClasses: ["over_escalation", "legal_conclusion"],
@@ -175,12 +188,14 @@ const ENFORCEMENT_CLUSTER: readonly TrapMetadataDefinition[] = [
       "requires_structured_policy_before_runtime",
     ],
     notes: [
-      "NOT caught by current enforcementTrapHeuristic — no matching substring. Forced collection (Zwangsvollstreckung) is enforcement.",
+      "NOT caught by old enforcementTrapHeuristic — no matching substring (8.2D-5A gap closure).",
+      "Forced collection (Zwangsvollstreckung) is a legal enforcement action.",
     ],
     introducedInPhase: "8.2D-5",
-    futurePolicyUse: "Use isEnforcementRelated=true to close the heuristic gap.",
+    futurePolicyUse: "Use isEnforcementRelated=true — gap closure.",
   },
-  {
+
+  overdue_payment_to_salary_garnishment: {
     trapKind: "overdue_payment_to_salary_garnishment",
     domains: ["enforcement", "payment"],
     riskClasses: ["over_escalation", "legal_conclusion"],
@@ -197,12 +212,14 @@ const ENFORCEMENT_CLUSTER: readonly TrapMetadataDefinition[] = [
       "requires_structured_policy_before_runtime",
     ],
     notes: [
-      "NOT caught by current enforcementTrapHeuristic — no matching substring. Salary garnishment is enforcement.",
+      "NOT caught by old enforcementTrapHeuristic — no matching substring (8.2D-5A gap closure).",
+      "Salary garnishment (Lohnpfändung) is a legal enforcement action.",
     ],
     introducedInPhase: "8.2D-5",
-    futurePolicyUse: "Use isEnforcementRelated=true to close the heuristic gap.",
+    futurePolicyUse: "Use isEnforcementRelated=true — gap closure.",
   },
-  {
+
+  overdue_payment_to_eviction: {
     trapKind: "overdue_payment_to_eviction",
     domains: ["enforcement", "housing", "payment"],
     riskClasses: ["over_escalation", "legal_conclusion"],
@@ -220,20 +237,20 @@ const ENFORCEMENT_CLUSTER: readonly TrapMetadataDefinition[] = [
       "requires_human_review_context",
     ],
     notes: [
-      "NOT caught by current enforcementTrapHeuristic. Eviction (Räumungsklage) is a high-consequence enforcement action.",
+      "NOT caught by old enforcementTrapHeuristic — no matching substring (8.2D-5A gap closure).",
+      "Eviction (Räumungsklage) is a high-consequence enforcement action.",
     ],
     introducedInPhase: "8.2D-5",
     futurePolicyUse: "Use isEnforcementRelated=true; domains includes 'housing' to scope housing-enforcement boundary.",
   },
-];
 
-// ---------------------------------------------------------------------------
-// Escalation cluster
-// Traps that do not involve legal enforcement but amplify perceived threat level.
-// ---------------------------------------------------------------------------
+  // ── Escalation cluster ───────────────────────────────────────────────────
+  // Traps that amplify perceived threat level without constituting legal enforcement.
+  // isEscalationRelated: true drives require_uncertainty_wording.
+  // IMPORTANT: generic_escalation_to_legal_disaster was previously (incorrectly) caught by
+  // enforcementTrapHeuristic via substring "escalation". It is NOT enforcement.
 
-const ESCALATION_CLUSTER: readonly TrapMetadataDefinition[] = [
-  {
+  generic_escalation_to_legal_disaster: {
     trapKind: "generic_escalation_to_legal_disaster",
     domains: ["generic_escalation"],
     riskClasses: ["over_escalation", "panic_amplification", "legal_conclusion"],
@@ -250,14 +267,15 @@ const ESCALATION_CLUSTER: readonly TrapMetadataDefinition[] = [
       "requires_structured_policy_before_runtime",
     ],
     notes: [
-      "Caught by enforcementTrapHeuristic substring 'escalation'. However, this trap is ESCALATION, not enforcement.",
-      "Including it in an enforcement boundary is semantically incorrect — a gap to fix in 8.2D-5A.",
+      "Previously (incorrectly) caught by enforcementTrapHeuristic substring 'escalation'.",
+      "8.2D-5A fix: isEnforcementRelated=false; isEscalationRelated=true — drives require_uncertainty_wording, NOT do_not_claim_enforcement.",
     ],
     introducedInPhase: "8.2D-5",
     futurePolicyUse:
-      "Use isEscalationRelated=true rather than isEnforcementRelated. Drives require_uncertainty_wording, not do_not_claim_enforcement.",
+      "Use isEscalationRelated=true to drive require_uncertainty_wording only. This trap does not warrant the enforcement boundary.",
   },
-  {
+
+  rechtsbehelfsbelehrung_to_active_threat: {
     trapKind: "rechtsbehelfsbelehrung_to_active_threat",
     domains: ["appeal", "tax"],
     riskClasses: ["over_escalation", "legal_conclusion", "panic_amplification"],
@@ -280,7 +298,8 @@ const ESCALATION_CLUSTER: readonly TrapMetadataDefinition[] = [
     introducedInPhase: "8.2D-5",
     futurePolicyUse: "Use isEscalationRelated=true; drives uncertainty boundary, not enforcement boundary.",
   },
-  {
+
+  informational_notice_to_threat: {
     trapKind: "informational_notice_to_threat",
     domains: ["generic_escalation"],
     riskClasses: ["over_escalation", "panic_amplification"],
@@ -299,15 +318,13 @@ const ESCALATION_CLUSTER: readonly TrapMetadataDefinition[] = [
     introducedInPhase: "8.2D-5",
     futurePolicyUse: "Use isEscalationRelated=true to drive require_uncertainty_wording.",
   },
-];
 
-// ---------------------------------------------------------------------------
-// Deadline fabrication cluster
-// Traps that synthesize or confuse deadline information.
-// ---------------------------------------------------------------------------
+  // ── Deadline fabrication cluster ─────────────────────────────────────────
+  // Traps that synthesize, confuse, or fabricate deadline information.
+  // isDeadlineRelated: true — do_not_calculate_deadline is already unconditional;
+  // this flag allows future scoped deadline governance.
 
-const DEADLINE_CLUSTER: readonly TrapMetadataDefinition[] = [
-  {
+  appeal_deadline_synthesis: {
     trapKind: "appeal_deadline_synthesis",
     domains: ["appeal", "deadline"],
     riskClasses: ["deadline_fabrication"],
@@ -324,9 +341,10 @@ const DEADLINE_CLUSTER: readonly TrapMetadataDefinition[] = [
       "requires_structured_policy_before_runtime",
     ],
     introducedInPhase: "8.2D-5",
-    futurePolicyUse: "Use isDeadlineRelated=true to drive do_not_calculate_deadline boundary.",
+    futurePolicyUse: "Use isDeadlineRelated=true for scoped deadline boundary.",
   },
-  {
+
+  bescheid_date_to_appeal_deadline: {
     trapKind: "bescheid_date_to_appeal_deadline",
     domains: ["appeal", "tax", "deadline"],
     riskClasses: ["deadline_fabrication"],
@@ -343,9 +361,10 @@ const DEADLINE_CLUSTER: readonly TrapMetadataDefinition[] = [
       "requires_structured_policy_before_runtime",
     ],
     introducedInPhase: "8.2D-5",
-    futurePolicyUse: "Use isDeadlineRelated=true; domains includes 'tax' + 'appeal' to scope steuerbescheid deadline boundary.",
+    futurePolicyUse: "Use isDeadlineRelated=true; domains includes 'tax' + 'appeal'.",
   },
-  {
+
+  payment_deadline_to_appeal_deadline: {
     trapKind: "payment_deadline_to_appeal_deadline",
     domains: ["appeal", "payment", "deadline"],
     riskClasses: ["deadline_fabrication"],
@@ -362,9 +381,10 @@ const DEADLINE_CLUSTER: readonly TrapMetadataDefinition[] = [
       "requires_structured_policy_before_runtime",
     ],
     introducedInPhase: "8.2D-5",
-    futurePolicyUse: "Use isDeadlineRelated=true to prevent appeal-deadline inference from payment dates.",
+    futurePolicyUse: "Use isDeadlineRelated=true.",
   },
-  {
+
+  appeal_deadline_to_payment_deadline: {
     trapKind: "appeal_deadline_to_payment_deadline",
     domains: ["appeal", "payment", "deadline"],
     riskClasses: ["deadline_fabrication"],
@@ -381,9 +401,10 @@ const DEADLINE_CLUSTER: readonly TrapMetadataDefinition[] = [
       "requires_structured_policy_before_runtime",
     ],
     introducedInPhase: "8.2D-5",
-    futurePolicyUse: "Use isDeadlineRelated=true to prevent payment-deadline inference from appeal dates.",
+    futurePolicyUse: "Use isDeadlineRelated=true.",
   },
-  {
+
+  bekanntgabe_date_invention: {
     trapKind: "bekanntgabe_date_invention",
     domains: ["deadline", "tax"],
     riskClasses: ["deadline_fabrication"],
@@ -400,12 +421,13 @@ const DEADLINE_CLUSTER: readonly TrapMetadataDefinition[] = [
       "requires_structured_policy_before_runtime",
     ],
     notes: [
-      "Bekanntgabedatum (date of official notification) must not be synthesized from the document date.",
+      "Bekanntgabedatum (official notification date) must not be synthesized from document date.",
     ],
     introducedInPhase: "8.2D-5",
-    futurePolicyUse: "Use isDeadlineRelated=true to block Bekanntgabe date fabrication in explanation layer.",
+    futurePolicyUse: "Use isDeadlineRelated=true.",
   },
-  {
+
+  amount_deadline_swap: {
     trapKind: "amount_deadline_swap",
     domains: ["payment", "deadline"],
     riskClasses: ["deadline_fabrication", "speculative_inference"],
@@ -421,13 +443,12 @@ const DEADLINE_CLUSTER: readonly TrapMetadataDefinition[] = [
       "dry_run_not_truth",
       "requires_structured_policy_before_runtime",
     ],
-    notes: [
-      "Risk of confusing monetary amounts with deadline date values in numeric OCR contexts.",
-    ],
+    notes: ["Risk of confusing monetary amounts with deadline date values in numeric OCR contexts."],
     introducedInPhase: "8.2D-5",
-    futurePolicyUse: "Use isDeadlineRelated=true to guard against amount/deadline confusion in explanation.",
+    futurePolicyUse: "Use isDeadlineRelated=true.",
   },
-  {
+
+  generic_due_date_to_penalty: {
     trapKind: "generic_due_date_to_penalty",
     domains: ["payment", "deadline"],
     riskClasses: ["over_escalation", "deadline_fabrication"],
@@ -444,17 +465,13 @@ const DEADLINE_CLUSTER: readonly TrapMetadataDefinition[] = [
       "requires_structured_policy_before_runtime",
     ],
     introducedInPhase: "8.2D-5",
-    futurePolicyUse: "Use isDeadlineRelated=true + isEscalationRelated=true to scope deadline + escalation boundaries.",
+    futurePolicyUse: "Use isDeadlineRelated=true + isEscalationRelated=true.",
   },
-];
 
-// ---------------------------------------------------------------------------
-// Legal conclusion cluster
-// Traps that risk drawing structural legal conclusions without sufficient evidence.
-// ---------------------------------------------------------------------------
+  // ── Legal conclusion cluster ─────────────────────────────────────────────
+  // Traps where incorrect inference leads to a structural legal conclusion.
 
-const LEGAL_CONCLUSION_CLUSTER: readonly TrapMetadataDefinition[] = [
-  {
+  tax_assessment_to_criminal_case: {
     trapKind: "tax_assessment_to_criminal_case",
     domains: ["tax"],
     riskClasses: ["legal_conclusion", "over_escalation", "panic_amplification"],
@@ -472,12 +489,13 @@ const LEGAL_CONCLUSION_CLUSTER: readonly TrapMetadataDefinition[] = [
       "requires_human_review_context",
     ],
     notes: [
-      "Tax assessment (Steuerbescheid) must never imply criminal proceedings without explicit prosecutorial evidence.",
+      "Tax assessment must never imply criminal proceedings without explicit prosecutorial evidence.",
     ],
     introducedInPhase: "8.2D-5",
     futurePolicyUse: "Use riskClasses includes 'legal_conclusion' + 'panic_amplification' to trigger high-consequence human review flag.",
   },
-  {
+
+  late_fee_to_criminal_case: {
     trapKind: "late_fee_to_criminal_case",
     domains: ["payment"],
     riskClasses: ["legal_conclusion", "over_escalation"],
@@ -497,15 +515,12 @@ const LEGAL_CONCLUSION_CLUSTER: readonly TrapMetadataDefinition[] = [
     introducedInPhase: "8.2D-5",
     futurePolicyUse: "Use riskClasses includes 'legal_conclusion' to enforce do_not_claim_finality-style boundary.",
   },
-];
 
-// ---------------------------------------------------------------------------
-// Lane contamination cluster
-// Traps that mix governance domains or introduce cross-authority confusion.
-// ---------------------------------------------------------------------------
+  // ── Lane contamination cluster ───────────────────────────────────────────
+  // Traps that mix governance lanes or introduce cross-authority confusion.
+  // isLaneContaminationRelated: true drives do_not_merge_lanes.
 
-const LANE_CONTAMINATION_CLUSTER: readonly TrapMetadataDefinition[] = [
-  {
+  lane_contamination: {
     trapKind: "lane_contamination",
     domains: ["cross_lane"],
     riskClasses: ["lane_contamination"],
@@ -524,7 +539,8 @@ const LANE_CONTAMINATION_CLUSTER: readonly TrapMetadataDefinition[] = [
     introducedInPhase: "8.2D-5",
     futurePolicyUse: "Use isLaneContaminationRelated=true to drive do_not_merge_lanes boundary.",
   },
-  {
+
+  finanzamt_to_jobcenter_confusion: {
     trapKind: "finanzamt_to_jobcenter_confusion",
     domains: ["tax", "benefits", "cross_lane"],
     riskClasses: ["lane_contamination", "authority_confusion"],
@@ -541,19 +557,15 @@ const LANE_CONTAMINATION_CLUSTER: readonly TrapMetadataDefinition[] = [
       "requires_structured_policy_before_runtime",
     ],
     notes: [
-      "Finanzamt (tax authority) and Jobcenter (benefits authority) are distinct German institutions with different legal frameworks.",
+      "Finanzamt (tax authority) and Jobcenter (benefits authority) are distinct German institutions.",
     ],
     introducedInPhase: "8.2D-5",
     futurePolicyUse: "Use isLaneContaminationRelated=true + domains to drive do_not_merge_lanes and do_not_merge_payment_and_appeal.",
   },
-];
 
-// ---------------------------------------------------------------------------
-// Insurance cluster
-// ---------------------------------------------------------------------------
+  // ── Insurance cluster ────────────────────────────────────────────────────
 
-const INSURANCE_CLUSTER: readonly TrapMetadataDefinition[] = [
-  {
+  insurance_notice_to_claim_event: {
     trapKind: "insurance_notice_to_claim_event",
     domains: ["insurance"],
     riskClasses: ["over_escalation", "speculative_inference"],
@@ -570,9 +582,10 @@ const INSURANCE_CLUSTER: readonly TrapMetadataDefinition[] = [
       "requires_structured_policy_before_runtime",
     ],
     introducedInPhase: "8.2D-5",
-    futurePolicyUse: "Use isEscalationRelated=true; domains includes 'insurance' to scope insurance-domain uncertainty boundary.",
+    futurePolicyUse: "Use isEscalationRelated=true; domains includes 'insurance'.",
   },
-  {
+
+  insurance_reminder_to_loss_of_coverage: {
     trapKind: "insurance_reminder_to_loss_of_coverage",
     domains: ["insurance", "benefits"],
     riskClasses: ["over_escalation", "legal_conclusion"],
@@ -589,21 +602,15 @@ const INSURANCE_CLUSTER: readonly TrapMetadataDefinition[] = [
       "requires_structured_policy_before_runtime",
       "requires_human_review_context",
     ],
-    notes: [
-      "Insurance coverage loss is a high-consequence domain — always requires human review context.",
-    ],
+    notes: ["Insurance coverage loss is a high-consequence domain — always requires human review context."],
     introducedInPhase: "8.2D-5",
-    futurePolicyUse: "Use isEscalationRelated=true + requires_human_review_context to drive high_consequence_domain flag.",
+    futurePolicyUse: "Use isEscalationRelated=true + requires_human_review_context.",
   },
-];
 
-// ---------------------------------------------------------------------------
-// Speculative inference cluster
-// Traps that risk drawing inferences from ambiguous or insufficient signals.
-// ---------------------------------------------------------------------------
+  // ── Speculative inference cluster ────────────────────────────────────────
+  // Traps that risk inferring facts from ambiguous or insufficient signals.
 
-const SPECULATIVE_CLUSTER: readonly TrapMetadataDefinition[] = [
-  {
+  semantic_drift: {
     trapKind: "semantic_drift",
     domains: ["generic_escalation"],
     riskClasses: ["speculative_inference"],
@@ -622,7 +629,8 @@ const SPECULATIVE_CLUSTER: readonly TrapMetadataDefinition[] = [
     introducedInPhase: "8.2D-5",
     futurePolicyUse: "Use riskClasses includes 'speculative_inference' to drive require_uncertainty_wording.",
   },
-  {
+
+  provisional_to_final_decision: {
     trapKind: "provisional_to_final_decision",
     domains: ["tax"],
     riskClasses: ["speculative_inference"],
@@ -644,7 +652,8 @@ const SPECULATIVE_CLUSTER: readonly TrapMetadataDefinition[] = [
     introducedInPhase: "8.2D-5",
     futurePolicyUse: "Use riskClasses includes 'speculative_inference' to drive do_not_claim_finality boundary.",
   },
-  {
+
+  refund_payment_confusion: {
     trapKind: "refund_payment_confusion",
     domains: ["payment", "tax"],
     riskClasses: ["speculative_inference"],
@@ -661,12 +670,13 @@ const SPECULATIVE_CLUSTER: readonly TrapMetadataDefinition[] = [
       "requires_structured_policy_before_runtime",
     ],
     notes: [
-      "Steuererstattung (tax refund) and Nachzahlung (tax payment due) are directionally opposite — confusing them is a high-impact speculative error.",
+      "Steuererstattung (refund) and Nachzahlung (payment due) are directionally opposite — confusing them is high-impact.",
     ],
     introducedInPhase: "8.2D-5",
-    futurePolicyUse: "Use riskClasses includes 'speculative_inference' to trigger uncertainty boundary in payment/tax lane.",
+    futurePolicyUse: "Use riskClasses includes 'speculative_inference' to trigger uncertainty boundary.",
   },
-  {
+
+  lastschrift_to_manual_payment: {
     trapKind: "lastschrift_to_manual_payment",
     domains: ["payment"],
     riskClasses: ["speculative_inference", "false_reassurance"],
@@ -682,21 +692,15 @@ const SPECULATIVE_CLUSTER: readonly TrapMetadataDefinition[] = [
       "dry_run_not_truth",
       "requires_structured_policy_before_runtime",
     ],
-    notes: [
-      "SEPA Lastschrift (direct debit) is automatic; telling the user to pay manually creates false urgency.",
-    ],
+    notes: ["SEPA Lastschrift (direct debit) is automatic; telling the user to pay manually creates false urgency."],
     introducedInPhase: "8.2D-5",
-    futurePolicyUse: "Use riskClasses includes 'false_reassurance' to avoid incorrect payment instruction inferences.",
+    futurePolicyUse: "Use riskClasses includes 'false_reassurance'.",
   },
-];
 
-// ---------------------------------------------------------------------------
-// Style / tone cluster
-// Traps driven by emotional language patterns rather than structural document signals.
-// ---------------------------------------------------------------------------
+  // ── Style / tone cluster ─────────────────────────────────────────────────
+  // Tone-driven trap — dry_run_only until a structured NLP/tone policy exists.
 
-const STYLE_CLUSTER: readonly TrapMetadataDefinition[] = [
-  {
+  emotional_language_amplification: {
     trapKind: "emotional_language_amplification",
     domains: ["style_or_tone"],
     riskClasses: ["panic_amplification"],
@@ -713,27 +717,19 @@ const STYLE_CLUSTER: readonly TrapMetadataDefinition[] = [
       "requires_structured_policy_before_runtime",
     ],
     notes: [
-      "Emotional tone is NOT a machine-checkable signal in the current stack — no NLP/sentiment analysis is implemented.",
-      "Marked dry_run_only: must not be used for policy boundaries until a structured tone-detection layer exists.",
-      "CONSOLIDATION_AUDIT.md (8.2B-4) flagged this as 'manual review / post-filter only'.",
+      "Emotional tone is NOT machine-checkable in the current stack — no NLP/sentiment analysis implemented.",
+      "dry_run_only: must not be used for policy boundaries until a structured tone-detection layer exists.",
+      "CONSOLIDATION_AUDIT.md flagged this as 'manual review / post-filter only'.",
     ],
     introducedInPhase: "8.2D-5",
     futurePolicyUse:
-      "Requires dedicated NLP/tone policy phase before any boundary use. Do NOT use riskClasses for boundary decisions until then.",
+      "Requires dedicated NLP/tone policy phase. Do NOT use flags for boundary decisions until then.",
   },
-];
+} satisfies Record<HallucinationTrapKind, TrapMetadataDefinition>;
 
 // ---------------------------------------------------------------------------
-// Full registry — all 31 registered HallucinationTrapKind entries
+// Backward-compatible flat array — derived from the record for iteration.
 // ---------------------------------------------------------------------------
 
-export const TRAP_METADATA_REGISTRY_V1: readonly TrapMetadataDefinition[] = [
-  ...ENFORCEMENT_CLUSTER,
-  ...ESCALATION_CLUSTER,
-  ...DEADLINE_CLUSTER,
-  ...LEGAL_CONCLUSION_CLUSTER,
-  ...LANE_CONTAMINATION_CLUSTER,
-  ...INSURANCE_CLUSTER,
-  ...SPECULATIVE_CLUSTER,
-  ...STYLE_CLUSTER,
-] as const;
+export const TRAP_METADATA_REGISTRY_V1: readonly TrapMetadataDefinition[] =
+  Object.values(TRAP_METADATA_BY_KIND);

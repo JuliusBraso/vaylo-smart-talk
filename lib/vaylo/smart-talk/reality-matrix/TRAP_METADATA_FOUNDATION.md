@@ -2,8 +2,9 @@
 
 ## Phase 8.2D-5 — Structured Trap Metadata Foundation
 
-**Status:** Metadata foundation only — no runtime behavior changed.  
-**Files:** `reality-simulation/trap-metadata-types.ts`, `reality-simulation/trap-metadata-registry.ts`  
+**Status (8.2D-5):** Metadata foundation only — no runtime behavior changed.  
+**Status (8.2D-5A):** `enforcementTrapHeuristic` **replaced** — structured metadata now drives simulation boundary mapping.  
+**Files:** `reality-simulation/trap-metadata-types.ts`, `reality-simulation/trap-metadata-registry.ts`, `reality-simulation/run-reality-simulation.ts`  
 **Relates to:** `SIMULATION_BOUNDARY_MAPPING_AUDIT.md §3.3`, `EVIDENCE_GATES_DRY_RUN_AUDIT.md`
 
 ---
@@ -124,10 +125,53 @@ When Phase 8.2D-5A is implemented:
 5. Verify that `generic_escalation_to_legal_disaster` no longer triggers the enforcement boundary (only the escalation boundary).
 6. Keep `run-reality-simulation.ts` output semantically equivalent during migration (no boundary set shrinkage for currently-covered traps).
 
-### Phase 8.2D-5A is NOT this phase.
+### Phase 8.2D-5A — Implemented
 
-This phase (`8.2D-5`) establishes the metadata foundation only. `enforcementTrapHeuristic`
-continues to operate exactly as before.
+Phase 8.2D-5A has been completed. `enforcementTrapHeuristic` has been **removed** and replaced
+by `buildTrapGovernanceFlags` in `run-reality-simulation.ts`.
+
+#### What changed in 8.2D-5A
+
+**Registry structure (`trap-metadata-registry.ts`):**
+- Converted from cluster arrays → `TRAP_METADATA_BY_KIND` record typed with
+  `satisfies Record<HallucinationTrapKind, TrapMetadataDefinition>`.
+- Compile-time exhaustiveness: missing a `HallucinationTrapKind` entry is now a TypeScript error.
+- `TRAP_METADATA_REGISTRY_V1` is derived as `Object.values(TRAP_METADATA_BY_KIND)` for backward-compatible iteration.
+
+**`run-reality-simulation.ts`:**
+- `enforcementTrapHeuristic` removed entirely (was: substring checks on `trapKind`).
+- `buildTrapGovernanceFlags(traps)` added: looks up each active trap's `trapKind` in
+  `TRAP_METADATA_BY_KIND` and ORs the boolean flags across all triggered/uncertain traps.
+- `buildExplanationBoundaries` updated to accept `trapFlags: TrapGovernanceFlags` instead of
+  `enforcementTrapHeuristic: boolean`.
+
+**Boundary logic changes (simulation-internal only):**
+
+| Boundary | Old trigger | New trigger |
+|----------|-------------|-------------|
+| `do_not_claim_enforcement` | Any active trap OR heuristic substring match | Only traps with `isEnforcementRelated: true` |
+| `do_not_merge_lanes` | Any active trap | Only traps with `isLaneContaminationRelated: true` |
+| `require_uncertainty_wording` | `hasUncertainRealities \|\| trapUncertain \|\| speculativeFeature` | Same + traps with `isEscalationRelated: true` |
+| `do_not_calculate_deadline` | Unconditional | Unconditional (unchanged) |
+
+**Gap closures (8.2D-5A):** Four enforcement traps previously missed by the substring heuristic
+now correctly trigger `do_not_claim_enforcement`:
+- `payment_reminder_to_account_seizure`
+- `weitere_schritte_to_forced_collection`
+- `overdue_payment_to_salary_garnishment`
+- `overdue_payment_to_eviction`
+
+**Semantic fix (8.2D-5A):** `generic_escalation_to_legal_disaster` no longer triggers
+`do_not_claim_enforcement`. It now (correctly) triggers `require_uncertainty_wording` only,
+via `isEscalationRelated: true`.
+
+**Missing metadata handling:** If a `trapKind` string is not in the registry at runtime, a
+conservative fallback applies (`isEnforcementRelated=true`, `isEscalationRelated=true`) and an
+uncertainty reason `{ code: "unregistered_trap_metadata", detail: trapKind }` is appended to
+`RealitySimulationResult.uncertaintyReasons`.
+
+No Smart Talk wiring. No user-visible behavior. No explanation generation. No production
+runtime integration.
 
 ---
 

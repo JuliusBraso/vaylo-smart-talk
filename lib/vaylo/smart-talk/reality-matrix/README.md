@@ -106,7 +106,11 @@ End-to-end **documentation audit** of the 8.2C evidence-gates dry-run stack (cou
 
 ### Phase 8.2D-5 — Structured Trap Metadata Foundation
 
-**Metadata foundation only — no runtime behavior changed.** Adds `TRAP_METADATA_REGISTRY_V1` (typed, readonly, central registry mapping all 31 `HallucinationTrapKind` values to explicit governance metadata) and supporting types in `trap-metadata-types.ts`. Explicitly documents `isEnforcementRelated`, `isEscalationRelated`, `isDeadlineRelated`, and `isLaneContaminationRelated` boolean flags per trap kind. Adds a doc-only comment to `enforcementTrapHeuristic` marking it skeleton-only. Prepares Phase 8.2D-5A replacement. See **`TRAP_METADATA_FOUNDATION.md`** and **`reality-simulation/README.md`**.
+**Metadata foundation only — no runtime behavior changed.** Adds `TRAP_METADATA_REGISTRY_V1` (typed, readonly, central registry mapping all 30 `HallucinationTrapKind` values to explicit governance metadata) and supporting types in `trap-metadata-types.ts`. Explicitly documents `isEnforcementRelated`, `isEscalationRelated`, `isDeadlineRelated`, and `isLaneContaminationRelated` boolean flags per trap kind. Adds a doc-only comment to `enforcementTrapHeuristic` marking it skeleton-only. Prepares Phase 8.2D-5A replacement. See **`TRAP_METADATA_FOUNDATION.md`** and **`reality-simulation/README.md`**.
+
+### Phase 8.2D-5A — Replace enforcementTrapHeuristic With Structured Trap Metadata
+
+**Targeted simulation-internal refactor — no Smart Talk, no user-visible behavior, no explanation generation.** Removes the substring-based `enforcementTrapHeuristic`; adds `buildTrapGovernanceFlags` that looks up each active trap's `trapKind` in `TRAP_METADATA_BY_KIND` (compile-time-complete `satisfies Record<HallucinationTrapKind, ...>`). Closes four enforcement-trap coverage gaps. Fixes `generic_escalation_to_legal_disaster` semantic misclassification. Boundary logic changes are governance-internal only (no user output). See **`TRAP_METADATA_FOUNDATION.md §4`** and **`reality-simulation/README.md`**.
 
 ---
 
@@ -131,7 +135,7 @@ Skipping runtime avoids:
 | Phase | Focus |
 |-------|--------|
 | **8.2C Evidence gates** | Deterministic evaluation: cue matching, evidence levels, claim allow/deny, speculative suppression before model or after structured output. |
-| **8.2D Reality simulation** | **8.2D-0** spec; **8.2D-1** `runRealitySimulation`; **8.2D-2/2A/2B** boundary audits + cleanup; **8.2D-3** policy table; **8.2D-4** emission regression scaffold; **8.2D-4A** known-boundary registry; **8.2D-4B** `fullyConsistent` flag; **8.2D-5** structured trap metadata foundation (`TRAP_METADATA_REGISTRY_V1`) — metadata + scaffold only. |
+| **8.2D Reality simulation** | **8.2D-0** spec; **8.2D-1** `runRealitySimulation`; **8.2D-2/2A/2B** boundary audits + cleanup; **8.2D-3** policy table; **8.2D-4** emission regression scaffold; **8.2D-4A** known-boundary registry; **8.2D-4B** `fullyConsistent` flag; **8.2D-5** structured trap metadata foundation; **8.2D-5A** `enforcementTrapHeuristic` replaced with `buildTrapGovernanceFlags`. |
 | **Regression corpus** | Frozen snippets per document family with expected matrix outcomes. |
 | **Document cognition engine** | Compose matrices per `RealityMatrixDocumentType`, versioned releases, optional overlap with existing `SmartTalkResult` fields via explicit mappers (future). |
 
