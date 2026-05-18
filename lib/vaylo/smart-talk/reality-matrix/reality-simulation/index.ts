@@ -1,5 +1,5 @@
 /**
- * Reality Simulation (8.2D-1) — pre-explanation governance skeleton.
+ * Reality Simulation (8.2D-1+) — pre-explanation governance skeleton.
  * Not Smart Talk, not UI, not user-visible prose.
  */
 
@@ -14,4 +14,16 @@ export type {
   BoundaryProductionReadiness,
   DeprecatedBoundaryId,
 } from "./boundary-policy-types";
+export {
+  validateBoundaryEmissions,
+  type BoundaryEmissionValidationResult,
+  type ValidateBoundaryEmissionsParams,
+} from "./validate-boundary-emissions";
+export {
+  runBoundaryEmissionRegressionScaffold,
+  BOUNDARY_REGRESSION_CASES,
+  type BoundaryRegressionCase,
+  type BoundaryRegressionCaseResult,
+  type BoundaryRegressionScaffoldResult,
+} from "./boundary-emission-regression";
 export type { RunRealitySimulationParams } from "../reality-simulation-types";

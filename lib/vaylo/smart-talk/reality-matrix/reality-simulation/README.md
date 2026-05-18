@@ -68,6 +68,24 @@ The table records canonical boundary ids, categories, production-readiness postu
 
 **Canonical doc:** [`../BOUNDARY_POLICY_TABLE_V1.md`](../BOUNDARY_POLICY_TABLE_V1.md).
 
+## PHASE 8.2D-4 — Boundary Emission Regression Scaffold
+
+**Scaffold only — no runtime behavior changed, no simulation output changed.**
+
+Adds two new modules:
+
+- **`validate-boundary-emissions.ts`** — pure `validateBoundaryEmissions()` helper that cross-checks any set of `ExplanationBoundary` ids against `BOUNDARY_POLICY_TABLE_V1`. Detects unknown tokens, deprecated alias emissions, and union/table drift.
+- **`boundary-emission-regression.ts`** — controlled sample cases and `runBoundaryEmissionRegressionScaffold()` returning structured pass/fail results for use by any future test runner.
+
+**What the scaffold checks:**
+- Every emitted id exists in the policy table as a non-deprecated entry.
+- Deprecated alias (`recommend_human_review_for_high_risk`) is rejected if force-cast into an emission set.
+- Canonical token (`recommend_human_review_high_risk`) is accepted.
+- Union/policy-table drift: non-deprecated entries are all accounted for.
+- Empty boundary array is valid.
+
+**Not wired into `runRealitySimulation`** — scaffold only, ready for future test runners or CI.
+
 ---
 
 > **Reality simulation models safe explanation space, not legal truth.**
