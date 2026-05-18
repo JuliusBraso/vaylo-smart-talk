@@ -325,6 +325,24 @@ function buildExplanationBoundaries(params: {
   return [...set];
 }
 
+/**
+ * SKELETON-ONLY — DO NOT PROMOTE TO PRODUCTION.
+ *
+ * This heuristic uses coarse `trapKind` substring checks and has two known problems:
+ *   1. Silent coverage gaps: `payment_reminder_to_account_seizure`,
+ *      `weitere_schritte_to_forced_collection`, `overdue_payment_to_salary_garnishment`,
+ *      and `overdue_payment_to_eviction` are enforcement traps but contain none of the
+ *      matched substrings.
+ *   2. Semantic conflation: `generic_escalation_to_legal_disaster` is matched by "escalation"
+ *      but is an escalation/panic trap, not an enforcement trap.
+ *
+ * Replacement plan (Phase 8.2D-5A):
+ *   Use `TrapMetadataDefinition.isEnforcementRelated` from `TRAP_METADATA_REGISTRY_V1`
+ *   for a fully typed, gap-free policy lookup.
+ *   See: TRAP_METADATA_FOUNDATION.md §4.
+ *
+ * NO BEHAVIOR CHANGE — function body is intentionally unchanged.
+ */
 function enforcementTrapHeuristic(traps: readonly TrapActivation[] | undefined): boolean {
   if (!traps) return false;
   return traps.some(

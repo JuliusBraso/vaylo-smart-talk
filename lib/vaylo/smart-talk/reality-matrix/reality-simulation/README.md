@@ -151,6 +151,43 @@ fullyConsistent: boolean
 
 `runBoundaryEmissionRegressionScaffold` now surfaces `fullyConsistentResult` inside `registryConsistencyCheck`. A note in the `notes` array explains the distinction between the two flags. The `allPassed` gate now requires `fullyConsistentResult` to be `true` in addition to all prior conditions.
 
+## PHASE 8.2D-5 — Structured Trap Metadata Foundation
+
+**Metadata foundation only — no runtime behavior changed, no simulation output changed.**
+
+### Problem this phase addresses
+
+The `enforcementTrapHeuristic` in `run-reality-simulation.ts` identifies enforcement-related
+traps using coarse `trapKind` substring checks (`"enforcement"`, `"vollstreckung"`, `"mahnung"`,
+`"escalation"`). This approach has two documented problems:
+
+1. **Silent gaps** — four enforcement traps are missed: `payment_reminder_to_account_seizure`,
+   `weitere_schritte_to_forced_collection`, `overdue_payment_to_salary_garnishment`,
+   `overdue_payment_to_eviction`.
+2. **Semantic conflation** — `generic_escalation_to_legal_disaster` is incorrectly matched as
+   an enforcement trap; it is an escalation/panic trap.
+
+### What was added
+
+- **`trap-metadata-types.ts`** — defines `TrapGovernanceDomain`, `TrapRiskClass`,
+  `TrapProductionReadiness`, `TrapConsumerConstraint`, and `TrapMetadataDefinition`.
+- **`trap-metadata-registry.ts`** — `TRAP_METADATA_REGISTRY_V1`, a readonly, typed, central
+  registry mapping all 31 registered `HallucinationTrapKind` values to explicit governance
+  metadata, including `isEnforcementRelated`, `isEscalationRelated`, `isDeadlineRelated`,
+  and `isLaneContaminationRelated` boolean flags.
+- **`TRAP_METADATA_FOUNDATION.md`** — explains the current heuristic's problems, the
+  structured replacement strategy, and the Phase 8.2D-5A implementation plan.
+- A doc-only comment was added to `enforcementTrapHeuristic` marking it as skeleton-only
+  with an explicit replacement pointer. **No behavior changed.**
+
+### What was NOT done (intentionally)
+
+- `enforcementTrapHeuristic` was **not replaced** — that is Phase 8.2D-5A.
+- `runRealitySimulation` was **not modified** — behavior is strictly unchanged.
+- No boundary emission, review flag, or severity behavior changed.
+
+**Canonical doc:** [`../TRAP_METADATA_FOUNDATION.md`](../TRAP_METADATA_FOUNDATION.md).
+
 ---
 
 > **Reality simulation models safe explanation space, not legal truth.**

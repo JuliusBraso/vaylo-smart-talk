@@ -28,3 +28,11 @@ export {
 } from "./boundary-emission-regression";
 export type { RunRealitySimulationParams } from "../reality-simulation-types";
 export { KNOWN_EXPLANATION_BOUNDARIES } from "../reality-simulation-types";
+export { TRAP_METADATA_REGISTRY_V1, TRAP_METADATA_REGISTRY_VERSION } from "./trap-metadata-registry";
+export type {
+  TrapGovernanceDomain,
+  TrapRiskClass,
+  TrapProductionReadiness,
+  TrapConsumerConstraint,
+  TrapMetadataDefinition,
+} from "./trap-metadata-types";
