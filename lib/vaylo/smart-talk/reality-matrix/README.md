@@ -88,6 +88,10 @@ End-to-end **documentation audit** of the 8.2C evidence-gates dry-run stack (cou
 
 **Vocabulary audit (8.2D-2A) + alias consolidation fix (8.2D-2B).** Identified and removed `recommend_human_review_for_high_risk` alias; canonical boundary token is now `recommend_human_review_high_risk` only. Three pending-wiring tokens and two emitted-but-unspecified tokens also documented. See **`BOUNDARY_VOCABULARY_AUDIT.md`**.
 
+### Phase 8.2D-3 — Boundary Policy Table v1
+
+**Governance policy metadata only.** Adds `BOUNDARY_POLICY_TABLE_V1` and typed boundary policy definitions under **`reality-simulation/`**: canonical ids, categories, production-readiness posture, consumer constraints, intended consumer layer, and deprecated alias metadata. See **`BOUNDARY_POLICY_TABLE_V1.md`**. No explanation engine or runtime enforcement is introduced.
+
 ---
 
 ## 8. Why this phase avoids runtime implementation
@@ -111,7 +115,7 @@ Skipping runtime avoids:
 | Phase | Focus |
 |-------|--------|
 | **8.2C Evidence gates** | Deterministic evaluation: cue matching, evidence levels, claim allow/deny, speculative suppression before model or after structured output. |
-| **8.2D Reality simulation** | **8.2D-0** spec; **8.2D-1** `runRealitySimulation`; **8.2D-2** boundary mapping audit (`SIMULATION_BOUNDARY_MAPPING_AUDIT.md`) — no behavior change in 8.2D-2. |
+| **8.2D Reality simulation** | **8.2D-0** spec; **8.2D-1** `runRealitySimulation`; **8.2D-2/2A/2B** boundary audits + token cleanup; **8.2D-3** boundary policy table (`BOUNDARY_POLICY_TABLE_V1.md`) — metadata only. |
 | **Regression corpus** | Frozen snippets per document family with expected matrix outcomes. |
 | **Document cognition engine** | Compose matrices per `RealityMatrixDocumentType`, versioned releases, optional overlap with existing `SmartTalkResult` fields via explicit mappers (future). |
 

@@ -53,6 +53,21 @@ Key findings (8.2D-2A) and fix (8.2D-2B):
 
 **Canonical audit:** [`../BOUNDARY_VOCABULARY_AUDIT.md`](../BOUNDARY_VOCABULARY_AUDIT.md).
 
+## PHASE 8.2D-3 — Boundary Policy Table v1
+
+**Policy metadata only — no runtime behavior changed.**
+
+Adds a typed, versioned registry:
+
+- `boundary-policy-types.ts`
+- `boundary-policy-table.ts`
+- `BOUNDARY_POLICY_TABLE_V1`
+- `BOUNDARY_POLICY_TABLE_VERSION`
+
+The table records canonical boundary ids, categories, production-readiness posture, consumer constraints, and historical deprecated-token metadata. It does **not** evaluate traces, enforce boundaries, generate wording, or connect to Smart Talk.
+
+**Canonical doc:** [`../BOUNDARY_POLICY_TABLE_V1.md`](../BOUNDARY_POLICY_TABLE_V1.md).
+
 ---
 
 > **Reality simulation models safe explanation space, not legal truth.**
