@@ -128,6 +128,10 @@ End-to-end **documentation audit** of the 8.2C evidence-gates dry-run stack (cou
 
 **Coverage validation only — no runtime behavior changed.** Adds `CONTRACT_RELEVANT_EXPLANATION_BOUNDARIES` (6 tokens that must each have a mapping rule) to `validate-contract-boundary-mapping.ts`. Extends `fullyConsistent` beyond emitted-set safety to also require that all contract-relevant boundaries are covered by the rule table and that no rule entry references an unknown/deprecated boundary. Adds four new result fields (`contractRelevantBoundaryIds`, `mappedBoundaryIds`, `contractRelevantBoundariesMissingRules`, `mappingRulesForUnknownBoundaries`). Regression scaffold bumped to `v3` with `mappingCoverageCheck` block and a new `informational_boundary_no_mapping_required` case. See **`reality-simulation/README.md §PHASE 8.2D-6C`**.
 
+### Phase 8.2E-0 — Controlled Corpus Foundation
+
+**Synthetic corpus foundation only — no runtime behavior changed.** Adds `controlled-corpus/` with self-contained scenario types, 14 synthetic controlled/adversarial scenarios, governance-level expected outcomes, must-not-emit safety assertions, and failure-mode taxonomy documentation in `CONTROLLED_CORPUS_FOUNDATION.md`. The corpus does not use real documents, does not run OCR, does not call LLMs, does not generate explanations, and is not wired into Smart Talk or production runtime. It establishes the foundation for future internal regression scaffolds.
+
 ---
 
 ## 8. Why this phase avoids runtime implementation
@@ -152,7 +156,8 @@ Skipping runtime avoids:
 |-------|--------|
 | **8.2C Evidence gates** | Deterministic evaluation: cue matching, evidence levels, claim allow/deny, speculative suppression before model or after structured output. |
 | **8.2D Reality simulation** | **8.2D-0** spec; **8.2D-1** `runRealitySimulation`; **8.2D-2/2A/2B** boundary audits + cleanup; **8.2D-3** policy table; **8.2D-4** emission regression scaffold; **8.2D-4A** known-boundary registry; **8.2D-4B** `fullyConsistent` flag; **8.2D-5** structured trap metadata foundation; **8.2D-5A** `enforcementTrapHeuristic` replaced with `buildTrapGovernanceFlags`; **8.2D-6** Simulation -> Explanation Contract v1; **8.2D-6A** contract-boundary regression scaffold; **8.2D-6B** known forbidden-move / required-constraint registries; **8.2D-6C** contract-boundary rule coverage scaffold. |
-| **Regression corpus** | Frozen snippets per document family with expected matrix outcomes. |
+| **8.2E Controlled corpus** | **8.2E-0** synthetic controlled/adversarial corpus foundation; future registry, validation, boundary, contract, and internal harness phases. |
+| **Regression corpus** | Frozen synthetic snippets per document family with expected governance outcomes. |
 | **Document cognition engine** | Compose matrices per `RealityMatrixDocumentType`, versioned releases, optional overlap with existing `SmartTalkResult` fields via explicit mappers (future). |
 
 ---
