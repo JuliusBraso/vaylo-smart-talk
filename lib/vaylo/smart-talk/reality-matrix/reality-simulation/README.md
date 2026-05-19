@@ -270,6 +270,46 @@ No runtime mapper or explanation builder is introduced in this phase.
 
 **Canonical doc:** [`../SIMULATION_EXPLANATION_CONTRACT.md`](../SIMULATION_EXPLANATION_CONTRACT.md).
 
+## PHASE 8.2D-6A — Contract Boundary Mapping Regression Scaffold
+
+**Governance regression scaffold only — no runtime wiring, no explanation generation, no payment logic.**
+
+### What was added
+
+- **`validate-contract-boundary-mapping.ts`** — pure `validateContractBoundaryMapping()` helper that checks supplied `ExplanationBoundary` ids against explicit contract requirements.
+- **`contract-boundary-regression.ts`** — controlled scaffold cases via `runContractBoundaryRegressionScaffold()`.
+
+### Explicit mapping rules
+
+The validator uses only a fixed rule table:
+
+| Boundary id | Required contract id |
+|-------------|----------------------|
+| `do_not_calculate_deadline` | `no_deadline_calculation_when_forbidden` |
+| `do_not_claim_enforcement` | `no_enforcement_claim_when_forbidden` |
+| `require_uncertainty_wording` | `required_uncertainty_wording` |
+| `do_not_present_dry_run_as_fact` | `no_dry_run_as_fact` |
+| `do_not_present_speculation_as_fact` | `no_speculation_as_fact` |
+| `do_not_merge_lanes` | `no_cross_lane_merging` |
+
+No legal meaning is inferred from boundary names. No deadlines are calculated. No text is generated.
+
+### Regression cases
+
+The scaffold includes:
+
+- valid canonical case
+- missing forbidden move case
+- missing required constraint case
+- multiple boundary case
+- empty safe case
+- unknown forbidden move protection
+- unknown required constraint protection
+
+Unknown forbidden moves or required constraints make both `valid` and `fullyConsistent` false and are reported explicitly.
+
+This scaffold is not called by `runRealitySimulation`, Smart Talk, payment, or any explanation layer.
+
 ---
 
 > **Reality simulation models safe explanation space, not legal truth.**

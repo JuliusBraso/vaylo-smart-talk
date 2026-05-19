@@ -55,3 +55,15 @@ export type {
   SimulationExplanationContractVersion,
   UncertaintyRequirement,
 } from "./explanation-contract-types";
+export {
+  validateContractBoundaryMapping,
+  type ContractBoundaryMappingValidationResult,
+  type ValidateContractBoundaryMappingParams,
+} from "./validate-contract-boundary-mapping";
+export {
+  runContractBoundaryRegressionScaffold,
+  CONTRACT_BOUNDARY_REGRESSION_CASES,
+  type ContractBoundaryRegressionCase,
+  type ContractBoundaryRegressionCaseResult,
+  type ContractBoundaryRegressionScaffoldResult,
+} from "./contract-boundary-regression";
