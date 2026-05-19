@@ -1,5 +1,5 @@
 /**
- * Controlled Corpus types (Phase 8.2E-0).
+ * Controlled Corpus types (Phase 8.2E-0 / extended 8.2E-1).
  *
  * Type/model foundation only:
  * - no OCR
@@ -9,8 +9,11 @@
  * - no generated explanations
  *
  * These types are intentionally self-contained and do not import production
- * runtime modules. Future validation scaffolds may add adapters that compare
- * these expected ids with canonical registries.
+ * runtime modules. Validation scaffolds added in 8.2E-1 import canonical
+ * registries and compare expected ids against them.
+ *
+ * 8.2E-1: added ControlledCorpusExpectedRequiredConstraint and optional
+ * expectedRequiredConstraints field on ControlledCorpusExpectedOutcomes.
  */
 
 export type ControlledCorpusDocumentFamily =
@@ -104,6 +107,18 @@ export type ControlledCorpusExpectedReviewFlag =
   | "speculative_support_present"
   | "contradictory_world_state";
 
+/**
+ * Corpus-local mirror of RequiredExplanationConstraint.
+ * Validated against KNOWN_REQUIRED_EXPLANATION_CONSTRAINTS in 8.2E-1.
+ */
+export type ControlledCorpusExpectedRequiredConstraint =
+  | "must_preserve_uncertainty"
+  | "must_use_source_bound_language"
+  | "must_distinguish_possible_vs_confirmed"
+  | "must_recommend_human_review_when_flagged"
+  | "must_not_hide_high_consequence_uncertainty"
+  | "required_uncertainty_wording";
+
 export type ControlledCorpusMustNotEmit =
   | "exact_deadline"
   | "legal_verdict"
@@ -149,6 +164,8 @@ export interface ControlledCorpusExpectedOutcomes {
   readonly expectedTrapActivations?: readonly string[];
   readonly expectedBoundaryIds?: readonly ControlledCorpusExpectedBoundaryId[];
   readonly expectedForbiddenMoves?: readonly ControlledCorpusExpectedForbiddenMove[];
+  /** Required explanation constraints expected from the Simulation -> Explanation contract layer. */
+  readonly expectedRequiredConstraints?: readonly ControlledCorpusExpectedRequiredConstraint[];
   readonly expectedReviewFlags?: readonly ControlledCorpusExpectedReviewFlag[];
   readonly expectedUncertaintyReasons?: readonly string[];
   readonly expectedSeverityPosture?: ControlledCorpusExpectedSeverityPosture;
