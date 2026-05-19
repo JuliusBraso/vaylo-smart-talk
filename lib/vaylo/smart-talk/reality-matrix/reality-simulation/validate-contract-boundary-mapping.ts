@@ -1,5 +1,5 @@
 /**
- * Contract boundary mapping validator (Phase 8.2D-6A).
+ * Contract boundary mapping validator (Phase 8.2D-6A / upgraded 8.2D-6B).
  *
  * Pure regression/validation helper only:
  * - no explanation generation
@@ -7,36 +7,19 @@
  * - no payment logic
  * - no contract builder
  * - no runtime simulation integration
+ *
+ * 8.2D-6B: local known-token arrays removed; canonical registries imported from
+ * explanation-contract-types.ts. Optional override params allow callers to supply
+ * custom known-token sets while defaulting to the exported registries.
  */
 
 import type { ExplanationBoundary } from "../reality-simulation-types";
-import type {
-  ForbiddenExplanationMove,
-  RequiredExplanationConstraint,
+import {
+  KNOWN_FORBIDDEN_EXPLANATION_MOVES,
+  KNOWN_REQUIRED_EXPLANATION_CONSTRAINTS,
+  type ForbiddenExplanationMove,
+  type RequiredExplanationConstraint,
 } from "./explanation-contract-types";
-
-const KNOWN_FORBIDDEN_EXPLANATION_MOVES = [
-  "no_definitive_legal_verdicts",
-  "no_deadline_calculation_when_forbidden",
-  "no_enforcement_claim_when_forbidden",
-  "no_high_panic_phrasing",
-  "no_dry_run_as_fact",
-  "no_speculation_as_fact",
-  "no_cross_lane_merging",
-  "no_tax_certainty",
-  "no_immigration_certainty",
-  "no_guaranteed_outcomes",
-  "no_autonomous_form_submission",
-] as const satisfies readonly ForbiddenExplanationMove[];
-
-const KNOWN_REQUIRED_EXPLANATION_CONSTRAINTS = [
-  "must_preserve_uncertainty",
-  "must_use_source_bound_language",
-  "must_distinguish_possible_vs_confirmed",
-  "must_recommend_human_review_when_flagged",
-  "must_not_hide_high_consequence_uncertainty",
-  "required_uncertainty_wording",
-] as const satisfies readonly RequiredExplanationConstraint[];
 
 interface ContractBoundaryMappingRule {
   readonly boundaryId: ExplanationBoundary;
@@ -78,6 +61,16 @@ export interface ValidateContractBoundaryMappingParams {
   readonly boundaries: readonly ExplanationBoundary[];
   readonly forbiddenMoves: readonly ForbiddenExplanationMove[];
   readonly requiredConstraints: readonly RequiredExplanationConstraint[];
+  /**
+   * Live forbidden-move registry to use for unknown-token checks.
+   * Defaults to `KNOWN_FORBIDDEN_EXPLANATION_MOVES` from explanation-contract-types.ts.
+   */
+  readonly knownForbiddenMoves?: readonly ForbiddenExplanationMove[];
+  /**
+   * Live required-constraint registry to use for unknown-token checks.
+   * Defaults to `KNOWN_REQUIRED_EXPLANATION_CONSTRAINTS` from explanation-contract-types.ts.
+   */
+  readonly knownRequiredConstraints?: readonly RequiredExplanationConstraint[];
 }
 
 export interface ContractBoundaryMappingValidationResult {
@@ -86,6 +79,10 @@ export interface ContractBoundaryMappingValidationResult {
   readonly boundaryIds: readonly ExplanationBoundary[];
   readonly forbiddenMoveIds: readonly ForbiddenExplanationMove[];
   readonly requiredConstraintIds: readonly RequiredExplanationConstraint[];
+  /** The known forbidden-move registry used for this validation run. */
+  readonly knownForbiddenMoveIds: readonly ForbiddenExplanationMove[];
+  /** The known required-constraint registry used for this validation run. */
+  readonly knownRequiredConstraintIds: readonly RequiredExplanationConstraint[];
   readonly missingForbiddenMoves: readonly ForbiddenExplanationMove[];
   readonly missingRequiredConstraints: readonly RequiredExplanationConstraint[];
   readonly unknownForbiddenMoves: readonly string[];
@@ -98,17 +95,22 @@ export interface ContractBoundaryMappingValidationResult {
  *
  * This function checks only the rule table above. It does not infer legal meaning,
  * calculate deadlines, generate text, or fill missing mappings heuristically.
+ *
+ * Defaults to the canonical registries exported from explanation-contract-types.ts.
+ * Callers may supply override registries for isolated testing.
  */
 export function validateContractBoundaryMapping({
   boundaries,
   forbiddenMoves,
   requiredConstraints,
+  knownForbiddenMoves = KNOWN_FORBIDDEN_EXPLANATION_MOVES,
+  knownRequiredConstraints = KNOWN_REQUIRED_EXPLANATION_CONSTRAINTS,
 }: ValidateContractBoundaryMappingParams): ContractBoundaryMappingValidationResult {
   const boundarySet = new Set<ExplanationBoundary>(boundaries);
   const forbiddenMoveSet = new Set<string>(forbiddenMoves);
   const requiredConstraintSet = new Set<string>(requiredConstraints);
-  const knownForbiddenMoveSet = new Set<string>(KNOWN_FORBIDDEN_EXPLANATION_MOVES);
-  const knownRequiredConstraintSet = new Set<string>(KNOWN_REQUIRED_EXPLANATION_CONSTRAINTS);
+  const knownForbiddenMoveSet = new Set<string>(knownForbiddenMoves);
+  const knownRequiredConstraintSet = new Set<string>(knownRequiredConstraints);
 
   const missingForbiddenMoves: ForbiddenExplanationMove[] = [];
   const missingRequiredConstraints: RequiredExplanationConstraint[] = [];
@@ -181,6 +183,8 @@ export function validateContractBoundaryMapping({
     boundaryIds: boundaries,
     forbiddenMoveIds: forbiddenMoves,
     requiredConstraintIds: requiredConstraints,
+    knownForbiddenMoveIds: knownForbiddenMoves,
+    knownRequiredConstraintIds: knownRequiredConstraints,
     missingForbiddenMoves,
     missingRequiredConstraints,
     unknownForbiddenMoves,

@@ -312,4 +312,40 @@ This scaffold is not called by `runRealitySimulation`, Smart Talk, payment, or a
 
 ---
 
+## PHASE 8.2D-6B — Known Explanation Contract Registries
+
+**Files:** `explanation-contract-types.ts`, `validate-contract-boundary-mapping.ts`, `contract-boundary-regression.ts`, `index.ts`.
+
+**No runtime behavior changed.**
+
+### Why the registries exist
+
+`ForbiddenExplanationMove` and `RequiredExplanationConstraint` are TypeScript **string unions**. Union members cannot be iterated at runtime, which means a validator that needs to check "is this token in the live set?" must maintain its own copy of the token list — creating a drift surface every time the union changes.
+
+Two canonical `as const satisfies readonly <Union>[]` registries close that gap:
+
+- **`KNOWN_FORBIDDEN_EXPLANATION_MOVES`** — every live `ForbiddenExplanationMove` token (11 entries).
+- **`KNOWN_REQUIRED_EXPLANATION_CONSTRAINTS`** — every live `RequiredExplanationConstraint` token (6 entries).
+
+The `satisfies` constraint is compile-time enforced: adding or removing a union member without updating the registry is a TypeScript error.
+
+### Validator update
+
+`validateContractBoundaryMapping` now **imports** both registries from `explanation-contract-types.ts` rather than duplicating the lists locally. Optional override parameters (`knownForbiddenMoves?`, `knownRequiredConstraints?`) allow callers to supply custom sets for isolated testing while defaulting to the canonical registries.
+
+The result shape gains two new fields — `knownForbiddenMoveIds` and `knownRequiredConstraintIds` — making the active registry explicit in every validation result for auditing and debugging.
+
+### Regression scaffold
+
+`runContractBoundaryRegressionScaffold` (version `8.2d-6b-contract-boundary-regression-v2`) adds a `registryConsistencyCheck` block that verifies:
+
+- All `KNOWN_FORBIDDEN_EXPLANATION_MOVES` are accepted without triggering unknown-token failures.
+- All `KNOWN_REQUIRED_EXPLANATION_CONSTRAINTS` are accepted without triggering unknown-token failures.
+- A force-cast unknown forbidden move is still correctly rejected.
+- A force-cast unknown required constraint is still correctly rejected.
+
+`allPassed` now incorporates registry consistency in addition to the per-case results.
+
+---
+
 > **Reality simulation models safe explanation space, not legal truth.**

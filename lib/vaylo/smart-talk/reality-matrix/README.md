@@ -120,6 +120,10 @@ End-to-end **documentation audit** of the 8.2C evidence-gates dry-run stack (cou
 
 **Governance regression scaffold only — no runtime behavior changed.** Adds `validateContractBoundaryMapping()` and `runContractBoundaryRegressionScaffold()` under `reality-simulation/`. The scaffold verifies explicit boundary -> contract mappings, catches missing forbidden moves, catches missing required uncertainty constraints, and rejects unknown contract ids. No runtime mapper, explanation builder, Smart Talk wiring, payment integration, or CI hook is introduced.
 
+### Phase 8.2D-6B — Known Explanation Contract Registries
+
+**Contract registry hardening only — no runtime behavior changed.** Closes the union-enumerability gap for `ForbiddenExplanationMove` and `RequiredExplanationConstraint` by adding two canonical `as const satisfies readonly <Union>[]` registries (`KNOWN_FORBIDDEN_EXPLANATION_MOVES`, `KNOWN_REQUIRED_EXPLANATION_CONSTRAINTS`) to `explanation-contract-types.ts`. The validator no longer owns duplicated local token lists; it imports the canonical registries and accepts optional override parameters. Result shape gains `knownForbiddenMoveIds` and `knownRequiredConstraintIds` for explicit audit output. Regression scaffold bumped to `v2` with a `registryConsistencyCheck` block. Roadmap row updated (see future phases table). See **`reality-simulation/README.md §PHASE 8.2D-6B`**.
+
 ---
 
 ## 8. Why this phase avoids runtime implementation
@@ -143,7 +147,7 @@ Skipping runtime avoids:
 | Phase | Focus |
 |-------|--------|
 | **8.2C Evidence gates** | Deterministic evaluation: cue matching, evidence levels, claim allow/deny, speculative suppression before model or after structured output. |
-| **8.2D Reality simulation** | **8.2D-0** spec; **8.2D-1** `runRealitySimulation`; **8.2D-2/2A/2B** boundary audits + cleanup; **8.2D-3** policy table; **8.2D-4** emission regression scaffold; **8.2D-4A** known-boundary registry; **8.2D-4B** `fullyConsistent` flag; **8.2D-5** structured trap metadata foundation; **8.2D-5A** `enforcementTrapHeuristic` replaced with `buildTrapGovernanceFlags`; **8.2D-6** Simulation -> Explanation Contract v1; **8.2D-6A** contract-boundary regression scaffold. |
+| **8.2D Reality simulation** | **8.2D-0** spec; **8.2D-1** `runRealitySimulation`; **8.2D-2/2A/2B** boundary audits + cleanup; **8.2D-3** policy table; **8.2D-4** emission regression scaffold; **8.2D-4A** known-boundary registry; **8.2D-4B** `fullyConsistent` flag; **8.2D-5** structured trap metadata foundation; **8.2D-5A** `enforcementTrapHeuristic` replaced with `buildTrapGovernanceFlags`; **8.2D-6** Simulation -> Explanation Contract v1; **8.2D-6A** contract-boundary regression scaffold; **8.2D-6B** known forbidden-move / required-constraint registries. |
 | **Regression corpus** | Frozen snippets per document family with expected matrix outcomes. |
 | **Document cognition engine** | Compose matrices per `RealityMatrixDocumentType`, versioned releases, optional overlap with existing `SmartTalkResult` fields via explicit mappers (future). |
 

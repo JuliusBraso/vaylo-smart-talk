@@ -118,6 +118,30 @@ export type ForbiddenExplanationMove =
   | "no_guaranteed_outcomes"
   | "no_autonomous_form_submission";
 
+/**
+ * Runtime-enumerable registry of every live `ForbiddenExplanationMove` token (8.2D-6B).
+ *
+ * TypeScript unions cannot be iterated at runtime; this constant fills that gap for
+ * validator cross-checks, regression scaffolds, and future drift detection.
+ *
+ * INVARIANT: must contain exactly the members of `ForbiddenExplanationMove`.
+ * The `satisfies readonly ForbiddenExplanationMove[]` constraint enforces this at
+ * compile time, making any missing or extra entry a TypeScript error.
+ */
+export const KNOWN_FORBIDDEN_EXPLANATION_MOVES = [
+  "no_definitive_legal_verdicts",
+  "no_deadline_calculation_when_forbidden",
+  "no_enforcement_claim_when_forbidden",
+  "no_high_panic_phrasing",
+  "no_dry_run_as_fact",
+  "no_speculation_as_fact",
+  "no_cross_lane_merging",
+  "no_tax_certainty",
+  "no_immigration_certainty",
+  "no_guaranteed_outcomes",
+  "no_autonomous_form_submission",
+] as const satisfies readonly ForbiddenExplanationMove[];
+
 export type RequiredExplanationConstraint =
   | "must_preserve_uncertainty"
   | "must_use_source_bound_language"
@@ -125,6 +149,23 @@ export type RequiredExplanationConstraint =
   | "must_recommend_human_review_when_flagged"
   | "must_not_hide_high_consequence_uncertainty"
   | "required_uncertainty_wording";
+
+/**
+ * Runtime-enumerable registry of every live `RequiredExplanationConstraint` token (8.2D-6B).
+ *
+ * Same pattern as `KNOWN_FORBIDDEN_EXPLANATION_MOVES`: closes the union-enumerability gap and
+ * keeps the canonical token list in a single authoritative location.
+ *
+ * INVARIANT: must contain exactly the members of `RequiredExplanationConstraint`.
+ */
+export const KNOWN_REQUIRED_EXPLANATION_CONSTRAINTS = [
+  "must_preserve_uncertainty",
+  "must_use_source_bound_language",
+  "must_distinguish_possible_vs_confirmed",
+  "must_recommend_human_review_when_flagged",
+  "must_not_hide_high_consequence_uncertainty",
+  "required_uncertainty_wording",
+] as const satisfies readonly RequiredExplanationConstraint[];
 
 export type UncertaintyRequirement =
   | "preserve_simulation_uncertainty_reasons"

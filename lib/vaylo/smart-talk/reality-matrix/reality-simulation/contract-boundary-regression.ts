@@ -1,15 +1,20 @@
 /**
- * Contract boundary mapping regression scaffold (Phase 8.2D-6A).
+ * Contract boundary mapping regression scaffold (Phase 8.2D-6A / upgraded 8.2D-6B).
  *
  * Controlled cases for future test runners or CI.
  * This module does not run automatically and is not wired into Reality Simulation,
  * Smart Talk, payment, or explanation generation.
+ *
+ * 8.2D-6B: imports canonical registries from explanation-contract-types.ts;
+ * adds a registryConsistencyCheck block verifying all known tokens are accepted.
  */
 
 import type { ExplanationBoundary } from "../reality-simulation-types";
-import type {
-  ForbiddenExplanationMove,
-  RequiredExplanationConstraint,
+import {
+  KNOWN_FORBIDDEN_EXPLANATION_MOVES,
+  KNOWN_REQUIRED_EXPLANATION_CONSTRAINTS,
+  type ForbiddenExplanationMove,
+  type RequiredExplanationConstraint,
 } from "./explanation-contract-types";
 import {
   validateContractBoundaryMapping,
@@ -156,6 +161,21 @@ export interface ContractBoundaryRegressionScaffoldResult {
   readonly passCount: number;
   readonly failCount: number;
   readonly caseResults: readonly ContractBoundaryRegressionCaseResult[];
+  /**
+   * Registry consistency check (8.2D-6B): verifies that all known forbidden moves and
+   * required constraints are accepted as known by the validator, and that force-cast unknown
+   * tokens are still correctly rejected.
+   */
+  readonly registryConsistencyCheck: {
+    /** True when all KNOWN_FORBIDDEN_EXPLANATION_MOVES are accepted (no unknowns reported). */
+    readonly allKnownForbiddenMovesAccepted: boolean;
+    /** True when all KNOWN_REQUIRED_EXPLANATION_CONSTRAINTS are accepted (no unknowns reported). */
+    readonly allKnownRequiredConstraintsAccepted: boolean;
+    /** True when a force-cast unknown forbidden move is correctly rejected. */
+    readonly unknownForbiddenMoveRejected: boolean;
+    /** True when a force-cast unknown required constraint is correctly rejected. */
+    readonly unknownRequiredConstraintRejected: boolean;
+  };
   readonly notes: readonly string[];
 }
 
@@ -163,6 +183,7 @@ export interface ContractBoundaryRegressionScaffoldResult {
  * Runs controlled contract-boundary mapping checks.
  *
  * Not a test framework dependency. Not wired into runtime.
+ * Includes 8.2D-6B registry consistency checks.
  */
 export function runContractBoundaryRegressionScaffold(): ContractBoundaryRegressionScaffoldResult {
   const caseResults: ContractBoundaryRegressionCaseResult[] = [];
@@ -190,6 +211,39 @@ export function runContractBoundaryRegressionScaffold(): ContractBoundaryRegress
     });
   }
 
+  // 8.2D-6B — Registry consistency: verify that the full known-token registries
+  // are accepted without triggering unknown-token failures.
+  const fullForbiddenMovesCheck = validateContractBoundaryMapping({
+    boundaries: [],
+    forbiddenMoves: KNOWN_FORBIDDEN_EXPLANATION_MOVES,
+    requiredConstraints: KNOWN_REQUIRED_EXPLANATION_CONSTRAINTS,
+  });
+  const allKnownForbiddenMovesAccepted = fullForbiddenMovesCheck.unknownForbiddenMoves.length === 0;
+  const allKnownRequiredConstraintsAccepted =
+    fullForbiddenMovesCheck.unknownRequiredConstraints.length === 0;
+
+  // Verify unknown token rejection still works after the registry migration.
+  const unknownForbiddenCheck = validateContractBoundaryMapping({
+    boundaries: [],
+    forbiddenMoves: ["unknown_forbidden_move" as ForbiddenExplanationMove],
+    requiredConstraints: [],
+  });
+  const unknownForbiddenMoveRejected = unknownForbiddenCheck.unknownForbiddenMoves.length > 0;
+
+  const unknownConstraintCheck = validateContractBoundaryMapping({
+    boundaries: [],
+    forbiddenMoves: [],
+    requiredConstraints: ["unknown_required_constraint" as RequiredExplanationConstraint],
+  });
+  const unknownRequiredConstraintRejected = unknownConstraintCheck.unknownRequiredConstraints.length > 0;
+
+  const registryConsistencyCheck = {
+    allKnownForbiddenMovesAccepted,
+    allKnownRequiredConstraintsAccepted,
+    unknownForbiddenMoveRejected,
+    unknownRequiredConstraintRejected,
+  };
+
   const passCount = caseResults.filter((result) => result.passed).length;
   const failCount = caseResults.length - passCount;
   const notes: string[] = [];
@@ -206,16 +260,55 @@ export function runContractBoundaryRegressionScaffold(): ContractBoundaryRegress
     }
   }
 
+  if (allKnownForbiddenMovesAccepted) {
+    notes.push(
+      `REGISTRY CHECK: All ${KNOWN_FORBIDDEN_EXPLANATION_MOVES.length} KNOWN_FORBIDDEN_EXPLANATION_MOVES are accepted by the validator.`,
+    );
+  } else {
+    notes.push(
+      "REGISTRY CHECK FAIL: One or more KNOWN_FORBIDDEN_EXPLANATION_MOVES were reported as unknown — registry/validator drift.",
+    );
+  }
+
+  if (allKnownRequiredConstraintsAccepted) {
+    notes.push(
+      `REGISTRY CHECK: All ${KNOWN_REQUIRED_EXPLANATION_CONSTRAINTS.length} KNOWN_REQUIRED_EXPLANATION_CONSTRAINTS are accepted by the validator.`,
+    );
+  } else {
+    notes.push(
+      "REGISTRY CHECK FAIL: One or more KNOWN_REQUIRED_EXPLANATION_CONSTRAINTS were reported as unknown — registry/validator drift.",
+    );
+  }
+
+  if (unknownForbiddenMoveRejected) {
+    notes.push("REGISTRY CHECK: Force-cast unknown forbidden move is correctly rejected.");
+  } else {
+    notes.push("REGISTRY CHECK FAIL: Force-cast unknown forbidden move was NOT rejected — unknown-token protection broken.");
+  }
+
+  if (unknownRequiredConstraintRejected) {
+    notes.push("REGISTRY CHECK: Force-cast unknown required constraint is correctly rejected.");
+  } else {
+    notes.push("REGISTRY CHECK FAIL: Force-cast unknown required constraint was NOT rejected — unknown-token protection broken.");
+  }
+
   notes.push(
     "Mapping is explicit rule-table validation only: no legal inference, deadline calculation, generated text, Smart Talk wiring, or payment integration.",
   );
 
+  const registryConsistencyPassed =
+    allKnownForbiddenMovesAccepted &&
+    allKnownRequiredConstraintsAccepted &&
+    unknownForbiddenMoveRejected &&
+    unknownRequiredConstraintRejected;
+
   return {
-    scaffoldVersion: "8.2d-6a-contract-boundary-regression-v1",
-    allPassed: failCount === 0,
+    scaffoldVersion: "8.2d-6b-contract-boundary-regression-v2",
+    allPassed: failCount === 0 && registryConsistencyPassed,
     passCount,
     failCount,
     caseResults,
+    registryConsistencyCheck,
     notes,
   };
 }

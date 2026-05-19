@@ -36,6 +36,10 @@ export type {
   TrapConsumerConstraint,
   TrapMetadataDefinition,
 } from "./trap-metadata-types";
+export {
+  KNOWN_FORBIDDEN_EXPLANATION_MOVES,
+  KNOWN_REQUIRED_EXPLANATION_CONSTRAINTS,
+} from "./explanation-contract-types";
 export type {
   AttentionLevelPreview,
   ConfidencePosture,
