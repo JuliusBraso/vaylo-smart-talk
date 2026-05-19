@@ -60,6 +60,7 @@ export type {
   UncertaintyRequirement,
 } from "./explanation-contract-types";
 export {
+  CONTRACT_RELEVANT_EXPLANATION_BOUNDARIES,
   validateContractBoundaryMapping,
   type ContractBoundaryMappingValidationResult,
   type ValidateContractBoundaryMappingParams,

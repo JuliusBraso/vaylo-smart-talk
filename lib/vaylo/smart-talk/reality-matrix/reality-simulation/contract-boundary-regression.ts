@@ -1,5 +1,6 @@
 /**
- * Contract boundary mapping regression scaffold (Phase 8.2D-6A / upgraded 8.2D-6B).
+ * Contract boundary mapping regression scaffold
+ * (Phase 8.2D-6A / upgraded 8.2D-6B / upgraded 8.2D-6C).
  *
  * Controlled cases for future test runners or CI.
  * This module does not run automatically and is not wired into Reality Simulation,
@@ -7,6 +8,10 @@
  *
  * 8.2D-6B: imports canonical registries from explanation-contract-types.ts;
  * adds a registryConsistencyCheck block verifying all known tokens are accepted.
+ *
+ * 8.2D-6C: imports CONTRACT_RELEVANT_EXPLANATION_BOUNDARIES; adds mappingCoverageCheck
+ * block verifying every contract-relevant boundary is covered by the rule table and
+ * that no rule references an unknown boundary. allPassed now gates on coverage check.
  */
 
 import type { ExplanationBoundary } from "../reality-simulation-types";
@@ -17,6 +22,7 @@ import {
   type RequiredExplanationConstraint,
 } from "./explanation-contract-types";
 import {
+  CONTRACT_RELEVANT_EXPLANATION_BOUNDARIES,
   validateContractBoundaryMapping,
   type ContractBoundaryMappingValidationResult,
 } from "./validate-contract-boundary-mapping";
@@ -142,6 +148,16 @@ export const CONTRACT_BOUNDARY_REGRESSION_CASES: readonly ContractBoundaryRegres
     expectValid: false,
     expectFullyConsistent: false,
   },
+  {
+    label: "informational_boundary_no_mapping_required",
+    description:
+      "Boundaries that are not in CONTRACT_RELEVANT_EXPLANATION_BOUNDARIES (e.g. do_not_claim_finality) do not need a mapping rule; supplying them without contract constraints is still valid.",
+    boundaries: ["do_not_claim_finality", "mention_uncertainty_if_ocr_noisy"],
+    forbiddenMoves: BASE_FORBIDDEN_MOVES,
+    requiredConstraints: BASE_REQUIRED_CONSTRAINTS,
+    expectValid: true,
+    expectFullyConsistent: true,
+  },
 ];
 
 export interface ContractBoundaryRegressionCaseResult {
@@ -167,14 +183,27 @@ export interface ContractBoundaryRegressionScaffoldResult {
    * tokens are still correctly rejected.
    */
   readonly registryConsistencyCheck: {
-    /** True when all KNOWN_FORBIDDEN_EXPLANATION_MOVES are accepted (no unknowns reported). */
     readonly allKnownForbiddenMovesAccepted: boolean;
-    /** True when all KNOWN_REQUIRED_EXPLANATION_CONSTRAINTS are accepted (no unknowns reported). */
     readonly allKnownRequiredConstraintsAccepted: boolean;
-    /** True when a force-cast unknown forbidden move is correctly rejected. */
     readonly unknownForbiddenMoveRejected: boolean;
-    /** True when a force-cast unknown required constraint is correctly rejected. */
     readonly unknownRequiredConstraintRejected: boolean;
+  };
+  /**
+   * Mapping coverage check (8.2D-6C): verifies that every contract-relevant boundary
+   * has a rule in the rule table, and that no rule references an unknown boundary.
+   *
+   * These are structural checks on the rule table — not dependent on any specific input
+   * boundary set. They detect drift when new boundaries are added without updating rules.
+   */
+  readonly mappingCoverageCheck: {
+    /** True when all CONTRACT_RELEVANT_EXPLANATION_BOUNDARIES have at least one rule. */
+    readonly allContractRelevantBoundariesMapped: boolean;
+    /** True when no rule-table entry references a boundary outside KNOWN_EXPLANATION_BOUNDARIES. */
+    readonly noMappingRulesForUnknownBoundaries: boolean;
+    /** Boundaries that are contract-relevant but have no rule. */
+    readonly contractRelevantBoundariesMissingRules: readonly ExplanationBoundary[];
+    /** Rule-table boundary ids that are not in KNOWN_EXPLANATION_BOUNDARIES. */
+    readonly mappingRulesForUnknownBoundaries: readonly ExplanationBoundary[];
   };
   readonly notes: readonly string[];
 }
@@ -183,7 +212,7 @@ export interface ContractBoundaryRegressionScaffoldResult {
  * Runs controlled contract-boundary mapping checks.
  *
  * Not a test framework dependency. Not wired into runtime.
- * Includes 8.2D-6B registry consistency checks.
+ * Includes 8.2D-6B registry consistency checks and 8.2D-6C mapping coverage checks.
  */
 export function runContractBoundaryRegressionScaffold(): ContractBoundaryRegressionScaffoldResult {
   const caseResults: ContractBoundaryRegressionCaseResult[] = [];
@@ -211,18 +240,18 @@ export function runContractBoundaryRegressionScaffold(): ContractBoundaryRegress
     });
   }
 
-  // 8.2D-6B — Registry consistency: verify that the full known-token registries
-  // are accepted without triggering unknown-token failures.
-  const fullForbiddenMovesCheck = validateContractBoundaryMapping({
+  // ── 8.2D-6B: Registry consistency ────────────────────────────────────────────
+  // Verify that the full known-token registries are accepted without triggering
+  // unknown-token failures.
+  const fullRegistryCheck = validateContractBoundaryMapping({
     boundaries: [],
     forbiddenMoves: KNOWN_FORBIDDEN_EXPLANATION_MOVES,
     requiredConstraints: KNOWN_REQUIRED_EXPLANATION_CONSTRAINTS,
   });
-  const allKnownForbiddenMovesAccepted = fullForbiddenMovesCheck.unknownForbiddenMoves.length === 0;
+  const allKnownForbiddenMovesAccepted = fullRegistryCheck.unknownForbiddenMoves.length === 0;
   const allKnownRequiredConstraintsAccepted =
-    fullForbiddenMovesCheck.unknownRequiredConstraints.length === 0;
+    fullRegistryCheck.unknownRequiredConstraints.length === 0;
 
-  // Verify unknown token rejection still works after the registry migration.
   const unknownForbiddenCheck = validateContractBoundaryMapping({
     boundaries: [],
     forbiddenMoves: ["unknown_forbidden_move" as ForbiddenExplanationMove],
@@ -235,7 +264,8 @@ export function runContractBoundaryRegressionScaffold(): ContractBoundaryRegress
     forbiddenMoves: [],
     requiredConstraints: ["unknown_required_constraint" as RequiredExplanationConstraint],
   });
-  const unknownRequiredConstraintRejected = unknownConstraintCheck.unknownRequiredConstraints.length > 0;
+  const unknownRequiredConstraintRejected =
+    unknownConstraintCheck.unknownRequiredConstraints.length > 0;
 
   const registryConsistencyCheck = {
     allKnownForbiddenMovesAccepted,
@@ -244,7 +274,26 @@ export function runContractBoundaryRegressionScaffold(): ContractBoundaryRegress
     unknownRequiredConstraintRejected,
   };
 
-  const passCount = caseResults.filter((result) => result.passed).length;
+  // ── 8.2D-6C: Mapping coverage ────────────────────────────────────────────────
+  // Use an empty input call purely to extract table-level coverage fields.
+  const coverageCall = validateContractBoundaryMapping({
+    boundaries: [],
+    forbiddenMoves: [],
+    requiredConstraints: [],
+  });
+  const { contractRelevantBoundariesMissingRules, mappingRulesForUnknownBoundaries } = coverageCall;
+  const allContractRelevantBoundariesMapped = contractRelevantBoundariesMissingRules.length === 0;
+  const noMappingRulesForUnknownBoundaries = mappingRulesForUnknownBoundaries.length === 0;
+
+  const mappingCoverageCheck = {
+    allContractRelevantBoundariesMapped,
+    noMappingRulesForUnknownBoundaries,
+    contractRelevantBoundariesMissingRules,
+    mappingRulesForUnknownBoundaries,
+  };
+
+  // ── Notes ────────────────────────────────────────────────────────────────────
+  const passCount = caseResults.filter((r) => r.passed).length;
   const failCount = caseResults.length - passCount;
   const notes: string[] = [];
 
@@ -260,6 +309,7 @@ export function runContractBoundaryRegressionScaffold(): ContractBoundaryRegress
     }
   }
 
+  // Registry consistency notes (8.2D-6B)
   if (allKnownForbiddenMovesAccepted) {
     notes.push(
       `REGISTRY CHECK: All ${KNOWN_FORBIDDEN_EXPLANATION_MOVES.length} KNOWN_FORBIDDEN_EXPLANATION_MOVES are accepted by the validator.`,
@@ -283,13 +333,38 @@ export function runContractBoundaryRegressionScaffold(): ContractBoundaryRegress
   if (unknownForbiddenMoveRejected) {
     notes.push("REGISTRY CHECK: Force-cast unknown forbidden move is correctly rejected.");
   } else {
-    notes.push("REGISTRY CHECK FAIL: Force-cast unknown forbidden move was NOT rejected — unknown-token protection broken.");
+    notes.push(
+      "REGISTRY CHECK FAIL: Force-cast unknown forbidden move was NOT rejected — unknown-token protection broken.",
+    );
   }
 
   if (unknownRequiredConstraintRejected) {
     notes.push("REGISTRY CHECK: Force-cast unknown required constraint is correctly rejected.");
   } else {
-    notes.push("REGISTRY CHECK FAIL: Force-cast unknown required constraint was NOT rejected — unknown-token protection broken.");
+    notes.push(
+      "REGISTRY CHECK FAIL: Force-cast unknown required constraint was NOT rejected — unknown-token protection broken.",
+    );
+  }
+
+  // Mapping coverage notes (8.2D-6C)
+  if (allContractRelevantBoundariesMapped) {
+    notes.push(
+      `COVERAGE CHECK: All ${CONTRACT_RELEVANT_EXPLANATION_BOUNDARIES.length} CONTRACT_RELEVANT_EXPLANATION_BOUNDARIES have at least one mapping rule.`,
+    );
+  } else {
+    notes.push(
+      `COVERAGE CHECK FAIL: Contract-relevant boundaries missing rules: ${contractRelevantBoundariesMissingRules.join(", ")}. Add entries to CONTRACT_BOUNDARY_MAPPING_RULES.`,
+    );
+  }
+
+  if (noMappingRulesForUnknownBoundaries) {
+    notes.push(
+      "COVERAGE CHECK: No rule-table entry references an unknown or deprecated boundary.",
+    );
+  } else {
+    notes.push(
+      `COVERAGE CHECK FAIL: Rule-table entries reference unknown boundaries: ${mappingRulesForUnknownBoundaries.join(", ")}. Remove or replace these entries.`,
+    );
   }
 
   notes.push(
@@ -302,13 +377,17 @@ export function runContractBoundaryRegressionScaffold(): ContractBoundaryRegress
     unknownForbiddenMoveRejected &&
     unknownRequiredConstraintRejected;
 
+  const mappingCoveragePassed =
+    allContractRelevantBoundariesMapped && noMappingRulesForUnknownBoundaries;
+
   return {
-    scaffoldVersion: "8.2d-6b-contract-boundary-regression-v2",
-    allPassed: failCount === 0 && registryConsistencyPassed,
+    scaffoldVersion: "8.2d-6c-contract-boundary-regression-v3",
+    allPassed: failCount === 0 && registryConsistencyPassed && mappingCoveragePassed,
     passCount,
     failCount,
     caseResults,
     registryConsistencyCheck,
+    mappingCoverageCheck,
     notes,
   };
 }

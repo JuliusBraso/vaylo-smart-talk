@@ -348,4 +348,59 @@ The result shape gains two new fields — `knownForbiddenMoveIds` and `knownRequ
 
 ---
 
+## PHASE 8.2D-6C — Contract Boundary Rule Coverage Scaffold
+
+**Files:** `validate-contract-boundary-mapping.ts`, `contract-boundary-regression.ts`, `index.ts`.
+
+**No runtime behavior changed.**
+
+### The problem this closes
+
+The `CONTRACT_BOUNDARY_MAPPING_RULES` rule table is explicit, but there was no coverage guard to detect when a new `ExplanationBoundary` token that requires contract implications is added without a corresponding rule entry. That gap would be silent: the validator would simply never fire for that boundary.
+
+### CONTRACT_RELEVANT_EXPLANATION_BOUNDARIES (exported)
+
+Not every `ExplanationBoundary` needs a contract mapping. Some boundaries are informational-only governance markers (`do_not_claim_finality`, `mention_uncertainty_if_ocr_noisy`, `use_relative_deadline_wording_only`, `do_not_merge_payment_and_appeal`, `recommend_human_review_high_risk`) — they govern explanation style but do not obligate a specific `ForbiddenExplanationMove` or `RequiredExplanationConstraint`.
+
+The six boundaries that **must** each have a rule are declared explicitly in `CONTRACT_RELEVANT_EXPLANATION_BOUNDARIES`:
+
+- `do_not_calculate_deadline`
+- `do_not_claim_enforcement`
+- `require_uncertainty_wording`
+- `do_not_present_dry_run_as_fact`
+- `do_not_present_speculation_as_fact`
+- `do_not_merge_lanes`
+
+Relevance is declared; never inferred from token names.
+
+### New result fields (all calls)
+
+`ContractBoundaryMappingValidationResult` gains four fields that are **always computed** from the rule table regardless of the call's input boundary set:
+
+| Field | What it detects |
+|---|---|
+| `contractRelevantBoundaryIds` | The active `CONTRACT_RELEVANT_EXPLANATION_BOUNDARIES` registry used |
+| `mappedBoundaryIds` | Boundaries that have at least one rule entry |
+| `contractRelevantBoundariesMissingRules` | Contract-relevant boundaries with no rule (coverage drift) |
+| `mappingRulesForUnknownBoundaries` | Rule-table entries referencing unknown/deprecated boundaries |
+
+### fullyConsistent semantics (8.2D-6C update)
+
+| Flag | Condition |
+|---|---|
+| `valid` | Emitted-set safety only: no missing moves/constraints, no unknown tokens (backward-compatible) |
+| `fullyConsistent` | `valid` AND `contractRelevantBoundariesMissingRules` empty AND `mappingRulesForUnknownBoundaries` empty |
+
+This means `fullyConsistent` can be `false` even for a "clean" emitted-set call if the rule table itself has coverage drift — which is the intended behavior.
+
+### Regression scaffold (v3)
+
+`runContractBoundaryRegressionScaffold` (version `8.2d-6c-contract-boundary-regression-v3`) adds:
+
+- A `mappingCoverageCheck` block: `allContractRelevantBoundariesMapped`, `noMappingRulesForUnknownBoundaries`, and the two drift arrays.
+- A new regression case: `informational_boundary_no_mapping_required` — confirms that boundaries outside `CONTRACT_RELEVANT_EXPLANATION_BOUNDARIES` are valid without a contract rule.
+- `allPassed` now gates on `mappingCoverageCheck` in addition to per-case results and registry consistency.
+
+---
+
 > **Reality simulation models safe explanation space, not legal truth.**
