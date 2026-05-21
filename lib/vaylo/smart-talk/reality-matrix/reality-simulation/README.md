@@ -403,4 +403,46 @@ This means `fullyConsistent` can be `false` even for a "clean" emitted-set call 
 
 ---
 
+## PHASE 8.2F-1 — Runtime Explanation Mapper Spec
+
+**Specification only — no runtime behavior changed, no mapper implementation, no Smart Talk wiring.**
+
+Adds:
+
+- **`../RUNTIME_EXPLANATION_MAPPER_SPEC.md`** — formal governance specification for a future Runtime Explanation Mapper.
+- **`explanation-mapper-types.ts`** — optional type sketches only: draft/input/section/diagnostic shapes, with no functions.
+
+The future mapper boundary is defined as a constrained transformation from:
+
+- `RealitySimulationResult`
+- `SimulationExplanationContract`
+
+into a conceptual `RuntimeExplanationDraft`.
+
+The spec defines:
+
+- allowed structured inputs
+- forbidden raw inputs (raw document text, OCR spans, LLM responses, DNA/profile data, unrelated documents)
+- free preview vs paid explanation access-tier limits
+- section draft types
+- boundary enforcement policy
+- forbidden move policy
+- required constraint policy
+- tone policy
+- failure modes
+- future implementation phases
+
+Important constraints:
+
+- no legal truth
+- no deadline calculation
+- no dry-run-as-fact
+- no speculation-as-fact
+- no payment-tier bypass
+- no explanation text generation in this phase
+
+The type sketches are compile-time documentation only. They do not export or define any mapper runtime function.
+
+---
+
 > **Reality simulation models safe explanation space, not legal truth.**
