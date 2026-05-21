@@ -403,6 +403,92 @@ This means `fullyConsistent` can be `false` even for a "clean" emitted-set call 
 
 ---
 
+## PHASE 8.2F-5 — Explanation Output Regression Corpus
+
+**Structural cognition output regression only — no prose generation, no runtime wiring, no LLM, no OCR.**
+
+### What was added
+
+- **`explanation-output-regression-corpus.ts`** — defines `ExplanationOutputRegressionCase` interface, `ExplanationOutputRegressionFailureCategory` type union, `BlockedReasonExpectation` interface, and `EXPLANATION_OUTPUT_REGRESSION_CORPUS` (15 structural cases). Data only.
+- **`validate-explanation-output-regressions.ts`** — exports `validateExplanationOutputRegression(draft, corpusCase): ExplanationOutputRegressionValidationResult`. Pure validator. No prose inspection, no NLP, no OCR.
+- **`explanation-output-regression-scaffold.ts`** — exports `runExplanationOutputRegressionScaffold(): ExplanationOutputRegressionScaffoldResult`. Routes each corpus case to the correct mapper, validates outputs, aggregates pass/fail with failure taxonomy breakdown.
+
+### Corpus structure
+
+Each corpus case defines:
+
+| Field | Purpose |
+|---|---|
+| `id` | Stable identifier (e.g. `eo-8-2f-5-0001-*`) |
+| `title` | Human-readable description |
+| `mapperKind` | Which mapper to call (`free_preview` \| `paid_explanation`) |
+| `simulationResultFixture` | Minimal `RealitySimulationResult` |
+| `contractFixture` | `SimulationExplanationContract` with test-specific moves/constraints |
+| `accessTierOverride?` | Overrides `input.accessTier` for invalid-tier cases |
+| `expectedSectionsPresent` | Section types that must appear in the draft |
+| `expectedSectionsAbsent` | Section types that must be absent |
+| `expectedDiagnosticCodes` | Governance diagnostic codes that must be present |
+| `expectedUncertaintyPosture` | Required `ExplanationUncertaintyPosture` value |
+| `expectedReviewPosture` | Required `ExplanationReviewPosture` value |
+| `expectedBlockedReasonCodes` | Per-section `blockedReasonCode` fragments that must be present |
+| `expectsZeroSections?` | When true, asserts `sectionDrafts.length === 0` |
+
+### Corpus coverage (15 cases)
+
+| Case | Kind | Scenario |
+|---|---|---|
+| 0001 | free_preview | Basic safe preview — 3 base sections, no forbidden moves |
+| 0002 | free_preview | Uncertainty-preserved posture from required constraints |
+| 0003 | free_preview | Deadline suppression — `free_preview_deadline_detail_blocked` diagnostic |
+| 0004 | free_preview | Enforcement suppression — `free_preview_enforcement_claim_blocked` diagnostic |
+| 0005 | free_preview | Human review flag — `review_recommendation` section present |
+| 0006 | free_preview | Invalid tier — `paid_explanation` passed in, zero sections, diagnostic only |
+| 0007 | paid_explanation | Basic safe — all 6 base sections, no restrictions |
+| 0008 | paid_explanation | Uncertainty-preserved posture |
+| 0009 | paid_explanation | Deadline suppression — `paid_deadline_output_blocked`, restricted sections |
+| 0010 | paid_explanation | Enforcement suppression — `paid_enforcement_claim_blocked`, restricted sections |
+| 0011 | paid_explanation | Legal verdict suppression — `paid_legal_verdict_blocked`, restricted sections |
+| 0012 | paid_explanation | Autonomous action — `next_steps_safe` fully excluded |
+| 0013 | paid_explanation | Cross-lane suppression — `paid_cross_lane_merge_blocked`, restricted sections |
+| 0014 | paid_explanation | All major forbidden moves — all 5 diagnostic codes, `next_steps_safe` excluded |
+| 0015 | paid_explanation | Invalid tier — `free_preview` passed in, zero sections, diagnostic only |
+
+### Validator behavior
+
+`validateExplanationOutputRegression` checks:
+
+1. Zero-sections expectation (invalid-tier cases)
+2. Required sections present → `missing_required_section`
+3. Forbidden sections absent → `forbidden_section_present` or `free_preview_leakage`
+4. Diagnostic codes present → `diagnostic_mismatch`
+5. Uncertainty posture match → `uncertainty_posture_drift`
+6. Review posture match → `review_posture_drift`
+7. Blocked reason codes per section → `blocked_reason_missing`
+8. Structural free-preview leakage (always enforced) → `free_preview_leakage`
+9. Paid-tier free-section isolation → `access_tier_violation`
+10. Section governance invariants (`sourceBound`, `neverContainsUserVisibleCopy`) → `forbidden_move_suppression_failure`
+11. Diagnostic invariant (`neverUserVisible: true`) → `access_tier_violation`
+
+### Failure taxonomy
+
+| Category | Meaning |
+|---|---|
+| `missing_required_section` | A section that should be in the draft is absent |
+| `forbidden_section_present` | A section that should be absent is present |
+| `diagnostic_mismatch` | An expected governance diagnostic code is missing |
+| `uncertainty_posture_drift` | The uncertainty posture doesn't match the expected value |
+| `review_posture_drift` | The review posture doesn't match the expected value |
+| `blocked_reason_missing` | A section that should have a blocked reason code lacks it |
+| `free_preview_leakage` | A paid-only section appeared in a free preview draft |
+| `forbidden_move_suppression_failure` | A section governance invariant was violated |
+| `access_tier_violation` | Tier isolation was breached or a non-visible diagnostic was leaked |
+
+### Expected baseline
+
+All 15 corpus cases pass with the current mapper implementations. `allPassed: true`, `passedCount: 15`, `failedCount: 0`.
+
+---
+
 ## PHASE 8.2F-4 — Paid Explanation Mapper Scaffold
 
 **Paid-tier structural cognition scaffold only — no prose, no unrestricted extraction, no Smart Talk wiring, no LLM calls.**

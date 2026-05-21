@@ -116,3 +116,21 @@ export {
   type PaidExplanationMapperRegressionCaseResult,
   type PaidExplanationMapperRegressionScaffoldResult,
 } from "./paid-explanation-mapper-regression-scaffold";
+export {
+  EXPLANATION_OUTPUT_REGRESSION_CORPUS_VERSION,
+  type BlockedReasonExpectation,
+  type ExplanationOutputRegressionCase,
+  type ExplanationOutputRegressionFailureCategory,
+  EXPLANATION_OUTPUT_REGRESSION_CORPUS,
+} from "./explanation-output-regression-corpus";
+export {
+  validateExplanationOutputRegression,
+  type ExplanationOutputRegressionFailure,
+  type ExplanationOutputRegressionValidationResult,
+} from "./validate-explanation-output-regressions";
+export {
+  EXPLANATION_OUTPUT_REGRESSION_SCAFFOLD_VERSION,
+  runExplanationOutputRegressionScaffold,
+  type ExplanationOutputRegressionCaseResult,
+  type ExplanationOutputRegressionScaffoldResult,
+} from "./explanation-output-regression-scaffold";
