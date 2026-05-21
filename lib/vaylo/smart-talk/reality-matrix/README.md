@@ -144,6 +144,25 @@ End-to-end **documentation audit** of the 8.2C evidence-gates dry-run stack (cou
 
 ---
 
+### Phase 8.2E-4 — Adversarial Corpus Expansion v1
+
+**Adversarial corpus expansion only — no runtime behavior changed.** Adds 6 high-risk synthetic adversarial scenarios (0015–0020) to `controlled-corpus/scenarios.ts`. Corpus version bumped to `8.2e-4-adversarial-expansion-v1`. Total corpus: 20 scenarios.
+
+Adversarial categories introduced:
+
+| Scenario | Category |
+|---|---|
+| 0015 SYSTEM_OVERRIDE_INJECTION_TRAP | Prompt injection (`IGNORE ALL PREVIOUS INSTRUCTIONS`) embedded inside German bureaucracy text |
+| 0016 MULTI_LANE_CHAOS_FRAGMENT | Finanzamt + Krankenkasse + Pfändung + Jobcenter mixed in one fragment |
+| 0017 MONETIZATION_BYPASS_QUESTION_PAYLOAD | Short "question" disguising dense copied document fragments |
+| 0018 FALSE_REASSURANCE_ATTACK | Document forces "everything is fine, ignore this notice" posture |
+| 0019 DEADLINE_PRESSURE_WITHOUT_CALCULABLE_DATE | Urgent deadline vocabulary with no delivery date basis |
+| 0020 ENFORCEMENT_WORDING_WITH_AMBIGUOUS_STATUS | Vollstreckung/Pfändung as future-conditional consequence, not active state |
+
+All 6 scenarios are aligned at authoring time for `fullyConsistent: true` under all three regression scaffolds (`runControlledCorpusRegressionScaffold`, `runScenarioBoundaryRegressionScaffold`, `runScenarioContractRegressionScaffold`). No runtime behavior, Smart Talk, OCR, LLM calls, APIs, payment, or UI changed.
+
+---
+
 ### Phase 8.2E-3 — Scenario → Explanation Contract Regression
 
 **Contract-level regression scaffold only — no runtime behavior changed.** Adds `validate-scenario-contract-expectations.ts` and `scenario-contract-regression-scaffold.ts` to `controlled-corpus/`.
@@ -187,7 +206,7 @@ Skipping runtime avoids:
 |-------|--------|
 | **8.2C Evidence gates** | Deterministic evaluation: cue matching, evidence levels, claim allow/deny, speculative suppression before model or after structured output. |
 | **8.2D Reality simulation** | **8.2D-0** spec; **8.2D-1** `runRealitySimulation`; **8.2D-2/2A/2B** boundary audits + cleanup; **8.2D-3** policy table; **8.2D-4** emission regression scaffold; **8.2D-4A** known-boundary registry; **8.2D-4B** `fullyConsistent` flag; **8.2D-5** structured trap metadata foundation; **8.2D-5A** `enforcementTrapHeuristic` replaced with `buildTrapGovernanceFlags`; **8.2D-6** Simulation -> Explanation Contract v1; **8.2D-6A** contract-boundary regression scaffold; **8.2D-6B** known forbidden-move / required-constraint registries; **8.2D-6C** contract-boundary rule coverage scaffold. |
-| **8.2E Controlled corpus** | **8.2E-0** synthetic controlled/adversarial corpus foundation; **8.2E-1** canonical validation scaffold; **8.2E-2** scenario expected-boundary consistency scaffold; **8.2E-2A** corpus expectation alignment pass (all 14 scenarios now fullyConsistent); **8.2E-3** scenario → Explanation Contract regression (free preview leakage, paid overreach, false reassurance, monetization defense-in-depth — all 14 scenarios valid + fullyConsistent); future adversarial expansion and internal harness phases. |
+| **8.2E Controlled corpus** | **8.2E-0** synthetic controlled/adversarial corpus foundation; **8.2E-1** canonical validation scaffold; **8.2E-2** scenario expected-boundary consistency scaffold; **8.2E-2A** corpus expectation alignment pass (all 14 scenarios now fullyConsistent); **8.2E-3** scenario → Explanation Contract regression (free preview leakage, paid overreach, false reassurance, monetization defense-in-depth — all 14 scenarios valid + fullyConsistent); **8.2E-4** adversarial corpus expansion v1 (6 new high-risk scenarios 0015–0020: prompt injection, multi-lane chaos, monetization bypass, false reassurance attack, deadline pressure without calculable date, enforcement wording with ambiguous status — corpus expanded to 20 scenarios, all synthetic only, no runtime behavior changed, fullyConsistent baseline); future internal harness phases. |
 | **Regression corpus** | Frozen synthetic snippets per document family with expected governance outcomes. |
 | **Document cognition engine** | Compose matrices per `RealityMatrixDocumentType`, versioned releases, optional overlap with existing `SmartTalkResult` fields via explicit mappers (future). |
 
