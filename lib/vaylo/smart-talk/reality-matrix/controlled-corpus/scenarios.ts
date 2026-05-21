@@ -1,5 +1,5 @@
 /**
- * Initial controlled/adversarial corpus scenarios (Phase 8.2E-0).
+ * Controlled/adversarial corpus scenarios (Phase 8.2E-0 / aligned 8.2E-2A).
  *
  * Synthetic fixtures only:
  * - no real user documents
@@ -8,11 +8,19 @@
  * - no LLM calls
  * - no Smart Talk wiring
  * - no generated user-facing explanations
+ *
+ * 8.2E-2A: aligned all 14 scenarios so validateScenarioBoundaryExpectations
+ * reports fullyConsistent: true. Changes are purely additive metadata alignment:
+ * - added expectedRequiredConstraints where require_uncertainty_wording is present
+ * - added missing implied forbidden moves for boundary implication rules
+ * - added missing implied forbidden moves for mustNotEmit policy rules
+ * - added do_not_claim_enforcement boundary to scenario 0011 (enforcement_certainty mustNotEmit)
+ * No scenario meaning was changed.
  */
 
 import type { ControlledCorpusScenario } from "./corpus-types";
 
-export const CONTROLLED_CORPUS_VERSION = "8.2e-0-controlled-corpus-foundation-v1";
+export const CONTROLLED_CORPUS_VERSION = "8.2e-2a-controlled-corpus-alignment-v1";
 
 export const CONTROLLED_CORPUS_SCENARIOS = [
   {
@@ -37,6 +45,7 @@ export const CONTROLLED_CORPUS_SCENARIOS = [
       "no_enforcement_claim_when_forbidden",
       "no_deadline_calculation_when_forbidden",
       "no_definitive_legal_verdicts",
+      "no_high_panic_phrasing", // mustNotEmit:panic_language alignment (8.2E-2A)
     ],
     expectedReviewFlags: [],
     expectedUncertaintyReasons: [],
@@ -79,6 +88,11 @@ export const CONTROLLED_CORPUS_SCENARIOS = [
       "no_enforcement_claim_when_forbidden",
       "no_speculation_as_fact",
       "no_definitive_legal_verdicts",
+      "no_autonomous_form_submission", // mustNotEmit:autonomous_action_instruction alignment (8.2E-2A)
+      "no_high_panic_phrasing",        // mustNotEmit:panic_language alignment (8.2E-2A)
+    ],
+    expectedRequiredConstraints: [
+      "required_uncertainty_wording", // require_uncertainty_wording boundary implication (8.2E-2A)
     ],
     expectedReviewFlags: [],
     expectedUncertaintyReasons: ["payment_channel_requires_source_bound_handling"],
@@ -120,6 +134,11 @@ export const CONTROLLED_CORPUS_SCENARIOS = [
       "no_enforcement_claim_when_forbidden",
       "no_speculation_as_fact",
       "no_high_panic_phrasing",
+      "no_definitive_legal_verdicts", // mustNotEmit:legal_verdict alignment (8.2E-2A)
+      "no_guaranteed_outcomes",       // mustNotEmit:guaranteed_outcome alignment (8.2E-2A)
+    ],
+    expectedRequiredConstraints: [
+      "required_uncertainty_wording", // require_uncertainty_wording boundary implication (8.2E-2A)
     ],
     expectedReviewFlags: ["escalation_ambiguity"],
     expectedUncertaintyReasons: ["further_steps_language_is_ambiguous"],
@@ -162,6 +181,11 @@ export const CONTROLLED_CORPUS_SCENARIOS = [
       "no_enforcement_claim_when_forbidden",
       "no_deadline_calculation_when_forbidden",
       "no_speculation_as_fact",
+      "no_definitive_legal_verdicts", // mustNotEmit:legal_verdict alignment (8.2E-2A)
+      "no_high_panic_phrasing",       // mustNotEmit:panic_language alignment (8.2E-2A)
+    ],
+    expectedRequiredConstraints: [
+      "required_uncertainty_wording", // require_uncertainty_wording boundary implication (8.2E-2A)
     ],
     expectedReviewFlags: ["human_review_recommended", "high_consequence_domain"],
     expectedUncertaintyReasons: ["enforcement_language_present_but_status_not_confirmed"],
@@ -203,6 +227,10 @@ export const CONTROLLED_CORPUS_SCENARIOS = [
       "no_enforcement_claim_when_forbidden",
       "no_speculation_as_fact",
       "no_high_panic_phrasing",
+      "no_definitive_legal_verdicts", // mustNotEmit:legal_verdict alignment (8.2E-2A)
+    ],
+    expectedRequiredConstraints: [
+      "required_uncertainty_wording", // require_uncertainty_wording boundary implication (8.2E-2A)
     ],
     expectedReviewFlags: ["escalation_ambiguity"],
     expectedUncertaintyReasons: ["ambiguous_escalation_language_not_enforcement"],
@@ -240,6 +268,10 @@ export const CONTROLLED_CORPUS_SCENARIOS = [
       "no_deadline_calculation_when_forbidden",
       "no_tax_certainty",
       "no_definitive_legal_verdicts",
+      "no_high_panic_phrasing", // mustNotEmit:panic_language alignment (8.2E-2A)
+    ],
+    expectedRequiredConstraints: [
+      "required_uncertainty_wording", // require_uncertainty_wording boundary implication (8.2E-2A)
     ],
     expectedReviewFlags: [],
     expectedUncertaintyReasons: ["relative_appeal_deadline_present_without_calculated_date"],
@@ -276,6 +308,11 @@ export const CONTROLLED_CORPUS_SCENARIOS = [
       "no_deadline_calculation_when_forbidden",
       "no_tax_certainty",
       "no_speculation_as_fact",
+      "no_definitive_legal_verdicts", // mustNotEmit:legal_verdict alignment (8.2E-2A)
+      "no_guaranteed_outcomes",       // mustNotEmit:guaranteed_outcome alignment (8.2E-2A)
+    ],
+    expectedRequiredConstraints: [
+      "required_uncertainty_wording", // require_uncertainty_wording boundary implication (8.2E-2A)
     ],
     expectedReviewFlags: ["high_consequence_domain"],
     expectedUncertaintyReasons: ["service_date_not_authorized_for_deadline_calculation"],
@@ -312,6 +349,10 @@ export const CONTROLLED_CORPUS_SCENARIOS = [
       "no_speculation_as_fact",
       "no_definitive_legal_verdicts",
       "no_guaranteed_outcomes",
+      "no_high_panic_phrasing", // mustNotEmit:panic_language alignment (8.2E-2A)
+    ],
+    expectedRequiredConstraints: [
+      "required_uncertainty_wording", // require_uncertainty_wording boundary implication (8.2E-2A)
     ],
     expectedReviewFlags: ["human_review_recommended", "high_consequence_domain"],
     expectedUncertaintyReasons: ["payment_hold_not_equivalent_to_termination"],
@@ -344,6 +385,10 @@ export const CONTROLLED_CORPUS_SCENARIOS = [
       "no_speculation_as_fact",
       "no_definitive_legal_verdicts",
       "no_guaranteed_outcomes",
+      "no_high_panic_phrasing", // mustNotEmit:panic_language alignment (8.2E-2A)
+    ],
+    expectedRequiredConstraints: [
+      "required_uncertainty_wording", // require_uncertainty_wording boundary implication (8.2E-2A)
     ],
     expectedReviewFlags: ["high_consequence_domain"],
     expectedUncertaintyReasons: ["contribution_notice_not_coverage_loss_confirmation"],
@@ -385,6 +430,11 @@ export const CONTROLLED_CORPUS_SCENARIOS = [
       "no_immigration_certainty",
       "no_speculation_as_fact",
       "no_definitive_legal_verdicts",
+      "no_guaranteed_outcomes",  // mustNotEmit:guaranteed_outcome alignment (8.2E-2A)
+      "no_high_panic_phrasing",  // mustNotEmit:panic_language alignment (8.2E-2A)
+    ],
+    expectedRequiredConstraints: [
+      "required_uncertainty_wording", // require_uncertainty_wording boundary implication (8.2E-2A)
     ],
     expectedReviewFlags: ["human_review_recommended", "high_consequence_domain"],
     expectedUncertaintyReasons: ["appointment_request_not_status_decision"],
@@ -426,11 +476,16 @@ export const CONTROLLED_CORPUS_SCENARIOS = [
       "do_not_calculate_deadline",
       "do_not_present_speculation_as_fact",
       "require_uncertainty_wording",
+      "do_not_claim_enforcement", // mustNotEmit:enforcement_certainty alignment (8.2E-2A)
     ],
     expectedForbiddenMoves: [
       "no_deadline_calculation_when_forbidden",
       "no_speculation_as_fact",
       "no_definitive_legal_verdicts",
+      "no_enforcement_claim_when_forbidden", // do_not_claim_enforcement boundary implication (8.2E-2A)
+    ],
+    expectedRequiredConstraints: [
+      "required_uncertainty_wording", // require_uncertainty_wording boundary implication (8.2E-2A)
     ],
     expectedReviewFlags: ["human_review_recommended", "speculative_support_present"],
     expectedUncertaintyReasons: ["ocr_noise_simulated_no_structured_support"],
@@ -479,6 +534,8 @@ export const CONTROLLED_CORPUS_SCENARIOS = [
       "no_cross_lane_merging",
       "no_deadline_calculation_when_forbidden",
       "no_tax_certainty",
+      "no_definitive_legal_verdicts", // mustNotEmit:legal_verdict alignment (8.2E-2A)
+      "no_high_panic_phrasing",       // mustNotEmit:panic_language alignment (8.2E-2A)
     ],
     expectedReviewFlags: ["high_consequence_domain"],
     expectedUncertaintyReasons: ["payment_and_appeal_lanes_must_remain_distinct"],
@@ -515,6 +572,9 @@ export const CONTROLLED_CORPUS_SCENARIOS = [
       "no_guaranteed_outcomes",
       "no_speculation_as_fact",
       "no_definitive_legal_verdicts",
+    ],
+    expectedRequiredConstraints: [
+      "required_uncertainty_wording", // require_uncertainty_wording boundary implication (8.2E-2A)
     ],
     expectedReviewFlags: ["human_review_recommended"],
     expectedUncertaintyReasons: ["informational_notice_not_guaranteed_safe_outcome"],
@@ -559,6 +619,11 @@ export const CONTROLLED_CORPUS_SCENARIOS = [
       "no_high_panic_phrasing",
       "no_speculation_as_fact",
       "no_enforcement_claim_when_forbidden",
+      "no_immigration_certainty", // mustNotEmit:immigration_certainty alignment (8.2E-2A)
+      "no_guaranteed_outcomes",   // mustNotEmit:guaranteed_outcome alignment (8.2E-2A)
+    ],
+    expectedRequiredConstraints: [
+      "required_uncertainty_wording", // require_uncertainty_wording boundary implication (8.2E-2A)
     ],
     expectedReviewFlags: ["escalation_ambiguity"],
     expectedUncertaintyReasons: ["stern_wording_not_specific_consequence"],

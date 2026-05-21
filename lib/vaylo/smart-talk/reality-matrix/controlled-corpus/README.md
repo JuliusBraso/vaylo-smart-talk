@@ -186,10 +186,40 @@ These implication gaps are the intended output of this scaffold — they identif
 
 `runScenarioBoundaryRegressionScaffold()` (version `8.2e-2-scenario-boundary-regression-v1`) runs the validator against `CONTROLLED_CORPUS_SCENARIOS` and returns `allPassed`, `implicationGapCount`, `mustNotEmitWarningCount`, and full notes. No test runner dependency. No CI wiring.
 
+## PHASE 8.2E-2A — Controlled Corpus Expectation Alignment Pass
+
+**Files:** `scenarios.ts` only. No validators or types changed.
+
+**No runtime behavior changed.**
+
+This phase applied the implication and policy rules surfaced by 8.2E-2 to make all 14 scenarios `fullyConsistent: true` in `runScenarioBoundaryRegressionScaffold`.
+
+### Changes applied
+
+**Boundary → contract implication gaps closed (hard rules):**
+
+Scenarios with `require_uncertainty_wording` in `expectedBoundaryIds` — `expectedRequiredConstraints: ["required_uncertainty_wording"]` added to 12 scenarios (0002–0011, 0013, 0014). No `expectedRequiredConstraints` field was present in any scenario before this pass.
+
+**mustNotEmit → governance alignment warnings closed (soft rules):**
+
+| mustNotEmit value | Missing governance | Scenarios fixed |
+|---|---|---|
+| `panic_language` | `no_high_panic_phrasing` | 0001, 0002, 0004, 0006, 0008, 0009, 0010, 0012 |
+| `legal_verdict` | `no_definitive_legal_verdicts` | 0003, 0004, 0005, 0007, 0012 |
+| `guaranteed_outcome` | `no_guaranteed_outcomes` | 0003, 0007, 0010, 0014 |
+| `autonomous_action_instruction` | `no_autonomous_form_submission` | 0002 |
+| `immigration_certainty` | `no_immigration_certainty` | 0014 |
+| `enforcement_certainty` (missing boundary) | `do_not_claim_enforcement` boundary + `no_enforcement_claim_when_forbidden` | 0011 |
+
+**Total: 14 scenarios aligned. Corpus version bumped to `8.2e-2a-controlled-corpus-alignment-v1`.**
+
+No scenario meaning was changed. All additions are metadata alignment with declared policy rules.
+
 ## Future Path
 
 - 8.2E-1 Corpus Registry + Validation Scaffold (**done**)
 - 8.2E-2 Scenario → Expected Boundary Regression (**done**)
+- 8.2E-2A Controlled Corpus Expectation Alignment Pass (**done**)
 - 8.2E-3 Scenario → Explanation Contract Regression
 - 8.2E-4 Adversarial Expansion
 - 8.2E-5 Pre-MVP Internal Test Harness
