@@ -1,5 +1,5 @@
 /**
- * Controlled Corpus exports (Phase 8.2E-0 / extended 8.2E-1 / extended 8.2E-2).
+ * Controlled Corpus exports (Phase 8.2E-0 / extended 8.2E-1 / extended 8.2E-2 / extended 8.2E-3).
  *
  * Test/spec foundation only. Not wired into runtime.
  */
@@ -47,3 +47,15 @@ export {
   runScenarioBoundaryRegressionScaffold,
   type ScenarioBoundaryRegressionScaffoldResult,
 } from "./scenario-boundary-regression-scaffold";
+export {
+  validateScenarioContractExpectations,
+  type ScenarioContractExpectationValidationResult,
+  type ScenarioContractForbiddenMoveMissing,
+  type ScenarioContractMonetizationGap,
+} from "./validate-scenario-contract-expectations";
+export {
+  SCENARIO_CONTRACT_REGRESSION_VERSION,
+  runScenarioContractRegressionScaffold,
+  type ScenarioContractRegressionScaffoldResult,
+  type PreviousValidationSummary,
+} from "./scenario-contract-regression-scaffold";

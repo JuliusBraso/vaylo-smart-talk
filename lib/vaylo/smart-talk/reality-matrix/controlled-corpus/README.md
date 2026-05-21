@@ -1,4 +1,4 @@
-# Controlled Corpus (Phase 8.2E-0)
+# Controlled Corpus (Phase 8.2E-0 / extended 8.2E-3)
 
 This folder defines the first controlled/adversarial corpus foundation for the Vaylo Document Reasoning Constitution V1.
 
@@ -30,7 +30,11 @@ It is **test data and type structure only**. It is not a runtime engine.
 | `scenarios.ts` | 14 synthetic controlled/adversarial scenarios. |
 | `validate-corpus-scenarios.ts` | Pure validator: cross-checks scenario expectations against canonical registries. |
 | `corpus-regression-scaffold.ts` | Regression scaffold: runs the validator against `CONTROLLED_CORPUS_SCENARIOS`. |
-| `index.ts` | Local exports for future scaffolds. |
+| `validate-scenario-boundary-expectations.ts` | Pure validator: checks internal scenario boundary/forbidden-move/constraint consistency. |
+| `scenario-boundary-regression-scaffold.ts` | Regression scaffold: runs boundary validator against `CONTROLLED_CORPUS_SCENARIOS`. |
+| `validate-scenario-contract-expectations.ts` | Pure validator: checks scenario expectations against Simulation → Explanation Contract safety rules. |
+| `scenario-contract-regression-scaffold.ts` | Regression scaffold: runs contract validator + prior scaffolds for unified governance picture. |
+| `index.ts` | Public exports for all corpus scaffolds. |
 
 ## Scenario Design
 
@@ -215,11 +219,91 @@ Scenarios with `require_uncertainty_wording` in `expectedBoundaryIds` — `expec
 
 No scenario meaning was changed. All additions are metadata alignment with declared policy rules.
 
+## PHASE 8.2E-3 — Scenario → Explanation Contract Regression
+
+**Files created:** `validate-scenario-contract-expectations.ts`, `scenario-contract-regression-scaffold.ts`. `index.ts` extended.
+
+**No runtime behavior changed.**
+
+This phase adds contract-level regression checks that validate scenario expectations against the `Simulation → Explanation Contract` safety rules from Phase 8.2D-6.
+
+### What is validated
+
+The validator (`validateScenarioContractExpectations`) checks each corpus scenario's declared governance expectations across six rule categories:
+
+| Category | Severity | Rule |
+|---|---|---|
+| Free preview forbidden-move coverage | **Hard** | Every free-preview-dangerous `mustNotEmit` value must have its corresponding `expectedForbiddenMove` present. |
+| Free preview leakage risk | **Hard** | No high-risk `mustNotEmit` value may be completely unprotected (no forbidden move, no boundary, no review flag). |
+| Monetization defense-in-depth | Soft | `exact_deadline` and `enforcement_certainty` must be protected at **both** boundary and forbidden-move layers. |
+| Paid explanation overreach | Soft | High-risk domain + high/critical severity scenarios must declare an uncertainty constraint. |
+| False reassurance | Soft | `false_reassurance` in `mustNotEmit` requires at least one of: `no_guaranteed_outcomes`, `required_uncertainty_wording`, or `human_review_recommended`. |
+| Required constraint coverage | Soft | Scenarios of kind `ambiguous`, `deadline_ambiguity`, or `ocr_noise_simulated` must declare `required_uncertainty_wording` in `expectedRequiredConstraints`. |
+
+### Free preview leakage protection map
+
+| `mustNotEmit` value | Required `expectedForbiddenMove` |
+|---|---|
+| `exact_deadline` | `no_deadline_calculation_when_forbidden` |
+| `legal_verdict` | `no_definitive_legal_verdicts` |
+| `enforcement_certainty` | `no_enforcement_claim_when_forbidden` |
+| `immigration_certainty` | `no_immigration_certainty` |
+| `tax_certainty` | `no_tax_certainty` |
+| `guaranteed_outcome` | `no_guaranteed_outcomes` |
+| `autonomous_action_instruction` | `no_autonomous_form_submission` |
+| `panic_language` | `no_high_panic_phrasing` |
+| `calculated_amount` | `no_deadline_calculation_when_forbidden` |
+
+### Monetization defense-in-depth pairs
+
+| `mustNotEmit` value | Required boundary token |
+|---|---|
+| `exact_deadline` | `do_not_calculate_deadline` |
+| `enforcement_certainty` | `do_not_claim_enforcement` |
+
+### Result shape
+
+```typescript
+ScenarioContractExpectationValidationResult {
+  valid: boolean
+  fullyConsistent: boolean
+  scenarioCount: number
+  scenariosMissingForbiddenMoveCoverage: readonly string[]
+  scenariosWithFreePreviewLeakageRisk: readonly string[]
+  scenariosMissingRequiredConstraintCoverage: readonly string[]
+  scenariosWithMonetizationBoundaryWarnings: readonly string[]
+  scenariosWithPaidContractOverreachRisk: readonly string[]
+  scenariosWithFalseReassuranceWarnings: readonly string[]
+  forbiddenMoveCoverageDetails: readonly ScenarioContractForbiddenMoveMissing[]
+  monetizationBoundaryDetails: readonly ScenarioContractMonetizationGap[]
+  notes: readonly string[]
+}
+```
+
+`valid` = no hard failures.
+`fullyConsistent` = valid + no soft warnings.
+
+### Regression scaffold
+
+`runScenarioContractRegressionScaffold()` (version `8.2e-3-scenario-contract-regression-v1`) runs:
+1. `validateScenarioContractExpectations` on `CONTROLLED_CORPUS_SCENARIOS`
+2. `runControlledCorpusRegressionScaffold()` (8.2E-1)
+3. `runScenarioBoundaryRegressionScaffold()` (8.2E-2)
+
+and returns `allPassed`, `contractValid`, `contractFullyConsistent`, `contractValidationResult`, `previousValidationSummary`, and `notes`.
+
+No test runner dependency. No CI wiring.
+
+### Current corpus baseline after 8.2E-2A
+
+After the 8.2E-2A alignment pass all 14 scenarios satisfy every 8.2E-3 rule:
+`valid = true`, `fullyConsistent = true`.
+
 ## Future Path
 
 - 8.2E-1 Corpus Registry + Validation Scaffold (**done**)
 - 8.2E-2 Scenario → Expected Boundary Regression (**done**)
 - 8.2E-2A Controlled Corpus Expectation Alignment Pass (**done**)
-- 8.2E-3 Scenario → Explanation Contract Regression
+- 8.2E-3 Scenario → Explanation Contract Regression (**done**)
 - 8.2E-4 Adversarial Expansion
 - 8.2E-5 Pre-MVP Internal Test Harness

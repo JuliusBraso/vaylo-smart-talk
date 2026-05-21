@@ -140,6 +140,29 @@ End-to-end **documentation audit** of the 8.2C evidence-gates dry-run stack (cou
 
 **8.2E-2:** Scenario expectation consistency scaffold only — no runtime behavior changed. Adds `validate-scenario-boundary-expectations.ts` and `scenario-boundary-regression-scaffold.ts` to `controlled-corpus/`. The validator checks internal consistency of each scenario's expected governance outcome fields: (a) registry drift for all expectation id fields; (b) boundary → contract implication consistency using an explicit rule table aligned with `CONTRACT_BOUNDARY_MAPPING_RULES`; (c) mustNotEmit → governance soft-warning alignment. `valid` = no unknown ids; `fullyConsistent` = valid + all implications satisfied + all mustNotEmit alignments present. Initial corpus is structurally valid but not yet fully consistent — implication gaps are surfaced as the intended output for future improvement. No test runner, no runtime invocation. See **`controlled-corpus/README.md §PHASE 8.2E-2`**.
 
+**8.2E-2A:** Corpus expectation alignment pass — `scenarios.ts` only. Closes all 8.2E-2 implication gaps and mustNotEmit policy warnings across all 14 scenarios. All scenarios are now `fullyConsistent: true` under `runScenarioBoundaryRegressionScaffold`. No validator or type changes.
+
+---
+
+### Phase 8.2E-3 — Scenario → Explanation Contract Regression
+
+**Contract-level regression scaffold only — no runtime behavior changed.** Adds `validate-scenario-contract-expectations.ts` and `scenario-contract-regression-scaffold.ts` to `controlled-corpus/`.
+
+The validator (`validateScenarioContractExpectations`) checks each scenario's declared governance expectations against the `Simulation → Explanation Contract` safety rules from Phase 8.2D-6. Six rule categories:
+
+| Category | Severity | Description |
+|---|---|---|
+| Free preview forbidden-move coverage | **Hard** | Every free-preview-dangerous `mustNotEmit` value must have its required `expectedForbiddenMove`. |
+| Free preview leakage risk | **Hard** | No high-risk `mustNotEmit` value may be completely unprotected. |
+| Monetization defense-in-depth | Soft | `exact_deadline` and `enforcement_certainty` must be protected at both boundary and forbidden-move layers. |
+| Paid explanation overreach | Soft | High-risk domain + high/critical severity requires an uncertainty constraint. |
+| False reassurance | Soft | `false_reassurance` in `mustNotEmit` requires `no_guaranteed_outcomes`, `required_uncertainty_wording`, or `human_review_recommended`. |
+| Required constraint coverage | Soft | `ambiguous`, `deadline_ambiguity`, `ocr_noise_simulated` scenario kinds must declare `required_uncertainty_wording`. |
+
+`valid` = no hard failures. `fullyConsistent` = valid + no soft warnings.
+
+`runScenarioContractRegressionScaffold()` (version `8.2e-3-scenario-contract-regression-v1`) runs the contract validator plus the 8.2E-1 corpus scaffold and 8.2E-2 boundary scaffold, returning a unified `allPassed` + `previousValidationSummary`. After the 8.2E-2A alignment pass, all 14 scenarios satisfy all six contract rules: `valid: true`, `fullyConsistent: true`. No test runner dependency. See **`controlled-corpus/README.md §PHASE 8.2E-3`**.
+
 ---
 
 ## 8. Why this phase avoids runtime implementation
@@ -164,7 +187,7 @@ Skipping runtime avoids:
 |-------|--------|
 | **8.2C Evidence gates** | Deterministic evaluation: cue matching, evidence levels, claim allow/deny, speculative suppression before model or after structured output. |
 | **8.2D Reality simulation** | **8.2D-0** spec; **8.2D-1** `runRealitySimulation`; **8.2D-2/2A/2B** boundary audits + cleanup; **8.2D-3** policy table; **8.2D-4** emission regression scaffold; **8.2D-4A** known-boundary registry; **8.2D-4B** `fullyConsistent` flag; **8.2D-5** structured trap metadata foundation; **8.2D-5A** `enforcementTrapHeuristic` replaced with `buildTrapGovernanceFlags`; **8.2D-6** Simulation -> Explanation Contract v1; **8.2D-6A** contract-boundary regression scaffold; **8.2D-6B** known forbidden-move / required-constraint registries; **8.2D-6C** contract-boundary rule coverage scaffold. |
-| **8.2E Controlled corpus** | **8.2E-0** synthetic controlled/adversarial corpus foundation; **8.2E-1** canonical validation scaffold; **8.2E-2** scenario expected-boundary consistency scaffold; **8.2E-2A** corpus expectation alignment pass (all 14 scenarios now fullyConsistent); future contract, adversarial expansion, and internal harness phases. |
+| **8.2E Controlled corpus** | **8.2E-0** synthetic controlled/adversarial corpus foundation; **8.2E-1** canonical validation scaffold; **8.2E-2** scenario expected-boundary consistency scaffold; **8.2E-2A** corpus expectation alignment pass (all 14 scenarios now fullyConsistent); **8.2E-3** scenario → Explanation Contract regression (free preview leakage, paid overreach, false reassurance, monetization defense-in-depth — all 14 scenarios valid + fullyConsistent); future adversarial expansion and internal harness phases. |
 | **Regression corpus** | Frozen synthetic snippets per document family with expected governance outcomes. |
 | **Document cognition engine** | Compose matrices per `RealityMatrixDocumentType`, versioned releases, optional overlap with existing `SmartTalkResult` fields via explicit mappers (future). |
 
