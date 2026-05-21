@@ -183,6 +183,26 @@ See **`PRE_MVP_INTERNAL_TEST_HARNESS.md`** and **`controlled-corpus/README.md §
 
 ---
 
+### Phase 8.2F-0 — MVP Safety Readiness Audit
+
+**Governance readiness audit only — no runtime behavior changed.** Adds **`MVP_SAFETY_READINESS_AUDIT.md`** as the first complete MVP safety classification for the Vaylo Document Reasoning Constitution V1 stack.
+
+The audit classifies readiness across the Constitution layer, Reality Matrix, Evidence Gates, boundary governance, structured trap metadata, Simulation -> Explanation Contract, controlled/adversarial corpus, internal harness, Smart Talk runtime, OCR, monetization boundary, DNA integration readiness, and B2B readiness.
+
+Verdicts:
+
+- **Internal trusted-user MVP:** `READY FOR CONTROLLED USE`
+- **Public MVP cognition:** `NOT READY`
+- **Production cognition:** `NOT READY`
+
+The audit explicitly separates what is safe for synthetic governance testing, controlled internal pilots, narrow real-world pilots, public MVP launch, and production-grade cognition. It also documents prohibited MVP claims: no legal advisor positioning, no deadline authority, no immigration/tax/enforcement certainty, and no autonomous bureaucracy-agent claims.
+
+Critical public-MVP blockers identified: missing runtime explanation mapper, unproven simulation/explanation coupling, OCR uncertainty realism, fragment authenticity handling, no real execution harness, and no real-world privacy-safe corpus.
+
+See **`MVP_SAFETY_READINESS_AUDIT.md`**.
+
+---
+
 ### Phase 8.2E-3 — Scenario → Explanation Contract Regression
 
 **Contract-level regression scaffold only — no runtime behavior changed.** Adds `validate-scenario-contract-expectations.ts` and `scenario-contract-regression-scaffold.ts` to `controlled-corpus/`.
@@ -227,6 +247,7 @@ Skipping runtime avoids:
 | **8.2C Evidence gates** | Deterministic evaluation: cue matching, evidence levels, claim allow/deny, speculative suppression before model or after structured output. |
 | **8.2D Reality simulation** | **8.2D-0** spec; **8.2D-1** `runRealitySimulation`; **8.2D-2/2A/2B** boundary audits + cleanup; **8.2D-3** policy table; **8.2D-4** emission regression scaffold; **8.2D-4A** known-boundary registry; **8.2D-4B** `fullyConsistent` flag; **8.2D-5** structured trap metadata foundation; **8.2D-5A** `enforcementTrapHeuristic` replaced with `buildTrapGovernanceFlags`; **8.2D-6** Simulation -> Explanation Contract v1; **8.2D-6A** contract-boundary regression scaffold; **8.2D-6B** known forbidden-move / required-constraint registries; **8.2D-6C** contract-boundary rule coverage scaffold. |
 | **8.2E Controlled corpus** | **8.2E-0** synthetic controlled/adversarial corpus foundation; **8.2E-1** canonical validation scaffold; **8.2E-2** scenario expected-boundary consistency scaffold; **8.2E-2A** corpus expectation alignment pass (all 14 scenarios then fullyConsistent); **8.2E-3** scenario → Explanation Contract regression (free preview leakage, paid overreach, false reassurance, monetization defense-in-depth); **8.2E-4** adversarial corpus expansion v1 (6 new high-risk scenarios 0015–0020; corpus expanded to 20 scenarios); **8.2E-5** Pre-MVP internal test harness (pure scaffold aggregation, scenario-level pass/fail, future runtime comparison placeholders; all 20 scenarios synthetic only, no runtime behavior changed, fullyConsistent baseline). |
+| **8.2F MVP readiness** | **8.2F-0** MVP Safety Readiness Audit: governance-only classification of internal MVP, public MVP, and production cognition readiness; identifies public-MVP blockers, acceptable internal technical debt, prohibited MVP claims, and a trust-first rollout path. No runtime behavior changed. |
 | **Regression corpus** | Frozen synthetic snippets per document family with expected governance outcomes. |
 | **Document cognition engine** | Compose matrices per `RealityMatrixDocumentType`, versioned releases, optional overlap with existing `SmartTalkResult` fields via explicit mappers (future). |
 
@@ -376,6 +397,7 @@ Matrix **`EvidenceRule`** rows are evaluated against normalized **`CueHit`**s vi
 | `matrices/index.ts` | Re-exports concrete matrices (no runtime registry). |
 | `controlled-corpus/` | Synthetic corpus, validation scaffolds, and Pre-MVP internal governance harness. |
 | `PRE_MVP_INTERNAL_TEST_HARNESS.md` | **Phase 8.2E-5** — internal harness documentation and safety boundary. |
+| `MVP_SAFETY_READINESS_AUDIT.md` | **Phase 8.2F-0** — MVP readiness classification, public-release blockers, and rollout guidance. |
 | `README.md` | Architecture and safety rationale (this file). |
 
 **Phase 8.2C-7 (Evidence Gates):** audit-only hardening of `GateAuditTrace` — stable trace stage labels, explicit `sourceKind` / `evidenceRuleId` vs `proximityConstraintId` vs `terminalKey`, dry-run claim metadata, and static `traceMetadata` flags that **do not** enable production authorization or Smart Talk wiring. See `evidence-gates/README.md`.
