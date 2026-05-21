@@ -1,5 +1,5 @@
 /**
- * Controlled Corpus exports (Phase 8.2E-0 / extended 8.2E-1 / extended 8.2E-2 / extended 8.2E-3).
+ * Controlled Corpus exports (Phase 8.2E-0 / extended through 8.2E-5).
  *
  * Test/spec foundation only. Not wired into runtime.
  */
@@ -59,3 +59,12 @@ export {
   type ScenarioContractRegressionScaffoldResult,
   type PreviousValidationSummary,
 } from "./scenario-contract-regression-scaffold";
+export {
+  PRE_MVP_INTERNAL_TEST_HARNESS_VERSION,
+  runPreMvpInternalTestHarness,
+} from "./internal-test-harness";
+export type {
+  InternalHarnessExecutionSummary,
+  InternalHarnessFailureCategory,
+  InternalHarnessScenarioResult,
+} from "./internal-test-harness-types";

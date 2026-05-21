@@ -163,6 +163,26 @@ All 6 scenarios are aligned at authoring time for `fullyConsistent: true` under 
 
 ---
 
+### Phase 8.2E-5 — Pre-MVP Internal Test Harness
+
+**Internal governance test harness only — no runtime behavior changed.** Adds `internal-test-harness-types.ts` and `internal-test-harness.ts` to `controlled-corpus/`, plus `PRE_MVP_INTERNAL_TEST_HARNESS.md`.
+
+`runPreMvpInternalTestHarness()` is a pure aggregation layer over:
+
+1. `runControlledCorpusRegressionScaffold()`
+2. `runScenarioBoundaryRegressionScaffold()`
+3. `runScenarioContractRegressionScaffold()`
+
+It returns corpus-wide counts (`scenarioCount`, `passedCount`, `failedCount`, `warningCount`, `structurallyValid`, `fullyConsistent`) and per-scenario `InternalHarnessScenarioResult` rows (`structurallyValid`, `boundaryConsistent`, `contractConsistent`, `passed`, `warnings`, `notes`).
+
+The harness maps scaffold output into internal warning categories: `registry_drift`, `boundary_gap`, `contract_gap`, `monetization_boundary_warning`, `privacy_warning`, `adversarial_alignment_gap`, `unknown_token`, and `inconsistent_expectation`.
+
+Current baseline: all 20 synthetic scenarios pass, `fullyConsistent: true`, `warningCount: 0`. The summary includes future-only placeholders (`futureSimulationComparisonReady`, `futureExplanationComparisonReady`) but does not compare `RealitySimulationResult`, build explanations, call OCR, call LLMs, calculate deadlines, infer legal conclusions, or connect to Smart Talk.
+
+See **`PRE_MVP_INTERNAL_TEST_HARNESS.md`** and **`controlled-corpus/README.md §Phase 8.2E-5`**.
+
+---
+
 ### Phase 8.2E-3 — Scenario → Explanation Contract Regression
 
 **Contract-level regression scaffold only — no runtime behavior changed.** Adds `validate-scenario-contract-expectations.ts` and `scenario-contract-regression-scaffold.ts` to `controlled-corpus/`.
@@ -180,7 +200,7 @@ The validator (`validateScenarioContractExpectations`) checks each scenario's de
 
 `valid` = no hard failures. `fullyConsistent` = valid + no soft warnings.
 
-`runScenarioContractRegressionScaffold()` (version `8.2e-3-scenario-contract-regression-v1`) runs the contract validator plus the 8.2E-1 corpus scaffold and 8.2E-2 boundary scaffold, returning a unified `allPassed` + `previousValidationSummary`. After the 8.2E-2A alignment pass, all 14 scenarios satisfy all six contract rules: `valid: true`, `fullyConsistent: true`. No test runner dependency. See **`controlled-corpus/README.md §PHASE 8.2E-3`**.
+`runScenarioContractRegressionScaffold()` (version `8.2e-3-scenario-contract-regression-v1`) runs the contract validator plus the 8.2E-1 corpus scaffold and 8.2E-2 boundary scaffold, returning a unified `allPassed` + `previousValidationSummary`. After the 8.2E-2A alignment pass and 8.2E-4 adversarial expansion, all 20 scenarios satisfy all six contract rules: `valid: true`, `fullyConsistent: true`. No test runner dependency. See **`controlled-corpus/README.md §PHASE 8.2E-3`**.
 
 ---
 
@@ -206,7 +226,7 @@ Skipping runtime avoids:
 |-------|--------|
 | **8.2C Evidence gates** | Deterministic evaluation: cue matching, evidence levels, claim allow/deny, speculative suppression before model or after structured output. |
 | **8.2D Reality simulation** | **8.2D-0** spec; **8.2D-1** `runRealitySimulation`; **8.2D-2/2A/2B** boundary audits + cleanup; **8.2D-3** policy table; **8.2D-4** emission regression scaffold; **8.2D-4A** known-boundary registry; **8.2D-4B** `fullyConsistent` flag; **8.2D-5** structured trap metadata foundation; **8.2D-5A** `enforcementTrapHeuristic` replaced with `buildTrapGovernanceFlags`; **8.2D-6** Simulation -> Explanation Contract v1; **8.2D-6A** contract-boundary regression scaffold; **8.2D-6B** known forbidden-move / required-constraint registries; **8.2D-6C** contract-boundary rule coverage scaffold. |
-| **8.2E Controlled corpus** | **8.2E-0** synthetic controlled/adversarial corpus foundation; **8.2E-1** canonical validation scaffold; **8.2E-2** scenario expected-boundary consistency scaffold; **8.2E-2A** corpus expectation alignment pass (all 14 scenarios now fullyConsistent); **8.2E-3** scenario → Explanation Contract regression (free preview leakage, paid overreach, false reassurance, monetization defense-in-depth — all 14 scenarios valid + fullyConsistent); **8.2E-4** adversarial corpus expansion v1 (6 new high-risk scenarios 0015–0020: prompt injection, multi-lane chaos, monetization bypass, false reassurance attack, deadline pressure without calculable date, enforcement wording with ambiguous status — corpus expanded to 20 scenarios, all synthetic only, no runtime behavior changed, fullyConsistent baseline); future internal harness phases. |
+| **8.2E Controlled corpus** | **8.2E-0** synthetic controlled/adversarial corpus foundation; **8.2E-1** canonical validation scaffold; **8.2E-2** scenario expected-boundary consistency scaffold; **8.2E-2A** corpus expectation alignment pass (all 14 scenarios then fullyConsistent); **8.2E-3** scenario → Explanation Contract regression (free preview leakage, paid overreach, false reassurance, monetization defense-in-depth); **8.2E-4** adversarial corpus expansion v1 (6 new high-risk scenarios 0015–0020; corpus expanded to 20 scenarios); **8.2E-5** Pre-MVP internal test harness (pure scaffold aggregation, scenario-level pass/fail, future runtime comparison placeholders; all 20 scenarios synthetic only, no runtime behavior changed, fullyConsistent baseline). |
 | **Regression corpus** | Frozen synthetic snippets per document family with expected governance outcomes. |
 | **Document cognition engine** | Compose matrices per `RealityMatrixDocumentType`, versioned releases, optional overlap with existing `SmartTalkResult` fields via explicit mappers (future). |
 
@@ -354,6 +374,8 @@ Matrix **`EvidenceRule`** rows are evaluated against normalized **`CueHit`**s vi
 | `matrices/steuerbescheid.ts` | **`STEUERBESCHEID_REALITY_MATRIX`** — tax assessment / Finanzamt Bescheid matrix. |
 | `matrices/mahnung.ts` | **`MAHNUNG_REALITY_MATRIX`** — dunning / escalation-safe reminder matrix. |
 | `matrices/index.ts` | Re-exports concrete matrices (no runtime registry). |
+| `controlled-corpus/` | Synthetic corpus, validation scaffolds, and Pre-MVP internal governance harness. |
+| `PRE_MVP_INTERNAL_TEST_HARNESS.md` | **Phase 8.2E-5** — internal harness documentation and safety boundary. |
 | `README.md` | Architecture and safety rationale (this file). |
 
 **Phase 8.2C-7 (Evidence Gates):** audit-only hardening of `GateAuditTrace` — stable trace stage labels, explicit `sourceKind` / `evidenceRuleId` vs `proximityConstraintId` vs `terminalKey`, dry-run claim metadata, and static `traceMetadata` flags that **do not** enable production authorization or Smart Talk wiring. See `evidence-gates/README.md`.

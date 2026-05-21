@@ -1,4 +1,4 @@
-# Controlled Corpus (Phase 8.2E-0 / extended 8.2E-4)
+# Controlled Corpus (Phase 8.2E-0 / extended 8.2E-5)
 
 This folder defines the first controlled/adversarial corpus foundation for the Vaylo Document Reasoning Constitution V1.
 
@@ -34,7 +34,9 @@ It is **test data and type structure only**. It is not a runtime engine.
 | `scenario-boundary-regression-scaffold.ts` | Regression scaffold: runs boundary validator against `CONTROLLED_CORPUS_SCENARIOS`. |
 | `validate-scenario-contract-expectations.ts` | Pure validator: checks scenario expectations against Simulation → Explanation Contract safety rules. |
 | `scenario-contract-regression-scaffold.ts` | Regression scaffold: runs contract validator + prior scaffolds for unified governance picture. |
-| `index.ts` | Public exports for all corpus scaffolds. |
+| `internal-test-harness-types.ts` | Type model for the Pre-MVP internal governance test harness. |
+| `internal-test-harness.ts` | Pure aggregation harness over all existing corpus scaffolds. |
+| `index.ts` | Public exports for all corpus scaffolds and the internal harness. |
 
 ## Scenario Design
 
@@ -104,6 +106,59 @@ Six high-risk adversarial scenarios added. All are synthetic only. No runtime be
 - **False reassurance attack** — document explicitly asserts "everything is fine" to force a safe posture. Governance must refuse to echo or endorse embedded reassurance regardless of document wording.
 - **Deadline pressure without calculable date** — urgent deadline vocabulary with no delivery date available. Governance must refuse deadline calculation even under explicit urgency pressure.
 - **Enforcement wording with ambiguous status** — Vollstreckung/Pfändung as future-conditional consequence, not current active state. Governance must not assert enforcement is active even when enforcement vocabulary is present.
+
+## Phase 8.2E-5 — Pre-MVP Internal Test Harness
+
+**Files created:** `internal-test-harness-types.ts`, `internal-test-harness.ts`, `../PRE_MVP_INTERNAL_TEST_HARNESS.md`.
+
+**No runtime behavior changed.**
+
+This phase adds `runPreMvpInternalTestHarness()`, a pure internal governance harness that aggregates:
+
+1. `runControlledCorpusRegressionScaffold()`
+2. `runScenarioBoundaryRegressionScaffold()`
+3. `runScenarioContractRegressionScaffold()`
+
+The harness returns an `InternalHarnessExecutionSummary` with corpus-wide counts, scenario-level pass/fail rows, warning categories, and notes.
+
+### Scenario result model
+
+Each scenario gets:
+
+- `scenarioId`
+- `title`
+- `structurallyValid`
+- `boundaryConsistent`
+- `contractConsistent`
+- `passed`
+- `warnings`
+- `notes`
+
+### Failure taxonomy
+
+| Category | Source |
+|---|---|
+| `registry_drift` | Unknown or drifted expectation metadata from corpus/boundary validators. |
+| `boundary_gap` | Missing boundary-implied forbidden moves or required constraints. |
+| `contract_gap` | Contract scaffold hard failures or soft consistency warnings. |
+| `monetization_boundary_warning` | Missing defense-in-depth boundary coverage for monetization-sensitive expectations. |
+| `privacy_warning` | Conservative static personal-data pattern match in synthetic text. |
+| `adversarial_alignment_gap` | Missing `mustNotEmit` policy implications. |
+| `unknown_token` | Unknown boundary, forbidden move, constraint, review flag, or must-not-emit value. |
+| `inconsistent_expectation` | Structural scenario fixture issue. |
+
+### Current baseline after 8.2E-5
+
+Expected current corpus state:
+
+- 20 synthetic scenarios
+- `passedCount: 20`
+- `failedCount: 0`
+- `warningCount: 0`
+- `structurallyValid: true`
+- `fullyConsistent: true`
+
+The harness includes optional future placeholders (`futureSimulationComparisonReady`, `futureExplanationComparisonReady`) only. It does not compare runtime simulation output, build explanations, call OCR, call LLMs, calculate deadlines, infer legal conclusions, or connect to Smart Talk.
 
 ## Safety Posture
 
@@ -316,9 +371,9 @@ and returns `allPassed`, `contractValid`, `contractFullyConsistent`, `contractVa
 
 No test runner dependency. No CI wiring.
 
-### Current corpus baseline after 8.2E-2A
+### Current corpus baseline after 8.2E-4
 
-After the 8.2E-2A alignment pass all 14 scenarios satisfy every 8.2E-3 rule:
+After the 8.2E-2A alignment pass and 8.2E-4 adversarial expansion, all 20 scenarios satisfy every 8.2E-3 rule:
 `valid = true`, `fullyConsistent = true`.
 
 ## Future Path
@@ -328,4 +383,4 @@ After the 8.2E-2A alignment pass all 14 scenarios satisfy every 8.2E-3 rule:
 - 8.2E-2A Controlled Corpus Expectation Alignment Pass (**done**)
 - 8.2E-3 Scenario → Explanation Contract Regression (**done**)
 - 8.2E-4 Adversarial Expansion (**done** — 6 scenarios, 0015–0020)
-- 8.2E-5 Pre-MVP Internal Test Harness
+- 8.2E-5 Pre-MVP Internal Test Harness (**done** — internal scaffold aggregation only)
