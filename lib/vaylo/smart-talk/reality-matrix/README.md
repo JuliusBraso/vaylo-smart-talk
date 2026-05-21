@@ -203,6 +203,18 @@ See **`MVP_SAFETY_READINESS_AUDIT.md`**.
 
 ---
 
+### Phase 8.2F-4 — Paid Explanation Mapper Scaffold
+
+**Paid-tier structural cognition scaffold only — no prose, no unrestricted extraction, no Smart Talk/OCR/LLM wiring.** Adds `run-paid-explanation-mapper.ts` (`runPaidExplanationMapper`), `paid-explanation-mapper-regression-scaffold.ts` (9 cases), and `PaidExplanationMapperDiagnosticCode` type.
+
+`runPaidExplanationMapper(input): RuntimeExplanationDraft` enforces `accessTier === "paid_explanation"` structurally. Invalid tier returns a diagnostic-only draft without throwing. Produces deeper sections (`document_overview`, `what_this_means`, `attention_points`, `next_steps_safe`, `uncertainty_and_limits`, `paid_deep_explanation`, conditional `review_recommendation`) using `PaidExplanationFields` key allowlists as structural tags — no raw extraction. `payment_preview_limited` is structurally absent. `next_steps_safe` is fully excluded when `no_autonomous_form_submission` is active. Five typed `PaidExplanationMapperDiagnosticCode` values: `paid_deadline_output_blocked`, `paid_enforcement_claim_blocked`, `paid_legal_verdict_blocked`, `paid_autonomous_action_blocked`, `paid_cross_lane_merge_blocked`.
+
+The 9-case scaffold validates: basic paid, uncertainty requirement, deadline forbidden, enforcement forbidden, legal verdict forbidden, human review flag, cross-lane suppression, invalid free-preview tier, and all major forbidden moves.
+
+See **`reality-simulation/README.md §PHASE 8.2F-4`**.
+
+---
+
 ### Phase 8.2F-3 — Free Preview Mapper Scaffold
 
 **Structural free-tier specialization only — no prose, no paid leakage, no Smart Talk/OCR/LLM wiring.** Adds `run-free-preview-mapper.ts` (`runFreePreviewMapper`), `free-preview-mapper-regression-scaffold.ts` (7 cases), and `FreePreviewMapperDiagnosticCode` type.
@@ -295,7 +307,7 @@ Skipping runtime avoids:
 | **8.2C Evidence gates** | Deterministic evaluation: cue matching, evidence levels, claim allow/deny, speculative suppression before model or after structured output. |
 | **8.2D Reality simulation** | **8.2D-0** spec; **8.2D-1** `runRealitySimulation`; **8.2D-2/2A/2B** boundary audits + cleanup; **8.2D-3** policy table; **8.2D-4** emission regression scaffold; **8.2D-4A** known-boundary registry; **8.2D-4B** `fullyConsistent` flag; **8.2D-5** structured trap metadata foundation; **8.2D-5A** `enforcementTrapHeuristic` replaced with `buildTrapGovernanceFlags`; **8.2D-6** Simulation -> Explanation Contract v1; **8.2D-6A** contract-boundary regression scaffold; **8.2D-6B** known forbidden-move / required-constraint registries; **8.2D-6C** contract-boundary rule coverage scaffold. |
 | **8.2E Controlled corpus** | **8.2E-0** synthetic controlled/adversarial corpus foundation; **8.2E-1** canonical validation scaffold; **8.2E-2** scenario expected-boundary consistency scaffold; **8.2E-2A** corpus expectation alignment pass (all 14 scenarios then fullyConsistent); **8.2E-3** scenario → Explanation Contract regression (free preview leakage, paid overreach, false reassurance, monetization defense-in-depth); **8.2E-4** adversarial corpus expansion v1 (6 new high-risk scenarios 0015–0020; corpus expanded to 20 scenarios); **8.2E-5** Pre-MVP internal test harness (pure scaffold aggregation, scenario-level pass/fail, future runtime comparison placeholders; all 20 scenarios synthetic only, no runtime behavior changed, fullyConsistent baseline). |
-| **8.2F MVP readiness / mapper** | **8.2F-0** MVP Safety Readiness Audit. **8.2F-1** Runtime Explanation Mapper Spec (governance spec, type sketches, no runtime). **8.2F-2** Explanation Mapper Skeleton: `runExplanationMapper` pure function, 5-case regression scaffold, access-tier isolation, forbidden-move exclusion/restriction, no prose generated. **8.2F-3** Free Preview Mapper Scaffold: `runFreePreviewMapper` specialisation, 7-case regression scaffold, invalid-tier diagnostic-only draft, paid-field structural block, per-section free-field allowlists, suppression diagnostics. |
+| **8.2F MVP readiness / mapper** | **8.2F-0** MVP Safety Readiness Audit. **8.2F-1** Runtime Explanation Mapper Spec (governance spec, type sketches, no runtime). **8.2F-2** Explanation Mapper Skeleton: `runExplanationMapper` pure function, 5-case regression scaffold, access-tier isolation, forbidden-move exclusion/restriction, no prose generated. **8.2F-3** Free Preview Mapper Scaffold: `runFreePreviewMapper` specialisation, 7-case regression scaffold, invalid-tier diagnostic-only draft, paid-field structural block, per-section free-field allowlists, suppression diagnostics. **8.2F-4** Paid Explanation Mapper Scaffold: `runPaidExplanationMapper` specialisation, 9-case regression scaffold, deeper section policy with `what_this_means`/`attention_points`/`next_steps_safe`/`paid_deep_explanation`, `PaidExplanationFields` allowlists, five typed suppression diagnostic codes, `next_steps_safe` excluded on autonomous-form forbidden move. |
 | **Regression corpus** | Frozen synthetic snippets per document family with expected governance outcomes. |
 | **Document cognition engine** | Compose matrices per `RealityMatrixDocumentType`, versioned releases, optional overlap with existing `SmartTalkResult` fields via explicit mappers (future). |
 

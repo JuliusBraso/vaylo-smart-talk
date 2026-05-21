@@ -1,5 +1,6 @@
 /**
- * Runtime Explanation Mapper types (Phase 8.2F-1 sketch / 8.2F-2 skeleton / 8.2F-3 free-preview codes).
+ * Runtime Explanation Mapper types (Phase 8.2F-1 sketch / 8.2F-2 skeleton /
+ * 8.2F-3 free-preview codes / 8.2F-4 paid codes).
  *
  * Safety guarantees (all phases):
  * - no mapper function in this file
@@ -86,6 +87,19 @@ export type FreePreviewMapperDiagnosticCode =
   | "free_preview_enforcement_claim_blocked"
   | "free_preview_action_instruction_blocked"
   | "invalid_access_tier_for_free_preview_mapper";
+
+/**
+ * Strongly-typed diagnostic codes for the paid explanation mapper (Phase 8.2F-4).
+ * Used in `ExplanationMapperDiagnostic.code` to identify which paid-tier
+ * governance suppression was applied.
+ */
+export type PaidExplanationMapperDiagnosticCode =
+  | "paid_deadline_output_blocked"
+  | "paid_enforcement_claim_blocked"
+  | "paid_legal_verdict_blocked"
+  | "paid_autonomous_action_blocked"
+  | "paid_cross_lane_merge_blocked"
+  | "invalid_access_tier_for_paid_explanation_mapper";
 
 export interface ExplanationMapperDiagnostic {
   readonly code: string;

@@ -403,6 +403,77 @@ This means `fullyConsistent` can be `false` even for a "clean" emitted-set call 
 
 ---
 
+## PHASE 8.2F-4 — Paid Explanation Mapper Scaffold
+
+**Paid-tier structural cognition scaffold only — no prose, no unrestricted extraction, no Smart Talk wiring, no LLM calls.**
+
+### What was added
+
+- **`run-paid-explanation-mapper.ts`** — exports `PAID_EXPLANATION_MAPPER_VERSION` and `runPaidExplanationMapper(input): RuntimeExplanationDraft`. Specialises the generic mapper for `accessTier === "paid_explanation"` exclusively. Invalid tier input returns a diagnostic-only draft (no sections, no throw).
+- **`paid-explanation-mapper-regression-scaffold.ts`** — exports `runPaidExplanationMapperRegressionScaffold()` with nine structural regression cases. No Jest/Vitest. No CI hook.
+- **`explanation-mapper-types.ts`** — adds `PaidExplanationMapperDiagnosticCode` union type for strongly-typed paid diagnostic codes.
+
+### Paid section policy
+
+| Section | Produced? | Condition |
+|---|---|---|
+| `document_overview` | Always | — |
+| `what_this_means` | Always | — |
+| `attention_points` | Always | — |
+| `next_steps_safe` | Default yes, excludable | Excluded when `no_autonomous_form_submission` is active |
+| `uncertainty_and_limits` | Always | — |
+| `paid_deep_explanation` | Always | May be restricted by forbidden moves |
+| `review_recommendation` | Conditional | Only when review flags are active |
+| `payment_preview_limited` | **Never** | Free-only section |
+
+Conceptual outputs that are forbidden even in paid mode: `autonomous_action_execution`, `official_submission`, `legal_verdict`, `enforcement_confirmation`, `calculated_deadline_output`.
+
+### Paid allowed contract fields (per section)
+
+| Section | Allowed fields |
+|---|---|
+| `document_overview` | `documentTypeCandidate`, `documentTypeLabel`, `senderCategory`, `confidencePosture`, `institutionSignals` |
+| `what_this_means` | `institutionSignals`, `authorizedClaimCandidates`, `supportedRealityCandidates`, `uncertaintyReasons` |
+| `attention_points` | `authorizedClaimCandidates`, `trapWarningIds`, `reviewFlags` |
+| `next_steps_safe` | `authorizedClaimCandidates`, `uncertaintyReasons`, `reviewFlags` (safe procedural only) |
+| `uncertainty_and_limits` | `uncertaintyReasons`, `confidencePosture` |
+| `review_recommendation` | `humanReviewSuggested`, `reviewFlags` |
+| `paid_deep_explanation` | `explicitFinancialSignalsOnly`, `explicitDeadlineMentionsOnly`, `institutionSignals`, `authorizedClaimCandidates`, `supportedRealityCandidates`, `boundaryIds`, `trapWarningIds` |
+
+Not accessible at any point: raw document text, OCR spans, LLM responses, personal data dumps, unsupported claims, hidden Evidence Gate traces.
+
+### Forbidden move suppression
+
+| Forbidden move | Diagnostic code | Effect |
+|---|---|---|
+| `no_autonomous_form_submission` | `paid_autonomous_action_blocked` | `next_steps_safe` **excluded** |
+| `no_deadline_calculation_when_forbidden` | `paid_deadline_output_blocked` | `paid_deep_explanation`, `next_steps_safe` restricted |
+| `no_enforcement_claim_when_forbidden` | `paid_enforcement_claim_blocked` | `paid_deep_explanation`, `attention_points` restricted |
+| `no_definitive_legal_verdicts` | `paid_legal_verdict_blocked` | `what_this_means`, `paid_deep_explanation` restricted |
+| `no_cross_lane_merging` | `paid_cross_lane_merge_blocked` | `what_this_means`, `paid_deep_explanation` restricted |
+| `no_high_panic_phrasing` | `paid_enforcement_claim_blocked` | `attention_points`, `what_this_means` restricted |
+| `no_dry_run_as_fact` / `no_speculation_as_fact` / `no_guaranteed_outcomes` / `no_tax_certainty` / `no_immigration_certainty` | `paid_legal_verdict_blocked` | `what_this_means`, `paid_deep_explanation` restricted |
+
+### Invalid tier behavior
+
+If `input.accessTier !== "paid_explanation"`, `runPaidExplanationMapper` returns a diagnostic-only draft with `sectionDrafts: []` and `invalid_access_tier_for_paid_explanation_mapper` diagnostic. No throw.
+
+### Regression scaffold cases
+
+| Case | Description |
+|---|---|
+| `basic_paid_explanation` | All 6 base sections present, no restrictions, correct tier and posture |
+| `paid_uncertainty_required` | `uncertainty_preserved` posture, all sections `uncertaintyPreserved: true` |
+| `paid_deadline_forbidden` | `paid_deadline_output_blocked` diagnostic, `paid_deep_explanation` and `next_steps_safe` restricted |
+| `paid_enforcement_forbidden` | `paid_enforcement_claim_blocked` diagnostic, `paid_deep_explanation` and `attention_points` restricted |
+| `paid_legal_verdict_forbidden` | `paid_legal_verdict_blocked` diagnostic, `what_this_means` and `paid_deep_explanation` restricted |
+| `paid_human_review_flag` | `review_recommendation` section, `human_review_recommended` posture |
+| `paid_cross_lane_suppression` | `paid_cross_lane_merge_blocked` diagnostic, `what_this_means` and `paid_deep_explanation` restricted |
+| `invalid_free_preview_tier_input` | Diagnostic-only draft, zero sections, no throw |
+| `paid_all_major_forbidden_moves` | `next_steps_safe` excluded, all 5 diagnostic codes, restricted sections have blocked reasons |
+
+---
+
 ## PHASE 8.2F-3 — Free Preview Mapper Scaffold
 
 **Structural free-tier specialization only — no prose, no paid leakage, no Smart Talk wiring, no LLM calls.**

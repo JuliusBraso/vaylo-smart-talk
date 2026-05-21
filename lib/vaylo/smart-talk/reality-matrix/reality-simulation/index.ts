@@ -92,7 +92,10 @@ export {
   type ExplanationMapperRegressionCaseResult,
   type ExplanationMapperRegressionScaffoldResult,
 } from "./explanation-mapper-regression-scaffold";
-export type { FreePreviewMapperDiagnosticCode } from "./explanation-mapper-types";
+export type {
+  FreePreviewMapperDiagnosticCode,
+  PaidExplanationMapperDiagnosticCode,
+} from "./explanation-mapper-types";
 export {
   FREE_PREVIEW_MAPPER_VERSION,
   runFreePreviewMapper,
@@ -103,3 +106,13 @@ export {
   type FreePreviewMapperRegressionCaseResult,
   type FreePreviewMapperRegressionScaffoldResult,
 } from "./free-preview-mapper-regression-scaffold";
+export {
+  PAID_EXPLANATION_MAPPER_VERSION,
+  runPaidExplanationMapper,
+} from "./run-paid-explanation-mapper";
+export {
+  PAID_EXPLANATION_MAPPER_REGRESSION_VERSION,
+  runPaidExplanationMapperRegressionScaffold,
+  type PaidExplanationMapperRegressionCaseResult,
+  type PaidExplanationMapperRegressionScaffoldResult,
+} from "./paid-explanation-mapper-regression-scaffold";
