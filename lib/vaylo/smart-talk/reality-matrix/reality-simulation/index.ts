@@ -92,3 +92,14 @@ export {
   type ExplanationMapperRegressionCaseResult,
   type ExplanationMapperRegressionScaffoldResult,
 } from "./explanation-mapper-regression-scaffold";
+export type { FreePreviewMapperDiagnosticCode } from "./explanation-mapper-types";
+export {
+  FREE_PREVIEW_MAPPER_VERSION,
+  runFreePreviewMapper,
+} from "./run-free-preview-mapper";
+export {
+  FREE_PREVIEW_MAPPER_REGRESSION_VERSION,
+  runFreePreviewMapperRegressionScaffold,
+  type FreePreviewMapperRegressionCaseResult,
+  type FreePreviewMapperRegressionScaffoldResult,
+} from "./free-preview-mapper-regression-scaffold";

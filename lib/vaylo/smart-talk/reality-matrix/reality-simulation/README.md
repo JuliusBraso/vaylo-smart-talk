@@ -403,6 +403,73 @@ This means `fullyConsistent` can be `false` even for a "clean" emitted-set call 
 
 ---
 
+## PHASE 8.2F-3 — Free Preview Mapper Scaffold
+
+**Structural free-tier specialization only — no prose, no paid leakage, no Smart Talk wiring, no LLM calls.**
+
+### What was added
+
+- **`run-free-preview-mapper.ts`** — exports `FREE_PREVIEW_MAPPER_VERSION` and `runFreePreviewMapper(input): RuntimeExplanationDraft`. Specialises the generic mapper for `accessTier === "free_preview"` exclusively. Invalid tier input returns a diagnostic-only draft (no sections, no throw).
+- **`free-preview-mapper-regression-scaffold.ts`** — exports `runFreePreviewMapperRegressionScaffold()` with seven structural regression cases. No Jest/Vitest. No CI hook.
+- **`explanation-mapper-types.ts`** — adds `FreePreviewMapperDiagnosticCode` union type for strongly-typed free-preview diagnostic codes.
+
+### Free preview section policy
+
+| Section | Produced? | Condition |
+|---|---|---|
+| `document_overview` | Always | — |
+| `payment_preview_limited` | Always | — |
+| `uncertainty_and_limits` | Always | — |
+| `review_recommendation` | Conditional | Only when review flags are active |
+| `what_this_means` | **Never** | Paid-only |
+| `attention_points` | **Never** | Paid-only |
+| `next_steps_safe` | **Never** | Paid-only |
+| `paid_deep_explanation` | **Never** | Paid-only |
+
+### Free preview allowed contract fields (per section)
+
+| Section | Allowed fields |
+|---|---|
+| `document_overview` | `documentTypeCandidate`, `documentTypeLabel`, `senderCategory`, `confidencePosture` |
+| `payment_preview_limited` | `hasFinancialSignal`, `hasDeadlineSignal`, `attentionLevelPreview`, `confidencePosture` |
+| `uncertainty_and_limits` | `confidencePosture`, `attentionLevelPreview` |
+| `review_recommendation` | `humanReviewSuggested` |
+
+No `PaidExplanationFields` keys are referenced. No exact amounts, dates, deadlines, action steps, legal conclusions, enforcement certainty, or raw text.
+
+### Forbidden move suppression diagnostics
+
+| Forbidden move | Diagnostic code emitted | Section-level effect |
+|---|---|---|
+| `no_deadline_calculation_when_forbidden` | `free_preview_deadline_detail_blocked` | `payment_preview_limited` gets `blockedReasonCode` |
+| `no_enforcement_claim_when_forbidden` | `free_preview_enforcement_claim_blocked` | — (section already absent) |
+| `no_autonomous_form_submission` | `free_preview_action_instruction_blocked` | — (next_steps_safe already absent) |
+| `no_definitive_legal_verdicts` / `no_guaranteed_outcomes` / `no_dry_run_as_fact` / `no_speculation_as_fact` / `no_cross_lane_merging` / `no_tax_certainty` / `no_immigration_certainty` / `no_high_panic_phrasing` | `free_preview_paid_field_blocked` | — |
+
+`free_preview_paid_field_blocked` is also always emitted unconditionally to document that paid sections are structurally blocked regardless of forbidden moves.
+
+### Invalid tier behavior
+
+If `input.accessTier !== "free_preview"`, `runFreePreviewMapper` returns a diagnostic-only `RuntimeExplanationDraft` with:
+- `sectionDrafts: []`
+- `neverUserVisibleDiagnostics: [{ code: "invalid_access_tier_for_free_preview_mapper", ... }]`
+- forbidden moves and required constraints passed through from contract
+- no throw
+
+### Regression scaffold cases
+
+| Case | Description |
+|---|---|
+| `basic_safe_preview` | Section presence, postures, paid-block diagnostic invariant |
+| `preview_uncertainty_required` | `uncertainty_preserved` posture, constraint propagation |
+| `preview_deadline_forbidden` | `free_preview_deadline_detail_blocked` diagnostic, `payment_preview_limited` restriction |
+| `preview_enforcement_forbidden` | `free_preview_enforcement_claim_blocked` diagnostic, `attention_points` absent |
+| `invalid_paid_tier_input` | Diagnostic-only draft, zero sections, no throw |
+| `preview_human_review_flag` | `review_recommendation` section, `human_review_recommended` posture |
+| `preview_all_major_forbidden_moves` | All suppression diagnostics, no paid leakage, base sections preserved |
+
+---
+
 ## PHASE 8.2F-2 — Explanation Mapper Skeleton
 
 **Typed governance skeleton only — no user-visible prose generated, no Smart Talk wiring, no LLM calls, no OCR access.**

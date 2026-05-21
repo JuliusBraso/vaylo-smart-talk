@@ -1,5 +1,5 @@
 /**
- * Runtime Explanation Mapper types (Phase 8.2F-1 sketch / 8.2F-2 promoted to skeleton).
+ * Runtime Explanation Mapper types (Phase 8.2F-1 sketch / 8.2F-2 skeleton / 8.2F-3 free-preview codes).
  *
  * Safety guarantees (all phases):
  * - no mapper function in this file
@@ -74,6 +74,18 @@ export interface RuntimeExplanationSectionDraft {
   readonly blockedReasonCodes?: readonly string[];
   readonly neverContainsUserVisibleCopy: true;
 }
+
+/**
+ * Strongly-typed diagnostic codes for the free preview mapper (Phase 8.2F-3).
+ * Used in `ExplanationMapperDiagnostic.code` to identify which free-preview
+ * governance suppression was applied.
+ */
+export type FreePreviewMapperDiagnosticCode =
+  | "free_preview_paid_field_blocked"
+  | "free_preview_deadline_detail_blocked"
+  | "free_preview_enforcement_claim_blocked"
+  | "free_preview_action_instruction_blocked"
+  | "invalid_access_tier_for_free_preview_mapper";
 
 export interface ExplanationMapperDiagnostic {
   readonly code: string;
