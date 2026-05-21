@@ -124,10 +124,72 @@ The corpus must never connect to OCR, Smart Talk, API routes, UI, payment, OpenA
 
 `runControlledCorpusRegressionScaffold()` runs the validator against the canonical `CONTROLLED_CORPUS_SCENARIOS` constant and returns a `CorpusRegressionScaffoldResult` with `allPassed`, per-category drift arrays, and notes. No test runner dependency. No CI wiring.
 
+## PHASE 8.2E-2 — Scenario → Expected Boundary Regression
+
+**Files:** `validate-scenario-boundary-expectations.ts`, `scenario-boundary-regression-scaffold.ts`, `index.ts`.
+
+**No runtime behavior changed.**
+
+### What the validator checks
+
+`validateScenarioBoundaryExpectations()` validates the **internal consistency** of each scenario's expected governance outcome fields. It does NOT compare against actual `RealitySimulationResult` output — that is planned for a future phase once a runtime harness exists.
+
+**Registry drift checks (hard errors → affect `valid`):**
+- `expectedBoundaryIds` against `KNOWN_EXPLANATION_BOUNDARIES`
+- `expectedForbiddenMoves` against `KNOWN_FORBIDDEN_EXPLANATION_MOVES`
+- `expectedRequiredConstraints` against `KNOWN_REQUIRED_EXPLANATION_CONSTRAINTS`
+- `expectedReviewFlags` against the corpus-local review-flag taxonomy
+- `mustNotEmit` against the corpus-local must-not-emit taxonomy
+
+**Boundary → contract implication checks (→ affect `fullyConsistent`):**
+
+Uses the same explicit rule table as `CONTRACT_BOUNDARY_MAPPING_RULES`:
+
+| Boundary | Required implication |
+|---|---|
+| `do_not_calculate_deadline` | `no_deadline_calculation_when_forbidden` in `expectedForbiddenMoves` |
+| `do_not_claim_enforcement` | `no_enforcement_claim_when_forbidden` in `expectedForbiddenMoves` |
+| `require_uncertainty_wording` | `required_uncertainty_wording` in `expectedRequiredConstraints` |
+| `do_not_present_dry_run_as_fact` | `no_dry_run_as_fact` in `expectedForbiddenMoves` |
+| `do_not_present_speculation_as_fact` | `no_speculation_as_fact` in `expectedForbiddenMoves` |
+| `do_not_merge_lanes` | `no_cross_lane_merging` in `expectedForbiddenMoves` |
+
+**mustNotEmit → policy alignment (soft warnings → affect `fullyConsistent`):**
+
+| mustNotEmit value | Implied governance |
+|---|---|
+| `exact_deadline` | `do_not_calculate_deadline` + `no_deadline_calculation_when_forbidden` |
+| `enforcement_certainty` | `do_not_claim_enforcement` + `no_enforcement_claim_when_forbidden` |
+| `legal_verdict` | `no_definitive_legal_verdicts` |
+| `panic_language` | `no_high_panic_phrasing` |
+| `tax_certainty` | `no_tax_certainty` |
+| `immigration_certainty` | `no_immigration_certainty` |
+| `guaranteed_outcome` | `no_guaranteed_outcomes` |
+| `autonomous_action_instruction` | `no_autonomous_form_submission` |
+
+### Validation result flags
+
+| Flag | Meaning |
+|---|---|
+| `valid` | No unknown ids in any expectation field across all scenarios |
+| `fullyConsistent` | `valid` + all boundary implications satisfied + all mustNotEmit policy alignments present |
+
+### Current corpus baseline
+
+The initial 14 scenarios are **structurally valid** (`valid = true`) — no unknown ids. They are **not yet fully consistent** because:
+- Most scenarios that emit `require_uncertainty_wording` do not yet include `expectedRequiredConstraints: ["required_uncertainty_wording"]` (the field was added in 8.2E-1 as optional).
+- Some scenarios have `mustNotEmit: ["panic_language"]` without `no_high_panic_phrasing` in `expectedForbiddenMoves`.
+
+These implication gaps are the intended output of this scaffold — they identify concrete corpus improvements for future phases.
+
+### Regression scaffold
+
+`runScenarioBoundaryRegressionScaffold()` (version `8.2e-2-scenario-boundary-regression-v1`) runs the validator against `CONTROLLED_CORPUS_SCENARIOS` and returns `allPassed`, `implicationGapCount`, `mustNotEmitWarningCount`, and full notes. No test runner dependency. No CI wiring.
+
 ## Future Path
 
 - 8.2E-1 Corpus Registry + Validation Scaffold (**done**)
-- 8.2E-2 Scenario -> Expected Boundary Regression
-- 8.2E-3 Scenario -> Explanation Contract Regression
+- 8.2E-2 Scenario → Expected Boundary Regression (**done**)
+- 8.2E-3 Scenario → Explanation Contract Regression
 - 8.2E-4 Adversarial Expansion
 - 8.2E-5 Pre-MVP Internal Test Harness

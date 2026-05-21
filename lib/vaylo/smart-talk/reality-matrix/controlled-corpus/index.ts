@@ -1,5 +1,5 @@
 /**
- * Controlled Corpus exports (Phase 8.2E-0 / extended 8.2E-1).
+ * Controlled Corpus exports (Phase 8.2E-0 / extended 8.2E-1 / extended 8.2E-2).
  *
  * Test/spec foundation only. Not wired into runtime.
  */
@@ -35,3 +35,15 @@ export {
   runControlledCorpusRegressionScaffold,
   type CorpusRegressionScaffoldResult,
 } from "./corpus-regression-scaffold";
+export {
+  validateScenarioBoundaryExpectations,
+  type ScenarioBoundaryExpectationValidationResult,
+  type ScenarioMissingForbiddenMoveImplication,
+  type ScenarioMissingConstraintImplication,
+  type ScenarioMustNotEmitPolicyWarning,
+} from "./validate-scenario-boundary-expectations";
+export {
+  SCENARIO_BOUNDARY_REGRESSION_VERSION,
+  runScenarioBoundaryRegressionScaffold,
+  type ScenarioBoundaryRegressionScaffoldResult,
+} from "./scenario-boundary-regression-scaffold";
