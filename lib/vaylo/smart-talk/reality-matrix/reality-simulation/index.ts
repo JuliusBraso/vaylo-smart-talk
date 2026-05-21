@@ -1,5 +1,5 @@
 /**
- * Reality Simulation (8.2D-1+) — pre-explanation governance skeleton.
+ * Reality Simulation (8.2D-1+ / extended through 8.2F-2) — pre-explanation governance skeleton.
  * Not Smart Talk, not UI, not user-visible prose.
  */
 
@@ -72,3 +72,23 @@ export {
   type ContractBoundaryRegressionCaseResult,
   type ContractBoundaryRegressionScaffoldResult,
 } from "./contract-boundary-regression";
+export type {
+  AppliedGovernanceConstraint,
+  ExplanationMapperDiagnostic,
+  ExplanationReviewPosture,
+  ExplanationUncertaintyPosture,
+  RuntimeExplanationDraft,
+  RuntimeExplanationMapperInput,
+  RuntimeExplanationSectionDraft,
+  RuntimeExplanationSectionType,
+} from "./explanation-mapper-types";
+export {
+  EXPLANATION_MAPPER_VERSION,
+  runExplanationMapper,
+} from "./run-explanation-mapper";
+export {
+  EXPLANATION_MAPPER_REGRESSION_VERSION,
+  runExplanationMapperRegressionScaffold,
+  type ExplanationMapperRegressionCaseResult,
+  type ExplanationMapperRegressionScaffoldResult,
+} from "./explanation-mapper-regression-scaffold";

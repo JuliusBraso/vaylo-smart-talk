@@ -403,6 +403,65 @@ This means `fullyConsistent` can be `false` even for a "clean" emitted-set call 
 
 ---
 
+## PHASE 8.2F-2 — Explanation Mapper Skeleton
+
+**Typed governance skeleton only — no user-visible prose generated, no Smart Talk wiring, no LLM calls, no OCR access.**
+
+### What was added
+
+- **`run-explanation-mapper.ts`** — exports `EXPLANATION_MAPPER_VERSION` and `runExplanationMapper(input): RuntimeExplanationDraft`. Pure function. No side effects.
+- **`explanation-mapper-regression-scaffold.ts`** — exports `runExplanationMapperRegressionScaffold()` with five structural regression cases. No Jest/Vitest. No CI hook.
+- **`explanation-mapper-types.ts`** — promoted from spec-only sketch to active types: `draftVersion` literal updated to `"8.2f-2-runtime-explanation-draft-v1"`, `mapperVersion?: string` added to `RuntimeExplanationMapperInput`.
+
+### Mapper behavior
+
+`runExplanationMapper` reads only structured governance inputs from `RuntimeExplanationMapperInput`:
+
+| Reads | Does not read |
+|---|---|
+| `simulationResult` governance fields | raw document text |
+| `explanationContract` boundaries / moves / constraints | OCR spans |
+| `accessTier` | LLM response text |
+| `auditTraceRef` | DNA / user profile |
+| `simulationResult.reviewFlags` flagIds | unrelated documents |
+| `simulationResult.explanationBoundaries` | payment state beyond `accessTier` |
+
+### Access tier isolation
+
+| Tier | Sections produced | Sections blocked |
+|---|---|---|
+| `free_preview` | `document_overview`, `payment_preview_limited`, `uncertainty_and_limits`, `review_recommendation` if flagged | All paid-only sections |
+| `paid_explanation` | All above except `payment_preview_limited`, plus `what_this_means`, `attention_points`, `next_steps_safe`, `paid_deep_explanation` | `payment_preview_limited` |
+
+### Forbidden move handling
+
+| Forbidden move | Effect |
+|---|---|
+| `no_autonomous_form_submission` | `next_steps_safe` **excluded** from draft |
+| `no_deadline_calculation_when_forbidden` | `paid_deep_explanation` gets `blockedReasonCode` |
+| `no_enforcement_claim_when_forbidden` | `paid_deep_explanation`, `attention_points` get `blockedReasonCode` |
+| `no_high_panic_phrasing` | `attention_points`, `what_this_means` get `blockedReasonCode` |
+| `no_cross_lane_merging` | `what_this_means`, `paid_deep_explanation` get `blockedReasonCode` |
+| `no_definitive_legal_verdicts` | `paid_deep_explanation`, `what_this_means` get `blockedReasonCode` |
+| `no_dry_run_as_fact` | `what_this_means`, `paid_deep_explanation`, `attention_points` get `blockedReasonCode` |
+| `no_speculation_as_fact` | `what_this_means`, `paid_deep_explanation` get `blockedReasonCode` |
+
+### Governance preservation
+
+All sections have `sourceBound: true` and `neverContainsUserVisibleCopy: true`. Diagnostics are collected in `neverUserVisibleDiagnostics`. Applied boundaries, forbidden moves, and required constraints are preserved unchanged from the contract. Uncertainty posture and review posture are derived from simulation flags and contract constraints.
+
+### Regression scaffold cases
+
+| Case | Description |
+|---|---|
+| `free_preview_basic` | Validates tier isolation, base section presence, governance flags |
+| `free_preview_deadline_forbidden` | Validates forbidden move preserved across free tier |
+| `paid_uncertainty_required` | Validates `uncertainty_preserved` posture and constraint propagation |
+| `paid_human_review_flag` | Validates `human_review_recommended` posture and `high_consequence_uncertainty` |
+| `paid_all_major_forbidden_moves` | Validates exclusion, restriction, and diagnostic generation |
+
+---
+
 ## PHASE 8.2F-1 — Runtime Explanation Mapper Spec
 
 **Specification only — no runtime behavior changed, no mapper implementation, no Smart Talk wiring.**

@@ -1,10 +1,8 @@
 /**
- * Runtime Explanation Mapper type sketches (Phase 8.2F-1).
+ * Runtime Explanation Mapper types (Phase 8.2F-1 sketch / 8.2F-2 promoted to skeleton).
  *
- * SPEC ONLY - NOT RUNTIME.
- *
- * These interfaces describe a future mapper boundary only:
- * - no mapper function
+ * Safety guarantees (all phases):
+ * - no mapper function in this file
  * - no explanation builder
  * - no Smart Talk wiring
  * - no OCR access
@@ -52,6 +50,8 @@ export interface RuntimeExplanationMapperInput {
   readonly explanationContract: SimulationExplanationContract;
   readonly accessTier: ExplanationAccessTier;
   readonly auditTraceRef?: string;
+  /** Caller-supplied version tag for audit; does not affect output logic. */
+  readonly mapperVersion?: string;
 }
 
 export interface AppliedGovernanceConstraint {
@@ -82,7 +82,7 @@ export interface ExplanationMapperDiagnostic {
 }
 
 export interface RuntimeExplanationDraft {
-  readonly draftVersion: "8.2f-1-runtime-explanation-draft-spec-v1";
+  readonly draftVersion: "8.2f-2-runtime-explanation-draft-v1";
   readonly accessTier: ExplanationAccessTier;
   readonly sectionDrafts: readonly RuntimeExplanationSectionDraft[];
   readonly appliedBoundaries: readonly ExplanationBoundary[];

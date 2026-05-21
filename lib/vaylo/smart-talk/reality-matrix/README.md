@@ -203,6 +203,18 @@ See **`MVP_SAFETY_READINESS_AUDIT.md`**.
 
 ---
 
+### Phase 8.2F-2 — Explanation Mapper Skeleton
+
+**Typed governance skeleton only — no runtime behavior changed, no user-visible prose, no Smart Talk/OCR/LLM wiring.** Adds `run-explanation-mapper.ts` (`runExplanationMapper`), `explanation-mapper-regression-scaffold.ts` (5 regression cases), and promotes `explanation-mapper-types.ts` from spec sketch to active types.
+
+`runExplanationMapper(input): RuntimeExplanationDraft` is a pure function that reads only structured governance inputs (simulation candidates, boundaries, forbidden moves, required constraints, access tier, review flags) and produces structural draft metadata with section type lists, allowed contract field tags, blocked reason codes, uncertainty/review posture, and never-user-visible diagnostics. No prose is generated. Access tier isolation and all governance constraints are enforced structurally.
+
+`runExplanationMapperRegressionScaffold()` validates five cases: free-preview basic, free-preview with deadline forbidden, paid with uncertainty required, paid with human review flag, and paid with all major forbidden moves. No test runner dependency.
+
+See **`reality-simulation/README.md §PHASE 8.2F-2`**.
+
+---
+
 ### Phase 8.2F-1 — Runtime Explanation Mapper Spec
 
 **Specification only — no runtime behavior changed.** Adds **`RUNTIME_EXPLANATION_MAPPER_SPEC.md`** and optional type sketches in **`reality-simulation/explanation-mapper-types.ts`**.
@@ -271,7 +283,7 @@ Skipping runtime avoids:
 | **8.2C Evidence gates** | Deterministic evaluation: cue matching, evidence levels, claim allow/deny, speculative suppression before model or after structured output. |
 | **8.2D Reality simulation** | **8.2D-0** spec; **8.2D-1** `runRealitySimulation`; **8.2D-2/2A/2B** boundary audits + cleanup; **8.2D-3** policy table; **8.2D-4** emission regression scaffold; **8.2D-4A** known-boundary registry; **8.2D-4B** `fullyConsistent` flag; **8.2D-5** structured trap metadata foundation; **8.2D-5A** `enforcementTrapHeuristic` replaced with `buildTrapGovernanceFlags`; **8.2D-6** Simulation -> Explanation Contract v1; **8.2D-6A** contract-boundary regression scaffold; **8.2D-6B** known forbidden-move / required-constraint registries; **8.2D-6C** contract-boundary rule coverage scaffold. |
 | **8.2E Controlled corpus** | **8.2E-0** synthetic controlled/adversarial corpus foundation; **8.2E-1** canonical validation scaffold; **8.2E-2** scenario expected-boundary consistency scaffold; **8.2E-2A** corpus expectation alignment pass (all 14 scenarios then fullyConsistent); **8.2E-3** scenario → Explanation Contract regression (free preview leakage, paid overreach, false reassurance, monetization defense-in-depth); **8.2E-4** adversarial corpus expansion v1 (6 new high-risk scenarios 0015–0020; corpus expanded to 20 scenarios); **8.2E-5** Pre-MVP internal test harness (pure scaffold aggregation, scenario-level pass/fail, future runtime comparison placeholders; all 20 scenarios synthetic only, no runtime behavior changed, fullyConsistent baseline). |
-| **8.2F MVP readiness / mapper spec** | **8.2F-0** MVP Safety Readiness Audit: governance-only classification of internal MVP, public MVP, and production cognition readiness; identifies public-MVP blockers, acceptable internal technical debt, prohibited MVP claims, and a trust-first rollout path. **8.2F-1** Runtime Explanation Mapper Spec: formal future boundary for transforming `RealitySimulationResult` + `SimulationExplanationContract` into structured explanation drafts, with free/paid tier limits and no runtime implementation. |
+| **8.2F MVP readiness / mapper** | **8.2F-0** MVP Safety Readiness Audit. **8.2F-1** Runtime Explanation Mapper Spec (governance spec, type sketches, no runtime). **8.2F-2** Explanation Mapper Skeleton: `runExplanationMapper` pure function, 5-case regression scaffold, access-tier isolation, forbidden-move exclusion/restriction, no prose generated. |
 | **Regression corpus** | Frozen synthetic snippets per document family with expected governance outcomes. |
 | **Document cognition engine** | Compose matrices per `RealityMatrixDocumentType`, versioned releases, optional overlap with existing `SmartTalkResult` fields via explicit mappers (future). |
 
