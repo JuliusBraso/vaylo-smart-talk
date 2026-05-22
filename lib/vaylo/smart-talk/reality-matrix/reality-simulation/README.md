@@ -728,4 +728,57 @@ The type sketches are compile-time documentation only. They do not export or def
 
 ---
 
+## PHASE 8.2F-6 — Smart Talk Bridge Dry Run
+
+**First end-to-end dry-run cognition pipeline bridge. No prose. No LLM. No production Smart Talk wiring.**
+
+Adds:
+
+- **`run-smart-talk-bridge-dry-run.ts`** — Pure `runSmartTalkBridgeDryRun` function. Routes a `SmartTalkBridgeDryRunInput` to `runFreePreviewMapper` or `runPaidExplanationMapper` based on `accessTier`, then performs seven structural-validity and governance-preservation checks on the resulting `RuntimeExplanationDraft`. Returns `SmartTalkBridgeDryRunResult` with `structurallyValid`, `governancePreserved`, `diagnostics`, and `neverUserVisible: true`.
+
+- **`smart-talk-bridge-dry-run-regression.ts`** — Seven regression cases exercising the full bridge pipeline: `free_preview_basic`, `paid_basic`, `paid_uncertainty_required`, `paid_human_review_flag`, `paid_deadline_suppression`, `free_preview_enforcement_forbidden`, `paid_all_major_forbidden_moves`. All assert `governancePreserved === true`, `structurallyValid === true`, no prose, and no cross-tier leakage.
+
+- **`explanation-mapper-types.ts`** (modified) — Adds `BridgeDiagnosticCode`, `BridgeDiagnostic`, `SmartTalkBridgeDryRunInput`, and `SmartTalkBridgeDryRunResult` type definitions. `BridgeDiagnosticCode` enumerates five bridge-level diagnostic codes (`bridge_governance_preservation_failure`, `bridge_invalid_section_invariant`, `bridge_free_preview_leakage`, `bridge_invalid_access_tier`, `bridge_missing_governance_metadata`). All bridge diagnostics carry `neverUserVisible: true`.
+
+### Bridge routing behavior
+
+```
+accessTier === "free_preview"       → runFreePreviewMapper()
+accessTier === "paid_explanation"   → runPaidExplanationMapper()
+else (TypeScript guard)             → bridge_invalid_access_tier diagnostic, fallback to free preview
+```
+
+### Structural validity checks (7)
+
+| Check | Failure code |
+|-------|-------------|
+| All sections: `sourceBound === true` | `bridge_invalid_section_invariant` |
+| All sections: `neverContainsUserVisibleCopy === true` | `bridge_invalid_section_invariant` |
+| All mapper diagnostics: `neverUserVisible === true` | `bridge_invalid_section_invariant` |
+| Contract forbidden moves in `draft.appliedForbiddenMoves` | `bridge_governance_preservation_failure` |
+| Contract required constraints in `draft.appliedRequiredConstraints` | `bridge_governance_preservation_failure` |
+| Free preview: no paid-only sections | `bridge_free_preview_leakage` |
+| Paid: no free-only sections | `bridge_free_preview_leakage` |
+
+`structurallyValid = true` only when section/diagnostic invariants pass.
+`governancePreserved = true` only when all governance checks pass AND `structurallyValid === true`.
+
+### Governance preservation
+
+Bridge acts as an **assertion layer above the mappers** — it does not modify the draft. It verifies that contract governance arrays (forbidden moves, required constraints) survived the mapper round-trip unchanged, and that no cross-tier section leakage occurred.
+
+### Regression scaffold cases
+
+| Case | Description |
+|---|---|
+| `free_preview_basic` | Validates tier routing, base free section presence, paid section absence |
+| `paid_basic` | Validates tier routing, paid section presence, free-only section absence |
+| `paid_uncertainty_required` | Validates uncertainty posture and constraint propagation through bridge |
+| `paid_human_review_flag` | Validates review posture and `review_recommendation` section through bridge |
+| `paid_deadline_suppression` | Validates forbidden move survives full bridge pipeline |
+| `free_preview_enforcement_forbidden` | Validates enforcement forbidden move through free preview path |
+| `paid_all_major_forbidden_moves` | All 5 major forbidden moves + required constraint survive the full pipeline |
+
+---
+
 > **Reality simulation models safe explanation space, not legal truth.**

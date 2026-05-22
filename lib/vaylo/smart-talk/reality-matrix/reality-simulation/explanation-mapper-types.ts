@@ -1,6 +1,7 @@
 /**
  * Runtime Explanation Mapper types (Phase 8.2F-1 sketch / 8.2F-2 skeleton /
- * 8.2F-3 free-preview codes / 8.2F-4 paid codes).
+ * 8.2F-3 free-preview codes / 8.2F-4 paid codes /
+ * 8.2F-6 Smart Talk Bridge Dry Run input+output types).
  *
  * Safety guarantees (all phases):
  * - no mapper function in this file
@@ -118,4 +119,68 @@ export interface RuntimeExplanationDraft {
   readonly reviewPosture: ExplanationReviewPosture;
   readonly auditRefs: readonly string[];
   readonly neverUserVisibleDiagnostics: readonly ExplanationMapperDiagnostic[];
+}
+
+// ── Phase 8.2F-6 — Smart Talk Bridge Dry Run types ────────────────────────────
+
+/**
+ * Typed diagnostic codes emitted exclusively by the Smart Talk Bridge Dry Run
+ * layer (Phase 8.2F-6). Never user-visible.
+ */
+export type BridgeDiagnosticCode =
+  | "bridge_governance_preservation_failure"
+  | "bridge_invalid_section_invariant"
+  | "bridge_free_preview_leakage"
+  | "bridge_invalid_access_tier"
+  | "bridge_missing_governance_metadata";
+
+/**
+ * A never-user-visible diagnostic emitted by the bridge layer to flag
+ * governance or structural violations discovered after mapper execution.
+ */
+export interface BridgeDiagnostic {
+  readonly code: BridgeDiagnosticCode;
+  readonly detail: string;
+  readonly neverUserVisible: true;
+}
+
+/**
+ * Input to the Smart Talk Bridge Dry Run (Phase 8.2F-6).
+ *
+ * Carries:
+ * - the bridge invocation version tag (audit only)
+ * - the access tier that determines mapper routing
+ * - the simulation result and explanation contract from the pipeline
+ * - optional dry-run context label (e.g. "internal_regression")
+ * - optional external audit trace reference
+ *
+ * No prose. No LLM. No OCR. No Smart Talk runtime.
+ */
+export interface SmartTalkBridgeDryRunInput {
+  readonly bridgeVersion: string;
+  readonly accessTier: ExplanationAccessTier;
+  readonly simulationResult: RealitySimulationResult;
+  readonly explanationContract: SimulationExplanationContract;
+  readonly dryRunContext?: string;
+  readonly auditTraceRef?: string;
+}
+
+/**
+ * Output of the Smart Talk Bridge Dry Run (Phase 8.2F-6).
+ *
+ * Contains the routed `RuntimeExplanationDraft`, bridge-level structural
+ * validity and governance preservation flags, bridge diagnostics, and notes.
+ *
+ * `neverUserVisible: true` guarantees this entire result is internal only —
+ * no prose, no rendered explanation, no legal wording.
+ */
+export interface SmartTalkBridgeDryRunResult {
+  readonly bridgeVersion: string;
+  readonly mapperKind: "free_preview" | "paid_explanation";
+  readonly draft: RuntimeExplanationDraft;
+  readonly structurallyValid: boolean;
+  readonly governancePreserved: boolean;
+  readonly diagnostics: readonly BridgeDiagnostic[];
+  readonly notes: readonly string[];
+  readonly neverUserVisible: true;
 }

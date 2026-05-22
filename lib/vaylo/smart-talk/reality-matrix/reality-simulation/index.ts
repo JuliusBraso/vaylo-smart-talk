@@ -1,5 +1,5 @@
 /**
- * Reality Simulation (8.2D-1+ / extended through 8.2F-2) — pre-explanation governance skeleton.
+ * Reality Simulation (8.2D-1+ / extended through 8.2F-6) — pre-explanation governance skeleton.
  * Not Smart Talk, not UI, not user-visible prose.
  */
 
@@ -74,13 +74,19 @@ export {
 } from "./contract-boundary-regression";
 export type {
   AppliedGovernanceConstraint,
+  BridgeDiagnostic,
+  BridgeDiagnosticCode,
   ExplanationMapperDiagnostic,
   ExplanationReviewPosture,
   ExplanationUncertaintyPosture,
+  FreePreviewMapperDiagnosticCode,
+  PaidExplanationMapperDiagnosticCode,
   RuntimeExplanationDraft,
   RuntimeExplanationMapperInput,
   RuntimeExplanationSectionDraft,
   RuntimeExplanationSectionType,
+  SmartTalkBridgeDryRunInput,
+  SmartTalkBridgeDryRunResult,
 } from "./explanation-mapper-types";
 export {
   EXPLANATION_MAPPER_VERSION,
@@ -92,10 +98,6 @@ export {
   type ExplanationMapperRegressionCaseResult,
   type ExplanationMapperRegressionScaffoldResult,
 } from "./explanation-mapper-regression-scaffold";
-export type {
-  FreePreviewMapperDiagnosticCode,
-  PaidExplanationMapperDiagnosticCode,
-} from "./explanation-mapper-types";
 export {
   FREE_PREVIEW_MAPPER_VERSION,
   runFreePreviewMapper,
@@ -134,3 +136,13 @@ export {
   type ExplanationOutputRegressionCaseResult,
   type ExplanationOutputRegressionScaffoldResult,
 } from "./explanation-output-regression-scaffold";
+export {
+  SMART_TALK_BRIDGE_DRY_RUN_VERSION,
+  runSmartTalkBridgeDryRun,
+} from "./run-smart-talk-bridge-dry-run";
+export {
+  SMART_TALK_BRIDGE_DRY_RUN_REGRESSION_VERSION,
+  runSmartTalkBridgeDryRunRegression,
+  type SmartTalkBridgeDryRunRegressionCaseResult,
+  type SmartTalkBridgeDryRunRegressionResult,
+} from "./smart-talk-bridge-dry-run-regression";
