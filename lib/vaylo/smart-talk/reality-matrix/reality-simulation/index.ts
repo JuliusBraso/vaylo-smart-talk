@@ -1,5 +1,5 @@
 /**
- * Reality Simulation (8.2D-1+ / extended through 8.2F-10) — pre-explanation governance skeleton.
+ * Reality Simulation (8.2D-1+ / extended through 8.2F-11) — pre-explanation governance skeleton.
  * Not Smart Talk, not UI, not user-visible prose.
  */
 
@@ -201,3 +201,23 @@ export {
   REDACTED_CORPUS_REGRESSION_VERSION,
   runRedactedCorpusRegression,
 } from "./redacted-corpus-regression";
+// ── Phase 8.2F-11 — Limited Trusted Pilot Gate Scaffold ──────────────────────
+export type {
+  PilotAccessDisposition,
+  PilotGateDiagnosticCode,
+  PilotSubjectProfile,
+  PilotSessionTelemetry,
+  PilotScopeRequest,
+  LimitedPilotGateInput,
+  LimitedPilotGateResult,
+} from "./limited-pilot-gate-types";
+export {
+  LIMITED_PILOT_GATE_SCAFFOLD_VERSION,
+  runLimitedPilotGateScaffold,
+} from "./run-limited-pilot-gate-scaffold";
+export {
+  LIMITED_PILOT_GATE_REGRESSION_VERSION,
+  runLimitedPilotGateRegressionScaffold,
+  type LimitedPilotGateRegressionCaseResult,
+  type LimitedPilotGateRegressionScaffoldResult,
+} from "./limited-pilot-gate-regression-scaffold";

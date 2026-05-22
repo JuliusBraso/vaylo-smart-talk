@@ -1071,4 +1071,75 @@ This phase does not read files, import `fs`, connect to a database, call OCR SDK
 
 ---
 
+## PHASE 8.2F-11 — Limited Trusted Pilot Gate Scaffold
+
+**Metadata-only pilot gate orchestration. No pilot activated. No real users. No DB. No auth. No OCR SDK. No LLM. No Smart Talk runtime. No mapper or bridge files touched.**
+
+Models whether a hypothetical trusted-pilot transaction would be allowed, blocked, routed to human review, or rejected as out of scope — based on invite status, consent status, session limits, scope constraints, and OCR uncertainty metadata.
+
+### Files added
+
+| File | Role |
+|---|---|
+| `limited-pilot-gate-types.ts` | `PilotAccessDisposition`, `PilotGateDiagnosticCode`, `PilotSubjectProfile`, `PilotSessionTelemetry`, `PilotScopeRequest`, `LimitedPilotGateInput`, `LimitedPilotGateResult` |
+| `run-limited-pilot-gate-scaffold.ts` | `runLimitedPilotGateScaffold(input)` — pure gate function |
+| `limited-pilot-gate-regression-scaffold.ts` | 8-case regression scaffold for all gate rules |
+
+### Type model
+
+**`PilotAccessDisposition`**: `allowed | blocked | human_review_required | out_of_scope`
+
+**`PilotGateDiagnosticCode`** — 8 never-user-visible diagnostic codes:
+`pilot_gate_passed`, `pilot_unauthorized_subject`, `pilot_missing_consent`, `pilot_session_limit_reached`, `pilot_blocked_by_ocr_degradation`, `pilot_human_review_required_by_ocr`, `pilot_scope_not_allowed`, `pilot_metadata_incomplete`
+
+**`PilotSubjectProfile`** — opaque structural metadata: `pilotSubjectRef`, `isInvited`, `consentSigned`, `pilotRole`. No real user identity.
+
+**`PilotSessionTelemetry`** — `totalTransactionsThisSession`, `maxSessionLimit`, `sequenceId`. Caller-supplied; no live DB state read.
+
+**`PilotScopeRequest`** — uses `RedactedDocumentCategory` (Phase 8.2F-10) and `ExplanationAccessTier`. `containsRealUserDocument: true` triggers `governanceCompromised = true`.
+
+**`LimitedPilotGateResult`** — `{ transactionAllowed, disposition, diagnostics, ocrEvaluation, governanceCompromised, neverUserVisible: true, notes }`. `ocrEvaluation` (`OcrEvaluationResult` from Phase 8.2F-9) always present for audit.
+
+### Gate rules (evaluated in order)
+
+| Priority | Gate | Trigger | Disposition |
+|---|---|---|---|
+| 1 | Invite | `subject.isInvited === false` | `blocked` |
+| 2 | Consent | `subject.consentSigned === false` | `blocked` |
+| 3 | Session limit | `totalTransactions >= maxSessionLimit` | `blocked` |
+| 4 | Scope — real document | `containsRealUserDocument === true` | `out_of_scope` + `governanceCompromised=true` |
+| 4 | Scope — source mode | `sourceMode === "real_document_upload"` | `out_of_scope` |
+| 5 | OCR hard fail | `ocrEvaluation.proceedAllowed === false` | `blocked` |
+| 6 | OCR human review | `ocrEvaluation.triggersHumanReview === true` | `human_review_required` |
+| 7 | All clear | — | `allowed` |
+
+OCR is always evaluated (via `evaluateOcrUncertainty` from Phase 8.2F-9) regardless of which earlier gate fires, so `ocrEvaluation` is always present in the result for audit.
+
+### Cross-phase integration
+
+- **Phase 8.2F-9** (`evaluateOcrUncertainty`): called by the gate function; OCR hard-fail blocks, OCR human-review triggers disposition escalation.
+- **Phase 8.2F-10** (`RedactedDocumentCategory`): used in `PilotScopeRequest.documentFamily`.
+- **Phase 8.2F-7** (Trusted User Pilot Gate): this scaffold implements the transaction-level gate envisioned in the broader pilot gate governance.
+
+### Regression scaffold — 8 cases
+
+| # | Case | Expected |
+|---|---|---|
+| 1 | Invited + consent + clean OCR | `allowed`, `pilot_gate_passed` |
+| 2 | Not invited | `blocked`, `pilot_unauthorized_subject` |
+| 3 | Missing consent | `blocked`, `pilot_missing_consent` |
+| 4 | Session limit 10/10 | `blocked`, `pilot_session_limit_reached` |
+| 5 | OCR score 20 | `blocked`, `pilot_blocked_by_ocr_degradation` |
+| 6 | Missing dates OCR, score 72 | `human_review_required`, `pilot_human_review_required_by_ocr` |
+| 7 | Obscured sender OCR | `blocked`, `pilot_blocked_by_ocr_degradation` |
+| 8 | `containsRealUserDocument=true` | `out_of_scope`, `governanceCompromised=true` |
+
+### Safety boundary
+
+This phase does not activate any pilot path, connect to real users, read DB state, implement real auth or consent capture, call OCR SDKs, call LLMs, connect to Smart Talk runtime, generate explanation text, calculate deadlines, or infer legal conclusions.
+
+All `LimitedPilotGateResult` objects carry `neverUserVisible: true`. This scaffold is purely structural governance modeling.
+
+---
+
 > **Reality simulation models safe explanation space, not legal truth.**

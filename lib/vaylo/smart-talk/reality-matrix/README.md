@@ -515,6 +515,9 @@ Matrix **`EvidenceRule`** rows are evaluated against normalized **`CueHit`**s vi
 | `reality-simulation/redacted-corpus-registry.ts` | **Phase 8.2F-10** — `REDACTED_DOCUMENT_CORPUS` with 5 synthetic exemplars; no real PII. |
 | `reality-simulation/redacted-corpus-regression.ts` | **Phase 8.2F-10** — `runRedactedCorpusRegression`; static PII-hygiene and structural validation. |
 | `REDACTED_CORPUS_FOUNDATION.md` | **Phase 8.2F-10** — redaction protocol, placeholder standard, admission rules, future roadmap. |
+| `reality-simulation/limited-pilot-gate-types.ts` | **Phase 8.2F-11** — `PilotAccessDisposition`, `PilotGateDiagnosticCode`, `LimitedPilotGateInput/Result`, subject/telemetry/scope types. |
+| `reality-simulation/run-limited-pilot-gate-scaffold.ts` | **Phase 8.2F-11** — `runLimitedPilotGateScaffold` pure gate function; no pilot activation, no DB, no auth. |
+| `reality-simulation/limited-pilot-gate-regression-scaffold.ts` | **Phase 8.2F-11** — 8-case regression scaffold for all gate rules. |
 | `README.md` | Architecture and safety rationale (this file). |
 
 **Phase 8.2C-7 (Evidence Gates):** audit-only hardening of `GateAuditTrace` — stable trace stage labels, explicit `sourceKind` / `evidenceRuleId` vs `proximityConstraintId` vs `terminalKey`, dry-run claim metadata, and static `traceMetadata` flags that **do not** enable production authorization or Smart Talk wiring. See `evidence-gates/README.md`.
@@ -595,6 +598,29 @@ Establishes the data governance foundation for a future real-world redacted corp
 **Cross-phase integration:** `expectedOcrDegradation` on `RedactedDocument` uses `Partial<OcrDegradationVector>` from Phase 8.2F-9, enabling future regression pipelines to route corpus entries through `evaluateOcrUncertainty` for end-to-end structural testing.
 
 **Safety boundary:** No file system access (`fs` not imported), no database writes, no OCR SDK calls, no LLM calls, no Smart Talk wiring, no deadline calculation, no legal inference.
+
+---
+
+### Phase 8.2F-11 — Limited Trusted Pilot Gate Scaffold
+
+**Metadata-only pilot gate orchestration — no pilot activated, no real users, no DB, no auth, no OCR SDK, no LLM, no Smart Talk runtime, no mapper or bridge files touched.**
+
+Models whether a hypothetical trusted-pilot transaction would be allowed, blocked, routed to human review, or rejected as out of scope, based on invite/consent/session/scope/OCR metadata only.
+
+**Gate rules (7, evaluated in order):**
+1. Subject invite check (`pilot_unauthorized_subject`)
+2. Subject consent check (`pilot_missing_consent`)
+3. Session transaction limit (`pilot_session_limit_reached`)
+4. Scope constraints — `containsRealUserDocument=true` triggers `governanceCompromised=true` (`pilot_scope_not_allowed`)
+5. OCR hard-fail blocks pipeline (`pilot_blocked_by_ocr_degradation`)
+6. OCR human-review triggers `human_review_required` disposition (`pilot_human_review_required_by_ocr`)
+7. All clear → `allowed`, `pilot_gate_passed`
+
+**Cross-phase integration:** calls `evaluateOcrUncertainty` (Phase 8.2F-9); uses `RedactedDocumentCategory` (Phase 8.2F-10); models the transaction-level gate envisioned in Phase 8.2F-7.
+
+**Regression scaffold:** 8 cases — clean pass, not invited, missing consent, session limit, OCR score-20 hard fail, missing-dates human review, obscured sender, real document governance breach.
+
+**Safety boundary:** No pilot activation, no real user access, no DB reads, no auth implementation, no consent capture, no OCR SDK, no LLM, no Smart Talk wiring.
 
 ---
 
