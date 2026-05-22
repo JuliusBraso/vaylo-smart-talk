@@ -1,5 +1,5 @@
 /**
- * Reality Simulation (8.2D-1+ / extended through 8.2F-8) — pre-explanation governance skeleton.
+ * Reality Simulation (8.2D-1+ / extended through 8.2F-9) — pre-explanation governance skeleton.
  * Not Smart Talk, not UI, not user-visible prose.
  */
 
@@ -165,3 +165,21 @@ export {
   type WordingReviewRegressionCaseResult,
   type WordingReviewRegressionScaffoldResult,
 } from "./wording-review-regression-scaffold";
+// ── Phase 8.2F-9 — OCR Uncertainty Metadata Harness ──────────────────────────
+export type {
+  OcrConfidenceLevel,
+  OcrPipelineDisposition,
+  OcrDegradationVector,
+  OcrDiagnosticCode,
+  OcrEvaluationResult,
+} from "./ocr-uncertainty-types";
+export {
+  OCR_UNCERTAINTY_EVALUATOR_VERSION,
+  evaluateOcrUncertainty,
+} from "./evaluate-ocr-uncertainty";
+export {
+  OCR_UNCERTAINTY_REGRESSION_VERSION,
+  runOcrUncertaintyRegressionScaffold,
+  type OcrUncertaintyRegressionCaseResult,
+  type OcrUncertaintyRegressionScaffoldResult,
+} from "./ocr-uncertainty-regression-scaffold";

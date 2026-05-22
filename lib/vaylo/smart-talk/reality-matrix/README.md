@@ -508,6 +508,9 @@ Matrix **`EvidenceRule`** rows are evaluated against normalized **`CueHit`**s vi
 | `reality-simulation/wording-review-types.ts` | **Phase 8.2F-8** — `WordingReviewVerdict`, `SectionWordingAssessment`, `WordingReviewSnapshot`, `WordingReviewComplianceResult`, diagnostic types. |
 | `reality-simulation/run-wording-review-scaffold.ts` | **Phase 8.2F-8** — `verifyHumanReviewCompliance` pure function; metadata only, no prose, no LLM. |
 | `reality-simulation/wording-review-regression-scaffold.ts` | **Phase 8.2F-8** — 8-case regression scaffold for human review compliance rules. |
+| `reality-simulation/ocr-uncertainty-types.ts` | **Phase 8.2F-9** — `OcrConfidenceLevel`, `OcrPipelineDisposition`, `OcrDegradationVector`, `OcrDiagnosticCode`, `OcrEvaluationResult`. |
+| `reality-simulation/evaluate-ocr-uncertainty.ts` | **Phase 8.2F-9** — `evaluateOcrUncertainty` pure evaluator; no OCR SDK, no image processing, no LLM. |
+| `reality-simulation/ocr-uncertainty-regression-scaffold.ts` | **Phase 8.2F-9** — 8-case regression scaffold for OCR degradation evaluation rules. |
 | `README.md` | Architecture and safety rationale (this file). |
 
 **Phase 8.2C-7 (Evidence Gates):** audit-only hardening of `GateAuditTrace` — stable trace stage labels, explicit `sourceKind` / `evidenceRuleId` vs `proximityConstraintId` vs `terminalKey`, dry-run claim metadata, and static `traceMetadata` flags that **do not** enable production authorization or Smart Talk wiring. See `evidence-gates/README.md`.
@@ -545,6 +548,26 @@ Adds a typed scaffold that records whether a human reviewer properly inspected a
 **Regression scaffold:** 8 cases covering clean approval, acknowledged restrictions, force-approve detection, missing assessments, unreviewed moves, unsafe certainty, empty draft vacuous validity, and panic tone detection.
 
 **Safety boundary:** This phase does not generate wording, review real user text, connect to Smart Talk, call OCR or LLMs, write to a database, calculate deadlines, infer legal conclusions, or approve public output.
+
+---
+
+### Phase 8.2F-9 — OCR Uncertainty Metadata Harness
+
+**Metadata-only OCR degradation risk evaluation — no OCR SDK, no image processing, no LLM, no Smart Talk runtime, no mapper or bridge files touched.**
+
+Adds a pure metadata harness that classifies OCR degradation risk and determines whether OCR-derived input is safe to proceed structurally, requires uncertainty escalation, requires human review, or must hard-fail before any cognition step runs. This phase is a prerequisite governance layer for any future document photo / scan upload mode.
+
+**Evaluation outcomes:**
+- `hard_fail` — score < 40 or sender obscured: pipeline must not proceed
+- `human_review_required` — missing dates, unreadable amounts, or partial document: human must inspect before output
+- `proceed_with_uncertainty` — mixed lanes or possible injection text: pipeline proceeds with mandatory uncertainty boundaries
+- `proceed` — clean high-confidence scan: pipeline proceeds normally
+
+**Key `ExplanationBoundary` tokens recommended:** `do_not_calculate_deadline`, `do_not_merge_lanes`, `do_not_present_dry_run_as_fact`, `require_uncertainty_wording`, `mention_uncertainty_if_ocr_noisy`, `recommend_human_review_high_risk`.
+
+**Regression scaffold:** 8 cases covering perfect scan, missing dates, unreadable amounts, obscured sender, score-20 hard fail, mixed lanes, prompt injection text, and partial document.
+
+**Safety boundary:** No OCR SDK imported, no Tesseract / AWS Textract / any OCR library, no image processing, no LLM calls, no Smart Talk wiring, no deadline calculation, no legal inference. All `OcrEvaluationResult` objects carry `neverUserVisible: true`.
 
 ---
 

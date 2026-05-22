@@ -925,4 +925,71 @@ All outputs carry `neverUserVisible: true`. The scaffold is purely structural an
 
 ---
 
+## PHASE 8.2F-9 — OCR Uncertainty Metadata Harness
+
+**Metadata-only OCR degradation risk evaluation. No OCR SDK. No image processing. No LLM. No Smart Talk runtime. No mapper or bridge behavior changed.**
+
+Adds a pure metadata harness that classifies OCR degradation risk and determines whether OCR-derived input may be trusted by the cognition pipeline — or must be escalated to human review or hard-failed before any cognition step proceeds.
+
+### Files added
+
+| File | Role |
+|---|---|
+| `ocr-uncertainty-types.ts` | `OcrConfidenceLevel`, `OcrPipelineDisposition`, `OcrDegradationVector`, `OcrDiagnosticCode`, `OcrEvaluationResult` |
+| `evaluate-ocr-uncertainty.ts` | `evaluateOcrUncertainty({ degradation, baseConfidenceScore })` — pure evaluator |
+| `ocr-uncertainty-regression-scaffold.ts` | 8-case regression scaffold for all evaluation rules |
+
+### Type model
+
+**`OcrConfidenceLevel`**: `optimal | degraded_but_readable | critical_ambiguity | unreadable`
+
+**`OcrPipelineDisposition`**: `proceed | proceed_with_uncertainty | human_review_required | hard_fail`
+
+**`OcrDegradationVector`** — eight boolean structural flags:
+- `missingDates`, `obscuredSender`, `unreadableAmounts`, `lowResolution`, `truncatedText`, `mixedLanesDetected`, `possiblePromptInjectionText`, `partialDocumentOnly`
+
+**`OcrDiagnosticCode`** — eleven never-user-visible governance codes:
+`ocr_optimal`, `ocr_graceful_degradation`, `ocr_critical_ambiguity`, `ocr_human_review_required`, `ocr_hard_fail_unreadable`, `ocr_sender_obscured`, `ocr_missing_dates`, `ocr_unreadable_amounts`, `ocr_partial_document`, `ocr_mixed_lanes`, `ocr_prompt_injection_like_text`
+
+**`OcrEvaluationResult`** — `{ proceedAllowed, disposition, confidence, diagnostics, triggersHumanReview, recommendedBoundaries?, recommendedReviewFlags?, neverUserVisible: true, notes? }`
+
+### Evaluation rules
+
+Rules applied in severity order. Hard-fail rules short-circuit.
+
+| Priority | Trigger | Disposition | Confidence | Key boundaries |
+|---|---|---|---|---|
+| 1 (hard) | `baseConfidenceScore < 40` | `hard_fail` | `unreadable` | — |
+| 2 (hard) | `obscuredSender` | `hard_fail` | `critical_ambiguity` | — |
+| 3 | `missingDates` | `human_review_required` | `critical_ambiguity` | `do_not_calculate_deadline`, `require_uncertainty_wording` |
+| 3 | `unreadableAmounts` | `human_review_required` | `critical_ambiguity` | `require_uncertainty_wording` |
+| 3 | `partialDocumentOnly` | `human_review_required` | `critical_ambiguity` | `require_uncertainty_wording` |
+| 4 | `mixedLanesDetected` | ≥ `proceed_with_uncertainty` | ≥ `degraded_but_readable` | `do_not_merge_lanes`, `require_uncertainty_wording` |
+| 5 | `possiblePromptInjectionText` | ≥ `proceed_with_uncertainty` | ≥ `degraded_but_readable` | `do_not_present_dry_run_as_fact`, `require_uncertainty_wording` |
+| 6 | `lowResolution` or `truncatedText` | no change | demotes `optimal` → `degraded_but_readable` | `mention_uncertainty_if_ocr_noisy` |
+| 7 (clean) | none / score ≥ 80 | `proceed` | `optimal` | — |
+
+Higher-severity dispositions are never downgraded by lower-priority rules. Recommended boundaries use existing `ExplanationBoundary` tokens from `reality-simulation-types.ts`.
+
+### Regression scaffold — 8 cases
+
+| # | Case | Expected |
+|---|---|---|
+| 1 | Perfect scan, score 95 | `proceed`, `optimal`, `ocr_optimal` |
+| 2 | Missing dates, score 70 | `human_review_required`, `critical_ambiguity`, `do_not_calculate_deadline` |
+| 3 | Unreadable amounts, score 60 | `human_review_required`, `critical_ambiguity` |
+| 4 | Obscured sender, score 75 | `hard_fail`, `critical_ambiguity`, `ocr_sender_obscured` |
+| 5 | Score 20 | `hard_fail`, `unreadable`, `ocr_hard_fail_unreadable` |
+| 6 | Mixed lanes, score 80 | `proceed_with_uncertainty`, `degraded_but_readable`, `do_not_merge_lanes` |
+| 7 | Possible prompt injection, score 85 | `proceed_with_uncertainty`, `do_not_present_dry_run_as_fact` |
+| 8 | Partial document only, score 65 | `human_review_required`, `critical_ambiguity`, `recommend_human_review_high_risk` |
+
+### Safety boundary
+
+This phase does not call any OCR SDK, process images, import Tesseract / AWS Textract / any OCR library, call LLMs, connect to Smart Talk runtime, generate explanation text, calculate deadlines, or infer legal conclusions. No mapper or bridge files touched.
+
+All `OcrEvaluationResult` objects carry `neverUserVisible: true`. This harness is purely structural — its output drives governance routing, never user-visible copy.
+
+---
+
 > **Reality simulation models safe explanation space, not legal truth.**
