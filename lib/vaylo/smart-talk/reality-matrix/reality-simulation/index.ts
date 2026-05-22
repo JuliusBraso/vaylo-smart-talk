@@ -1,5 +1,5 @@
 /**
- * Reality Simulation (8.2D-1+ / extended through 8.2F-12) — pre-explanation governance skeleton.
+ * Reality Simulation (8.2D-1+ / extended through 8.2F-13) — pre-explanation governance skeleton.
  * Not Smart Talk, not UI, not user-visible prose.
  */
 
@@ -239,3 +239,23 @@ export {
   type WordingEvaluationRegressionCaseResult,
   type WordingEvaluationRegressionScaffoldResult,
 } from "./wording-evaluation-regression-scaffold";
+// ── Phase 8.2F-13 — Incident Governance & Kill Switch Scaffold ────────────────
+export type {
+  IncidentSeverity,
+  IncidentCategory,
+  IncidentSourceLayer,
+  KillSwitchDisposition,
+  IncidentDiagnosticCode,
+  IncidentGovernanceInput,
+  IncidentGovernanceResult,
+} from "./incident-governance-types";
+export {
+  INCIDENT_GOVERNANCE_SCAFFOLD_VERSION,
+  runIncidentGovernanceScaffold,
+} from "./run-incident-governance-scaffold";
+export {
+  INCIDENT_GOVERNANCE_REGRESSION_VERSION,
+  runIncidentGovernanceRegressionScaffold,
+  type IncidentGovernanceRegressionCaseResult,
+  type IncidentGovernanceRegressionScaffoldResult,
+} from "./incident-governance-regression-scaffold";

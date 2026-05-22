@@ -641,6 +641,30 @@ Adds a deterministic evaluator that classifies caller-supplied tone-matrix score
 
 ---
 
+### Phase 8.2F-13 — Incident Governance & Kill Switch Scaffold
+
+**Metadata-only incident governance — no kill switch activated, no runtime shutdown, no production incident automation, no Smart Talk runtime, no mapper or bridge files touched.**
+
+> **No real kill switch exists. No runtime shutdown capability is implemented.** All `KillSwitchDisposition` values are structural governance recommendations only.
+
+Adds a deterministic incident evaluator that classifies governance incidents by severity, category, and safety flags, and recommends the appropriate escalation posture. Severity rules are evaluated in priority order: `emergency_stop_recommended` (critical or user harm) → `restricted_mode` (high + governance breach) → `human_review_required` (medium, trust impact, pilot safety) → `monitoring_only` (low, no compromise).
+
+Category-specific diagnostics are emitted for `false_reassurance_risk`, `hallucinated_deadline_risk`, `hallucinated_enforcement_risk`, `OCR_uncertainty_failure`, and `privacy_risk`. `incident_governance_breach_detected` is always emitted when governance is compromised. `pilotShouldPause = true` on `emergency_stop_recommended`.
+
+**`runIncidentGovernanceScaffold(input)`** — pure function. No kill switch, no runtime shutdown, no DB, no OCR SDK, no LLM. Returns `IncidentGovernanceResult` with `neverUserVisible: true`.
+
+**Key types:** `IncidentSeverity`, `IncidentCategory`, `IncidentSourceLayer`, `KillSwitchDisposition`, `IncidentDiagnosticCode`, `IncidentGovernanceInput`, `IncidentGovernanceResult`.
+
+**Regression scaffold:** 8 cases — low monitoring-only, medium trust-impact, high governance breach (restricted mode), OCR failure, false reassurance escalation, deadline hallucination risk, privacy-risk critical, critical user-harm emergency stop.
+
+**Documentation:** `INCIDENT_GOVERNANCE_SCAFFOLD.md` documents the absence of a real kill switch, scaffold-only governance posture, future operational phases (incident pipeline, human escalation chain, pilot stop wiring, kill-switch integration, retrospective system).
+
+**Cross-phase integration:** `sourceLayer` values map to prior phases — `OCR` (8.2F-9), `pilot_gate` (8.2F-11), `wording_review` (8.2F-8/12), `mapper`/`bridge` (8.2F-3/4/6). Future phases can route hard-fail results from those layers directly into `runIncidentGovernanceScaffold`.
+
+**Safety boundary:** No kill switch, no runtime shutdown, no DB writes, no feature toggles, no environment variable changes, no OCR SDK, no LLM calls, no Smart Talk wiring. Pure governance metadata only.
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).

@@ -1207,4 +1207,79 @@ All `WordingEvaluationResult` objects carry `neverUserVisible: true`.
 
 ---
 
+## Phase 8.2F-13 — Incident Governance & Kill Switch Scaffold
+
+**Mode:** Governance metadata scaffold / no operational automation
+**Status:** Structural model only — no real kill switch, no runtime shutdown
+
+### Critical disclaimer
+
+**No real kill switch exists. No runtime shutdown capability is implemented.**
+All dispositions are structural governance recommendations modeled in pure metadata only.
+
+### Files
+
+| File | Role |
+|---|---|
+| `incident-governance-types.ts` | `IncidentSeverity`, `IncidentCategory`, `IncidentSourceLayer`, `KillSwitchDisposition`, `IncidentDiagnosticCode`, `IncidentGovernanceInput`, `IncidentGovernanceResult` |
+| `run-incident-governance-scaffold.ts` | `runIncidentGovernanceScaffold(input)` — pure deterministic incident evaluator |
+| `incident-governance-regression-scaffold.ts` | 8-case regression scaffold covering all escalation rules and category diagnostics |
+
+See also: `INCIDENT_GOVERNANCE_SCAFFOLD.md` in the parent `reality-matrix/` directory.
+
+### Type model
+
+**`IncidentSeverity`**: `low | medium | high | critical`
+
+**`IncidentCategory`**: `governance_breach | wording_safety_violation | OCR_uncertainty_failure | false_reassurance_risk | hallucinated_deadline_risk | hallucinated_enforcement_risk | privacy_risk | pilot_operational_risk | unknown_runtime_condition`
+
+**`KillSwitchDisposition`**: `monitoring_only | human_review_required | restricted_mode | emergency_stop_recommended`
+
+**`IncidentDiagnosticCode`** — 10 never-user-visible codes covering governance breaches, false reassurance, panic amplification, deadline/enforcement hallucination risks, privacy risk, OCR failure, kill-switch recommendation, human escalation, and restricted mode.
+
+**`IncidentGovernanceInput`** — `{ incidentId, category, severity, sourceLayer, governanceCompromised, affectsPilotSafety, affectsUserTrust, possibleUserHarm }`
+
+**`IncidentGovernanceResult`** — `{ disposition, diagnostics, escalationRequired, pilotShouldPause, governanceCompromised, neverUserVisible: true, notes }`. `pilotShouldPause = true` only for `emergency_stop_recommended`.
+
+### Escalation rules
+
+| Priority | Condition | Disposition | Key Diagnostics |
+|---|---|---|---|
+| 1 | `severity === "critical"` OR `possibleUserHarm` | `emergency_stop_recommended` | `incident_kill_switch_recommended` |
+| 2 | `severity === "high"` AND `governanceCompromised` | `restricted_mode` | `incident_restricted_mode_required` |
+| 3 | `severity === "medium"` OR `affectsUserTrust` OR `affectsPilotSafety` | `human_review_required` | `incident_requires_human_escalation` |
+| 4 | Default low severity | `monitoring_only` | — |
+
+**Governance breach rule:** `governanceCompromised === true` OR `category === "governance_breach"` always emits `incident_governance_breach_detected`.
+
+**Category diagnostics:**
+
+| Category | Diagnostic |
+|---|---|
+| `false_reassurance_risk` | `incident_false_reassurance_detected` |
+| `hallucinated_deadline_risk` | `incident_deadline_hallucination_risk` |
+| `hallucinated_enforcement_risk` | `incident_enforcement_hallucination_risk` |
+| `OCR_uncertainty_failure` | `incident_ocr_failure_detected` |
+| `privacy_risk` | `incident_privacy_risk_detected` |
+| `wording_safety_violation` (≥ medium) | `incident_panic_amplification_detected` |
+
+### Regression scaffold — 8 cases
+
+| # | Case | Expected Disposition |
+|---|---|---|
+| 1 | Low severity, no compromise | `monitoring_only`, `escalationRequired=false` |
+| 2 | Medium + `affectsUserTrust` | `human_review_required` |
+| 3 | High severity + `governanceCompromised` | `restricted_mode` + `incident_governance_breach_detected` |
+| 4 | `OCR_uncertainty_failure`, medium | `human_review_required` + `incident_ocr_failure_detected` |
+| 5 | `false_reassurance_risk`, high + user trust | `human_review_required` + `incident_false_reassurance_detected` |
+| 6 | `hallucinated_deadline_risk`, medium | `human_review_required` + `incident_deadline_hallucination_risk` |
+| 7 | `privacy_risk`, critical + pilot safety | `emergency_stop_recommended`, `pilotShouldPause=true` |
+| 8 | `hallucinated_enforcement_risk`, critical + `possibleUserHarm` + `governanceCompromised` | `emergency_stop_recommended`, `pilotShouldPause=true`, all diagnostics |
+
+### Safety boundary
+
+This phase does not activate a real kill switch, disable runtime systems, call OCR SDKs, call LLMs, connect to production Smart Talk, write to a database, terminate processes, modify runtime flags, add feature toggles, or call external services. All results carry `neverUserVisible: true`.
+
+---
+
 > **Reality simulation models safe explanation space, not legal truth.**
