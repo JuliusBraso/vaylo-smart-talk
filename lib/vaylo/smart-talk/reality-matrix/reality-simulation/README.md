@@ -992,4 +992,83 @@ All `OcrEvaluationResult` objects carry `neverUserVisible: true`. This harness i
 
 ---
 
+## PHASE 8.2F-10 — Redacted Corpus Foundation
+
+**Synthetic redacted exemplars only. No real PII. No real user documents. No OCR. No LLM. No Smart Talk runtime. No mapper or bridge files touched.**
+
+Establishes the data governance foundation for a future real-world redacted corpus: a typed document model, a redaction protocol, a synthetic exemplar registry, and a static privacy-hygiene validation scaffold.
+
+### Files added
+
+| File | Role |
+|---|---|
+| `redacted-corpus-types.ts` | `RedactedDocument`, `RedactionLevel`, `RedactedPlaceholder`, `RedactedCorpusValidationResult`, placeholder constant |
+| `redacted-corpus-registry.ts` | 5 synthetic exemplars — `REDACTED_DOCUMENT_CORPUS` |
+| `redacted-corpus-regression.ts` | `runRedactedCorpusRegression` — static PII-hygiene and structural validation |
+| `../REDACTED_CORPUS_FOUNDATION.md` | Full redaction protocol and future admission rules |
+
+### Type model
+
+**`RedactedDocumentCategory`**: `finanzamt_bescheid | rundfunkbeitrag | inkasso_mahnung | jobcenter_bescheid | krankenkasse_notice | auslaenderbehoerde_letter | generic_bureaucracy`
+
+**`RedactionLevel`**: `synthetic_redacted_exemplar | fully_anonymized | rejected_contains_possible_pii`
+
+**`RedactedCorpusSourceKind`**: `synthetic_exemplar | future_real_redacted | imported_test_fixture`
+
+**`RedactedPlaceholder`** — 11 standard tokens:
+`[NAME]`, `[ADDRESS]`, `[DATE]`, `[AMOUNT]`, `[AKTENZEICHEN]`, `[CUSTOMER_ID]`, `[IBAN]`, `[PHONE]`, `[EMAIL]`, `[AUTHORITY]`, `[CITY]`
+
+**`RedactedDocument`** — corpus entry: `documentId`, `category`, `sourceKind`, `redactionLevel`, `simulatedOcrConfidence`, `redactedText`, `expectedComplexity`, `expectedRiskDomains`, `expectedOcrDegradation?` (uses `Partial<OcrDegradationVector>` from Phase 8.2F-9), `notes`, `neverContainsRealPii: true`.
+
+### Synthetic corpus — 5 exemplars
+
+| documentId | Category | Complexity | OcrConfidence |
+|---|---|---|---|
+| `synthetic-finanzamt-bescheid-001` | `finanzamt_bescheid` | high | 88 |
+| `synthetic-rundfunkbeitrag-mahnung-001` | `rundfunkbeitrag` | low | 92 |
+| `synthetic-inkasso-mahnung-001` | `inkasso_mahnung` | high | 74 |
+| `synthetic-krankenkasse-notice-001` | `krankenkasse_notice` | medium | 95 |
+| `synthetic-auslaenderbehoerde-letter-001` | `auslaenderbehoerde_letter` | high | 68 |
+
+### Validation scaffold — `runRedactedCorpusRegression`
+
+Twelve static hygiene checks. No NLP. No LLM. Pattern matching only.
+
+| # | Check | Failure bucket |
+|---|---|---|
+| 1 | At least 5 documents | `notes` warning |
+| 2 | Unique `documentId` | `duplicateDocumentIds` |
+| 3 | Non-empty `redactedText` | `emptyTextDocumentIds` |
+| 4 | `redactedText.length > 80` | `tooShortTextDocumentIds` |
+| 5 | `simulatedOcrConfidence` in [0, 100] | `invalidConfidenceDocumentIds` |
+| 6 | `neverContainsRealPii === true` (runtime guard) | `possiblePiiDocumentIds` |
+| 7 | No email pattern outside `[EMAIL]` | `possiblePiiDocumentIds` |
+| 8 | No German phone pattern outside `[PHONE]` | `possiblePiiDocumentIds` |
+| 9 | No raw IBAN pattern (DE...) outside `[IBAN]` | `possiblePiiDocumentIds` |
+| 10 | At least one standard placeholder present | `missingPlaceholderCoverageDocumentIds` |
+| 11 | `sourceKind === "synthetic_exemplar"` for current corpus | `notes` warning |
+| 12 | No banned name fragments (small static list) | `possiblePiiDocumentIds` |
+
+`valid = true` when no critical errors (duplicate IDs, empty text, PII detected).
+`fullyConsistent = true` when `valid` AND no structural warnings.
+
+### Redaction protocol summary
+
+1. No real PII in repo — ever
+2. All PII fields use `RedactedPlaceholder` tokens only
+3. No unredacted originals stored (no PDF, image, raw OCR output)
+4. Human review gate required before any real-world entry is admitted
+5. Validation scaffold must pass before commit
+6. Only `synthetic_exemplar` entries in Phase 8.2F-10; future real entries require separate review gate
+
+### Cross-phase integration
+
+`expectedOcrDegradation` on each `RedactedDocument` uses `Partial<OcrDegradationVector>` from Phase 8.2F-9, enabling future regression pipelines to feed corpus entries directly into `evaluateOcrUncertainty` for end-to-end structural testing.
+
+### Safety boundary
+
+This phase does not read files, import `fs`, connect to a database, call OCR SDKs, call LLMs, generate explanation text, connect to Smart Talk, calculate deadlines, or infer legal conclusions. No mapper or bridge files were modified.
+
+---
+
 > **Reality simulation models safe explanation space, not legal truth.**

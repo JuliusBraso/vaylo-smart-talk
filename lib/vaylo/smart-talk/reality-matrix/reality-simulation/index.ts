@@ -1,5 +1,5 @@
 /**
- * Reality Simulation (8.2D-1+ / extended through 8.2F-9) — pre-explanation governance skeleton.
+ * Reality Simulation (8.2D-1+ / extended through 8.2F-10) — pre-explanation governance skeleton.
  * Not Smart Talk, not UI, not user-visible prose.
  */
 
@@ -183,3 +183,21 @@ export {
   type OcrUncertaintyRegressionCaseResult,
   type OcrUncertaintyRegressionScaffoldResult,
 } from "./ocr-uncertainty-regression-scaffold";
+// ── Phase 8.2F-10 — Redacted Corpus Foundation ───────────────────────────────
+export type {
+  RedactedDocumentCategory,
+  RedactionLevel,
+  RedactedCorpusSourceKind,
+  RedactedPlaceholder,
+  RedactedDocument,
+  RedactedCorpusValidationResult,
+} from "./redacted-corpus-types";
+export { KNOWN_REDACTED_PLACEHOLDERS } from "./redacted-corpus-types";
+export {
+  REDACTED_DOCUMENT_CORPUS_VERSION,
+  REDACTED_DOCUMENT_CORPUS,
+} from "./redacted-corpus-registry";
+export {
+  REDACTED_CORPUS_REGRESSION_VERSION,
+  runRedactedCorpusRegression,
+} from "./redacted-corpus-regression";

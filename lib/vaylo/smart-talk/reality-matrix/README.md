@@ -511,6 +511,10 @@ Matrix **`EvidenceRule`** rows are evaluated against normalized **`CueHit`**s vi
 | `reality-simulation/ocr-uncertainty-types.ts` | **Phase 8.2F-9** — `OcrConfidenceLevel`, `OcrPipelineDisposition`, `OcrDegradationVector`, `OcrDiagnosticCode`, `OcrEvaluationResult`. |
 | `reality-simulation/evaluate-ocr-uncertainty.ts` | **Phase 8.2F-9** — `evaluateOcrUncertainty` pure evaluator; no OCR SDK, no image processing, no LLM. |
 | `reality-simulation/ocr-uncertainty-regression-scaffold.ts` | **Phase 8.2F-9** — 8-case regression scaffold for OCR degradation evaluation rules. |
+| `reality-simulation/redacted-corpus-types.ts` | **Phase 8.2F-10** — `RedactedDocument`, placeholder model, `RedactedCorpusValidationResult`. |
+| `reality-simulation/redacted-corpus-registry.ts` | **Phase 8.2F-10** — `REDACTED_DOCUMENT_CORPUS` with 5 synthetic exemplars; no real PII. |
+| `reality-simulation/redacted-corpus-regression.ts` | **Phase 8.2F-10** — `runRedactedCorpusRegression`; static PII-hygiene and structural validation. |
+| `REDACTED_CORPUS_FOUNDATION.md` | **Phase 8.2F-10** — redaction protocol, placeholder standard, admission rules, future roadmap. |
 | `README.md` | Architecture and safety rationale (this file). |
 
 **Phase 8.2C-7 (Evidence Gates):** audit-only hardening of `GateAuditTrace` — stable trace stage labels, explicit `sourceKind` / `evidenceRuleId` vs `proximityConstraintId` vs `terminalKey`, dry-run claim metadata, and static `traceMetadata` flags that **do not** enable production authorization or Smart Talk wiring. See `evidence-gates/README.md`.
@@ -568,6 +572,29 @@ Adds a pure metadata harness that classifies OCR degradation risk and determines
 **Regression scaffold:** 8 cases covering perfect scan, missing dates, unreadable amounts, obscured sender, score-20 hard fail, mixed lanes, prompt injection text, and partial document.
 
 **Safety boundary:** No OCR SDK imported, no Tesseract / AWS Textract / any OCR library, no image processing, no LLM calls, no Smart Talk wiring, no deadline calculation, no legal inference. All `OcrEvaluationResult` objects carry `neverUserVisible: true`.
+
+---
+
+### Phase 8.2F-10 — Redacted Corpus Foundation
+
+**Synthetic redacted exemplars only — no real PII, no real user documents, no OCR, no LLM, no Smart Talk runtime, no mapper or bridge files touched.**
+
+Establishes the data governance foundation for a future real-world redacted corpus. Defines the redaction protocol, typed document model, 5 synthetic exemplars, and a static privacy-hygiene validation scaffold.
+
+**Redaction protocol highlights:**
+- No real PII ever in repo
+- All PII fields use standardised `[PLACEHOLDER]` tokens
+- No unredacted originals stored (no PDF, image, or raw OCR dump)
+- Human review gate required for all future real-world entries
+- `runRedactedCorpusRegression` must pass before any entry is committed
+
+**Synthetic corpus — 5 exemplars:** `finanzamt_bescheid` (high, OCR 88), `rundfunkbeitrag` (low, OCR 92), `inkasso_mahnung` (high, OCR 74), `krankenkasse_notice` (medium, OCR 95), `auslaenderbehoerde_letter` (high, OCR 68). All `neverContainsRealPii: true`.
+
+**Validation scaffold (`runRedactedCorpusRegression`):** 12 static hygiene checks including unique IDs, text length, confidence range, `neverContainsRealPii` invariant, email / phone / raw IBAN pattern detection, placeholder coverage, and banned name fragment check. No NLP. No LLM. Pattern matching only.
+
+**Cross-phase integration:** `expectedOcrDegradation` on `RedactedDocument` uses `Partial<OcrDegradationVector>` from Phase 8.2F-9, enabling future regression pipelines to route corpus entries through `evaluateOcrUncertainty` for end-to-end structural testing.
+
+**Safety boundary:** No file system access (`fs` not imported), no database writes, no OCR SDK calls, no LLM calls, no Smart Talk wiring, no deadline calculation, no legal inference.
 
 ---
 
