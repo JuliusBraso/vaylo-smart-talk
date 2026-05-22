@@ -816,4 +816,32 @@ input.accessTier !== explanationContract.accessTier
 
 ---
 
+## PHASE 8.2F-7 — Trusted User Pilot Gate
+
+**Pre-pilot governance readiness only. No simulation runtime change. No mapper change. No bridge runtime change.**
+
+Adds root-level pilot gate artifacts:
+
+- **`../TRUSTED_USER_PILOT_GATE.md`** — Trusted-user pilot governance gate specification: readiness classifications, mandatory pilot rules, allowed/disallowed scope, stop conditions, escalation path, trust-signal requirements, and future pilot roadmap.
+
+- **`../trusted-user-pilot-gate-types.ts`** — Typed pilot readiness model: `TrustedUserPilotReadiness`, `TrustedUserPilotBlockingIssue`, `TrustedUserPilotWarning`, `TrustedUserPilotConstraint`, `TrustedUserPilotScope`, `TrustedUserPilotStopCondition`, `TrustedUserPilotEscalationRule`, `TrustedUserPilotAllowedDocumentFamily`, and `TrustedUserPilotForbiddenScenario`.
+
+- **`../trusted-user-pilot-readiness-scaffold.ts`** — Pure static `evaluateTrustedUserPilotReadiness()` scaffold returning readiness level, blocking issues, warnings, operational constraints, allowed scope, stop conditions, escalation rules, and notes.
+
+### Readiness classification
+
+| Classification | Scope |
+|---|---|
+| `READY` | Internal governance dry-run testing, synthetic corpus regression, structural cognition testing |
+| `LIMITED READY` | Narrow trusted-user pilot, supervised manual review, non-authoritative framing only |
+| `NOT READY` | Public launch, autonomous execution, DNA integration, production OCR cognition, B2B deployment, legal authority positioning |
+
+### Pilot gate boundary
+
+This phase sits **above** the simulation and mapper stack. It does not alter `runRealitySimulation`, Evidence Gates, Simulation -> Explanation Contract behavior, free/paid mappers, bridge routing, diagnostics, API routes, UI, OCR, LLM calls, payment logic, or production rendering.
+
+The readiness scaffold performs no live checks and does not launch any pilot path.
+
+---
+
 > **Reality simulation models safe explanation space, not legal truth.**
