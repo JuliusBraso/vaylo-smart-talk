@@ -844,4 +844,85 @@ The readiness scaffold performs no live checks and does not launch any pilot pat
 
 ---
 
+## PHASE 8.2F-8 — Internal Human Wording Review Scaffold
+
+**Metadata-only human review governance layer. No prose generation. No real user content reviewed. No pilot activation. No database. No LLM. No OCR. No Smart Talk wiring.**
+
+Adds a typed scaffold that records whether a human reviewer properly inspected a `RuntimeExplanationDraft` against all active governance constraints before any future pilot output could be trusted.
+
+### Files added
+
+| File | Role |
+|---|---|
+| `wording-review-types.ts` | `WordingReviewVerdict`, `SectionWordingAssessment`, `WordingReviewSnapshot`, `WordingReviewComplianceResult`, `WordingReviewDiagnostic`, `WordingReviewDiagnosticCode` |
+| `run-wording-review-scaffold.ts` | `verifyHumanReviewCompliance({ draft, review })` — pure compliance function |
+| `wording-review-regression-scaffold.ts` | 8-case regression scaffold exercising all compliance rules |
+
+### Type model
+
+**`WordingReviewVerdict`** — four values:
+- `approved` — reviewer attests all sections inspected and pass
+- `needs_revision` — structural or wording changes required
+- `rejected_with_escalation` — escalation needed before proceeding
+- `hard_fail_governance_breach` — reviewer attempted to force-approve with compliance gaps, or unsafe certainty / panic tone detected
+
+**`WordingReviewDiagnosticCode`** — eight structural codes:
+- `review_integrity_failure` — force-approve detected
+- `review_missing_section_assessment` — section has no reviewer coverage
+- `review_unacknowledged_blocked_reason` — blocked reason code not acknowledged
+- `review_unreviewed_forbidden_move` — applied forbidden move not reviewed
+- `review_unreviewed_required_constraint` — applied required constraint not reviewed
+- `review_detected_move_leakage` — reviewer observed forbidden-move content despite suppression
+- `review_detected_unsafe_certainty` — reviewer observed false certainty in output
+- `review_detected_panic_tone` — reviewer observed panic amplification
+
+**`SectionWordingAssessment`** — per-section: `humanReviewed`, `humanApproved`, `acknowledgedBlockedReasonCodes`, `detectedMoveLeakage`, `detectedUnsafeCertainty`, `detectedPanicTone`, `notes`.
+
+**`WordingReviewSnapshot`** — complete reviewer submission: sections assessed, forbidden moves reviewed, required constraints reviewed. `neverUserVisible: true` enforced.
+
+**`WordingReviewComplianceResult`** — compliance verdict: `compliant`, `governanceCompromised`, `effectiveVerdict`, `diagnostics`, gap arrays, `notes`. `neverUserVisible: true` enforced.
+
+### Compliance rules
+
+1. Every `sectionDraft` must have a corresponding `SectionWordingAssessment`.
+2. Every `appliedForbiddenMove` must be listed in `reviewedForbiddenMoves`. Forbidden moves are normal governance constraints — failure is when they are unreviewed, not their existence.
+3. Every `appliedRequiredConstraint` must be listed in `reviewedRequiredConstraints`.
+4. Every `blockedReasonCode` on any section must be acknowledged in `acknowledgedBlockedReasonCodes`.
+5. Any section where `detectedMoveLeakage` is non-empty → compliance gap.
+6. Any section where `detectedUnsafeCertainty` is `true` → `governanceCompromised = true`, `effectiveVerdict = "hard_fail_governance_breach"` (regardless of reviewer verdict).
+7. Any section where `detectedPanicTone` is `true` → same governance compromise as above.
+
+### Human override protection
+
+Humans may not force-approve structural governance gaps silently.
+
+If `review.verdict === "approved"` but any compliance gap exists:
+- `compliant = false`
+- `governanceCompromised = true`
+- `effectiveVerdict = "hard_fail_governance_breach"`
+- `review_integrity_failure` diagnostic emitted
+
+Honest verdicts (`needs_revision`, `rejected_with_escalation`) that detect safety issues (unsafe certainty, panic tone) trigger governance compromise without emitting `review_integrity_failure` — the reviewer was honest, but the content cannot proceed.
+
+### Regression scaffold — 8 cases
+
+| # | Case | Expected outcome |
+|---|---|---|
+| 1 | Clean draft + complete approved review | `compliant=true`, no diagnostics |
+| 2 | Restricted draft + acknowledged blocked + `needs_revision` | `compliant=true`, `governanceCompromised=false` |
+| 3 | Restricted draft + force-approved without acknowledgement | `governanceCompromised=true`, `hard_fail_governance_breach` |
+| 4 | Missing section assessment | `compliant=false`, `review_integrity_failure` emitted |
+| 5 | Unreviewed forbidden move + `approved` verdict | `governanceCompromised=true`, `hard_fail_governance_breach` |
+| 6 | Reviewer detects unsafe certainty (`rejected_with_escalation`) | `governanceCompromised=true`, no `review_integrity_failure` |
+| 7 | Empty draft + approved review | `compliant=true`, vacuously valid |
+| 8 | Reviewer detects panic tone + `approved` verdict | `governanceCompromised=true`, `review_integrity_failure` emitted |
+
+### Safety boundary
+
+This phase does not generate prose, review real user content, connect to Smart Talk, call OCR or LLMs, write database records, calculate deadlines, infer legal conclusions, or approve public output.
+
+All outputs carry `neverUserVisible: true`. The scaffold is purely structural and its results are never surfaced to users.
+
+---
+
 > **Reality simulation models safe explanation space, not legal truth.**

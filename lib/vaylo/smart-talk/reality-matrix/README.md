@@ -505,6 +505,9 @@ Matrix **`EvidenceRule`** rows are evaluated against normalized **`CueHit`**s vi
 | `TRUSTED_USER_PILOT_GATE.md` | **Phase 8.2F-7** — trusted-user pilot governance gate, readiness classification, scope, stop conditions, escalation, and rollout roadmap. |
 | `trusted-user-pilot-gate-types.ts` | **Phase 8.2F-7** — typed pilot readiness model only; no runtime execution. |
 | `trusted-user-pilot-readiness-scaffold.ts` | **Phase 8.2F-7** — pure static readiness scaffold; no live checks or Smart Talk wiring. |
+| `reality-simulation/wording-review-types.ts` | **Phase 8.2F-8** — `WordingReviewVerdict`, `SectionWordingAssessment`, `WordingReviewSnapshot`, `WordingReviewComplianceResult`, diagnostic types. |
+| `reality-simulation/run-wording-review-scaffold.ts` | **Phase 8.2F-8** — `verifyHumanReviewCompliance` pure function; metadata only, no prose, no LLM. |
+| `reality-simulation/wording-review-regression-scaffold.ts` | **Phase 8.2F-8** — 8-case regression scaffold for human review compliance rules. |
 | `README.md` | Architecture and safety rationale (this file). |
 
 **Phase 8.2C-7 (Evidence Gates):** audit-only hardening of `GateAuditTrace` — stable trace stage labels, explicit `sourceKind` / `evidenceRuleId` vs `proximityConstraintId` vs `terminalKey`, dry-run claim metadata, and static `traceMetadata` flags that **do not** enable production authorization or Smart Talk wiring. See `evidence-gates/README.md`.
@@ -514,6 +517,34 @@ Matrix **`EvidenceRule`** rows are evaluated against normalized **`CueHit`**s vi
 **Phase 8.2C-9 (Evidence Gates):** `resolveTrapActivations` adds **`trace.dryRunTrapActivations`** — hallucination trap **`candidate_*`** signals only (governance observability); **no** runtime suppression, **no** explanation rewrite, **no** Smart Talk enforcement. See `evidence-gates/README.md`.
 
 **Phase 8.2C-10 (Evidence Gates):** `resolveStabilizerCandidates` adds **`trace.dryRunStabilizerCandidates`** — stabilizer **catalog-id** governance candidates only; **no** matrix example wording in the trace, **no** user-visible copy, **no** Smart Talk emission. See `evidence-gates/README.md`.
+
+---
+
+### Phase 8.2F-8 — Internal Human Wording Review Scaffold
+
+**Metadata-only human review governance layer — no prose generation, no real user content reviewed, no pilot activation, no database writes, no LLM, no OCR, no Smart Talk production wiring.**
+
+Adds a typed scaffold that records whether a human reviewer properly inspected a `RuntimeExplanationDraft` against all active governance constraints before any future pilot output could be trusted. This phase is a prerequisite governance layer for any future trusted-user pilot; it does not activate the pilot.
+
+**Key types:**
+- `WordingReviewVerdict` — `approved | needs_revision | rejected_with_escalation | hard_fail_governance_breach`
+- `SectionWordingAssessment` — per-section reviewer record: `humanReviewed`, `humanApproved`, acknowledged blocked codes, detected leakage / unsafe certainty / panic tone
+- `WordingReviewSnapshot` — full reviewer submission, `neverUserVisible: true`
+- `WordingReviewComplianceResult` — compliance verdict with `compliant`, `governanceCompromised`, `effectiveVerdict`, `diagnostics`, and gap arrays, `neverUserVisible: true`
+
+**Eight compliance rules enforced by `verifyHumanReviewCompliance`:**
+1. Every section draft has a corresponding assessment
+2. Every applied forbidden move is reviewed (forbidden moves are normal governance constraints — unreviewed moves are the failure, not their existence)
+3. Every applied required constraint is reviewed
+4. Every `blockedReasonCode` on a section is acknowledged by the reviewer
+5. Reviewer-detected move leakage → compliance gap
+6. Reviewer-detected unsafe certainty → `governanceCompromised = true`, `effectiveVerdict = "hard_fail_governance_breach"`
+7. Reviewer-detected panic tone → same governance compromise
+8. `review.verdict === "approved"` with any compliance gap → `review_integrity_failure`, `governanceCompromised = true`, `hard_fail_governance_breach` — humans may not silently override governance
+
+**Regression scaffold:** 8 cases covering clean approval, acknowledged restrictions, force-approve detection, missing assessments, unreviewed moves, unsafe certainty, empty draft vacuous validity, and panic tone detection.
+
+**Safety boundary:** This phase does not generate wording, review real user text, connect to Smart Talk, call OCR or LLMs, write to a database, calculate deadlines, infer legal conclusions, or approve public output.
 
 ---
 

@@ -1,5 +1,5 @@
 /**
- * Reality Simulation (8.2D-1+ / extended through 8.2F-6) — pre-explanation governance skeleton.
+ * Reality Simulation (8.2D-1+ / extended through 8.2F-8) — pre-explanation governance skeleton.
  * Not Smart Talk, not UI, not user-visible prose.
  */
 
@@ -146,3 +146,22 @@ export {
   type SmartTalkBridgeDryRunRegressionCaseResult,
   type SmartTalkBridgeDryRunRegressionResult,
 } from "./smart-talk-bridge-dry-run-regression";
+// ── Phase 8.2F-8 — Internal Human Wording Review Scaffold ────────────────────
+export type {
+  WordingReviewVerdict,
+  WordingReviewDiagnosticCode,
+  WordingReviewDiagnostic,
+  SectionWordingAssessment,
+  WordingReviewSnapshot,
+  WordingReviewComplianceResult,
+} from "./wording-review-types";
+export {
+  WORDING_REVIEW_SCAFFOLD_VERSION,
+  verifyHumanReviewCompliance,
+} from "./run-wording-review-scaffold";
+export {
+  WORDING_REVIEW_REGRESSION_VERSION,
+  runWordingReviewRegressionScaffold,
+  type WordingReviewRegressionCaseResult,
+  type WordingReviewRegressionScaffoldResult,
+} from "./wording-review-regression-scaffold";
