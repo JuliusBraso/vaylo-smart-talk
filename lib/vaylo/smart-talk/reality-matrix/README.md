@@ -518,6 +518,9 @@ Matrix **`EvidenceRule`** rows are evaluated against normalized **`CueHit`**s vi
 | `reality-simulation/limited-pilot-gate-types.ts` | **Phase 8.2F-11** — `PilotAccessDisposition`, `PilotGateDiagnosticCode`, `LimitedPilotGateInput/Result`, subject/telemetry/scope types. |
 | `reality-simulation/run-limited-pilot-gate-scaffold.ts` | **Phase 8.2F-11** — `runLimitedPilotGateScaffold` pure gate function; no pilot activation, no DB, no auth. |
 | `reality-simulation/limited-pilot-gate-regression-scaffold.ts` | **Phase 8.2F-11** — 8-case regression scaffold for all gate rules. |
+| `reality-simulation/wording-evaluation-types.ts` | **Phase 8.2F-12** — `WordingToneMatrix`, `WordingEvaluationDisposition`, `WordingViolationCode`, `WordingEvaluationInput/Result`. |
+| `reality-simulation/run-wording-evaluation-scaffold.ts` | **Phase 8.2F-12** — `evaluateExplanationWordingScaffold` pure evaluator; no NLP, no LLM, no real text. |
+| `reality-simulation/wording-evaluation-regression-scaffold.ts` | **Phase 8.2F-12** — 8-case regression scaffold for all wording-risk evaluation rules. |
 | `README.md` | Architecture and safety rationale (this file). |
 
 **Phase 8.2C-7 (Evidence Gates):** audit-only hardening of `GateAuditTrace` — stable trace stage labels, explicit `sourceKind` / `evidenceRuleId` vs `proximityConstraintId` vs `terminalKey`, dry-run claim metadata, and static `traceMetadata` flags that **do not** enable production authorization or Smart Talk wiring. See `evidence-gates/README.md`.
@@ -621,6 +624,20 @@ Models whether a hypothetical trusted-pilot transaction would be allowed, blocke
 **Regression scaffold:** 8 cases — clean pass, not invited, missing consent, session limit, OCR score-20 hard fail, missing-dates human review, obscured sender, real document governance breach.
 
 **Safety boundary:** No pilot activation, no real user access, no DB reads, no auth implementation, no consent capture, no OCR SDK, no LLM, no Smart Talk wiring.
+
+---
+
+### Phase 8.2F-12 — Runtime Explanation Wording Evaluation Scaffold
+
+**Metadata-only wording risk evaluation — no real text analysed, no NLP, no LLM, no prose generated, no Smart Talk runtime, no mapper or bridge files touched.**
+
+Adds a deterministic evaluator that classifies caller-supplied tone-matrix scores against governance thresholds. Zero-tolerance hard fails cover authoritative legal advice, false reassurance, and manipulative framing. Panic guard hard-fails above threshold 30. Ambiguity guard triggers human review above threshold 40. Insufficient empathetic clarity triggers human review. `isSafeForUser: true` only on `approved` disposition.
+
+**`evaluateExplanationWordingScaffold(input)`** — pure function. No NLP, no LLM, no real text. Clamps all scores to [0, 100]. Returns `WordingEvaluationResult` with `neverUserVisible: true`.
+
+**Regression scaffold:** 8 cases — perfect approval, authoritative advice, false reassurance, panic, confusing ambiguity, manipulative, low clarity, out-of-range clamping.
+
+**Safety boundary:** No real text evaluated, no NLP, no LLM calls, no prose generated, no Smart Talk wiring. Pure metadata threshold evaluation.
 
 ---
 

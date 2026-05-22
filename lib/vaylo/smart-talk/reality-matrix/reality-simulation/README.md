@@ -1142,4 +1142,69 @@ All `LimitedPilotGateResult` objects carry `neverUserVisible: true`. This scaffo
 
 ---
 
+## PHASE 8.2F-12 — Runtime Explanation Wording Evaluation Scaffold
+
+**Metadata-only wording risk evaluation. No real text analysed. No NLP. No LLM. No prose generated. No Smart Talk runtime. No mapper or bridge files touched.**
+
+Adds a deterministic metadata evaluator that classifies caller-supplied wording-risk scores against governance thresholds, determining whether future explanation wording is safe, requires human review, or must hard-fail before any text reaches a user.
+
+### Files added
+
+| File | Role |
+|---|---|
+| `wording-evaluation-types.ts` | `WordingToneMatrix`, `WordingEvaluationDisposition`, `WordingViolationCode`, `WordingEvaluationInput`, `WordingEvaluationResult` |
+| `run-wording-evaluation-scaffold.ts` | `evaluateExplanationWordingScaffold(input)` — pure deterministic evaluator |
+| `wording-evaluation-regression-scaffold.ts` | 8-case regression scaffold for all evaluation rules |
+
+### Type model
+
+**`WordingToneMatrix`** — six caller-supplied metadata scores (all clamped to [0, 100]):
+- `authoritativeLegalAdvice` — zero tolerance
+- `falseReassurance` — zero tolerance
+- `panicInducing` — hard fail if > 30
+- `manipulative` — zero tolerance
+- `confusingAmbiguity` — human review if > 40
+- `empatheticClarity` — must be ≥ 50 for approval
+
+**`WordingEvaluationDisposition`**: `approved | human_review_required | hard_fail_tone_violation`
+
+**`WordingViolationCode`** — 6 never-user-visible codes: `tone_authoritative_advice_detected`, `tone_false_reassurance_detected`, `tone_panic_inducing_detected`, `tone_manipulative_detected`, `tone_highly_ambiguous`, `tone_insufficient_clarity`
+
+**`WordingEvaluationResult`** — `{ disposition, violations, isSafeForUser, clampedToneMatrix, neverUserVisible: true, notes? }`. `isSafeForUser` is `true` only when `disposition === "approved"`.
+
+### Evaluation rules
+
+| Priority | Trigger | Violation | Disposition |
+|---|---|---|---|
+| 1 | `authoritativeLegalAdvice > 0` | `tone_authoritative_advice_detected` | `hard_fail_tone_violation` |
+| 1 | `falseReassurance > 0` | `tone_false_reassurance_detected` | `hard_fail_tone_violation` |
+| 1 | `manipulative > 0` | `tone_manipulative_detected` | `hard_fail_tone_violation` |
+| 2 | `panicInducing > 30` | `tone_panic_inducing_detected` | `hard_fail_tone_violation` |
+| 3 | `confusingAmbiguity > 40` | `tone_highly_ambiguous` | `human_review_required` |
+| 4 | No violations + `empatheticClarity >= 50` | — | `approved` |
+| 5 | No hard violations + `empatheticClarity < 50` | `tone_insufficient_clarity` | `human_review_required` |
+
+Hard-fail violations take precedence over ambiguity/clarity checks. All scores are clamped to [0, 100] before evaluation; `clampedToneMatrix` in the result always reflects the post-clamp values.
+
+### Regression scaffold — 8 cases
+
+| # | Case | Expected |
+|---|---|---|
+| 1 | All zeros, empatheticClarity 85 | `approved`, `isSafeForUser=true` |
+| 2 | `authoritativeLegalAdvice=25` | `hard_fail_tone_violation` |
+| 3 | `falseReassurance=15` | `hard_fail_tone_violation` |
+| 4 | `panicInducing=55` | `hard_fail_tone_violation` |
+| 5 | `confusingAmbiguity=65`, clarity 70 | `human_review_required`, `tone_highly_ambiguous` |
+| 6 | `manipulative=10` | `hard_fail_tone_violation` |
+| 7 | `empatheticClarity=30`, no other issues | `human_review_required`, `tone_insufficient_clarity` |
+| 8 | `authoritativeLegalAdvice=150`, `empatheticClarity=200` | `hard_fail_tone_violation`, clamped to 100 |
+
+### Safety boundary
+
+This phase does not evaluate real text, call NLP libraries, call LLMs, generate prose, connect to Smart Talk, write to a database, calculate deadlines, or infer legal conclusions. All scores are pure metadata supplied by the caller.
+
+All `WordingEvaluationResult` objects carry `neverUserVisible: true`.
+
+---
+
 > **Reality simulation models safe explanation space, not legal truth.**

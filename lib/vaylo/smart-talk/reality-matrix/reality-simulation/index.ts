@@ -1,5 +1,5 @@
 /**
- * Reality Simulation (8.2D-1+ / extended through 8.2F-11) — pre-explanation governance skeleton.
+ * Reality Simulation (8.2D-1+ / extended through 8.2F-12) — pre-explanation governance skeleton.
  * Not Smart Talk, not UI, not user-visible prose.
  */
 
@@ -221,3 +221,21 @@ export {
   type LimitedPilotGateRegressionCaseResult,
   type LimitedPilotGateRegressionScaffoldResult,
 } from "./limited-pilot-gate-regression-scaffold";
+// ── Phase 8.2F-12 — Runtime Explanation Wording Evaluation Scaffold ───────────
+export type {
+  WordingToneMatrix,
+  WordingEvaluationDisposition,
+  WordingViolationCode,
+  WordingEvaluationInput,
+  WordingEvaluationResult,
+} from "./wording-evaluation-types";
+export {
+  WORDING_EVALUATION_SCAFFOLD_VERSION,
+  evaluateExplanationWordingScaffold,
+} from "./run-wording-evaluation-scaffold";
+export {
+  WORDING_EVALUATION_REGRESSION_VERSION,
+  runWordingEvaluationRegressionScaffold,
+  type WordingEvaluationRegressionCaseResult,
+  type WordingEvaluationRegressionScaffoldResult,
+} from "./wording-evaluation-regression-scaffold";
