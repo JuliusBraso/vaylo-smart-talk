@@ -1,7 +1,8 @@
 /**
  * Runtime Explanation Mapper types (Phase 8.2F-1 sketch / 8.2F-2 skeleton /
  * 8.2F-3 free-preview codes / 8.2F-4 paid codes /
- * 8.2F-6 Smart Talk Bridge Dry Run input+output types).
+ * 8.2F-6 Smart Talk Bridge Dry Run input+output types /
+ * 8.2F-6A bridge_contract_tier_mismatch diagnostic code).
  *
  * Safety guarantees (all phases):
  * - no mapper function in this file
@@ -125,14 +126,16 @@ export interface RuntimeExplanationDraft {
 
 /**
  * Typed diagnostic codes emitted exclusively by the Smart Talk Bridge Dry Run
- * layer (Phase 8.2F-6). Never user-visible.
+ * layer (Phase 8.2F-6 / 8.2F-6A). Never user-visible.
  */
 export type BridgeDiagnosticCode =
   | "bridge_governance_preservation_failure"
   | "bridge_invalid_section_invariant"
   | "bridge_free_preview_leakage"
   | "bridge_invalid_access_tier"
-  | "bridge_missing_governance_metadata";
+  | "bridge_missing_governance_metadata"
+  /** Phase 8.2F-6A: input.accessTier differs from explanationContract.accessTier. */
+  | "bridge_contract_tier_mismatch";
 
 /**
  * A never-user-visible diagnostic emitted by the bridge layer to flag

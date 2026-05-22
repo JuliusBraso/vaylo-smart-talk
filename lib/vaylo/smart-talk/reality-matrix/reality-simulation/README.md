@@ -781,4 +781,39 @@ Bridge acts as an **assertion layer above the mappers** — it does not modify t
 
 ---
 
+## PHASE 8.2F-6A — Bridge Contract Tier Mismatch Diagnostic
+
+**Surgical diagnostic hardening. No routing behavior changed. No prose. No Smart Talk wiring.**
+
+Fixes the modeling gap discovered in Phase 8.2F-6 where a bridge invocation with `input.accessTier !== explanationContract.accessTier` was silently handled without explicit observability.
+
+Changes:
+
+- **`explanation-mapper-types.ts`** (modified) — `BridgeDiagnosticCode` extended with `"bridge_contract_tier_mismatch"`.
+
+- **`run-smart-talk-bridge-dry-run.ts`** (modified) — After mapper routing and before structural validity checks, a new check compares `input.accessTier` with `input.explanationContract.accessTier`. If they differ, `bridge_contract_tier_mismatch` is appended to bridge diagnostics with a structural detail string. Routing is **not** changed — it always uses `input.accessTier`.
+
+- **`smart-talk-bridge-dry-run-regression.ts`** (modified) — Case 8 `contract_tier_mismatch_detection` added: bridge invoked with `accessTier: "paid_explanation"` and `contract.accessTier: "free_preview"`. Asserts: `bridge_contract_tier_mismatch` present in diagnostics, `mapperKind === "paid_explanation"` (routing unchanged), `structurallyValid === true`, `governancePreserved === true`, `neverUserVisible === true`.
+
+### Mismatch diagnostic behavior
+
+```
+input.accessTier !== explanationContract.accessTier
+  → emit bridge_contract_tier_mismatch (neverUserVisible: true)
+  → routing NOT changed (still uses input.accessTier)
+  → structurallyValid NOT changed
+  → governancePreserved NOT changed
+  → execution continues normally
+```
+
+`bridge_contract_tier_mismatch` is **not** in `governanceViolationCodes` — it is an observability-only diagnostic, not a governance or structural failure.
+
+### Regression case added
+
+| Case | Key Assertions |
+|------|----------------|
+| `contract_tier_mismatch_detection` | `bridge_contract_tier_mismatch` in diagnostics, `mapperKind="paid_explanation"` (routing unchanged), `structurallyValid=true`, `governancePreserved=true`, `neverUserVisible=true` |
+
+---
+
 > **Reality simulation models safe explanation space, not legal truth.**

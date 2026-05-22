@@ -34,7 +34,7 @@ import {
 } from "./run-smart-talk-bridge-dry-run";
 
 export const SMART_TALK_BRIDGE_DRY_RUN_REGRESSION_VERSION =
-  "8.2f-6-smart-talk-bridge-dry-run-regression-v1";
+  "8.2f-6a-smart-talk-bridge-dry-run-regression-v2";
 
 // ── Result types ──────────────────────────────────────────────────────────────
 
@@ -531,11 +531,114 @@ function runCase7(): SmartTalkBridgeDryRunRegressionCaseResult {
   };
 }
 
+// ── Case 8 — contract tier mismatch detection (Phase 8.2F-6A) ────────────────
+
+/**
+ * Validates that when input.accessTier ("paid_explanation") differs from
+ * explanationContract.accessTier ("free_preview"), the bridge:
+ *  - emits bridge_contract_tier_mismatch (observability)
+ *  - still routes to the paid mapper (routing unchanged)
+ *  - still passes structural validity checks
+ *  - still passes governance preservation checks
+ *  - still marks neverUserVisible: true
+ *
+ * The mismatch diagnostic is observability-only; it does NOT set
+ * governancePreserved or structurallyValid to false.
+ */
+function runCase8(): SmartTalkBridgeDryRunRegressionCaseResult {
+  const result = runSmartTalkBridgeDryRun({
+    bridgeVersion: SMART_TALK_BRIDGE_DRY_RUN_VERSION,
+    accessTier: "paid_explanation",
+    simulationResult: EMPTY_SIM_RESULT,
+    explanationContract: BASE_FREE_CONTRACT,
+    dryRunContext: "regression_case_8_contract_tier_mismatch",
+    auditTraceRef: "bridge-dry-run-regression-case-8",
+  });
+
+  const failures: string[] = [];
+  const notes: string[] = [];
+
+  // Must route to paid mapper (routing follows input.accessTier).
+  if (result.mapperKind !== "paid_explanation") {
+    failures.push(
+      `mapperKind expected "paid_explanation" (routing uses input.accessTier), got "${result.mapperKind}"`,
+    );
+  }
+
+  // bridge_contract_tier_mismatch diagnostic must be present.
+  const hasMismatchDiag = result.diagnostics.some(
+    (d) => d.code === "bridge_contract_tier_mismatch",
+  );
+  if (!hasMismatchDiag) {
+    failures.push(
+      'diagnostics must include "bridge_contract_tier_mismatch" when input.accessTier !== contract.accessTier',
+    );
+  }
+
+  // Mismatch diagnostic is observability-only — must NOT set structurallyValid = false.
+  if (!result.structurallyValid) {
+    failures.push(
+      "structurallyValid must be true — bridge_contract_tier_mismatch is observability-only, not a structural failure",
+    );
+  }
+
+  // Mismatch diagnostic is observability-only — must NOT set governancePreserved = false.
+  if (!result.governancePreserved) {
+    failures.push(
+      "governancePreserved must be true — bridge_contract_tier_mismatch is observability-only, not a governance failure",
+    );
+  }
+
+  // Overall result must remain never-user-visible.
+  if (!result.neverUserVisible) {
+    failures.push("neverUserVisible must be true on bridge result");
+  }
+
+  // All bridge diagnostics must be neverUserVisible.
+  for (const diag of result.diagnostics) {
+    if (!diag.neverUserVisible) {
+      failures.push(`Bridge diagnostic code="${diag.code}" violates neverUserVisible invariant`);
+    }
+  }
+
+  // Section structural invariants must still hold.
+  for (const section of result.draft.sectionDrafts) {
+    if (!section.sourceBound) {
+      failures.push(`Section "${section.sectionType}" violates sourceBound invariant`);
+    }
+    if (!section.neverContainsUserVisibleCopy) {
+      failures.push(`Section "${section.sectionType}" violates neverContainsUserVisibleCopy invariant`);
+    }
+  }
+
+  // No free-only section leakage (paid routing should not produce payment_preview_limited).
+  if (result.draft.sectionDrafts.some((s) => s.sectionType === "payment_preview_limited")) {
+    failures.push('Leakage: paid routing must not produce free-only section "payment_preview_limited"');
+  }
+
+  notes.push(
+    failures.length === 0
+      ? `Case "contract_tier_mismatch_detection" passed — bridge_contract_tier_mismatch emitted, routing unchanged, governance preserved, all invariants hold.`
+      : `Case "contract_tier_mismatch_detection" failed with ${String(failures.length)} failure(s).`,
+  );
+  notes.push(
+    "bridge_contract_tier_mismatch is observability-only: routing behavior, structurallyValid, and governancePreserved are not affected.",
+  );
+
+  return {
+    caseName: "contract_tier_mismatch_detection",
+    passed: failures.length === 0,
+    bridgeResult: result,
+    failures,
+    notes,
+  };
+}
+
 // ── Scaffold runner ───────────────────────────────────────────────────────────
 
 /**
- * Executes all 7 Smart Talk Bridge Dry Run regression cases and aggregates
- * the results.
+ * Executes all 8 Smart Talk Bridge Dry Run regression cases and aggregates
+ * the results. Case 8 added in Phase 8.2F-6A.
  *
  * Does not throw. All assertions are collected as failure strings.
  * No prose generated. No LLM. No OCR. No Smart Talk runtime.
@@ -549,6 +652,7 @@ export function runSmartTalkBridgeDryRunRegression(): SmartTalkBridgeDryRunRegre
     runCase5(),
     runCase6(),
     runCase7(),
+    runCase8(),
   ];
 
   const allPassed = caseResults.every((r) => r.passed);
@@ -561,7 +665,7 @@ export function runSmartTalkBridgeDryRunRegression(): SmartTalkBridgeDryRunRegre
 
   if (allPassed) {
     notes.push(
-      "All bridge pipeline routes, structural invariants, governance preservation checks, leakage checks, and neverUserVisible guarantees validated.",
+      "All bridge pipeline routes, structural invariants, governance preservation checks, leakage checks, tier-mismatch detection, and neverUserVisible guarantees validated.",
     );
   } else {
     notes.push(

@@ -120,6 +120,23 @@ export function runSmartTalkBridgeDryRun(
     draft = runFreePreviewMapper(mapperInput);
   }
 
+  // ── CONTRACT TIER MISMATCH CHECK (Phase 8.2F-6A) ─────────────────────────
+  // Observability-only diagnostic. Emitted when input.accessTier differs from
+  // explanationContract.accessTier, signalling that the bridge was invoked with
+  // a contract whose declared tier does not align with the routing tier.
+  //
+  // IMPORTANT: this check does NOT change routing behavior. Routing always uses
+  // input.accessTier (above). The diagnostic improves audit observability only.
+  // It does NOT set structurallyValid or governancePreserved to false on its own.
+  if (input.accessTier !== input.explanationContract.accessTier) {
+    bridgeDiagnostics.push(
+      makeBridgeDiag(
+        "bridge_contract_tier_mismatch",
+        `input.accessTier="${input.accessTier}" does not match explanationContract.accessTier="${input.explanationContract.accessTier}". Routing was performed on input.accessTier. Contract governance arrays remain applied.`,
+      ),
+    );
+  }
+
   // ── STRUCTURAL VALIDITY CHECKS ────────────────────────────────────────────
   // These verify that the mapper output respects section-level invariants
   // mandated by the Vaylo Document Reasoning Constitution V1.
