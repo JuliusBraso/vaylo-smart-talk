@@ -1,5 +1,6 @@
 /**
- * Runtime Explanation Wording Evaluation scaffold (Phase 8.2F-12).
+ * Runtime Explanation Wording Evaluation scaffold
+ * (Phase 8.2F-12 / 8.2F-15G wording score provenance contract).
  *
  * Implements `evaluateExplanationWordingScaffold` — a pure deterministic
  * function that evaluates wording-risk metadata scores against governance
@@ -36,11 +37,109 @@ import type {
   WordingEvaluationInput,
   WordingEvaluationResult,
   WordingToneMatrix,
+  WordingToneScoreReport,
+  WordingToneScoreReportValidationResult,
   WordingViolationCode,
 } from "./wording-evaluation-types";
 
 export const WORDING_EVALUATION_SCAFFOLD_VERSION =
-  "8.2f-12-wording-evaluation-scaffold-v1";
+  "8.2f-15g-wording-evaluation-scaffold-v2";
+
+// ── Score report validation (Phase 8.2F-15G) ─────────────────────────────────
+
+/** The tone matrix keys, kept stable for validation iteration. */
+const TONE_MATRIX_KEYS: readonly (keyof WordingToneMatrix)[] = [
+  "authoritativeLegalAdvice",
+  "falseReassurance",
+  "panicInducing",
+  "manipulative",
+  "confusingAmbiguity",
+  "empatheticClarity",
+];
+
+/**
+ * A zero `WordingToneMatrix` used as the `clampedToneMatrix` fallback when
+ * score report validation fails and no meaningful clamping is possible.
+ */
+const ZERO_TONE_MATRIX: WordingToneMatrix = {
+  authoritativeLegalAdvice: 0,
+  falseReassurance: 0,
+  panicInducing: 0,
+  manipulative: 0,
+  confusingAmbiguity: 0,
+  empatheticClarity: 0,
+};
+
+/**
+ * Validates a structured `WordingToneScoreReport` at the governance ingress.
+ *
+ * Checks only structural integrity — no LLM calls, no NLP, no text evaluation.
+ * Returns `valid: false` when required IDs are blank or matrix values are
+ * non-finite. Out-of-range (but finite) values are noted as `wording_score_clamped`
+ * and do not fail validation. Unattested reports are structurally valid but
+ * emit `wording_score_report_unattested`.
+ *
+ * Pure function — no side effects, no DB, no LLM, no NLP.
+ */
+export function validateWordingToneScoreReport(
+  report: WordingToneScoreReport,
+): WordingToneScoreReportValidationResult {
+  const diagnostics: string[] = [];
+
+  if (!report.reportId || report.reportId.trim() === "") {
+    diagnostics.push("wording_score_report_invalid: reportId is empty or blank.");
+  }
+  if (!report.evaluatorId || report.evaluatorId.trim() === "") {
+    diagnostics.push("wording_score_report_invalid: evaluatorId is empty or blank.");
+  }
+  if (!report.evaluatorVersion || report.evaluatorVersion.trim() === "") {
+    diagnostics.push("wording_score_report_invalid: evaluatorVersion is empty or blank.");
+  }
+  if (!report.generatedBy || report.generatedBy.trim() === "") {
+    diagnostics.push("wording_score_report_invalid: generatedBy is empty or blank.");
+  }
+
+  let hasNonFinite = false;
+  let hasOutOfRange = false;
+
+  for (const key of TONE_MATRIX_KEYS) {
+    const val = report.toneMatrix[key];
+    if (!Number.isFinite(val)) {
+      hasNonFinite = true;
+      diagnostics.push(
+        `wording_score_report_invalid: toneMatrix.${key}=${String(val)} is not finite.`,
+      );
+    } else if (val < 0 || val > 100) {
+      hasOutOfRange = true;
+    }
+  }
+
+  if (hasOutOfRange && !hasNonFinite) {
+    diagnostics.push(
+      "wording_score_clamped: one or more toneMatrix values are outside [0, 100] " +
+        "and will be clamped by the evaluator before scoring.",
+    );
+  }
+
+  if (report.attestationStatus === "unattested") {
+    diagnostics.push(
+      "wording_score_report_unattested: attestationStatus is 'unattested'; " +
+        "score provenance is unverified. Downstream consumers should treat " +
+        "this report as caller-supplied metadata.",
+    );
+  }
+
+  const structuralErrors = diagnostics.filter((d) =>
+    d.startsWith("wording_score_report_invalid"),
+  );
+
+  return {
+    valid: structuralErrors.length === 0 && !hasNonFinite,
+    scoreUsable: !hasNonFinite,
+    diagnostics,
+    neverUserVisible: true,
+  };
+}
 
 // ── Score clamping ────────────────────────────────────────────────────────────
 
@@ -175,4 +274,70 @@ export function evaluateExplanationWordingScaffold(
     neverUserVisible: true,
     notes,
   };
+}
+
+// ── Provenance-backed entry point (Phase 8.2F-15G) ────────────────────────────
+
+/**
+ * Evaluates wording risk scores from a structured `WordingToneScoreReport`.
+ *
+ * Preferred over `evaluateExplanationWordingScaffold` for new callers: binds
+ * score evaluation to a typed provenance contract (source kind, attestation
+ * status, evaluator identity) rather than trusting bare caller-supplied numbers.
+ *
+ * Behavior:
+ * - Validates the report structurally (`validateWordingToneScoreReport`).
+ * - If `!scoreUsable` (non-finite matrix values): returns `human_review_required`
+ *   with notes; does not call the core evaluator.
+ * - If `scoreUsable`: delegates to `evaluateExplanationWordingScaffold` with the
+ *   report's `toneMatrix`. All evaluation rules and dispositions are unchanged.
+ * - If `attestationStatus === "unattested"`: appends an informational governance
+ *   note to the result; does NOT alter the disposition.
+ *
+ * Pure function — no side effects, no DB, no LLM, no NLP, no Smart Talk.
+ */
+export function evaluateExplanationWordingFromScoreReport({
+  draftId,
+  scoreReport,
+}: {
+  readonly draftId: string;
+  readonly scoreReport: WordingToneScoreReport;
+}): WordingEvaluationResult {
+  const validation = validateWordingToneScoreReport(scoreReport);
+
+  if (!validation.scoreUsable) {
+    return {
+      disposition: "human_review_required",
+      violations: [],
+      isSafeForUser: false,
+      clampedToneMatrix: ZERO_TONE_MATRIX,
+      neverUserVisible: true,
+      notes: [
+        `WordingToneScoreReport "${scoreReport.reportId}" failed structural validation ` +
+          `(evaluatorId="${scoreReport.evaluatorId}"): ` +
+          validation.diagnostics.join("; "),
+        "Score matrix is unusable. Human review required before any wording proceeds.",
+      ],
+    };
+  }
+
+  const baseResult = evaluateExplanationWordingScaffold({
+    draftId,
+    toneMatrix: scoreReport.toneMatrix,
+    // sourceKind not forwarded — the scoreReport carries all provenance information.
+  });
+
+  if (scoreReport.attestationStatus === "unattested") {
+    return {
+      ...baseResult,
+      notes: [
+        ...(baseResult.notes ?? []),
+        `wording_score_report_unattested: attestationStatus for report ` +
+          `"${scoreReport.reportId}" is 'unattested'. Score provenance is unverified; ` +
+          "evaluation proceeds under provenance gap recorded for governance audit.",
+      ],
+    };
+  }
+
+  return baseResult;
 }

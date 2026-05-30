@@ -1,7 +1,7 @@
-# Governance Lineage Integration Audit — Phase 8.2F-15 (updated 8.2F-15F)
+# Governance Lineage Integration Audit — Phase 8.2F-15 (updated 8.2F-15G)
 
-**Version:** `8.2f-15f-governance-lineage-audit-v7`
-**Scope:** Vaylo Document Reasoning Constitution V1 — Phases 8.2A → 8.2F-15F
+**Version:** `8.2f-15g-governance-lineage-audit-v8`
+**Scope:** Vaylo Document Reasoning Constitution V1 — Phases 8.2A → 8.2F-15G
 **Mode:** Audit only / no runtime wiring / no behavior modified
 **Overall Status:** `partially_connected`
 
@@ -43,6 +43,15 @@
 > No section presence/absence behavior changed. No user-visible output.
 >
 > **8.2F-15F Update:** Debt 8 (caller-supplied pilot telemetry unauthenticated) is **partially resolved**.
+> See detail in Debt 8 section below.
+>
+> **8.2F-15G Update:** Debt 9 (caller-supplied wording tone scores unvalidated) is **partially resolved**.
+> `WordingToneScoreReport` typed provenance contract introduced in `wording-evaluation-types.ts`.
+> `validateWordingToneScoreReport` added. `evaluateExplanationWordingFromScoreReport` is the new
+> preferred provenance-backed evaluation entry point. Raw `WordingEvaluationInput` path retained
+> for backward compatibility. Non-finite scores → `human_review_required`; unattested → evaluation
+> proceeds with provenance note. No LLM judge wired. Full resolution requires a future verified
+> evaluator binding.
 > `PilotSessionReport` typed provenance contract introduced in `limited-pilot-gate-types.ts`.
 > Carries `reportId`, `sourceKind` (`PilotSessionReportSourceKind`), `attestationStatus`
 > (`PilotSessionAttestationStatus`), `totalTransactionsThisSession`, `maxSessionLimit`,
@@ -335,14 +344,29 @@ Raw telemetry fallback retained for backward compatibility.
 
 ---
 
-### Debt 9 — Caller-supplied wording tone scores are unvalidated at ingress *(Added 8.2F-15A)*
+### Debt 9 — Caller-supplied wording tone scores are unvalidated at ingress *(Added 8.2F-15A)* ⚠ PARTIALLY RESOLVED (8.2F-15G)
 
-**Severity:** Warning
+**Severity:** Warning → Informational (partially resolved)
 **Layer:** `wording_evaluation`
 
 `WordingEvaluationInput.toneMatrix` scores are entirely caller-supplied. The intended future workflow — an LLM judge or human reviewer supplies scores — is not enforced at the type layer. A caller could supply `{ authoritativeLegalAdvice: 0, falseReassurance: 0 }` for any draft, bypassing tone governance.
 
-**Resolution:** Future phases must validate score provenance. The `sourceKind` field partially addresses intent but is not enforced. A signed or attested score envelope is needed.
+**8.2F-15G Resolution:**
+`WordingToneScoreReport` typed provenance contract introduced in `wording-evaluation-types.ts`. Carries:
+- `reportId`: opaque identifier for audit tracing.
+- `sourceKind` (`WordingToneScoreReportSourceKind`): `synthetic_metadata | manual_review_metadata | future_llm_judge_metadata | imported_score_report`.
+- `attestationStatus` (`WordingToneScoreAttestationStatus`): `unattested | test_fixture_attested | manual_review_attested | future_judge_attested`.
+- `toneMatrix`: the risk scores, now bound to the provenance contract.
+- `evaluatorId`, `evaluatorVersion`, `generatedBy`, `neverUserVisible: true`.
+
+`validateWordingToneScoreReport` checks structural integrity (non-empty IDs, finite numeric values; out-of-range values noted as `wording_score_clamped`).
+`evaluateExplanationWordingFromScoreReport` is the preferred provenance-backed entry point:
+- Non-finite matrix values → `human_review_required` without calling core evaluator.
+- `attestationStatus === "unattested"` → evaluation proceeds normally + `wording_score_report_unattested` note appended.
+- Otherwise → delegates to existing `evaluateExplanationWordingScaffold`; all rules unchanged.
+Raw `WordingEvaluationInput` (toneMatrix) path retained for backward compatibility.
+
+**Remaining gap:** `WordingToneScoreReport` is still caller-constructed metadata. Full resolution requires binding to a verified score evaluator (LLM judge or attested human reviewer system) in a future production phase. No LLM calls, no NLP, no real text evaluation added.
 
 ---
 

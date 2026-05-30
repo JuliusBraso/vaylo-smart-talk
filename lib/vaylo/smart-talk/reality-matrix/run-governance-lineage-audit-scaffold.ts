@@ -1,5 +1,5 @@
 /**
- * Governance Lineage Integration Audit scaffold (Phase 8.2F-15 / updated 8.2F-15F).
+ * Governance Lineage Integration Audit scaffold (Phase 8.2F-15 / updated 8.2F-15G).
  *
  * Implements `runGovernanceLineageAuditScaffold` — a pure static inventory
  * function that returns a `GovernanceLineageAuditResult` covering the entire
@@ -85,6 +85,20 @@
  *    Partially resolved: PilotSessionReport contract exists but no session store is wired;
  *    report is still caller-constructed metadata.
  *
+ * 8.2F-15G changes:
+ *  - Technical Debt 9: caller-supplied wording tone scores are unvalidated → PARTIALLY RESOLVED.
+ *    WordingToneScoreReport type introduced in wording-evaluation-types.ts carrying reportId,
+ *    sourceKind (WordingToneScoreReportSourceKind), attestationStatus (WordingToneScoreAttestationStatus),
+ *    toneMatrix, evaluatorId, evaluatorVersion, generatedBy, and neverUserVisible:true.
+ *    WordingToneScoreReportValidationResult added for structural ingress validation.
+ *    validateWordingToneScoreReport added to run-wording-evaluation-scaffold.ts.
+ *    evaluateExplanationWordingFromScoreReport added as preferred provenance-backed entry point.
+ *    Non-finite matrix values make scoreUsable=false → human_review_required returned.
+ *    Unattested reports: evaluation proceeds + provenance note appended to result.
+ *    Raw WordingEvaluationInput (toneMatrix) path retained for backward compatibility.
+ *    Partially resolved: WordingToneScoreReport contract exists but no LLM judge is wired;
+ *    report is still caller-constructed metadata.
+ *
  * Safety guarantees:
  * - no runtime modification
  * - no telemetry
@@ -103,7 +117,7 @@ import type {
 } from "./governance-lineage-audit-types";
 
 export const GOVERNANCE_LINEAGE_AUDIT_VERSION =
-  "8.2f-15f-governance-lineage-audit-v7";
+  "8.2f-15g-governance-lineage-audit-v8";
 
 // ── Finding factory ───────────────────────────────────────────────────────────
 
@@ -457,19 +471,29 @@ const WARNING_FINDINGS: readonly GovernanceAuditFinding[] = [
       "BridgeBlockingReason that directly classifies failures (no boundary emitted, null draft, " +
       "section mismatch, tier mismatch) without requiring diagnostics array inspection.",
   ),
+  finding(
+    "wording_evaluation",
+    "informational",
+    "PARTIALLY RESOLVED (8.2F-15G): wording tone scores now have a typed provenance contract",
+    "Previously reported as a WARNING (Debt 9) in Phase 8.2F-15: " +
+      "WordingEvaluationInput.toneMatrix was a bare caller-supplied struct with no provenance. " +
+      "Partially resolved in Phase 8.2F-15G by introducing WordingToneScoreReport — a typed " +
+      "provenance contract carrying reportId, WordingToneScoreReportSourceKind, " +
+      "WordingToneScoreAttestationStatus, toneMatrix, evaluatorId, evaluatorVersion, " +
+      "generatedBy, and neverUserVisible:true. " +
+      "validateWordingToneScoreReport provides structural integrity checks (non-empty IDs, " +
+      "finite numeric values; out-of-range values noted as wording_score_clamped). " +
+      "evaluateExplanationWordingFromScoreReport is the preferred provenance-backed entry point: " +
+      "non-finite scores → human_review_required; unattested reports → evaluation proceeds + " +
+      "provenance note appended; all existing evaluation rules and dispositions unchanged. " +
+      "Raw WordingEvaluationInput (toneMatrix) path retained for backward compatibility. " +
+      "Remaining gap: no LLM judge is wired; WordingToneScoreReport is still caller-constructed " +
+      "metadata. Full resolution requires binding to a verified score evaluator in a future phase.",
+  ),
   // Technical debts identified in 8.2F-15A audit review
   // Debt 7 partially resolved in 8.2F-15E — moved to CONNECTED_LINEAGE_FINDINGS above
   // Debt 8 partially resolved in 8.2F-15F — moved to CONNECTED_LINEAGE_FINDINGS above
-  finding(
-    "wording_evaluation",
-    "warning",
-    "Technical Debt: caller-supplied wording tone scores are unvalidated at ingress",
-    "WordingEvaluationInput.toneMatrix is entirely caller-supplied. Scores are " +
-      "clamped internally but their origin is not verified. The intended future " +
-      "workflow (LLM judge or human reviewer supplies scores) is not enforced " +
-      "at the type layer. A caller could supply any scores, making tone " +
-      "evaluation bypassable. Future phases must validate score provenance.",
-  ),
+  // Debt 9 partially resolved in 8.2F-15G — moved to CONNECTED_LINEAGE_FINDINGS above
   finding(
     "provenance_audit",
     "warning",

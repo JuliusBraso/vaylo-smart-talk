@@ -1660,4 +1660,53 @@ No session store added. No database reads. No auth SDK imported. No real pilot a
 
 ---
 
+## PHASE 8.2F-15G — Wording Score Provenance Contract
+
+**Mode:** Input provenance hardening / Technical debt partial resolution
+**Files modified:** `wording-evaluation-types.ts`, `run-wording-evaluation-scaffold.ts`, `wording-evaluation-regression-scaffold.ts`
+
+### Mission
+
+Partially resolves **Debt 9**: `WordingEvaluationInput.toneMatrix` was a bare caller-supplied struct with no provenance contract. Introduces `WordingToneScoreReport` — a structured, typed provenance contract that carries source kind, attestation status, evaluator identity, and version metadata alongside the risk scores.
+
+### New Types (`wording-evaluation-types.ts`)
+
+| Type | Description |
+|---|---|
+| `WordingToneScoreReportSourceKind` | `"synthetic_metadata"` \| `"manual_review_metadata"` \| `"future_llm_judge_metadata"` \| `"imported_score_report"` |
+| `WordingToneScoreAttestationStatus` | `"unattested"` \| `"test_fixture_attested"` \| `"manual_review_attested"` \| `"future_judge_attested"` |
+| `WordingToneScoreReport` | Full provenance contract: `reportId`, `sourceKind`, `attestationStatus`, `toneMatrix`, `evaluatorId`, `evaluatorVersion`, `generatedBy`, `neverUserVisible: true` |
+| `WordingToneScoreReportValidationResult` | `{ valid, scoreUsable, diagnostics, neverUserVisible }` |
+
+### New Functions (`run-wording-evaluation-scaffold.ts`)
+
+| Function | Signature | Purpose |
+|---|---|---|
+| `validateWordingToneScoreReport` | `(report) → WordingToneScoreReportValidationResult` | Structural integrity check: non-empty IDs, finite scores; `wording_score_clamped` noted for out-of-range; `wording_score_report_unattested` for unattested |
+| `evaluateExplanationWordingFromScoreReport` | `({ draftId, scoreReport }) → WordingEvaluationResult` | Preferred provenance-backed entry point; validates report, delegates to existing evaluator |
+
+### `evaluateExplanationWordingFromScoreReport` Behavior
+
+- `!scoreUsable` (non-finite values) → `human_review_required`, zero matrix, notes explain failure; core evaluator NOT called
+- `attestationStatus === "unattested"` → evaluates normally + appends `wording_score_report_unattested` note; disposition unchanged
+- Otherwise → delegates to `evaluateExplanationWordingScaffold`; all rules and dispositions unchanged
+
+Existing `evaluateExplanationWordingScaffold(input: WordingEvaluationInput)` is **retained unchanged** for backward compatibility. Its raw `toneMatrix` path is documented as unauthenticated.
+
+### Regression Updates
+
+| Scaffold | New / updated cases |
+|---|---|
+| `wording-evaluation-regression-scaffold.ts` | Case 9: attested report, safe scores → approved |
+| `wording-evaluation-regression-scaffold.ts` | Case 10: unattested report, safe scores → approved + provenance note |
+| `wording-evaluation-regression-scaffold.ts` | Case 11: invalid report (NaN score) → human_review_required |
+| `wording-evaluation-regression-scaffold.ts` | Case 12: out-of-range report (clamped, still hard-fails) → hard_fail_tone_violation |
+| `wording-evaluation-regression-scaffold.ts` | Case 13: false reassurance report → hard_fail_tone_violation |
+
+### Safety Boundary
+
+No LLM judge added. No NLP. No real text evaluated. No prose generated. No OpenAI/Gemini calls. No Smart Talk runtime wiring. No database writes. All new types carry `neverUserVisible: true`. TypeScript and ESLint pass cleanly.
+
+---
+
 > **Reality simulation models safe explanation space, not legal truth.**

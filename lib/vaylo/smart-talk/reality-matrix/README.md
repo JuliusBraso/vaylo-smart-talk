@@ -987,9 +987,62 @@ Session overflow rule unchanged: `totalTransactions >= maxLimit → pilot_sessio
 
 `PilotSessionReport` is still caller-constructed metadata. Full resolution requires a future production phase that binds the report to a verified session store (database-backed or signed token). No auth, no DB, no real session tracking added.
 
-**Remaining open debts:** Debt 5 (cross-phase namespace isolation), Debt 6 (bridge-level typing), Debt 9 (wording scores), Debt 10 (`AuditTraceChain.structurallyValid`). Debts 7–8 partially resolved.
+**Remaining open debts:** Debt 5 (cross-phase namespace isolation), Debt 6 (bridge-level typing), Debt 9 (wording scores — partially resolved in 8.2F-15G), Debt 10 (`AuditTraceChain.structurallyValid`). Debts 7–8 partially resolved.
 
 **Safety boundary:** No session store added. No database reads. No auth SDK imported. No real pilot activation. No real session tracking. No LLM. No Smart Talk runtime wiring. No user-visible output. TypeScript and ESLint pass cleanly.
+
+---
+
+### Phase 8.2F-15G — Wording Score Provenance Contract
+
+**Input provenance hardening / technical debt resolution — no LLM judge, no NLP, no real text evaluation, no runtime wiring.**
+
+Partially resolves **Debt 9** from the Phase 8.2F-15 Governance Lineage Integration Audit.
+
+#### Problem
+
+`WordingEvaluationInput.toneMatrix` was a bare caller-supplied struct with no provenance contract. A caller could suppress any risk score or inflate `empatheticClarity` to bypass the wording safety gate.
+
+#### Solution
+
+A typed `WordingToneScoreReport` provenance contract was introduced:
+
+| New type | Purpose |
+|---|---|
+| `WordingToneScoreReportSourceKind` | Origin classification: `synthetic_metadata`, `manual_review_metadata`, `future_llm_judge_metadata`, `imported_score_report` |
+| `WordingToneScoreAttestationStatus` | Trust posture: `unattested`, `test_fixture_attested`, `manual_review_attested`, `future_judge_attested` |
+| `WordingToneScoreReport` | Structured report: `reportId`, `sourceKind`, `attestationStatus`, `toneMatrix`, `evaluatorId`, `evaluatorVersion`, `generatedBy`, `neverUserVisible: true` |
+| `WordingToneScoreReportValidationResult` | `{ valid, scoreUsable, diagnostics, neverUserVisible }` |
+
+| New function | Purpose |
+|---|---|
+| `validateWordingToneScoreReport` | Structural integrity checker: non-empty IDs, finite scores, clamp/unattested notes |
+| `evaluateExplanationWordingFromScoreReport` | Preferred provenance-backed entry point; validates report, delegates to existing evaluator |
+
+`evaluateExplanationWordingFromScoreReport` behavior:
+- Non-finite scores → `human_review_required` (core evaluator not called)
+- `"unattested"` → evaluate normally + provenance note appended
+- Otherwise → delegate to `evaluateExplanationWordingScaffold`; all rules unchanged
+
+Raw `WordingEvaluationInput` (toneMatrix) path **retained unchanged** for backward compatibility; documented as unauthenticated.
+
+#### Files modified
+
+| File | Change |
+|---|---|
+| `reality-simulation/wording-evaluation-types.ts` | 4 new types; `WordingEvaluationInput` doc note added |
+| `reality-simulation/run-wording-evaluation-scaffold.ts` | `validateWordingToneScoreReport` added; `evaluateExplanationWordingFromScoreReport` added; version `v2` |
+| `reality-simulation/wording-evaluation-regression-scaffold.ts` | Cases 9–13 added; `BASE_SCORE_REPORT` fixture; version `v2` |
+| `run-governance-lineage-audit-scaffold.ts` | Debt 9 → partially resolved; audit version `v8` |
+| `GOVERNANCE_LINEAGE_INTEGRATION_AUDIT.md` | Debt 9 marked ⚠ PARTIALLY RESOLVED |
+
+#### Remaining gap
+
+`WordingToneScoreReport` is still caller-constructed metadata. Full resolution requires a future production phase that binds the report to a verified evaluator (LLM judge or attested human reviewer system).
+
+**Remaining open debts:** Debt 5 (cross-phase namespace isolation), Debt 6 (bridge-level typing), Debt 10 (`AuditTraceChain.structurallyValid`). Debts 7–9 partially resolved.
+
+**Safety boundary:** No LLM judge added. No NLP. No real text evaluated. No prose generated. No OpenAI/Gemini calls. No Smart Talk runtime wiring. No DB writes. No user-visible output. TypeScript and ESLint pass cleanly.
 
 ---
 
