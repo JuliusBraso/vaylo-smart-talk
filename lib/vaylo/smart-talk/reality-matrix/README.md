@@ -665,6 +665,50 @@ Category-specific diagnostics are emitted for `false_reassurance_risk`, `halluci
 
 ---
 
+### Phase 8.2F-15 — Governance Lineage Integration Audit
+
+**Audit only / no runtime wiring / no existing behavior modified.**
+
+> **Overall Status: `partially_connected`** — The governance architecture has verified structural connections across most layers but critical production blockers and disconnected safeguards prevent any real-user deployment.
+
+Performs a complete cross-layer governance lineage audit spanning phases 8.2A → 8.2F-14. This is a static governance inventory, not a runtime scanner. No files are read, no APIs are called, and no schemas are inspected.
+
+**New files (at `reality-matrix/` level, not in `reality-simulation/`):**
+
+| File | Role |
+|---|---|
+| `governance-lineage-audit-types.ts` | `GovernanceLayerId`, `GovernanceLineageStatus`, `GovernanceAuditFindingSeverity`, `GovernanceAuditFinding`, `GovernanceLineageAuditResult` |
+| `run-governance-lineage-audit-scaffold.ts` | `runGovernanceLineageAuditScaffold()` — static inventory returning pre-authored findings |
+| `GOVERNANCE_LINEAGE_INTEGRATION_AUDIT.md` | Full audit document: layer inventory, lineage flow, connected safeguards, technical debts, production blockers, pilot/production readiness, and recommended milestones |
+
+**Finding summary:**
+
+| Category | Count | Severity |
+|---|---|---|
+| Connected lineage connections | 12 | `informational` |
+| Partial connections & technical debts | 12 | `warning` |
+| Production blockers & disconnected safeguards | 6 | `critical` |
+
+**Connected layers (informational):** Constitution → Reality Matrix (boundary policy table), Reality Matrix → Simulation (runRealitySimulation), Simulation → Explanation Contract (SimulationExplanationContract), Contract → both mappers (contract enforcement), Mappers → Bridge (tier routing), Bridge → Wording Review (draft handoff), OCR Uncertainty → Pilot Gate (evaluateOcrUncertainty), OCR Uncertainty → Redacted Corpus (OcrDegradationVector field), Incident Governance (sourceLayer covers all layers), Provenance Audit (ProvenanceSourceKind covers all layers), dual wording safety model (pre + post generation).
+
+**Technical debts (warning):** `TrapActivation.trapKind` typed as `string`; `calculated_amount` missing dedicated `ForbiddenExplanationMove`; `false_reassurance` missing dedicated `ForbiddenExplanationMove`; `next_steps_safe` restriction-state unused; overloaded diagnostic taxonomy across 8 separate code union types; broad blocking diagnostic buckets in bridge layer.
+
+**Critical production blockers:**
+1. Runtime explanation mapper not implemented — mappers return metadata only, no prose
+2. Simulation-to-explanation coupling not proven in production
+3. No real-world evaluation corpus (synthetic exemplars only)
+4. No production OCR cognition path (caller-supplied metadata only)
+5. No operational telemetry or audit persistence
+6. OCR uncertainty disconnected from mapper and bridge pipeline
+
+**Safety classification:**
+- SAFE FOR: synthetic governance testing, internal audit, trusted pilot preparation
+- NOT YET SAFE FOR: public deployment, autonomous action, legal authority positioning, production cognition
+
+**Recommended next milestones:** Real OCR integration (8.2G-1) → Real corpus admission (8.2G-2) → Explanation text generation (8.2G-3) → Governance integration wiring (8.2G-4) → Audit persistence and telemetry (8.2G-5) → Trusted pilot activation (8.2G-6).
+
+---
+
 ### Phase 8.2F-14 — Runtime Provenance & Audit Trace Scaffold
 
 **Metadata-only audit trace vocabulary — no persistence, no logging, no telemetry, no runtime hooks, no Smart Talk wiring, no mapper or bridge files touched.**
