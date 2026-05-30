@@ -729,6 +729,39 @@ Defines the structural vocabulary for recording governance decision lineage befo
 
 ---
 
+### Phase 8.2F-15A — Dedicated Forbidden Moves for False Reassurance and Calculated Amount
+
+**Contract hardening / technical debt resolution — no runtime behavior changed, no new scenarios, no prose generated, no Smart Talk/OCR/LLM wiring.**
+
+Resolves two high-risk contract debts identified in the Phase 8.2F-15 Governance Lineage Integration Audit:
+
+| Debt (8.2F-15) | Status | Resolution |
+|---|---|---|
+| `calculated_amount` missing dedicated `ForbiddenExplanationMove` | **RESOLVED** | `no_calculated_amount_extraction` added |
+| `false_reassurance` missing dedicated `ForbiddenExplanationMove` | **RESOLVED** | `no_false_reassurance_framing` added |
+
+**New `ForbiddenExplanationMove` tokens:**
+
+- **`no_false_reassurance_framing`** — the explanation layer must not reassure the user that a risk is absent, harmless, resolved, forgiven, stopped, unenforceable, or safe unless explicitly supported by validated evidence and permitted by future policy.
+- **`no_calculated_amount_extraction`** — the explanation layer must not calculate, derive, infer, total, split, convert, estimate, or reconstruct monetary amounts from uncertain text, OCR fragments, partial documents, or unsupported cues.
+
+**Files modified:**
+- `reality-simulation/explanation-contract-types.ts` — 2 new union members and `KNOWN_FORBIDDEN_EXPLANATION_MOVES` entries
+- `reality-simulation/contract-boundary-regression.ts` — scaffoldVersion bumped to v4
+- `reality-simulation/explanation-output-regression-corpus.ts` — 2 new preservation validation cases (0016, 0017)
+- `controlled-corpus/corpus-types.ts` — `ControlledCorpusExpectedForbiddenMove` extended
+- `controlled-corpus/scenarios.ts` — 6 scenario `expectedForbiddenMoves` updated (corpus version bumped)
+- `controlled-corpus/validate-scenario-boundary-expectations.ts` — 2 new `MUST_NOT_EMIT_POLICY_RULES` entries
+- `controlled-corpus/validate-scenario-contract-expectations.ts` — hard rule and soft rule updated
+- `run-governance-lineage-audit-scaffold.ts` — 2 debts resolved (informational), 4 new warnings added (v2)
+- `GOVERNANCE_LINEAGE_INTEGRATION_AUDIT.md` — Debt 2 and 3 marked RESOLVED; Debts 7–10 added
+
+**Governance lineage audit after 8.2F-15A:** audit version `8.2f-15a-governance-lineage-audit-v2`. 4 new technical debts documented (Debts 7–10: caller-supplied OCR confidence, caller-supplied pilot telemetry, caller-supplied wording scores, `AuditTraceChain.structurallyValid` consistency). All 20 corpus scenarios continue to satisfy `valid = true`, `fullyConsistent = true`.
+
+**Safety boundary:** No mapper implementation files modified. No runtime coupling. No prose generation. No Smart Talk/OCR/LLM/DB changes. No user-visible output. All types carry `neverUserVisible: true`. Dedicated mapper diagnostic handling for the new moves is future **8.2F-15C** work.
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).

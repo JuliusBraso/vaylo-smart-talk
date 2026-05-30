@@ -116,7 +116,19 @@ export type ForbiddenExplanationMove =
   | "no_tax_certainty"
   | "no_immigration_certainty"
   | "no_guaranteed_outcomes"
-  | "no_autonomous_form_submission";
+  | "no_autonomous_form_submission"
+  /**
+   * 8.2F-15A: The explanation layer must not reassure the user that a risk is
+   * absent, harmless, resolved, forgiven, stopped, unenforceable, or safe unless
+   * explicitly supported by validated evidence and permitted by future policy.
+   */
+  | "no_false_reassurance_framing"
+  /**
+   * 8.2F-15A: The explanation layer must not calculate, derive, infer, total,
+   * split, convert, estimate, or reconstruct monetary amounts from uncertain text,
+   * OCR fragments, partial documents, or unsupported cues.
+   */
+  | "no_calculated_amount_extraction";
 
 /**
  * Runtime-enumerable registry of every live `ForbiddenExplanationMove` token (8.2D-6B).
@@ -140,6 +152,9 @@ export const KNOWN_FORBIDDEN_EXPLANATION_MOVES = [
   "no_immigration_certainty",
   "no_guaranteed_outcomes",
   "no_autonomous_form_submission",
+  // 8.2F-15A: dedicated moves replacing proxy coverage for false_reassurance and calculated_amount
+  "no_false_reassurance_framing",
+  "no_calculated_amount_extraction",
 ] as const satisfies readonly ForbiddenExplanationMove[];
 
 export type RequiredExplanationConstraint =

@@ -154,6 +154,15 @@ const MUST_NOT_EMIT_POLICY_RULES: readonly MustNotEmitPolicyRule[] = [
     mustNotEmitValue: "autonomous_action_instruction",
     impliedForbiddenMoves: ["no_autonomous_form_submission"],
   },
+  // 8.2F-15A: dedicated moves replacing proxy coverage
+  {
+    mustNotEmitValue: "false_reassurance",
+    impliedForbiddenMoves: ["no_false_reassurance_framing"],
+  },
+  {
+    mustNotEmitValue: "calculated_amount",
+    impliedForbiddenMoves: ["no_calculated_amount_extraction"],
+  },
 ];
 
 // ── Result types ──────────────────────────────────────────────────────────────

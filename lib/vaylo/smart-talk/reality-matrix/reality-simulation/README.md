@@ -1349,4 +1349,40 @@ This phase does not persist traces, write logs, emit telemetry, connect to Smart
 
 ---
 
+## PHASE 8.2F-15A — Dedicated Forbidden Moves for False Reassurance and Calculated Amount
+
+**Mode:** Contract hardening / Technical debt resolution
+**Files modified:** `explanation-contract-types.ts`, `contract-boundary-regression.ts`, `explanation-output-regression-corpus.ts`
+
+### Mission
+
+Resolves two high-risk contract debts identified in the 8.2F-15 Governance Lineage Integration Audit:
+
+1. `false_reassurance` had no dedicated `ForbiddenExplanationMove` — only proxy coverage via `no_guaranteed_outcomes`.
+2. `calculated_amount` had no dedicated `ForbiddenExplanationMove` — only proxy coverage via `no_deadline_calculation_when_forbidden`.
+
+### New Forbidden Moves
+
+| Move | Layer | Risk Protected |
+|---|---|---|
+| `no_false_reassurance_framing` | `explanation_contract` | Prevents the explanation layer from reassuring users that a risk is absent, harmless, resolved, forgiven, stopped, unenforceable, or safe without validated evidence support |
+| `no_calculated_amount_extraction` | `explanation_contract` | Prevents the explanation layer from calculating, deriving, inferring, totalling, splitting, converting, estimating, or reconstructing monetary amounts from uncertain text, OCR fragments, partial documents, or unsupported cues |
+
+Both moves are added to `KNOWN_FORBIDDEN_EXPLANATION_MOVES` using the existing `as const satisfies readonly ForbiddenExplanationMove[]` pattern, ensuring compile-time registry invariant enforcement.
+
+### Explanation Output Regression Cases Added
+
+| Case ID | Move | Expected Behavior |
+|---|---|---|
+| `eo-8-2f-15a-0016` | `no_false_reassurance_framing` | Preservation validation: accepted as canonical, standard free preview sections intact, no new diagnostics |
+| `eo-8-2f-15a-0017` | `no_calculated_amount_extraction` | Preservation validation: accepted as canonical, standard free preview sections intact, no new diagnostics |
+
+> **Note:** Dedicated mapper diagnostic handling for these new moves (section-level `blockedReasonCodes`) is future **8.2F-15C** work. These cases validate that the moves are recognized by the contract type system without causing unknown-token errors.
+
+### Safety Boundary
+
+This phase does not generate prose, connect to Smart Talk, call OCR, call LLMs, calculate real amounts, infer payment obligations, or add any production runtime behavior. All changes are type, registry, and regression updates only. No mapper implementation files were modified.
+
+---
+
 > **Reality simulation models safe explanation space, not legal truth.**

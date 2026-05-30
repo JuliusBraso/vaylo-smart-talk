@@ -95,7 +95,10 @@ export type ControlledCorpusExpectedForbiddenMove =
   | "no_tax_certainty"
   | "no_immigration_certainty"
   | "no_guaranteed_outcomes"
-  | "no_autonomous_form_submission";
+  | "no_autonomous_form_submission"
+  // 8.2F-15A: dedicated moves for false reassurance and calculated amount risks
+  | "no_false_reassurance_framing"
+  | "no_calculated_amount_extraction";
 
 export type ControlledCorpusExpectedReviewFlag =
   | "human_review_recommended"

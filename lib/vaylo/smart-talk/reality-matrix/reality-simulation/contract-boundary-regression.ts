@@ -1,6 +1,6 @@
 /**
  * Contract boundary mapping regression scaffold
- * (Phase 8.2D-6A / upgraded 8.2D-6B / upgraded 8.2D-6C).
+ * (Phase 8.2D-6A / upgraded 8.2D-6B / upgraded 8.2D-6C / upgraded 8.2F-15A).
  *
  * Controlled cases for future test runners or CI.
  * This module does not run automatically and is not wired into Reality Simulation,
@@ -12,6 +12,11 @@
  * 8.2D-6C: imports CONTRACT_RELEVANT_EXPLANATION_BOUNDARIES; adds mappingCoverageCheck
  * block verifying every contract-relevant boundary is covered by the rule table and
  * that no rule references an unknown boundary. allPassed now gates on coverage check.
+ *
+ * 8.2F-15A: KNOWN_FORBIDDEN_EXPLANATION_MOVES now includes no_false_reassurance_framing
+ * and no_calculated_amount_extraction. The registryConsistencyCheck block auto-validates
+ * both new tokens via the imported registry — no case-level change required.
+ * scaffoldVersion bumped to v4.
  */
 
 import type { ExplanationBoundary } from "../reality-simulation-types";
@@ -381,7 +386,7 @@ export function runContractBoundaryRegressionScaffold(): ContractBoundaryRegress
     allContractRelevantBoundariesMapped && noMappingRulesForUnknownBoundaries;
 
   return {
-    scaffoldVersion: "8.2d-6c-contract-boundary-regression-v3",
+    scaffoldVersion: "8.2f-15a-contract-boundary-regression-v4",
     allPassed: failCount === 0 && registryConsistencyPassed && mappingCoveragePassed,
     passCount,
     failCount,

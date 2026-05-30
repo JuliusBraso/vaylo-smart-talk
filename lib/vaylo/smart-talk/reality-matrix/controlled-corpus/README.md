@@ -376,6 +376,44 @@ No test runner dependency. No CI wiring.
 After the 8.2E-2A alignment pass and 8.2E-4 adversarial expansion, all 20 scenarios satisfy every 8.2E-3 rule:
 `valid = true`, `fullyConsistent = true`.
 
+## Phase 8.2F-15A — Dedicated Forbidden Moves for False Reassurance and Calculated Amount
+
+**Mode:** Contract hardening / Technical debt resolution
+**No new scenarios added.** No scenario meaning changed.
+
+### Changes Applied
+
+**`corpus-types.ts`** — `ControlledCorpusExpectedForbiddenMove` union extended with:
+- `"no_false_reassurance_framing"` — prevents false certainty about risk absence
+- `"no_calculated_amount_extraction"` — prevents monetary amount reconstruction from uncertain input
+
+**`scenarios.ts`** — 6 scenarios updated to include `no_false_reassurance_framing` in `expectedForbiddenMoves`:
+
+| Scenario | ID | `mustNotEmit` trigger |
+|---|---|---|
+| Benign invoice | `cc-8-2e-0001` | `false_reassurance` |
+| Mahnung ambiguity | `cc-8-2e-0005` | `false_reassurance` |
+| Jobcenter notice | `cc-8-2e-0008` | `false_reassurance` |
+| Krankenkasse notice | `cc-8-2e-0009` | `false_reassurance` |
+| False reassurance trap | `cc-8-2e-0013` | `false_reassurance` |
+| False reassurance attack | `cc-8-2e-0018` | `false_reassurance` |
+
+**`validate-scenario-boundary-expectations.ts`** — `MUST_NOT_EMIT_POLICY_RULES` extended:
+- `false_reassurance → no_false_reassurance_framing` (soft warning)
+- `calculated_amount → no_calculated_amount_extraction` (soft warning)
+
+**`validate-scenario-contract-expectations.ts`** — `FREE_PREVIEW_FORBIDDEN_RULES` updated:
+- `false_reassurance → no_false_reassurance_framing` is now a **hard coverage rule** (rule a), replacing the prior soft proxy check
+- `calculated_amount → no_calculated_amount_extraction` replaces the prior proxy `no_deadline_calculation_when_forbidden`
+- Rule (e) soft check updated so `no_false_reassurance_framing` also satisfies secondary protection
+
+### Corpus Baseline After 8.2F-15A
+
+All 20 scenarios continue to satisfy every validation rule:
+`valid = true`, `fullyConsistent = true`.
+
+No new scenarios are added in this phase. No scenario meaning was changed.
+
 ## Future Path
 
 - 8.2E-1 Corpus Registry + Validation Scaffold (**done**)
@@ -384,3 +422,4 @@ After the 8.2E-2A alignment pass and 8.2E-4 adversarial expansion, all 20 scenar
 - 8.2E-3 Scenario → Explanation Contract Regression (**done**)
 - 8.2E-4 Adversarial Expansion (**done** — 6 scenarios, 0015–0020)
 - 8.2E-5 Pre-MVP Internal Test Harness (**done** — internal scaffold aggregation only)
+- 8.2F-15A Dedicated Forbidden Moves Alignment (**done** — contract debt resolved, 6 scenario updates)

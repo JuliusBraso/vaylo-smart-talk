@@ -1,5 +1,5 @@
 /**
- * Scenario → Explanation Contract expectation validator (Phase 8.2E-3).
+ * Scenario → Explanation Contract expectation validator (Phase 8.2E-3 / upgraded 8.2F-15A).
  *
  * Pure validation helper only:
  * - no OCR
@@ -22,10 +22,16 @@
  *       corresponding boundary absent for dual-protection values (soft warning).
  *   (d) Paid explanation overreach — high-consequence domain + high severity
  *       without uncertainty constraint (soft warning).
- *   (e) False reassurance — false_reassurance in mustNotEmit without soft
- *       governance protection (soft warning).
+ *   (e) False reassurance — false_reassurance in mustNotEmit without governance
+ *       protection (soft warning). 8.2F-15A: no_false_reassurance_framing is
+ *       now the primary satisfier; hard coverage is also enforced via rule (a).
  *   (f) Required constraint coverage — uncertainty-critical scenario kinds
  *       without required_uncertainty_wording in expected constraints (soft warning).
+ *
+ * 8.2F-15A upgrades:
+ *   - false_reassurance → no_false_reassurance_framing added as hard coverage rule (a).
+ *   - calculated_amount → no_calculated_amount_extraction replaces the proxy
+ *     no_deadline_calculation_when_forbidden rule.
  *
  * Does NOT build a real contract, compare against runtime output, connect to
  * Smart Talk, OCR, LLMs, payment, or production runtime.
@@ -91,10 +97,15 @@ const FREE_PREVIEW_FORBIDDEN_RULES: readonly FreePrevieForbiddenRule[] = [
     mustNotEmitValue: "panic_language",
     requiredForbiddenMove: "no_high_panic_phrasing",
   },
+  // 8.2F-15A: dedicated move — no longer uses the proxy no_deadline_calculation_when_forbidden
   {
     mustNotEmitValue: "calculated_amount",
-    // Closest proxy: deadline-calculation gate also covers computed amount risk
-    requiredForbiddenMove: "no_deadline_calculation_when_forbidden",
+    requiredForbiddenMove: "no_calculated_amount_extraction",
+  },
+  // 8.2F-15A: dedicated move — false_reassurance is now a hard coverage requirement
+  {
+    mustNotEmitValue: "false_reassurance",
+    requiredForbiddenMove: "no_false_reassurance_framing",
   },
 ];
 
@@ -316,8 +327,14 @@ export function validateScenarioContractExpectations({
     }
 
     // ── (e) False reassurance warning (soft) ─────────────────────────────────
+    // 8.2F-15A: no_false_reassurance_framing is now the primary satisfier.
+    // The dedicated forbidden move (added as a hard rule above) covers the primary
+    // obligation. This soft check confirms secondary governance protection is also
+    // present. Scenarios with false_reassurance that lack the dedicated move are
+    // caught by the hard rule (a) before reaching this check.
     if (mustNotEmitSet.has("false_reassurance")) {
       const hasSoftProtection =
+        forbiddenMoveSet.has("no_false_reassurance_framing") ||
         forbiddenMoveSet.has("no_guaranteed_outcomes") ||
         requiredConstraintSet.has("required_uncertainty_wording") ||
         reviewFlagSet.has("human_review_recommended");

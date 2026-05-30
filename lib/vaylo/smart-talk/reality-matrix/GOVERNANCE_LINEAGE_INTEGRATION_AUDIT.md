@@ -1,9 +1,14 @@
-# Governance Lineage Integration Audit — Phase 8.2F-15
+# Governance Lineage Integration Audit — Phase 8.2F-15 (updated 8.2F-15A)
 
-**Version:** `8.2f-15-governance-lineage-audit-v1`
-**Scope:** Vaylo Document Reasoning Constitution V1 — Phases 8.2A → 8.2F-14
+**Version:** `8.2f-15a-governance-lineage-audit-v2`
+**Scope:** Vaylo Document Reasoning Constitution V1 — Phases 8.2A → 8.2F-15A
 **Mode:** Audit only / no runtime wiring / no behavior modified
 **Overall Status:** `partially_connected`
+
+> **8.2F-15A Update:** Debt 2 (`calculated_amount`) and Debt 3 (`false_reassurance`) have been
+> resolved. Both dedicated `ForbiddenExplanationMove` tokens have been added to
+> `KNOWN_FORBIDDEN_EXPLANATION_MOVES`. Contract validators, corpus expectations, and
+> scenario alignment tables updated. Four new technical debts documented (Debt 7–10).
 
 ---
 
@@ -139,25 +144,35 @@ These debts do not block the synthetic governance scaffold from functioning, but
 
 ---
 
-### Debt 2 — `calculated_amount` missing dedicated `ForbiddenExplanationMove`
+### Debt 2 — `calculated_amount` missing dedicated `ForbiddenExplanationMove` ✅ RESOLVED
 
-**Severity:** Warning
+**Severity:** ~~Warning~~ → **RESOLVED in Phase 8.2F-15A**
 **Layer:** `explanation_contract`
 
-No forbidden move exists for presenting a specific calculated monetary amount as authoritative. Users could receive output stating a specific amount (e.g. "you owe €347.50") without any structural governance signal blocking that certainty. The wording evaluation scaffold can detect this via the `authoritativeLegalAdvice` tone metric, but no upstream contract-level signal exists.
+No forbidden move existed for presenting a specific calculated monetary amount as authoritative. The wording evaluation scaffold could detect this via the `authoritativeLegalAdvice` tone metric, but no upstream contract-level signal existed.
 
-**Resolution:** Add `no_calculated_amount_certainty` to `KNOWN_FORBIDDEN_EXPLANATION_MOVES`.
+**Resolution applied:** `no_calculated_amount_extraction` added to `KNOWN_FORBIDDEN_EXPLANATION_MOVES` and `ForbiddenExplanationMove` union in Phase 8.2F-15A.
+
+**What the move enforces:** The explanation layer must not calculate, derive, infer, total, split, convert, estimate, or reconstruct monetary amounts from uncertain text, OCR fragments, partial documents, or unsupported cues.
+
+**Cascading updates applied:** `ControlledCorpusExpectedForbiddenMove` extended; `validate-scenario-contract-expectations.ts` updated to use dedicated move as hard rule (replacing the proxy `no_deadline_calculation_when_forbidden`); `validate-scenario-boundary-expectations.ts` updated with `mustNotEmit: calculated_amount → no_calculated_amount_extraction` policy rule; `EXPLANATION_OUTPUT_REGRESSION_CORPUS` case 0017 added.
+
+**Note:** No current corpus scenarios have `calculated_amount` in `mustNotEmit`. The registry, validator, and taxonomy are complete. Dedicated mapper diagnostic handling for this move is future 8.2F-15C work.
 
 ---
 
-### Debt 3 — `false_reassurance` missing dedicated `ForbiddenExplanationMove`
+### Debt 3 — `false_reassurance` missing dedicated `ForbiddenExplanationMove` ✅ RESOLVED
 
-**Severity:** Warning
+**Severity:** ~~Warning~~ → **RESOLVED in Phase 8.2F-15A**
 **Layer:** `explanation_contract`
 
-False reassurance is modelled in the wording evaluation scaffold (Phase 8.2F-12) and incident governance (Phase 8.2F-13) but not as a `ForbiddenExplanationMove` in the contract layer. This means mappers and bridge have no structural contract-level signal to block false reassurance — they rely entirely on downstream wording evaluation.
+False reassurance was modelled in the wording evaluation scaffold (Phase 8.2F-12) and incident governance (Phase 8.2F-13) but not as a `ForbiddenExplanationMove` in the contract layer. Mappers and bridge had no structural contract-level signal to block false reassurance — they relied entirely on downstream wording evaluation.
 
-**Resolution:** Add `no_false_reassurance` to `KNOWN_FORBIDDEN_EXPLANATION_MOVES`.
+**Resolution applied:** `no_false_reassurance_framing` added to `KNOWN_FORBIDDEN_EXPLANATION_MOVES` and `ForbiddenExplanationMove` union in Phase 8.2F-15A.
+
+**What the move enforces:** The explanation layer must not reassure the user that a risk is absent, harmless, resolved, forgiven, stopped, unenforceable, or safe unless explicitly supported by validated evidence and permitted by future policy.
+
+**Cascading updates applied:** `ControlledCorpusExpectedForbiddenMove` extended; `validate-scenario-contract-expectations.ts` updated — `false_reassurance → no_false_reassurance_framing` is now a hard coverage rule (rule a) replacing the prior soft proxy check; `validate-scenario-boundary-expectations.ts` updated with `mustNotEmit: false_reassurance → no_false_reassurance_framing` policy rule; scenarios 0001, 0005, 0008, 0009, 0013, 0018 updated to include `no_false_reassurance_framing` in `expectedForbiddenMoves`; `EXPLANATION_OUTPUT_REGRESSION_CORPUS` case 0016 added.
 
 ---
 
@@ -191,6 +206,50 @@ Eight separate diagnostic code union types exist across phases 8.2F-8 through 8.
 `SmartTalkBridgeDryRunResult.governanceValid` is a single boolean. When `false`, the caller must inspect the `diagnostics` array to determine which structural check failed. No structured blocking reason type exists at the bridge level.
 
 **Resolution:** Introduce a typed `BridgeBlockingReason` that classifies failures (no boundary emitted, null draft, section mismatch, tier mismatch) as a first-class result field.
+
+---
+
+### Debt 7 — Caller-supplied OCR confidence score is unvalidated at ingress *(Added 8.2F-15A)*
+
+**Severity:** Warning
+**Layer:** `ocr_uncertainty`
+
+`evaluateOcrUncertainty` accepts `baseConfidenceScore` as a caller-supplied number and clamps it internally. No OCR provider integration validates this score against a real pipeline output. A caller could supply any value (e.g. `100` for a degraded document), bypassing the intent of the OCR governance gate. The clamping prevents crashes but not trust violations.
+
+**Resolution:** Future phases must bind the confidence score to a verified OCR provider output rather than trusting caller-supplied metadata. The score should carry a provenance tag.
+
+---
+
+### Debt 8 — Caller-supplied pilot telemetry is unvalidated at ingress *(Added 8.2F-15A)*
+
+**Severity:** Warning
+**Layer:** `pilot_gate`
+
+`LimitedPilotGateInput.telemetry` fields (`totalTransactionsThisSession`, `maxSessionLimit`) are caller-supplied. No session store or database backs these values. A caller could supply `totalTransactionsThisSession: 0` regardless of actual session state, bypassing the session-limit gate entirely.
+
+**Resolution:** Future phases must bind pilot telemetry to a verified session state (database-backed or signed JWT) rather than trusting caller-supplied metadata.
+
+---
+
+### Debt 9 — Caller-supplied wording tone scores are unvalidated at ingress *(Added 8.2F-15A)*
+
+**Severity:** Warning
+**Layer:** `wording_evaluation`
+
+`WordingEvaluationInput.toneMatrix` scores are entirely caller-supplied. The intended future workflow — an LLM judge or human reviewer supplies scores — is not enforced at the type layer. A caller could supply `{ authoritativeLegalAdvice: 0, falseReassurance: 0 }` for any draft, bypassing tone governance.
+
+**Resolution:** Future phases must validate score provenance. The `sourceKind` field partially addresses intent but is not enforced. A signed or attested score envelope is needed.
+
+---
+
+### Debt 10 — `AuditTraceChain.structurallyValid` set by caller, not enforced *(Added 8.2F-15A)*
+
+**Severity:** Warning
+**Layer:** `provenance_audit`
+
+`AuditTraceChain.structurallyValid` is a field that callers set when constructing a chain. `validateAuditTraceChain` does not use this field — it re-derives validity from the node structure. A chain could be constructed with `structurallyValid: true` but then fail validation, creating inconsistency between the stored chain and its actual validity status.
+
+**Resolution:** Either remove `structurallyValid` from the input type (making it a validator-only output) or enforce that stored chains always reflect the result of `validateAuditTraceChain`.
 
 ---
 

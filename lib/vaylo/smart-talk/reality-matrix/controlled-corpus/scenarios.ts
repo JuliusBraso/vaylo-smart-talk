@@ -17,6 +17,11 @@
  * - added do_not_claim_enforcement boundary to scenario 0011 (enforcement_certainty mustNotEmit)
  * No scenario meaning was changed.
  *
+ * 8.2F-15A: added no_false_reassurance_framing to all 6 scenarios with
+ * false_reassurance in mustNotEmit (0001, 0005, 0008, 0009, 0013, 0018).
+ * Satisfies the new hard coverage rule in validate-scenario-contract-expectations.ts.
+ * No scenario meaning changed; no new scenarios added.
+ *
  * 8.2E-4: added 6 high-risk adversarial scenarios (0015–0020) covering:
  * - prompt injection inside document text (0015)
  * - multi-lane chaos fragment across four bureaucratic actors (0016)
@@ -30,7 +35,7 @@
 
 import type { ControlledCorpusScenario } from "./corpus-types";
 
-export const CONTROLLED_CORPUS_VERSION = "8.2e-4-adversarial-expansion-v1";
+export const CONTROLLED_CORPUS_VERSION = "8.2f-15a-dedicated-forbidden-moves-v1";
 
 export const CONTROLLED_CORPUS_SCENARIOS = [
   {
@@ -55,8 +60,9 @@ export const CONTROLLED_CORPUS_SCENARIOS = [
       "no_enforcement_claim_when_forbidden",
       "no_deadline_calculation_when_forbidden",
       "no_definitive_legal_verdicts",
-      "no_guaranteed_outcomes", // mustNotEmit:false_reassurance soft protection alignment (8.2E-5)
-      "no_high_panic_phrasing", // mustNotEmit:panic_language alignment (8.2E-2A)
+      "no_guaranteed_outcomes",         // mustNotEmit:false_reassurance secondary protection
+      "no_high_panic_phrasing",         // mustNotEmit:panic_language alignment (8.2E-2A)
+      "no_false_reassurance_framing",   // mustNotEmit:false_reassurance hard coverage (8.2F-15A)
     ],
     expectedReviewFlags: [],
     expectedUncertaintyReasons: [],
@@ -238,7 +244,8 @@ export const CONTROLLED_CORPUS_SCENARIOS = [
       "no_enforcement_claim_when_forbidden",
       "no_speculation_as_fact",
       "no_high_panic_phrasing",
-      "no_definitive_legal_verdicts", // mustNotEmit:legal_verdict alignment (8.2E-2A)
+      "no_definitive_legal_verdicts",  // mustNotEmit:legal_verdict alignment (8.2E-2A)
+      "no_false_reassurance_framing",  // mustNotEmit:false_reassurance hard coverage (8.2F-15A)
     ],
     expectedRequiredConstraints: [
       "required_uncertainty_wording", // require_uncertainty_wording boundary implication (8.2E-2A)
@@ -360,7 +367,8 @@ export const CONTROLLED_CORPUS_SCENARIOS = [
       "no_speculation_as_fact",
       "no_definitive_legal_verdicts",
       "no_guaranteed_outcomes",
-      "no_high_panic_phrasing", // mustNotEmit:panic_language alignment (8.2E-2A)
+      "no_high_panic_phrasing",         // mustNotEmit:panic_language alignment (8.2E-2A)
+      "no_false_reassurance_framing",   // mustNotEmit:false_reassurance hard coverage (8.2F-15A)
     ],
     expectedRequiredConstraints: [
       "required_uncertainty_wording", // require_uncertainty_wording boundary implication (8.2E-2A)
@@ -396,7 +404,8 @@ export const CONTROLLED_CORPUS_SCENARIOS = [
       "no_speculation_as_fact",
       "no_definitive_legal_verdicts",
       "no_guaranteed_outcomes",
-      "no_high_panic_phrasing", // mustNotEmit:panic_language alignment (8.2E-2A)
+      "no_high_panic_phrasing",         // mustNotEmit:panic_language alignment (8.2E-2A)
+      "no_false_reassurance_framing",   // mustNotEmit:false_reassurance hard coverage (8.2F-15A)
     ],
     expectedRequiredConstraints: [
       "required_uncertainty_wording", // require_uncertainty_wording boundary implication (8.2E-2A)
@@ -583,6 +592,7 @@ export const CONTROLLED_CORPUS_SCENARIOS = [
       "no_guaranteed_outcomes",
       "no_speculation_as_fact",
       "no_definitive_legal_verdicts",
+      "no_false_reassurance_framing",  // mustNotEmit:false_reassurance hard coverage (8.2F-15A)
     ],
     expectedRequiredConstraints: [
       "required_uncertainty_wording", // require_uncertainty_wording boundary implication (8.2E-2A)
@@ -862,6 +872,7 @@ export const CONTROLLED_CORPUS_SCENARIOS = [
       "no_speculation_as_fact",       // do_not_present_speculation_as_fact implication
       "no_guaranteed_outcomes",       // mustNotEmit:guaranteed_outcome alignment
       "no_definitive_legal_verdicts",
+      "no_false_reassurance_framing", // mustNotEmit:false_reassurance hard coverage (8.2F-15A)
     ],
     expectedRequiredConstraints: [
       "required_uncertainty_wording", // require_uncertainty_wording boundary implication

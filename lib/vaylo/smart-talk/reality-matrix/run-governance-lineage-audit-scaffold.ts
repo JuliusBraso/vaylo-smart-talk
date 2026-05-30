@@ -1,5 +1,5 @@
 /**
- * Governance Lineage Integration Audit scaffold (Phase 8.2F-15).
+ * Governance Lineage Integration Audit scaffold (Phase 8.2F-15 / updated 8.2F-15A).
  *
  * Implements `runGovernanceLineageAuditScaffold` — a pure static inventory
  * function that returns a `GovernanceLineageAuditResult` covering the entire
@@ -21,6 +21,16 @@
  *  C — Production blockers and disconnected safeguards (critical)
  *      Documents unresolved risks that block any real-user deployment.
  *
+ * 8.2F-15A changes:
+ *  - Technical Debt: calculated_amount → RESOLVED. Dedicated ForbiddenExplanationMove
+ *    no_calculated_amount_extraction added to KNOWN_FORBIDDEN_EXPLANATION_MOVES.
+ *  - Technical Debt: false_reassurance → RESOLVED. Dedicated ForbiddenExplanationMove
+ *    no_false_reassurance_framing added to KNOWN_FORBIDDEN_EXPLANATION_MOVES.
+ *    Both resolved findings moved from WARNING to INFORMATIONAL with historical note.
+ *  - Added 4 new WARNING findings: caller-supplied OCR confidence, caller-supplied
+ *    pilot telemetry, caller-supplied wording scores, audit trace structurallyValid
+ *    consistency.
+ *
  * Safety guarantees:
  * - no runtime modification
  * - no telemetry
@@ -39,7 +49,7 @@ import type {
 } from "./governance-lineage-audit-types";
 
 export const GOVERNANCE_LINEAGE_AUDIT_VERSION =
-  "8.2f-15-governance-lineage-audit-v1";
+  "8.2f-15a-governance-lineage-audit-v2";
 
 // ── Finding factory ───────────────────────────────────────────────────────────
 
@@ -172,6 +182,31 @@ const CONNECTED_LINEAGE_FINDINGS: readonly GovernanceAuditFinding[] = [
       "pre-generation. Together they form a two-layer wording safety model " +
       "covering both pre- and post-generation governance.",
   ),
+  // ── Resolved technical debts (8.2F-15A) ──────────────────────────────────────
+  finding(
+    "explanation_contract",
+    "informational",
+    "RESOLVED (8.2F-15A): calculated_amount now has a dedicated ForbiddenExplanationMove",
+    "Previously reported as a WARNING in Phase 8.2F-15: calculated_amount lacked a " +
+      "dedicated ForbiddenExplanationMove in KNOWN_FORBIDDEN_EXPLANATION_MOVES. " +
+      "Resolved in Phase 8.2F-15A by adding no_calculated_amount_extraction — " +
+      "blocking the explanation layer from calculating, deriving, inferring, totalling, " +
+      "splitting, converting, estimating, or reconstructing monetary amounts from " +
+      "uncertain text, OCR fragments, partial documents, or unsupported cues. " +
+      "Contract validators and corpus expectations updated accordingly.",
+  ),
+  finding(
+    "explanation_contract",
+    "informational",
+    "RESOLVED (8.2F-15A): false_reassurance now has a dedicated ForbiddenExplanationMove",
+    "Previously reported as a WARNING in Phase 8.2F-15: false_reassurance lacked a " +
+      "dedicated ForbiddenExplanationMove in KNOWN_FORBIDDEN_EXPLANATION_MOVES. " +
+      "Resolved in Phase 8.2F-15A by adding no_false_reassurance_framing — " +
+      "blocking the explanation layer from reassuring users that a risk is absent, " +
+      "harmless, resolved, forgiven, stopped, unenforceable, or safe unless explicitly " +
+      "supported by validated evidence and permitted by future policy. Contract " +
+      "validators, scenario expectations, and corpus entries updated accordingly.",
+  ),
 ];
 
 // ── B — Partial connections and technical debts (warning) ────────────────────
@@ -250,27 +285,6 @@ const WARNING_FINDINGS: readonly GovernanceAuditFinding[] = [
       "TRAP_METADATA_REGISTRY_V1 keys.",
   ),
   finding(
-    "explanation_contract",
-    "warning",
-    "Technical Debt: calculated_amount missing dedicated ForbiddenExplanationMove",
-    "The KNOWN_FORBIDDEN_EXPLANATION_MOVES list does not include a dedicated move " +
-      "for presenting a specific calculated monetary amount as authoritative. " +
-      "This is a meaningful governance gap: mappers have no structural signal to " +
-      "block output that presents calculated amounts with false certainty. A future " +
-      "phase should add a calculated_amount_certainty forbidden move.",
-  ),
-  finding(
-    "explanation_contract",
-    "warning",
-    "Technical Debt: false_reassurance missing dedicated ForbiddenExplanationMove",
-    "False reassurance (telling users everything is fine when it may not be) is " +
-      "covered by the wording evaluation scaffold (Phase 8.2F-12) as a tone " +
-      "metric but is not represented as a ForbiddenExplanationMove in the " +
-      "contract. This means the bridge and mapper layers cannot structurally block " +
-      "false reassurance at the contract level. A dedicated forbidden move is " +
-      "needed for complete cross-layer coverage.",
-  ),
-  finding(
     "simulation",
     "warning",
     "Technical Debt: next_steps_safe restriction-state appears unused",
@@ -301,6 +315,50 @@ const WARNING_FINDINGS: readonly GovernanceAuditFinding[] = [
       "specific check failed. A future phase should introduce typed blocking " +
       "reasons that directly classify the failure type without requiring " +
       "diagnostic array inspection.",
+  ),
+  // Technical debts identified in 8.2F-15A audit review
+  finding(
+    "ocr_uncertainty",
+    "warning",
+    "Technical Debt: caller-supplied OCR confidence score is unvalidated at ingress",
+    "evaluateOcrUncertainty accepts baseConfidenceScore as a caller-supplied " +
+      "number and clamps it internally. No OCR provider integration validates " +
+      "this score against a real pipeline. A caller could supply any value, " +
+      "bypassing the intent of OCR governance. Future phases must bind the " +
+      "confidence score to a verified OCR provider output rather than trusting " +
+      "caller-supplied metadata.",
+  ),
+  finding(
+    "pilot_gate",
+    "warning",
+    "Technical Debt: caller-supplied pilot telemetry is unvalidated at ingress",
+    "LimitedPilotGateInput.telemetry (totalTransactionsThisSession, " +
+      "maxSessionLimit) is caller-supplied. No session store or database backs " +
+      "these values. A caller could supply any telemetry, allowing session-limit " +
+      "rules to be bypassed. Future phases must bind pilot telemetry to a " +
+      "verified session state rather than trusting caller-supplied metadata.",
+  ),
+  finding(
+    "wording_evaluation",
+    "warning",
+    "Technical Debt: caller-supplied wording tone scores are unvalidated at ingress",
+    "WordingEvaluationInput.toneMatrix is entirely caller-supplied. Scores are " +
+      "clamped internally but their origin is not verified. The intended future " +
+      "workflow (LLM judge or human reviewer supplies scores) is not enforced " +
+      "at the type layer. A caller could supply any scores, making tone " +
+      "evaluation bypassable. Future phases must validate score provenance.",
+  ),
+  finding(
+    "provenance_audit",
+    "warning",
+    "Technical Debt: AuditTraceChain.structurallyValid set by caller, not enforced",
+    "AuditTraceChain.structurallyValid is a field that callers set when " +
+      "constructing a chain, but validateAuditTraceChain does not use this " +
+      "field — it re-derives validity from the node structure. There is a " +
+      "potential consistency risk if a chain is constructed with " +
+      "structurallyValid: true but then fails validation. Future phases should " +
+      "either remove the field from the input type or enforce that it matches " +
+      "validateAuditTraceChain output.",
   ),
 ];
 
