@@ -6,7 +6,7 @@ import type {
   RuleEvaluationResult,
   TrapActivation,
 } from "../evidence-gates-types";
-import type { ClaimType, HallucinationTrap, RealityType, UniversalDocumentRealityMatrix } from "../types";
+import type { ClaimType, HallucinationTrap, HallucinationTrapKind, RealityType, UniversalDocumentRealityMatrix } from "../types";
 
 const DRY_TRAP_BASE = {
   dryRun: true as const,
@@ -34,8 +34,9 @@ const ESCALATION_PAYMENT_REALITY_ANCHORS = new Set<RealityType>([
 /**
  * Trap `kind` values that require an escalation/payment reality anchor when `relatedClaimTypes`
  * overlaps `candidate_allowed` (conservative dry-run bridge).
+ * Typed as `Set<HallucinationTrapKind>` (8.2F-15B) — previously `Set<string>`.
  */
-const ENFORCEMENT_CLUSTER_TRAP_KINDS = new Set<string>([
+const ENFORCEMENT_CLUSTER_TRAP_KINDS = new Set<HallucinationTrapKind>([
   "invoice_to_enforcement",
   "mahnung_to_vollstreckung",
   "mahnung_to_gerichtsvollzieher",

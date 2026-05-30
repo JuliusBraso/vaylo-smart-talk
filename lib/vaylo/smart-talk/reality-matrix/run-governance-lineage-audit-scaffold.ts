@@ -1,5 +1,5 @@
 /**
- * Governance Lineage Integration Audit scaffold (Phase 8.2F-15 / updated 8.2F-15A).
+ * Governance Lineage Integration Audit scaffold (Phase 8.2F-15 / updated 8.2F-15B).
  *
  * Implements `runGovernanceLineageAuditScaffold` — a pure static inventory
  * function that returns a `GovernanceLineageAuditResult` covering the entire
@@ -31,6 +31,12 @@
  *    pilot telemetry, caller-supplied wording scores, audit trace structurallyValid
  *    consistency.
  *
+ * 8.2F-15B changes:
+ *  - Technical Debt 1: TrapActivation.trapKind typed as string → RESOLVED.
+ *    TrapActivation.trapKind is now HallucinationTrapKind in evidence-gates-types.ts.
+ *    ENFORCEMENT_CLUSTER_TRAP_KINDS narrowed to Set<HallucinationTrapKind>.
+ *    Resolved finding moved from WARNING_FINDINGS to CONNECTED_LINEAGE_FINDINGS.
+ *
  * Safety guarantees:
  * - no runtime modification
  * - no telemetry
@@ -49,7 +55,7 @@ import type {
 } from "./governance-lineage-audit-types";
 
 export const GOVERNANCE_LINEAGE_AUDIT_VERSION =
-  "8.2f-15a-governance-lineage-audit-v2";
+  "8.2f-15b-governance-lineage-audit-v3";
 
 // ── Finding factory ───────────────────────────────────────────────────────────
 
@@ -207,6 +213,21 @@ const CONNECTED_LINEAGE_FINDINGS: readonly GovernanceAuditFinding[] = [
       "supported by validated evidence and permitted by future policy. Contract " +
       "validators, scenario expectations, and corpus entries updated accordingly.",
   ),
+  finding(
+    "reality_matrix",
+    "informational",
+    "RESOLVED (8.2F-15B): TrapActivation.trapKind now typed as HallucinationTrapKind",
+    "Previously reported as a WARNING (Debt 1) in Phase 8.2F-15: " +
+      "TrapActivation.trapKind was typed as string rather than a typed union of " +
+      "known trap kind values, allowing arbitrary strings to pass as trap IDs at " +
+      "runtime. Resolved in Phase 8.2F-15B by changing trapKind: string to " +
+      "trapKind: HallucinationTrapKind in evidence-gates-types.ts. The canonical " +
+      "registry (TRAP_METADATA_BY_KIND / HALLUCINATION_TRAP_KINDS in types.ts) " +
+      "remains the single source of truth. ENFORCEMENT_CLUSTER_TRAP_KINDS in " +
+      "resolve-trap-activations.ts narrowed from Set<string> to Set<HallucinationTrapKind>. " +
+      "Defensive runtime lookup guard retained in run-reality-simulation.ts. " +
+      "No trap semantics or simulation behavior changed.",
+  ),
 ];
 
 // ── B — Partial connections and technical debts (warning) ────────────────────
@@ -273,17 +294,7 @@ const WARNING_FINDINGS: readonly GovernanceAuditFinding[] = [
       "through evaluateOcrUncertainty, then runFreePreviewMapper or " +
       "runPaidExplanationMapper, for end-to-end structural validation.",
   ),
-  // Technical debts
-  finding(
-    "reality_matrix",
-    "warning",
-    "Technical Debt: TrapActivation.trapKind typed as string",
-    "TrapActivation.trapKind is typed as string rather than a typed union of " +
-      "known trap kind values. This allows arbitrary strings to pass as trap IDs " +
-      "at runtime, weakening type-safety of trap activation records. A future " +
-      "phase should introduce a TrapKind union type drawn from " +
-      "TRAP_METADATA_REGISTRY_V1 keys.",
-  ),
+  // Technical debts (Debt 1 resolved in 8.2F-15B — moved to CONNECTED_LINEAGE_FINDINGS below)
   finding(
     "simulation",
     "warning",

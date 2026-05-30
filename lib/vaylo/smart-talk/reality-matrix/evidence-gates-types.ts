@@ -9,6 +9,7 @@
 import type {
   ClaimType,
   EvidenceLevel,
+  HallucinationTrapKind,
   MatrixConfidenceFloor,
   ProceduralLane,
   ProceduralSeverityBand,
@@ -233,7 +234,12 @@ export type TrapDisposition =
 
 export interface TrapActivation {
   readonly trapId: string;
-  readonly trapKind: string;
+  /**
+   * Canonical hallucination trap kind identifier.
+   * Typed as `HallucinationTrapKind` (8.2F-15B) — previously `string`.
+   * Must match a registered entry in `TRAP_METADATA_BY_KIND`.
+   */
+  readonly trapKind: HallucinationTrapKind;
   readonly disposition: TrapDisposition;
   /** Legacy / human-facing audit line; kept for all rows. */
   readonly rationale: string;

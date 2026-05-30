@@ -1,7 +1,7 @@
-# Governance Lineage Integration Audit — Phase 8.2F-15 (updated 8.2F-15A)
+# Governance Lineage Integration Audit — Phase 8.2F-15 (updated 8.2F-15B)
 
-**Version:** `8.2f-15a-governance-lineage-audit-v2`
-**Scope:** Vaylo Document Reasoning Constitution V1 — Phases 8.2A → 8.2F-15A
+**Version:** `8.2f-15b-governance-lineage-audit-v3`
+**Scope:** Vaylo Document Reasoning Constitution V1 — Phases 8.2A → 8.2F-15B
 **Mode:** Audit only / no runtime wiring / no behavior modified
 **Overall Status:** `partially_connected`
 
@@ -9,6 +9,13 @@
 > resolved. Both dedicated `ForbiddenExplanationMove` tokens have been added to
 > `KNOWN_FORBIDDEN_EXPLANATION_MOVES`. Contract validators, corpus expectations, and
 > scenario alignment tables updated. Four new technical debts documented (Debt 7–10).
+>
+> **8.2F-15B Update:** Debt 1 (`TrapActivation.trapKind` typed as `string`) has been resolved.
+> `TrapActivation.trapKind` is now typed as `HallucinationTrapKind` in `evidence-gates-types.ts`.
+> The canonical registry (`TRAP_METADATA_BY_KIND`) remains the single source of truth.
+> `ENFORCEMENT_CLUSTER_TRAP_KINDS` in `resolve-trap-activations.ts` narrowed from `Set<string>`
+> to `Set<HallucinationTrapKind>`. Defensive runtime lookup guard retained in
+> `run-reality-simulation.ts`. No trap semantics or simulation behavior changed.
 
 ---
 
@@ -133,14 +140,21 @@ The following safeguards are structurally connected and functioning at the gover
 
 These debts do not block the synthetic governance scaffold from functioning, but must be resolved before production deployment.
 
-### Debt 1 — `TrapActivation.trapKind` typed as `string`
+### Debt 1 — `TrapActivation.trapKind` typed as `string` ✅ RESOLVED
 
-**Severity:** Warning
+**Severity:** ~~Warning~~ → **RESOLVED in Phase 8.2F-15B**
 **Layer:** `reality_matrix`
 
-`TrapActivation.trapKind` accepts any string value. The known trap kinds are all encoded in `TRAP_METADATA_REGISTRY_V1` but there is no typed union enforcing that only known trap kinds are emitted. This allows governance bypasses via incorrect trap IDs at runtime.
+`TrapActivation.trapKind` accepted any string value. The known trap kinds were encoded in `TRAP_METADATA_REGISTRY_V1` but there was no typed union enforcing that only known trap kinds could be emitted. This allowed governance bypasses via incorrect trap IDs at runtime.
 
-**Resolution:** Introduce a `TrapKind` union type derived from `TRAP_METADATA_REGISTRY_V1` keys.
+**Resolution applied:** `TrapActivation.trapKind` changed from `string` to `HallucinationTrapKind` in `evidence-gates-types.ts`. `HallucinationTrapKind` is the canonical union type derived from `HALLUCINATION_TRAP_KINDS` in `types.ts` — the single source of truth for all registered trap identifiers.
+
+**Cascading updates applied:**
+- `evidence-gates-types.ts`: `HallucinationTrapKind` added to imports; `trapKind: string` → `trapKind: HallucinationTrapKind` in `TrapActivation`.
+- `resolve-trap-activations.ts`: `ENFORCEMENT_CLUSTER_TRAP_KINDS` narrowed from `Set<string>` to `Set<HallucinationTrapKind>`; import updated.
+- `run-reality-simulation.ts`: stale comment updated; defensive `in` check and conservative fallback retained for runtime safety (guards against incomplete registry states in future phases).
+
+**Constraint preserved:** No new trap kinds added. No trap semantics changed. No simulation behavior changed. No runtime coupling added.
 
 ---
 

@@ -314,9 +314,11 @@ interface TrapGovernanceFlags {
  * Behavior:
  * - Only `candidate_triggered` and `candidate_uncertain` traps contribute flags.
  * - For each active trap: look up metadata by trapKind. OR the boolean flags across all matches.
- * - If a trapKind is absent from the registry (runtime string not in HallucinationTrapKind):
+ * - If a trapKind is absent from the registry (not a key of TRAP_METADATA_BY_KIND at runtime):
  *     conservative fallback — treat as enforcement + escalation; record in unregisteredTrapKinds.
  *     Callers must surface unregisteredTrapKinds as an uncertainty reason.
+ *     Note: TrapActivation.trapKind is now typed as HallucinationTrapKind (8.2F-15B);
+ *     the unregistered branch is a future-proof guard against incomplete registry states.
  *
  * No string parsing. No substring checks. No regex.
  * No modification of trap activation semantics or Evidence Gate resolver behavior.
@@ -341,9 +343,10 @@ function buildTrapGovernanceFlags(traps: readonly TrapActivation[] | undefined):
   for (const t of traps) {
     if (t.disposition !== "candidate_triggered" && t.disposition !== "candidate_uncertain") continue;
 
-    // Look up metadata by key. TrapActivation.trapKind is `string`; cast is safe because
-    // TRAP_METADATA_BY_KIND is a complete Record over every registered HallucinationTrapKind —
-    // a lookup for an unregistered kind returns `undefined` at runtime.
+    // Look up metadata by key. TrapActivation.trapKind is now typed as HallucinationTrapKind
+    // (8.2F-15B). Defensive `in` check retained for runtime safety: TRAP_METADATA_BY_KIND
+    // satisfies Record<HallucinationTrapKind, TrapMetadataDefinition> at compile time,
+    // but the `in` check guards against incomplete registry states across future phases.
     const meta =
       t.trapKind in TRAP_METADATA_BY_KIND
         ? TRAP_METADATA_BY_KIND[t.trapKind as HallucinationTrapKind]

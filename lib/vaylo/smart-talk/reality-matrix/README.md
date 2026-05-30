@@ -762,6 +762,34 @@ Resolves two high-risk contract debts identified in the Phase 8.2F-15 Governance
 
 ---
 
+### Phase 8.2F-15B — TrapActivation.trapKind Typing Hardening
+
+**Type safety hardening / technical debt resolution — no trap semantics changed, no simulation behavior changed, no runtime coupling added.**
+
+Resolves **Debt 1** from the Phase 8.2F-15 Governance Lineage Integration Audit:
+
+> `TrapActivation.trapKind` was typed as `string`, creating a type-safety gap between registered hallucination traps, trap metadata, trap activation records, and trap validation logic.
+
+**Changes made:**
+
+| File | Change |
+|---|---|
+| `evidence-gates-types.ts` | `trapKind: string` → `trapKind: HallucinationTrapKind` in `TrapActivation`; `HallucinationTrapKind` added to imports |
+| `evidence-gates/resolve-trap-activations.ts` | `ENFORCEMENT_CLUSTER_TRAP_KINDS` narrowed from `Set<string>` to `Set<HallucinationTrapKind>`; import updated |
+| `reality-simulation/run-reality-simulation.ts` | Stale comment updated to reflect typed `trapKind`; defensive `in` check and conservative fallback retained |
+| `run-governance-lineage-audit-scaffold.ts` | Debt 1 moved from `WARNING_FINDINGS` to `CONNECTED_LINEAGE_FINDINGS` as an `informational` resolved finding; version bumped to `v3` |
+| `GOVERNANCE_LINEAGE_INTEGRATION_AUDIT.md` | Debt 1 marked `✅ RESOLVED`; `8.2F-15B Update` summary added at top |
+
+**Registry consistency:** `HallucinationTrapKind` is derived from `HALLUCINATION_TRAP_KINDS` in `types.ts` — the canonical single source of truth. No duplicate type definitions introduced. `TRAP_METADATA_BY_KIND` remains the complete `Record<HallucinationTrapKind, TrapMetadataDefinition>` registry.
+
+**Lookup hardening:** The defensive `t.trapKind in TRAP_METADATA_BY_KIND` check and conservative fallback in `run-reality-simulation.ts` are retained. Typed `trapKind` + defensive unknown lookup handling is the accepted pattern per the audit spec.
+
+**Governance lineage audit after 8.2F-15B:** audit version `8.2f-15b-governance-lineage-audit-v3`. Remaining open debts: Debts 4–10 (overloaded diagnostic taxonomy, `next_steps_safe` dead state, broad blocking diagnostics, caller-supplied metadata, `AuditTraceChain.structurallyValid` consistency).
+
+**Safety boundary:** No new traps added. No trap semantics changed. No simulation behavior changed. No runtime coupling added. No Smart Talk/OCR/LLM/DB changes. No user-visible output. TypeScript passes cleanly.
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).

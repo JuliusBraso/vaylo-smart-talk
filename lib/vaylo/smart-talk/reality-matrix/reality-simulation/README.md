@@ -1385,4 +1385,46 @@ This phase does not generate prose, connect to Smart Talk, call OCR, call LLMs, 
 
 ---
 
+## PHASE 8.2F-15B — TrapActivation.trapKind Typing Hardening
+
+**Mode:** Type safety hardening / Technical debt resolution
+**Files modified:** `../evidence-gates-types.ts`, `../evidence-gates/resolve-trap-activations.ts`, `run-reality-simulation.ts`
+
+### Mission
+
+Resolves **Debt 1** from the Phase 8.2F-15 Governance Lineage Integration Audit:
+
+> `TrapActivation.trapKind` was typed as `string`, creating a type-safety gap between registered hallucination traps, trap metadata, trap activation records, and trap validation logic.
+
+This phase is a **type hardening exercise only**. No new traps were added, no trap semantics were changed, and no simulation behavior was modified.
+
+### Trap Registry Source of Truth
+
+| Registry | Location | Role |
+|---|---|---|
+| `HALLUCINATION_TRAP_KINDS` | `types.ts` | Canonical `as const` array of all trap kind string literals |
+| `HallucinationTrapKind` | `types.ts` | Union type derived from `HALLUCINATION_TRAP_KINDS` |
+| `TRAP_METADATA_BY_KIND` | `trap-metadata-registry.ts` | Complete `Record<HallucinationTrapKind, TrapMetadataDefinition>` |
+
+### Type Hardening
+
+| File | Previous Type | New Type |
+|---|---|---|
+| `evidence-gates-types.ts` — `TrapActivation.trapKind` | `string` | `HallucinationTrapKind` |
+| `resolve-trap-activations.ts` — `ENFORCEMENT_CLUSTER_TRAP_KINDS` | `Set<string>` | `Set<HallucinationTrapKind>` |
+
+No unsafe casts, no `any`, no string widening, no duplicate type definitions introduced.
+
+### Lookup Hardening
+
+The defensive `t.trapKind in TRAP_METADATA_BY_KIND` check and conservative fallback branch in `run-reality-simulation.ts` are retained. This guards against incomplete registry states in future phases (e.g., a new `HallucinationTrapKind` added before a registry entry is written). The `as HallucinationTrapKind` cast in the lookup is a no-op after the type change but is retained for explicit indexing intent.
+
+Pattern maintained: **typed `trapKind` + defensive unknown lookup handling** (the acceptable pattern per the audit spec).
+
+### Safety Boundary
+
+This phase does not add new traps, modify trap semantics, change enforcement behavior, change severity behavior, change runtime routing, change simulation outcomes, add runtime coupling, add telemetry, or add persistence. No Smart Talk/OCR/LLM/UI/payment logic touched. TypeScript passes cleanly.
+
+---
+
 > **Reality simulation models safe explanation space, not legal truth.**
