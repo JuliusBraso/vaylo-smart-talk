@@ -1,16 +1,19 @@
 /**
- * OCR Uncertainty regression scaffold (Phase 8.2F-9).
+ * OCR Uncertainty regression scaffold (Phase 8.2F-9 / 8.2F-15E provenance contract).
  *
- * Eight structural cases exercising evaluateOcrUncertainty:
+ * 11 structural cases:
  *
- *  Case 1 — perfect scan, high score              → optimal, proceed
- *  Case 2 — missing dates                         → critical ambiguity, human review, do_not_calculate_deadline
- *  Case 3 — unreadable amounts                    → critical ambiguity, human review
- *  Case 4 — obscured sender                       → hard fail
- *  Case 5 — score 20 (below threshold)            → hard fail, unreadable
- *  Case 6 — mixed lanes detected                  → proceed_with_uncertainty, do_not_merge_lanes
- *  Case 7 — possible prompt injection text        → proceed_with_uncertainty, do_not_present_dry_run_as_fact
- *  Case 8 — partial document only                 → human review required, critical ambiguity
+ *  Case 1  — perfect scan, high score              → optimal, proceed
+ *  Case 2  — missing dates                         → critical ambiguity, human review, do_not_calculate_deadline
+ *  Case 3  — unreadable amounts                    → critical ambiguity, human review
+ *  Case 4  — obscured sender                       → hard fail
+ *  Case 5  — score 20 (below threshold)            → hard fail, unreadable
+ *  Case 6  — mixed lanes detected                  → proceed_with_uncertainty, do_not_merge_lanes
+ *  Case 7  — possible prompt injection text        → proceed_with_uncertainty, do_not_present_dry_run_as_fact
+ *  Case 8  — partial document only                 → human review required, critical ambiguity
+ *  Case 9  — OcrQualityReport, attested, high score → optimal, proceed (provenance path)
+ *  Case 10 — OcrQualityReport, unattested          → proceed but notes include attestation warning
+ *  Case 11 — OcrQualityReport, out-of-range score  → clamped, hard fail if < 40
  *
  * No Jest/Vitest. No CI hook. No runtime integration.
  * No prose generated. No LLM. No OCR SDK. No Smart Talk wiring.
@@ -23,14 +26,17 @@ import type {
   OcrDiagnosticCode,
   OcrEvaluationResult,
   OcrPipelineDisposition,
+  OcrQualityReport,
 } from "./ocr-uncertainty-types";
 import {
   OCR_UNCERTAINTY_EVALUATOR_VERSION,
   evaluateOcrUncertainty,
+  evaluateOcrUncertaintyFromQualityReport,
+  validateOcrQualityReport,
 } from "./evaluate-ocr-uncertainty";
 
 export const OCR_UNCERTAINTY_REGRESSION_VERSION =
-  "8.2f-9-ocr-uncertainty-regression-scaffold-v1";
+  "8.2f-15e-ocr-uncertainty-regression-scaffold-v2";
 
 // ── Result types ──────────────────────────────────────────────────────────────
 
@@ -316,10 +322,199 @@ function runCase8(): OcrUncertaintyRegressionCaseResult {
   );
 }
 
+// ── Cases 9–11: OcrQualityReport provenance path (Phase 8.2F-15E) ─────────────
+
+// Case 9 — attested quality report, high score → optimal, proceed
+function runCase9(): OcrUncertaintyRegressionCaseResult {
+  const report: OcrQualityReport = {
+    reportId: "regression-report-9-attested",
+    sourceKind: "manual_test_fixture",
+    attestationStatus: "test_fixture_attested",
+    confidenceScore: 92,
+    qualityFlags: [],
+    generatedBy: "ocr-uncertainty-regression-scaffold-v2",
+    neverUserVisible: true,
+    notes: ["Fixture: attested high-quality report for regression case 9."],
+  };
+
+  // Also validate the report structure
+  const validation = validateOcrQualityReport(report);
+  const result = evaluateOcrUncertaintyFromQualityReport({
+    degradation: CLEAN_VECTOR,
+    qualityReport: report,
+  });
+
+  const baseAssertion = assertEvaluation(
+    "quality_report_attested_high_score",
+    result,
+    {
+      expectProceedAllowed: true,
+      expectDisposition: "proceed",
+      expectConfidence: "optimal",
+      expectTriggersHumanReview: false,
+      expectDiagnostics: ["ocr_optimal"],
+      expectNoDiagnostics: ["ocr_hard_fail_unreadable", "ocr_human_review_required"],
+    },
+  );
+
+  const failures = [...baseAssertion.failures];
+
+  if (!validation.valid) {
+    failures.push(`validateOcrQualityReport reported invalid: ${validation.diagnostics.join("; ")}`);
+  }
+  if (!validation.confidenceScoreUsable) {
+    failures.push("validateOcrQualityReport: confidenceScoreUsable must be true for score 92");
+  }
+  if (!result.neverUserVisible) {
+    failures.push("neverUserVisible must be true on quality-report evaluation result");
+  }
+
+  const passed = failures.length === 0;
+  return {
+    caseName: "quality_report_attested_high_score",
+    passed,
+    evaluationResult: result,
+    failures,
+    notes: [
+      passed
+        ? "Case 9 passed: attested OcrQualityReport → optimal proceed, validateOcrQualityReport valid."
+        : `Case 9 failed with ${String(failures.length)} failure(s).`,
+    ],
+  };
+}
+
+// Case 10 — unattested quality report → proceed with attestation warning note
+function runCase10(): OcrUncertaintyRegressionCaseResult {
+  const report: OcrQualityReport = {
+    reportId: "regression-report-10-unattested",
+    sourceKind: "synthetic_metadata",
+    attestationStatus: "unattested",
+    confidenceScore: 85,
+    qualityFlags: [],
+    generatedBy: "test-caller-unverified",
+    neverUserVisible: true,
+  };
+
+  const validation = validateOcrQualityReport(report);
+  const result = evaluateOcrUncertaintyFromQualityReport({
+    degradation: CLEAN_VECTOR,
+    qualityReport: report,
+  });
+
+  const baseAssertion = assertEvaluation(
+    "quality_report_unattested",
+    result,
+    {
+      expectProceedAllowed: true,
+      expectDisposition: "proceed",
+      expectConfidence: "optimal",
+      expectTriggersHumanReview: false,
+      expectDiagnostics: ["ocr_optimal"],
+    },
+  );
+
+  const failures = [...baseAssertion.failures];
+
+  // Attestation warning must appear in the result notes.
+  const hasAttestationNote = (result.notes ?? []).some((n) =>
+    n.includes("unattested"),
+  );
+  if (!hasAttestationNote) {
+    failures.push(
+      "Expected attestation warning note in result.notes for unattested quality report.",
+    );
+  }
+
+  // validateOcrQualityReport should report the attestation issue in diagnostics
+  // without marking valid=false (attestation alone does not invalidate the report).
+  const hasAttestedDiagnostic = validation.diagnostics.some((d) =>
+    d.includes("unattested"),
+  );
+  if (!hasAttestedDiagnostic) {
+    failures.push(
+      "validateOcrQualityReport should emit attestation diagnostic for unattested report.",
+    );
+  }
+
+  const passed = failures.length === 0;
+  return {
+    caseName: "quality_report_unattested",
+    passed,
+    evaluationResult: result,
+    failures,
+    notes: [
+      passed
+        ? "Case 10 passed: unattested OcrQualityReport → proceeds with attestation warning note."
+        : `Case 10 failed with ${String(failures.length)} failure(s).`,
+    ],
+  };
+}
+
+// Case 11 — out-of-range confidence score → clamped, hard fail if clamped < 40
+function runCase11(): OcrUncertaintyRegressionCaseResult {
+  const report: OcrQualityReport = {
+    reportId: "regression-report-11-out-of-range",
+    sourceKind: "synthetic_metadata",
+    attestationStatus: "test_fixture_attested",
+    confidenceScore: -50,   // out-of-range negative → clamps to 0 → hard fail
+    qualityFlags: [],
+    generatedBy: "ocr-uncertainty-regression-scaffold-v2",
+    neverUserVisible: true,
+    notes: ["Fixture: negative score to verify clamping to 0 and hard-fail."],
+  };
+
+  const validation = validateOcrQualityReport(report);
+  const result = evaluateOcrUncertaintyFromQualityReport({
+    degradation: CLEAN_VECTOR,
+    qualityReport: report,
+  });
+
+  const baseAssertion = assertEvaluation(
+    "quality_report_out_of_range_score",
+    result,
+    {
+      expectProceedAllowed: false,
+      expectDisposition: "hard_fail",
+      expectConfidence: "unreadable",
+      expectTriggersHumanReview: true,
+      expectDiagnostics: ["ocr_hard_fail_unreadable"],
+      expectNoDiagnostics: ["ocr_optimal"],
+    },
+  );
+
+  const failures = [...baseAssertion.failures];
+
+  // validateOcrQualityReport should flag the out-of-range score
+  const hasClamppingDiagnostic = validation.diagnostics.some((d) =>
+    d.includes("clamped") || d.includes("outside"),
+  );
+  if (!hasClamppingDiagnostic) {
+    failures.push(
+      "validateOcrQualityReport should emit clamping diagnostic for out-of-range score -50.",
+    );
+  }
+
+  const passed = failures.length === 0;
+  return {
+    caseName: "quality_report_out_of_range_score",
+    passed,
+    evaluationResult: result,
+    failures,
+    notes: [
+      passed
+        ? "Case 11 passed: out-of-range confidence (-50) clamped to 0, hard fail confirmed."
+        : `Case 11 failed with ${String(failures.length)} failure(s).`,
+    ],
+  };
+}
+
 // ── Scaffold runner ───────────────────────────────────────────────────────────
 
 /**
- * Runs all 8 OCR uncertainty regression cases and aggregates results.
+ * Runs all 11 OCR uncertainty regression cases and aggregates results.
+ *
+ * Cases 1–8: evaluateOcrUncertainty (direct baseConfidenceScore path).
+ * Cases 9–11: evaluateOcrUncertaintyFromQualityReport (OcrQualityReport provenance path).
  *
  * Does not throw. All assertions collected as failure strings.
  * No prose generated. No LLM. No OCR SDK. No Smart Talk runtime.
@@ -334,6 +529,9 @@ export function runOcrUncertaintyRegressionScaffold(): OcrUncertaintyRegressionS
     runCase6(),
     runCase7(),
     runCase8(),
+    runCase9(),
+    runCase10(),
+    runCase11(),
   ];
 
   const allPassed = caseResults.every((r) => r.passed);
@@ -347,6 +545,9 @@ export function runOcrUncertaintyRegressionScaffold(): OcrUncertaintyRegressionS
   if (allPassed) {
     notes.push(
       "All evaluation rules, disposition routing, boundary recommendations, and neverUserVisible invariants validated.",
+    );
+    notes.push(
+      "Cases 9–11 validate OcrQualityReport provenance path: attested report, unattested warning note, out-of-range clamping.",
     );
   } else {
     notes.push(

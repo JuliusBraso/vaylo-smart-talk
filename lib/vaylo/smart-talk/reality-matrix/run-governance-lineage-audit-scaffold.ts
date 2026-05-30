@@ -1,5 +1,5 @@
 /**
- * Governance Lineage Integration Audit scaffold (Phase 8.2F-15 / updated 8.2F-15D).
+ * Governance Lineage Integration Audit scaffold (Phase 8.2F-15 / updated 8.2F-15E).
  *
  * Implements `runGovernanceLineageAuditScaffold` — a pure static inventory
  * function that returns a `GovernanceLineageAuditResult` covering the entire
@@ -49,6 +49,17 @@
  *    exclusion check fired first, making the restriction entry unreachable.
  *    Resolved finding moved from WARNING_FINDINGS to CONNECTED_LINEAGE_FINDINGS.
  *  - No section visibility, blockedReasonCodes, diagnostics, or mapper output changed.
+ *
+ * 8.2F-15E changes:
+ *  - Technical Debt 7: caller-supplied OCR confidence unvalidated at ingress → PARTIALLY RESOLVED.
+ *    OcrQualityReport type introduced in ocr-uncertainty-types.ts with OcrQualityReportSourceKind,
+ *    OcrQualityAttestationStatus, and OcrQualityReportValidationResult.
+ *    evaluateOcrUncertaintyFromQualityReport added to evaluate-ocr-uncertainty.ts.
+ *    validateOcrQualityReport helper added.
+ *    LimitedPilotGateInput.baseOcrConfidenceScore made optional; ocrQualityReport added as
+ *    preferred path. pilot_ocr_confidence_unattested diagnostic emitted on raw-score path.
+ *    Raw baseOcrConfidenceScore fallback retained for backward compatibility.
+ *    Partially resolved: OcrQualityReport contract exists but no real OCR engine is wired.
  *    Free-preview mapper: dedicated code per ForbiddenExplanationMove (13 specific codes).
  *    free_preview_paid_field_blocked is now the structural invariant only.
  *    Paid mapper: dedicated code per ForbiddenExplanationMove; paid_legal_verdict_blocked
@@ -78,7 +89,7 @@ import type {
 } from "./governance-lineage-audit-types";
 
 export const GOVERNANCE_LINEAGE_AUDIT_VERSION =
-  "8.2f-15d-governance-lineage-audit-v5";
+  "8.2f-15e-governance-lineage-audit-v6";
 
 // ── Finding factory ───────────────────────────────────────────────────────────
 
@@ -269,6 +280,24 @@ const CONNECTED_LINEAGE_FINDINGS: readonly GovernanceAuditFinding[] = [
       "case (only no_deadline_calculation_when_forbidden active) is unaffected: next_steps_safe " +
       "is still produced with its blocked reason codes when it is not excluded.",
   ),
+  finding(
+    "ocr_uncertainty",
+    "informational",
+    "PARTIALLY RESOLVED (8.2F-15E): OCR confidence now has a typed provenance contract",
+    "Previously reported as a WARNING (Debt 7) in Phase 8.2F-15: evaluateOcrUncertainty " +
+      "accepted baseConfidenceScore as a raw caller-supplied number with no provenance. " +
+      "Partially resolved in Phase 8.2F-15E by introducing OcrQualityReport — a typed " +
+      "provenance contract carrying confidenceScore, OcrQualityReportSourceKind, " +
+      "OcrQualityAttestationStatus, qualityFlags, generatedBy, and neverUserVisible:true. " +
+      "evaluateOcrUncertaintyFromQualityReport consumes OcrQualityReport and appends an " +
+      "attestation warning note when attestationStatus==='unattested'. " +
+      "validateOcrQualityReport provides structural integrity checks. " +
+      "LimitedPilotGateInput accepts ocrQualityReport (preferred) or baseOcrConfidenceScore " +
+      "(backward-compat); raw-score path emits pilot_ocr_confidence_unattested informational " +
+      "diagnostic. Remaining gap: no real OCR engine is wired; OcrQualityReport is still " +
+      "caller-constructed metadata. Full resolution requires binding to a verified OCR " +
+      "provider output in a future production phase.",
+  ),
   // ── Partially resolved debts (8.2F-15C) ───────────────────────────────────────
   finding(
     "free_preview_mapper",
@@ -397,17 +426,7 @@ const WARNING_FINDINGS: readonly GovernanceAuditFinding[] = [
       "section mismatch, tier mismatch) without requiring diagnostics array inspection.",
   ),
   // Technical debts identified in 8.2F-15A audit review
-  finding(
-    "ocr_uncertainty",
-    "warning",
-    "Technical Debt: caller-supplied OCR confidence score is unvalidated at ingress",
-    "evaluateOcrUncertainty accepts baseConfidenceScore as a caller-supplied " +
-      "number and clamps it internally. No OCR provider integration validates " +
-      "this score against a real pipeline. A caller could supply any value, " +
-      "bypassing the intent of OCR governance. Future phases must bind the " +
-      "confidence score to a verified OCR provider output rather than trusting " +
-      "caller-supplied metadata.",
-  ),
+  // Debt 7 partially resolved in 8.2F-15E — moved to CONNECTED_LINEAGE_FINDINGS below
   finding(
     "pilot_gate",
     "warning",

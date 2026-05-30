@@ -1,7 +1,7 @@
-# Governance Lineage Integration Audit — Phase 8.2F-15 (updated 8.2F-15D)
+# Governance Lineage Integration Audit — Phase 8.2F-15 (updated 8.2F-15E)
 
-**Version:** `8.2f-15d-governance-lineage-audit-v5`
-**Scope:** Vaylo Document Reasoning Constitution V1 — Phases 8.2A → 8.2F-15D
+**Version:** `8.2f-15e-governance-lineage-audit-v6`
+**Scope:** Vaylo Document Reasoning Constitution V1 — Phases 8.2A → 8.2F-15E
 **Mode:** Audit only / no runtime wiring / no behavior modified
 **Overall Status:** `partially_connected`
 
@@ -20,6 +20,12 @@
 > **8.2F-15C Update:** Debts 5 and 6 are partially reduced (see detail below).
 >
 > **8.2F-15D Update:** Debt 4 (`next_steps_safe` dead restriction-state) is resolved.
+>
+> **8.2F-15E Update:** Debt 7 (caller-supplied OCR confidence) is **partially resolved**.
+> `OcrQualityReport` typed provenance contract introduced. `evaluateOcrUncertaintyFromQualityReport`
+> consumes it. `LimitedPilotGateInput.baseOcrConfidenceScore` made optional; `ocrQualityReport`
+> added as preferred path. Raw-score path emits `pilot_ocr_confidence_unattested` diagnostic.
+> Raw fallback retained for backward compatibility. Full resolution requires real OCR engine binding.
 > A post-filter added to `run-paid-explanation-mapper.ts` eliminates restriction bookkeeping
 > accumulated for sections that are already excluded by a higher-priority forbidden move.
 > The canonical dead state was: when `no_autonomous_form_submission` and
@@ -263,14 +269,31 @@ When both moves are simultaneously active, the effect loop adds `next_steps_safe
 
 ---
 
-### Debt 7 — Caller-supplied OCR confidence score is unvalidated at ingress *(Added 8.2F-15A)*
+### Debt 7 — Caller-supplied OCR confidence score is unvalidated at ingress ⚠ PARTIALLY RESOLVED (8.2F-15E)
 
-**Severity:** Warning
+**Severity:** Warning → **PARTIALLY RESOLVED in Phase 8.2F-15E**
 **Layer:** `ocr_uncertainty`
 
-`evaluateOcrUncertainty` accepts `baseConfidenceScore` as a caller-supplied number and clamps it internally. No OCR provider integration validates this score against a real pipeline output. A caller could supply any value (e.g. `100` for a degraded document), bypassing the intent of the OCR governance gate. The clamping prevents crashes but not trust violations.
+**Original debt:** `evaluateOcrUncertainty` accepted `baseConfidenceScore` as a raw caller-supplied number with no provenance or attestation contract. A caller could supply any value, bypassing the intent of OCR governance.
 
-**Resolution:** Future phases must bind the confidence score to a verified OCR provider output rather than trusting caller-supplied metadata. The score should carry a provenance tag.
+**Resolution applied (8.2F-15E):**
+
+A typed provenance contract `OcrQualityReport` was introduced in `ocr-uncertainty-types.ts`:
+- `OcrQualityReportSourceKind` — origin classification (`synthetic_metadata`, `manual_test_fixture`, `future_ocr_engine`, `imported_quality_report`)
+- `OcrQualityAttestationStatus` — trust posture (`unattested`, `test_fixture_attested`, `future_engine_attested`)
+- `OcrQualityReport` — structured report carrying `confidenceScore`, `qualityFlags`, `generatedBy`, `neverUserVisible: true`
+- `OcrQualityReportValidationResult` — structural validation result
+
+New functions in `evaluate-ocr-uncertainty.ts`:
+- `evaluateOcrUncertaintyFromQualityReport` — preferred entrypoint; consumes `OcrQualityReport`, appends attestation warning note when `attestationStatus === "unattested"`
+- `validateOcrQualityReport` — structural integrity checker
+
+`LimitedPilotGateInput` updated:
+- `baseOcrConfidenceScore` made optional (backward-compat fallback)
+- `ocrQualityReport` added as preferred path
+- Raw-score path emits `pilot_ocr_confidence_unattested` informational diagnostic
+
+**Remaining gap:** No real OCR engine is wired. `OcrQualityReport` is still caller-constructed metadata. The attestation status (`unattested` vs. `test_fixture_attested`) is caller-supplied. Full resolution requires a future production phase that binds `OcrQualityReport` to a verified OCR engine output.
 
 ---
 

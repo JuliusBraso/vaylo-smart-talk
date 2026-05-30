@@ -1,5 +1,5 @@
 /**
- * Limited Trusted Pilot Gate scaffold (Phase 8.2F-11).
+ * Limited Trusted Pilot Gate scaffold (Phase 8.2F-11 / 8.2F-15E OCR confidence provenance).
  *
  * Implements `runLimitedPilotGateScaffold` — a pure function that models
  * whether a hypothetical trusted-pilot transaction would be allowed, blocked,
@@ -39,10 +39,13 @@ import type {
   PilotScopeRequest,
 } from "./limited-pilot-gate-types";
 import type { OcrEvaluationResult } from "./ocr-uncertainty-types";
-import { evaluateOcrUncertainty } from "./evaluate-ocr-uncertainty";
+import {
+  evaluateOcrUncertainty,
+  evaluateOcrUncertaintyFromQualityReport,
+} from "./evaluate-ocr-uncertainty";
 
 export const LIMITED_PILOT_GATE_SCAFFOLD_VERSION =
-  "8.2f-11-limited-pilot-gate-scaffold-v1";
+  "8.2f-15e-limited-pilot-gate-scaffold-v2";
 
 // ── Scope constants ───────────────────────────────────────────────────────────
 
@@ -119,14 +122,28 @@ function detectScopeViolation(scope: PilotScopeRequest): string | null {
 export function runLimitedPilotGateScaffold(
   input: LimitedPilotGateInput,
 ): LimitedPilotGateResult {
-  // Always evaluate OCR up-front so the result is always present in the
-  // output regardless of which gate check fires first.
-  const ocrEvaluation = evaluateOcrUncertainty({
-    degradation: input.ocrDegradation,
-    baseConfidenceScore: input.baseOcrConfidenceScore,
-  });
-
+  // 8.2F-15E: prefer structured OcrQualityReport over raw baseOcrConfidenceScore.
+  // When only a raw number is supplied, emit pilot_ocr_confidence_unattested
+  // as an informational diagnostic to record the provenance gap.
+  // When neither is present, treat confidence as 0 (below hard-fail threshold).
   const diagnostics: PilotGateDiagnosticCode[] = [];
+
+  let ocrEvaluation: OcrEvaluationResult;
+
+  if (input.ocrQualityReport !== undefined) {
+    ocrEvaluation = evaluateOcrUncertaintyFromQualityReport({
+      degradation: input.ocrDegradation,
+      qualityReport: input.ocrQualityReport,
+    });
+  } else {
+    // Backward-compat path: raw baseOcrConfidenceScore supplied without provenance.
+    // Emit informational provenance-gap diagnostic; does not block the gate.
+    diagnostics.push("pilot_ocr_confidence_unattested");
+    ocrEvaluation = evaluateOcrUncertainty({
+      degradation: input.ocrDegradation,
+      baseConfidenceScore: input.baseOcrConfidenceScore ?? 0,
+    });
+  }
 
   // ── Gate 1: Invite check ──────────────────────────────────────────────────
   if (!input.subject.isInvited) {

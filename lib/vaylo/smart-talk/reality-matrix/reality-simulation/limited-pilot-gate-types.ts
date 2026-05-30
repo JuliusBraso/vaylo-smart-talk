@@ -1,5 +1,5 @@
 /**
- * Limited Trusted Pilot Gate types (Phase 8.2F-11).
+ * Limited Trusted Pilot Gate types (Phase 8.2F-11 / 8.2F-15E OCR confidence provenance).
  *
  * Metadata-only type model for the future Limited Trusted Pilot Gate.
  * No real user access, no pilot activation, no DB, no auth integration.
@@ -16,7 +16,11 @@
  */
 
 import type { ExplanationAccessTier } from "./explanation-contract-types";
-import type { OcrDegradationVector, OcrEvaluationResult } from "./ocr-uncertainty-types";
+import type {
+  OcrDegradationVector,
+  OcrEvaluationResult,
+  OcrQualityReport,
+} from "./ocr-uncertainty-types";
 import type { RedactedDocumentCategory } from "./redacted-corpus-types";
 
 // ── Disposition and diagnostics ───────────────────────────────────────────────
@@ -39,6 +43,11 @@ export type PilotAccessDisposition =
 /**
  * Never-user-visible governance diagnostic codes emitted by
  * `runLimitedPilotGateScaffold`.
+ *
+ * `pilot_ocr_confidence_unattested` (8.2F-15E): emitted as an informational
+ * diagnostic when OCR confidence is supplied as a raw `baseOcrConfidenceScore`
+ * number rather than a structured `OcrQualityReport`. Does not block the gate —
+ * it signals a provenance gap for governance audit purposes only.
  */
 export type PilotGateDiagnosticCode =
   | "pilot_gate_passed"
@@ -48,7 +57,8 @@ export type PilotGateDiagnosticCode =
   | "pilot_blocked_by_ocr_degradation"
   | "pilot_human_review_required_by_ocr"
   | "pilot_scope_not_allowed"
-  | "pilot_metadata_incomplete";
+  | "pilot_metadata_incomplete"
+  | "pilot_ocr_confidence_unattested";
 
 // ── Input types ───────────────────────────────────────────────────────────────
 
@@ -105,13 +115,30 @@ export interface PilotScopeRequest {
 /**
  * The complete input to `runLimitedPilotGateScaffold`.
  * All fields are structural metadata — no live runtime state.
+ *
+ * **OCR confidence provenance (8.2F-15E):**
+ * The preferred path is to supply `ocrQualityReport` — a structured,
+ * provenance-backed confidence report. When present, its `confidenceScore`
+ * is used and its `attestationStatus` is recorded in the evaluation notes.
+ *
+ * For backward compatibility, `baseOcrConfidenceScore` (raw number) remains
+ * accepted. When only the raw score is supplied, the gate emits the informational
+ * `pilot_ocr_confidence_unattested` diagnostic to record the provenance gap.
+ *
+ * If neither is supplied, the gate treats confidence as 0 (hard-fail territory).
+ *
+ * At most one of `ocrQualityReport` / `baseOcrConfidenceScore` should be supplied
+ * per call; if both are present, `ocrQualityReport` takes precedence.
  */
 export interface LimitedPilotGateInput {
   readonly subject: PilotSubjectProfile;
   readonly telemetry: PilotSessionTelemetry;
   readonly scopeRequest: PilotScopeRequest;
   readonly ocrDegradation: OcrDegradationVector;
-  readonly baseOcrConfidenceScore: number;
+  /** @deprecated Prefer `ocrQualityReport` (8.2F-15E). Raw number accepted for backward compatibility. */
+  readonly baseOcrConfidenceScore?: number;
+  /** Structured provenance-backed OCR confidence report (8.2F-15E). Preferred over `baseOcrConfidenceScore`. */
+  readonly ocrQualityReport?: OcrQualityReport;
 }
 
 // ── Result type ───────────────────────────────────────────────────────────────

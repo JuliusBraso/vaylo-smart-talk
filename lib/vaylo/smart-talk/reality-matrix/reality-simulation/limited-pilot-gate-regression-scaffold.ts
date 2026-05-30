@@ -1,16 +1,17 @@
 /**
- * Limited Pilot Gate regression scaffold (Phase 8.2F-11).
+ * Limited Pilot Gate regression scaffold (Phase 8.2F-11 / 8.2F-15E provenance).
  *
- * Eight structural cases exercising runLimitedPilotGateScaffold:
+ * Nine structural cases:
  *
- *  Case 1 — invited + consent + clean OCR                 → allowed
+ *  Case 1 — invited + consent + clean OCR (raw score)     → allowed + pilot_ocr_confidence_unattested note
  *  Case 2 — not invited                                   → blocked (pilot_unauthorized_subject)
  *  Case 3 — missing consent                               → blocked (pilot_missing_consent)
  *  Case 4 — session limit reached                         → blocked (pilot_session_limit_reached)
- *  Case 5 — OCR score 20                                  → blocked (pilot_blocked_by_ocr_degradation)
- *  Case 6 — missing dates OCR                             → human_review_required
- *  Case 7 — obscured sender OCR                           → blocked (pilot_blocked_by_ocr_degradation)
+ *  Case 5 — OCR score 20 (raw)                            → blocked (pilot_blocked_by_ocr_degradation)
+ *  Case 6 — missing dates OCR (raw)                       → human_review_required
+ *  Case 7 — obscured sender OCR (raw)                     → blocked (pilot_blocked_by_ocr_degradation)
  *  Case 8 — containsRealUserDocument=true                 → out_of_scope + governanceCompromised
+ *  Case 9 — OcrQualityReport, attested, clean scan        → allowed, NO pilot_ocr_confidence_unattested
  *
  * No Jest/Vitest. No CI hook. No runtime integration.
  * No real user data. No LLM. No OCR SDK. No Smart Talk wiring.
@@ -22,14 +23,14 @@ import type {
   PilotAccessDisposition,
   PilotGateDiagnosticCode,
 } from "./limited-pilot-gate-types";
-import type { OcrDegradationVector } from "./ocr-uncertainty-types";
+import type { OcrDegradationVector, OcrQualityReport } from "./ocr-uncertainty-types";
 import {
   LIMITED_PILOT_GATE_SCAFFOLD_VERSION,
   runLimitedPilotGateScaffold,
 } from "./run-limited-pilot-gate-scaffold";
 
 export const LIMITED_PILOT_GATE_REGRESSION_VERSION =
-  "8.2f-11-limited-pilot-gate-regression-scaffold-v1";
+  "8.2f-15e-limited-pilot-gate-regression-scaffold-v2";
 
 // ── Result types ──────────────────────────────────────────────────────────────
 
@@ -87,6 +88,8 @@ const BASE_SCOPE: LimitedPilotGateInput["scopeRequest"] = {
   containsRealUserDocument: false,
 };
 
+// 8.2F-15E: makeInput defaults to baseOcrConfidenceScore (backward-compat path).
+// Use makeInputWithReport to exercise the OcrQualityReport provenance path.
 function makeInput(
   overrides: Partial<{
     subject: Partial<LimitedPilotGateInput["subject"]>;
@@ -102,6 +105,24 @@ function makeInput(
     scopeRequest: { ...BASE_SCOPE, ...(overrides.scopeRequest ?? {}) },
     ocrDegradation: overrides.ocrDegradation ?? CLEAN_OCR_VECTOR,
     baseOcrConfidenceScore: overrides.baseOcrConfidenceScore ?? 90,
+  };
+}
+
+function makeInputWithReport(
+  overrides: Partial<{
+    subject: Partial<LimitedPilotGateInput["subject"]>;
+    telemetry: Partial<LimitedPilotGateInput["telemetry"]>;
+    scopeRequest: Partial<LimitedPilotGateInput["scopeRequest"]>;
+    ocrDegradation: OcrDegradationVector;
+    ocrQualityReport: OcrQualityReport;
+  }>,
+): LimitedPilotGateInput {
+  return {
+    subject: { ...BASE_SUBJECT, ...(overrides.subject ?? {}) },
+    telemetry: { ...BASE_TELEMETRY, ...(overrides.telemetry ?? {}) },
+    scopeRequest: { ...BASE_SCOPE, ...(overrides.scopeRequest ?? {}) },
+    ocrDegradation: overrides.ocrDegradation ?? CLEAN_OCR_VECTOR,
+    ocrQualityReport: overrides.ocrQualityReport,
   };
 }
 
@@ -169,17 +190,19 @@ function assertGate(
   };
 }
 
-// ── Case 1 — invited + consent + clean OCR → allowed ─────────────────────────
+// ── Case 1 — invited + consent + clean OCR (raw score) → allowed ─────────────
+// Uses backward-compat baseOcrConfidenceScore path.
+// 8.2F-15E: expects pilot_ocr_confidence_unattested informational diagnostic.
 
 function runCase1(): LimitedPilotGateRegressionCaseResult {
   return assertGate(
-    "invited_consent_clean_ocr_allowed",
+    "invited_consent_clean_ocr_allowed_raw_score",
     runLimitedPilotGateScaffold(makeInput({ baseOcrConfidenceScore: 90 })),
     {
       expectTransactionAllowed: true,
       expectDisposition: "allowed",
       expectGovernanceCompromised: false,
-      expectDiagnostics: ["pilot_gate_passed"],
+      expectDiagnostics: ["pilot_gate_passed", "pilot_ocr_confidence_unattested"],
       expectNoDiagnostics: [
         "pilot_unauthorized_subject",
         "pilot_missing_consent",
@@ -336,10 +359,49 @@ function runCase8(): LimitedPilotGateRegressionCaseResult {
   );
 }
 
+// ── Case 9 — OcrQualityReport, attested, clean scan → allowed ────────────────
+// 8.2F-15E: exercises the provenance-backed OcrQualityReport path.
+// pilot_ocr_confidence_unattested must NOT be present (report is attested).
+
+function runCase9(): LimitedPilotGateRegressionCaseResult {
+  const report: OcrQualityReport = {
+    reportId: "pilot-gate-regression-report-9",
+    sourceKind: "manual_test_fixture",
+    attestationStatus: "test_fixture_attested",
+    confidenceScore: 88,
+    qualityFlags: [],
+    generatedBy: "limited-pilot-gate-regression-scaffold-v2",
+    neverUserVisible: true,
+    notes: ["Fixture: attested quality report for pilot gate regression case 9."],
+  };
+
+  return assertGate(
+    "invited_consent_clean_ocr_allowed_quality_report",
+    runLimitedPilotGateScaffold(makeInputWithReport({ ocrQualityReport: report })),
+    {
+      expectTransactionAllowed: true,
+      expectDisposition: "allowed",
+      expectGovernanceCompromised: false,
+      expectDiagnostics: ["pilot_gate_passed"],
+      // Provenance path used → unattested diagnostic must NOT appear.
+      expectNoDiagnostics: [
+        "pilot_ocr_confidence_unattested",
+        "pilot_unauthorized_subject",
+        "pilot_missing_consent",
+        "pilot_session_limit_reached",
+        "pilot_blocked_by_ocr_degradation",
+      ],
+    },
+  );
+}
+
 // ── Scaffold runner ───────────────────────────────────────────────────────────
 
 /**
- * Runs all 8 limited pilot gate regression cases and aggregates results.
+ * Runs all 9 limited pilot gate regression cases and aggregates results.
+ *
+ * Cases 1–8: backward-compat baseOcrConfidenceScore path.
+ * Case 9: OcrQualityReport provenance path (8.2F-15E).
  *
  * Does not throw. All assertions collected as failure strings.
  * No real user data. No LLM. No OCR SDK. No Smart Talk runtime.
@@ -354,6 +416,7 @@ export function runLimitedPilotGateRegressionScaffold(): LimitedPilotGateRegress
     runCase6(),
     runCase7(),
     runCase8(),
+    runCase9(),
   ];
 
   const allPassed = caseResults.every((r) => r.passed);
@@ -368,6 +431,10 @@ export function runLimitedPilotGateRegressionScaffold(): LimitedPilotGateRegress
     notes.push(
       "All invite/consent/session/OCR/scope gate rules, governance breach detection, " +
         "and neverUserVisible invariants validated.",
+    );
+    notes.push(
+      "Case 9 validates OcrQualityReport provenance path: attested report → allowed, " +
+        "no pilot_ocr_confidence_unattested diagnostic.",
     );
   } else {
     notes.push(

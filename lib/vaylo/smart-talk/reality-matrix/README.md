@@ -878,6 +878,60 @@ This is the minimal change. No section visibility, `blockedReasonCodes`, diagnos
 
 ---
 
+### Phase 8.2F-15E — OCR Confidence Provenance Contract
+
+**Input provenance hardening / technical debt resolution — no live OCR, no OCR SDK, no runtime wiring.**
+
+Partially resolves **Debt 7** from the Phase 8.2F-15 Governance Lineage Integration Audit.
+
+#### Problem
+
+`evaluateOcrUncertainty` accepted `baseConfidenceScore` as a raw caller-supplied number with no provenance or attestation contract. A caller could supply any value, bypassing the intent of OCR governance.
+
+#### Solution
+
+A typed `OcrQualityReport` provenance contract was introduced:
+
+| New type | Purpose |
+|---|---|
+| `OcrQualityReportSourceKind` | Origin classification: `synthetic_metadata`, `manual_test_fixture`, `future_ocr_engine`, `imported_quality_report` |
+| `OcrQualityAttestationStatus` | Trust posture: `unattested`, `test_fixture_attested`, `future_engine_attested` |
+| `OcrQualityReport` | Structured report: `reportId`, `sourceKind`, `attestationStatus`, `confidenceScore`, `qualityFlags`, `generatedBy`, `neverUserVisible: true` |
+| `OcrQualityReportValidationResult` | Structural integrity check result |
+
+| New function | Purpose |
+|---|---|
+| `evaluateOcrUncertaintyFromQualityReport` | Preferred entrypoint; consumes `OcrQualityReport`, appends attestation warning note when `unattested` |
+| `validateOcrQualityReport` | Structural integrity checker for reports at governance ingress |
+
+`LimitedPilotGateInput` changes:
+- `baseOcrConfidenceScore` made `optional` — backward compat retained
+- `ocrQualityReport?: OcrQualityReport` added — preferred provenance path
+- `pilot_ocr_confidence_unattested` added to `PilotGateDiagnosticCode` — emitted as informational diagnostic on raw-score path
+
+#### Files modified
+
+| File | Change |
+|---|---|
+| `reality-simulation/ocr-uncertainty-types.ts` | Added 4 new types: `OcrQualityReportSourceKind`, `OcrQualityAttestationStatus`, `OcrQualityReport`, `OcrQualityReportValidationResult` |
+| `reality-simulation/evaluate-ocr-uncertainty.ts` | Added `evaluateOcrUncertaintyFromQualityReport`, `validateOcrQualityReport`; version `v2` |
+| `reality-simulation/limited-pilot-gate-types.ts` | `baseOcrConfidenceScore` optional; `ocrQualityReport` added; `pilot_ocr_confidence_unattested` diagnostic code added |
+| `reality-simulation/run-limited-pilot-gate-scaffold.ts` | OCR evaluation branches on `ocrQualityReport` vs. `baseOcrConfidenceScore`; version `v2` |
+| `reality-simulation/ocr-uncertainty-regression-scaffold.ts` | Cases 9–11 added (attested report, unattested warning, clamped score); version `v2` |
+| `reality-simulation/limited-pilot-gate-regression-scaffold.ts` | Case 9 added (OcrQualityReport path); Case 1 updated to assert `pilot_ocr_confidence_unattested`; version `v2` |
+| `run-governance-lineage-audit-scaffold.ts` | Debt 7 → partially resolved; audit version `v6` |
+| `GOVERNANCE_LINEAGE_INTEGRATION_AUDIT.md` | Debt 7 marked ⚠ PARTIALLY RESOLVED |
+
+#### Remaining gap
+
+`OcrQualityReport` is still caller-constructed metadata. Full resolution requires a future production phase that binds the report to a verified OCR engine output.
+
+**Remaining open debts:** Debt 5 (cross-phase namespace isolation), Debt 6 (bridge-level typing), Debt 8 (pilot telemetry), Debt 9 (wording scores), Debt 10 (`AuditTraceChain.structurallyValid`). Debt 7 partially resolved.
+
+**Safety boundary:** No live OCR added. No OCR SDK imported. No image processing. No Smart Talk/LLM/DB/runtime wiring. No user-visible output. TypeScript and ESLint pass cleanly.
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).

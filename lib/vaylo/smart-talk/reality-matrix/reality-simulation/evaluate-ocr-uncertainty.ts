@@ -1,5 +1,5 @@
 /**
- * OCR Uncertainty pure evaluator (Phase 8.2F-9).
+ * OCR Uncertainty pure evaluator (Phase 8.2F-9 / 8.2F-15E provenance contract).
  *
  * Implements `evaluateOcrUncertainty` — a pure function that classifies OCR
  * degradation risk and determines whether the cognition pipeline may proceed.
@@ -23,10 +23,12 @@ import type {
   OcrDiagnosticCode,
   OcrEvaluationResult,
   OcrPipelineDisposition,
+  OcrQualityReport,
+  OcrQualityReportValidationResult,
 } from "./ocr-uncertainty-types";
 
 export const OCR_UNCERTAINTY_EVALUATOR_VERSION =
-  "8.2f-9-ocr-uncertainty-evaluator-v1";
+  "8.2f-15e-ocr-uncertainty-evaluator-v2";
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
@@ -218,4 +220,96 @@ export function evaluateOcrUncertainty({
     neverUserVisible: true,
     ...(notes.length > 0 ? { notes } : {}),
   };
+}
+
+// ── Phase 8.2F-15E: provenance-backed entrypoint ──────────────────────────────
+
+/**
+ * Validates a structured `OcrQualityReport` at the governance ingress.
+ *
+ * Checks only structural integrity — no OCR processing, no image analysis.
+ * Returns `valid: false` if the report is missing required fields or the
+ * confidence score cannot be clamped to [0, 100].
+ *
+ * Pure function — no side effects, no DB, no LLM, no OCR.
+ */
+export function validateOcrQualityReport(
+  report: OcrQualityReport,
+): OcrQualityReportValidationResult {
+  const diagnostics: string[] = [];
+
+  if (!report.reportId || report.reportId.trim() === "") {
+    diagnostics.push("reportId is empty or blank.");
+  }
+  if (!report.generatedBy || report.generatedBy.trim() === "") {
+    diagnostics.push("generatedBy is empty or blank.");
+  }
+
+  const clamped = Math.max(0, Math.min(100, report.confidenceScore));
+  const scoreInRange = report.confidenceScore >= 0 && report.confidenceScore <= 100;
+  if (!scoreInRange) {
+    diagnostics.push(
+      `confidenceScore ${String(report.confidenceScore)} is outside [0, 100]; will be clamped to ${String(clamped)}.`,
+    );
+  }
+
+  if (report.attestationStatus === "unattested") {
+    diagnostics.push(
+      "attestationStatus is 'unattested': confidence score provenance is unverified. " +
+        "Downstream consumers should treat this report as caller-supplied metadata.",
+    );
+  }
+
+  const valid = diagnostics.filter((d) => !d.includes("clamped") && !d.includes("unattested")).length === 0;
+
+  return {
+    valid,
+    confidenceScoreUsable: true,
+    diagnostics,
+    neverUserVisible: true,
+  };
+}
+
+/**
+ * Evaluates OCR degradation risk from a structured `OcrQualityReport` and a
+ * degradation vector, using the same rules as `evaluateOcrUncertainty`.
+ *
+ * The quality report provides a typed, provenance-backed confidence score
+ * instead of a raw `baseConfidenceScore: number`. This is the preferred
+ * entrypoint once callers can produce a structured report.
+ *
+ * If `qualityReport.attestationStatus === "unattested"`, the evaluation
+ * proceeds normally but a governance note is appended to the result to
+ * record that the confidence provenance is unverified. This does NOT change
+ * the disposition — unattested confidence does not by itself hard-fail.
+ *
+ * Confidence score is clamped to [0, 100] as in `evaluateOcrUncertainty`.
+ *
+ * Pure function — no side effects, no DB, no LLM, no OCR SDK.
+ */
+export function evaluateOcrUncertaintyFromQualityReport({
+  degradation,
+  qualityReport,
+}: {
+  readonly degradation: OcrDegradationVector;
+  readonly qualityReport: OcrQualityReport;
+}): OcrEvaluationResult {
+  const baseResult = evaluateOcrUncertainty({
+    degradation,
+    baseConfidenceScore: qualityReport.confidenceScore,
+  });
+
+  if (qualityReport.attestationStatus === "unattested") {
+    const attestationNote =
+      `OcrQualityReport "${qualityReport.reportId}" has attestationStatus="unattested": ` +
+      "confidence score provenance is unverified (caller-supplied metadata). " +
+      "Governance result preserved; no disposition change from attestation status alone.";
+
+    return {
+      ...baseResult,
+      notes: [...(baseResult.notes ?? []), attestationNote],
+    };
+  }
+
+  return baseResult;
 }

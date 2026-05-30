@@ -1545,4 +1545,59 @@ No section visibility changed. No `blockedReasonCodes` on produced sections chan
 
 ---
 
+## PHASE 8.2F-15E — OCR Confidence Provenance Contract
+
+**Mode:** Input provenance hardening / Technical debt partial resolution
+**Files modified:** `ocr-uncertainty-types.ts`, `evaluate-ocr-uncertainty.ts`, `limited-pilot-gate-types.ts`, `run-limited-pilot-gate-scaffold.ts`, `ocr-uncertainty-regression-scaffold.ts`, `limited-pilot-gate-regression-scaffold.ts`
+
+### Mission
+
+Partially resolves **Debt 7**: `evaluateOcrUncertainty` previously accepted `baseConfidenceScore` as a raw caller-supplied number with no provenance contract. Introduces `OcrQualityReport` — a structured, typed provenance report that carries source kind, attestation status, and quality flags alongside the confidence score.
+
+### New Types (`ocr-uncertainty-types.ts`)
+
+| Type | Description |
+|---|---|
+| `OcrQualityReportSourceKind` | `"synthetic_metadata"` \| `"manual_test_fixture"` \| `"future_ocr_engine"` \| `"imported_quality_report"` |
+| `OcrQualityAttestationStatus` | `"unattested"` \| `"test_fixture_attested"` \| `"future_engine_attested"` |
+| `OcrQualityReport` | Full provenance contract: `reportId`, `sourceKind`, `attestationStatus`, `confidenceScore`, `qualityFlags`, `generatedBy`, `neverUserVisible: true` |
+| `OcrQualityReportValidationResult` | `{ valid, confidenceScoreUsable, diagnostics, neverUserVisible }` |
+
+### New Functions (`evaluate-ocr-uncertainty.ts`)
+
+| Function | Signature | Purpose |
+|---|---|---|
+| `validateOcrQualityReport` | `(report) → OcrQualityReportValidationResult` | Structural integrity check; flags empty `reportId`, out-of-range score, unattested status |
+| `evaluateOcrUncertaintyFromQualityReport` | `({ degradation, qualityReport }) → OcrEvaluationResult` | Preferred entrypoint; reuses evaluation rules; appends attestation note when `unattested` |
+
+### `evaluateOcrUncertaintyFromQualityReport` Behavior
+
+- Reads `confidenceScore` from `qualityReport` (clamped as in `evaluateOcrUncertainty`)
+- Delegates to `evaluateOcrUncertainty` internally — same rules, same disposition routing
+- If `attestationStatus === "unattested"`: result includes a governance note recording provenance gap; **disposition unchanged** — unattested status alone does not hard-fail
+- If `attestationStatus === "test_fixture_attested"` or `"future_engine_attested"`: result is the plain evaluation output, no additional note
+
+### `LimitedPilotGateInput` Changes
+
+| Field | Change |
+|---|---|
+| `baseOcrConfidenceScore` | Made `optional` — backward compat path |
+| `ocrQualityReport` | New optional field — preferred provenance path |
+
+When `ocrQualityReport` is present → `evaluateOcrUncertaintyFromQualityReport` used.
+When only `baseOcrConfidenceScore` → `evaluateOcrUncertainty` used + `pilot_ocr_confidence_unattested` informational diagnostic emitted.
+
+### Regression Updates
+
+| Scaffold | New cases |
+|---|---|
+| `ocr-uncertainty-regression-scaffold.ts` | Case 9: attested report → optimal proceed; Case 10: unattested report → proceed with attestation note; Case 11: out-of-range score → clamped, hard fail |
+| `limited-pilot-gate-regression-scaffold.ts` | Case 9: `OcrQualityReport` path → allowed, no `pilot_ocr_confidence_unattested`; Case 1 updated to assert `pilot_ocr_confidence_unattested` |
+
+### Safety Boundary
+
+No live OCR added. No OCR SDK imported. No image processing. No LLM. No Smart Talk runtime wiring. No DB writes. No user-visible output. All new types carry `neverUserVisible: true`. TypeScript and ESLint pass cleanly.
+
+---
+
 > **Reality simulation models safe explanation space, not legal truth.**

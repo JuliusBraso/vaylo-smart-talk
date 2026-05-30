@@ -1,5 +1,5 @@
 /**
- * OCR Uncertainty Metadata types (Phase 8.2F-9).
+ * OCR Uncertainty Metadata types (Phase 8.2F-9 / 8.2F-15E OCR confidence provenance contract).
  *
  * Metadata-only governance types for evaluating OCR degradation risk.
  * No OCR SDK imported. No image processing. No LLM calls. No Smart Talk runtime.
@@ -104,6 +104,80 @@ export type OcrDiagnosticCode =
   | "ocr_partial_document"
   | "ocr_mixed_lanes"
   | "ocr_prompt_injection_like_text";
+
+// ── OCR quality report provenance contract (Phase 8.2F-15E) ──────────────────
+
+/**
+ * The origin kind of a structured OCR quality report.
+ *
+ * - `synthetic_metadata`: manually constructed metadata fixture (no real OCR output).
+ * - `manual_test_fixture`: authored by a human for regression/audit purposes.
+ * - `future_ocr_engine`: reserved for a real OCR engine integration (not yet connected).
+ * - `imported_quality_report`: imported from an external quality-reporting system.
+ */
+export type OcrQualityReportSourceKind =
+  | "synthetic_metadata"
+  | "manual_test_fixture"
+  | "future_ocr_engine"
+  | "imported_quality_report";
+
+/**
+ * The attestation posture of a structured OCR quality report.
+ *
+ * - `unattested`: score and flags were supplied by the caller without any
+ *   verified source; downstream consumers must note this provenance gap.
+ * - `test_fixture_attested`: report was authored and reviewed as an explicit
+ *   regression/audit fixture; safe to use in governance scaffolds.
+ * - `future_engine_attested`: reserved for reports that will be produced by
+ *   a verified OCR engine in a future production phase.
+ */
+export type OcrQualityAttestationStatus =
+  | "unattested"
+  | "test_fixture_attested"
+  | "future_engine_attested";
+
+/**
+ * A structured provenance-backed OCR quality report.
+ *
+ * This type replaces the bare `baseConfidenceScore: number` interface as the
+ * preferred way to carry OCR confidence through the governance pipeline.
+ * It binds the confidence score to a provenance source and attestation status,
+ * making caller-supplied inflation detectable at the governance layer.
+ *
+ * `reportId`: opaque identifier for audit tracing; not a real document ID.
+ * `sourceKind`: how this report was produced.
+ * `attestationStatus`: the trust posture of this report.
+ * `confidenceScore`: the OCR confidence value (caller-supplied; will be clamped to [0, 100]).
+ * `qualityFlags`: pre-classified degradation diagnostics embedded by the report source.
+ * `generatedBy`: opaque string identifying the system or fixture that produced this report.
+ * `neverUserVisible`: compile-time invariant — this report must never reach UI.
+ * `notes`: internal governance notes — never user-visible.
+ */
+export interface OcrQualityReport {
+  readonly reportId: string;
+  readonly sourceKind: OcrQualityReportSourceKind;
+  readonly attestationStatus: OcrQualityAttestationStatus;
+  readonly confidenceScore: number;
+  readonly qualityFlags: readonly OcrDiagnosticCode[];
+  readonly generatedBy: string;
+  readonly neverUserVisible: true;
+  readonly notes?: readonly string[];
+}
+
+/**
+ * Structural validation result for an `OcrQualityReport` at the governance ingress.
+ *
+ * `valid`: basic structural integrity passed (score in range, non-empty reportId).
+ * `confidenceScoreUsable`: score, after clamping, is >= 0 and <= 100.
+ * `diagnostics`: human-internal notes about detected issues; never user-visible.
+ * `neverUserVisible`: compile-time invariant.
+ */
+export interface OcrQualityReportValidationResult {
+  readonly valid: boolean;
+  readonly confidenceScoreUsable: boolean;
+  readonly diagnostics: readonly string[];
+  readonly neverUserVisible: true;
+}
 
 // ── Evaluation result ─────────────────────────────────────────────────────────
 
