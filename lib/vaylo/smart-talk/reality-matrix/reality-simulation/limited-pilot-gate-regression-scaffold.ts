@@ -1,17 +1,22 @@
 /**
- * Limited Pilot Gate regression scaffold (Phase 8.2F-11 / 8.2F-15E provenance).
+ * Limited Pilot Gate regression scaffold
+ * (Phase 8.2F-11 / 8.2F-15E OCR provenance / 8.2F-15F pilot telemetry provenance).
  *
- * Nine structural cases:
+ * Thirteen structural cases:
  *
- *  Case 1 — invited + consent + clean OCR (raw score)     → allowed + pilot_ocr_confidence_unattested note
- *  Case 2 — not invited                                   → blocked (pilot_unauthorized_subject)
- *  Case 3 — missing consent                               → blocked (pilot_missing_consent)
- *  Case 4 — session limit reached                         → blocked (pilot_session_limit_reached)
- *  Case 5 — OCR score 20 (raw)                            → blocked (pilot_blocked_by_ocr_degradation)
- *  Case 6 — missing dates OCR (raw)                       → human_review_required
- *  Case 7 — obscured sender OCR (raw)                     → blocked (pilot_blocked_by_ocr_degradation)
- *  Case 8 — containsRealUserDocument=true                 → out_of_scope + governanceCompromised
- *  Case 9 — OcrQualityReport, attested, clean scan        → allowed, NO pilot_ocr_confidence_unattested
+ *  Case  1 — invited + consent + clean OCR (raw score)       → allowed + pilot_ocr_confidence_unattested + pilot_session_telemetry_unattested
+ *  Case  2 — not invited                                     → blocked (pilot_unauthorized_subject)
+ *  Case  3 — missing consent                                 → blocked (pilot_missing_consent)
+ *  Case  4 — session limit reached (raw telemetry)           → blocked (pilot_session_limit_reached)
+ *  Case  5 — OCR score 20 (raw)                              → blocked (pilot_blocked_by_ocr_degradation)
+ *  Case  6 — missing dates OCR (raw)                         → human_review_required
+ *  Case  7 — obscured sender OCR (raw)                       → blocked (pilot_blocked_by_ocr_degradation)
+ *  Case  8 — containsRealUserDocument=true                   → out_of_scope + governanceCompromised
+ *  Case  9 — OcrQualityReport, attested, clean scan          → allowed, NO pilot_ocr_confidence_unattested
+ *  Case 10 — attested PilotSessionReport, below limit        → allowed, NO pilot_session_telemetry_unattested
+ *  Case 11 — unattested PilotSessionReport, below limit      → allowed + pilot_session_telemetry_unattested
+ *  Case 12 — invalid PilotSessionReport (negative count)     → blocked (pilot_session_report_invalid)
+ *  Case 13 — PilotSessionReport overflow                     → blocked (pilot_session_limit_reached)
  *
  * No Jest/Vitest. No CI hook. No runtime integration.
  * No real user data. No LLM. No OCR SDK. No Smart Talk wiring.
@@ -22,6 +27,8 @@ import type {
   LimitedPilotGateResult,
   PilotAccessDisposition,
   PilotGateDiagnosticCode,
+  PilotSessionReport,
+  PilotSessionTelemetry,
 } from "./limited-pilot-gate-types";
 import type { OcrDegradationVector, OcrQualityReport } from "./ocr-uncertainty-types";
 import {
@@ -30,7 +37,7 @@ import {
 } from "./run-limited-pilot-gate-scaffold";
 
 export const LIMITED_PILOT_GATE_REGRESSION_VERSION =
-  "8.2f-15e-limited-pilot-gate-regression-scaffold-v2";
+  "8.2f-15f-limited-pilot-gate-regression-scaffold-v3";
 
 // ── Result types ──────────────────────────────────────────────────────────────
 
@@ -75,7 +82,7 @@ const BASE_SUBJECT: LimitedPilotGateInput["subject"] = {
   neverContainsRealUserData: true,
 };
 
-const BASE_TELEMETRY: LimitedPilotGateInput["telemetry"] = {
+const BASE_TELEMETRY: PilotSessionTelemetry = {
   totalTransactionsThisSession: 2,
   maxSessionLimit: 10,
   sequenceId: "regression-seq-001",
@@ -93,7 +100,7 @@ const BASE_SCOPE: LimitedPilotGateInput["scopeRequest"] = {
 function makeInput(
   overrides: Partial<{
     subject: Partial<LimitedPilotGateInput["subject"]>;
-    telemetry: Partial<LimitedPilotGateInput["telemetry"]>;
+    telemetry: Partial<PilotSessionTelemetry>;
     scopeRequest: Partial<LimitedPilotGateInput["scopeRequest"]>;
     ocrDegradation: OcrDegradationVector;
     baseOcrConfidenceScore: number;
@@ -101,7 +108,7 @@ function makeInput(
 ): LimitedPilotGateInput {
   return {
     subject: { ...BASE_SUBJECT, ...(overrides.subject ?? {}) },
-    telemetry: { ...BASE_TELEMETRY, ...(overrides.telemetry ?? {}) },
+    telemetry: { ...BASE_TELEMETRY, ...(overrides.telemetry ?? {}) } as PilotSessionTelemetry,
     scopeRequest: { ...BASE_SCOPE, ...(overrides.scopeRequest ?? {}) },
     ocrDegradation: overrides.ocrDegradation ?? CLEAN_OCR_VECTOR,
     baseOcrConfidenceScore: overrides.baseOcrConfidenceScore ?? 90,
@@ -111,7 +118,7 @@ function makeInput(
 function makeInputWithReport(
   overrides: Partial<{
     subject: Partial<LimitedPilotGateInput["subject"]>;
-    telemetry: Partial<LimitedPilotGateInput["telemetry"]>;
+    telemetry: Partial<PilotSessionTelemetry>;
     scopeRequest: Partial<LimitedPilotGateInput["scopeRequest"]>;
     ocrDegradation: OcrDegradationVector;
     ocrQualityReport: OcrQualityReport;
@@ -119,10 +126,44 @@ function makeInputWithReport(
 ): LimitedPilotGateInput {
   return {
     subject: { ...BASE_SUBJECT, ...(overrides.subject ?? {}) },
-    telemetry: { ...BASE_TELEMETRY, ...(overrides.telemetry ?? {}) },
+    telemetry: { ...BASE_TELEMETRY, ...(overrides.telemetry ?? {}) } as PilotSessionTelemetry,
     scopeRequest: { ...BASE_SCOPE, ...(overrides.scopeRequest ?? {}) },
     ocrDegradation: overrides.ocrDegradation ?? CLEAN_OCR_VECTOR,
     ocrQualityReport: overrides.ocrQualityReport,
+  };
+}
+
+// 8.2F-15F: base attested session report fixture for provenance-backed session cases.
+const BASE_SESSION_REPORT: PilotSessionReport = {
+  reportId: "regression-session-report-base",
+  sourceKind: "manual_test_fixture",
+  attestationStatus: "test_fixture_attested",
+  totalTransactionsThisSession: 2,
+  maxSessionLimit: 10,
+  sequenceId: "regression-session-seq-001",
+  generatedBy: "limited-pilot-gate-regression-scaffold-v3",
+  neverUserVisible: true,
+  notes: ["Fixture: base attested session report for Phase 8.2F-15F regression tests."],
+};
+
+// 8.2F-15F: makeInputWithSessionReport provides a sessionReport without raw telemetry,
+// exercising the provenance-backed session path.
+function makeInputWithSessionReport(
+  overrides: Partial<{
+    subject: Partial<LimitedPilotGateInput["subject"]>;
+    scopeRequest: Partial<LimitedPilotGateInput["scopeRequest"]>;
+    ocrDegradation: OcrDegradationVector;
+    baseOcrConfidenceScore: number;
+    sessionReport: PilotSessionReport;
+  }>,
+): LimitedPilotGateInput {
+  return {
+    subject: { ...BASE_SUBJECT, ...(overrides.subject ?? {}) },
+    // No raw telemetry — exercises sessionReport provenance path.
+    scopeRequest: { ...BASE_SCOPE, ...(overrides.scopeRequest ?? {}) },
+    ocrDegradation: overrides.ocrDegradation ?? CLEAN_OCR_VECTOR,
+    baseOcrConfidenceScore: overrides.baseOcrConfidenceScore ?? 90,
+    sessionReport: overrides.sessionReport ?? BASE_SESSION_REPORT,
   };
 }
 
@@ -190,9 +231,10 @@ function assertGate(
   };
 }
 
-// ── Case 1 — invited + consent + clean OCR (raw score) → allowed ─────────────
-// Uses backward-compat baseOcrConfidenceScore path.
-// 8.2F-15E: expects pilot_ocr_confidence_unattested informational diagnostic.
+// ── Case 1 — invited + consent + clean OCR (raw score, raw telemetry) → allowed ─
+// Uses backward-compat baseOcrConfidenceScore + raw telemetry paths.
+// 8.2F-15E: pilot_ocr_confidence_unattested emitted (raw OCR score).
+// 8.2F-15F: pilot_session_telemetry_unattested emitted (raw telemetry, no sessionReport).
 
 function runCase1(): LimitedPilotGateRegressionCaseResult {
   return assertGate(
@@ -202,12 +244,17 @@ function runCase1(): LimitedPilotGateRegressionCaseResult {
       expectTransactionAllowed: true,
       expectDisposition: "allowed",
       expectGovernanceCompromised: false,
-      expectDiagnostics: ["pilot_gate_passed", "pilot_ocr_confidence_unattested"],
+      expectDiagnostics: [
+        "pilot_gate_passed",
+        "pilot_ocr_confidence_unattested",
+        "pilot_session_telemetry_unattested",
+      ],
       expectNoDiagnostics: [
         "pilot_unauthorized_subject",
         "pilot_missing_consent",
         "pilot_session_limit_reached",
         "pilot_blocked_by_ocr_degradation",
+        "pilot_session_report_invalid",
       ],
     },
   );
@@ -395,13 +442,139 @@ function runCase9(): LimitedPilotGateRegressionCaseResult {
   );
 }
 
+// ── Case 10 — attested PilotSessionReport, below limit → allowed ──────────────
+// 8.2F-15F: exercises the provenance-backed PilotSessionReport path.
+// pilot_session_telemetry_unattested must NOT be present (report is attested).
+
+function runCase10(): LimitedPilotGateRegressionCaseResult {
+  return assertGate(
+    "session_report_attested_below_limit_allowed",
+    runLimitedPilotGateScaffold(makeInputWithSessionReport({})),
+    {
+      expectTransactionAllowed: true,
+      expectDisposition: "allowed",
+      expectGovernanceCompromised: false,
+      expectDiagnostics: ["pilot_gate_passed", "pilot_ocr_confidence_unattested"],
+      expectNoDiagnostics: [
+        "pilot_session_telemetry_unattested",
+        "pilot_session_report_invalid",
+        "pilot_session_limit_reached",
+        "pilot_unauthorized_subject",
+        "pilot_missing_consent",
+      ],
+    },
+  );
+}
+
+// ── Case 11 — unattested PilotSessionReport, below limit → allowed ────────────
+// 8.2F-15F: unattested report is structurally valid; pilot_session_telemetry_unattested
+// emitted as informational diagnostic but gate is NOT blocked.
+
+function runCase11(): LimitedPilotGateRegressionCaseResult {
+  const unattestedReport: PilotSessionReport = {
+    ...BASE_SESSION_REPORT,
+    reportId: "regression-session-report-11-unattested",
+    attestationStatus: "unattested",
+    notes: ["Fixture: unattested session report for regression case 11."],
+  };
+
+  return assertGate(
+    "session_report_unattested_below_limit_allowed_with_diagnostic",
+    runLimitedPilotGateScaffold(
+      makeInputWithSessionReport({ sessionReport: unattestedReport }),
+    ),
+    {
+      expectTransactionAllowed: true,
+      expectDisposition: "allowed",
+      expectGovernanceCompromised: false,
+      expectDiagnostics: [
+        "pilot_gate_passed",
+        "pilot_session_telemetry_unattested",
+        "pilot_ocr_confidence_unattested",
+      ],
+      expectNoDiagnostics: [
+        "pilot_session_report_invalid",
+        "pilot_session_limit_reached",
+        "pilot_unauthorized_subject",
+        "pilot_missing_consent",
+      ],
+    },
+  );
+}
+
+// ── Case 12 — invalid PilotSessionReport (negative count) → blocked ───────────
+// 8.2F-15F: structural validation fails (totalTransactionsThisSession < 0).
+// pilot_session_report_invalid emitted; gate blocked.
+
+function runCase12(): LimitedPilotGateRegressionCaseResult {
+  const invalidReport: PilotSessionReport = {
+    ...BASE_SESSION_REPORT,
+    reportId: "regression-session-report-12-invalid",
+    totalTransactionsThisSession: -1,
+    notes: ["Fixture: invalid session report (negative count) for regression case 12."],
+  };
+
+  return assertGate(
+    "session_report_invalid_negative_count_blocked",
+    runLimitedPilotGateScaffold(
+      makeInputWithSessionReport({ sessionReport: invalidReport }),
+    ),
+    {
+      expectTransactionAllowed: false,
+      expectDisposition: "blocked",
+      expectGovernanceCompromised: false,
+      expectDiagnostics: ["pilot_session_report_invalid"],
+      expectNoDiagnostics: [
+        "pilot_gate_passed",
+        "pilot_session_limit_reached",
+        "pilot_unauthorized_subject",
+        "pilot_missing_consent",
+      ],
+    },
+  );
+}
+
+// ── Case 13 — PilotSessionReport, limit reached → blocked ────────────────────
+// 8.2F-15F: attested session report with totalTransactionsThisSession === maxSessionLimit.
+// pilot_session_limit_reached emitted; gate blocked.
+
+function runCase13(): LimitedPilotGateRegressionCaseResult {
+  const overflowReport: PilotSessionReport = {
+    ...BASE_SESSION_REPORT,
+    reportId: "regression-session-report-13-overflow",
+    totalTransactionsThisSession: 10,
+    maxSessionLimit: 10,
+    notes: ["Fixture: session report at limit for regression case 13."],
+  };
+
+  return assertGate(
+    "session_report_overflow_blocked",
+    runLimitedPilotGateScaffold(
+      makeInputWithSessionReport({ sessionReport: overflowReport }),
+    ),
+    {
+      expectTransactionAllowed: false,
+      expectDisposition: "blocked",
+      expectGovernanceCompromised: false,
+      expectDiagnostics: ["pilot_session_limit_reached"],
+      expectNoDiagnostics: [
+        "pilot_gate_passed",
+        "pilot_session_report_invalid",
+        "pilot_unauthorized_subject",
+        "pilot_missing_consent",
+      ],
+    },
+  );
+}
+
 // ── Scaffold runner ───────────────────────────────────────────────────────────
 
 /**
- * Runs all 9 limited pilot gate regression cases and aggregates results.
+ * Runs all 13 limited pilot gate regression cases and aggregates results.
  *
- * Cases 1–8: backward-compat baseOcrConfidenceScore path.
- * Case 9: OcrQualityReport provenance path (8.2F-15E).
+ * Cases 1–8:  backward-compat baseOcrConfidenceScore + raw telemetry paths.
+ * Case 9:     OcrQualityReport provenance path (8.2F-15E).
+ * Cases 10–13: PilotSessionReport provenance path (8.2F-15F).
  *
  * Does not throw. All assertions collected as failure strings.
  * No real user data. No LLM. No OCR SDK. No Smart Talk runtime.
@@ -417,6 +590,10 @@ export function runLimitedPilotGateRegressionScaffold(): LimitedPilotGateRegress
     runCase7(),
     runCase8(),
     runCase9(),
+    runCase10(),
+    runCase11(),
+    runCase12(),
+    runCase13(),
   ];
 
   const allPassed = caseResults.every((r) => r.passed);
@@ -435,6 +612,12 @@ export function runLimitedPilotGateRegressionScaffold(): LimitedPilotGateRegress
     notes.push(
       "Case 9 validates OcrQualityReport provenance path: attested report → allowed, " +
         "no pilot_ocr_confidence_unattested diagnostic.",
+    );
+    notes.push(
+      "Cases 10–13 validate PilotSessionReport provenance path (8.2F-15F): " +
+        "attested → allowed; unattested → allowed + pilot_session_telemetry_unattested; " +
+        "invalid → blocked (pilot_session_report_invalid); " +
+        "overflow → blocked (pilot_session_limit_reached).",
     );
   } else {
     notes.push(

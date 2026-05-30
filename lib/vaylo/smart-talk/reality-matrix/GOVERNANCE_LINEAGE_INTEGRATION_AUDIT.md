@@ -1,7 +1,7 @@
-# Governance Lineage Integration Audit — Phase 8.2F-15 (updated 8.2F-15E)
+# Governance Lineage Integration Audit — Phase 8.2F-15 (updated 8.2F-15F)
 
-**Version:** `8.2f-15e-governance-lineage-audit-v6`
-**Scope:** Vaylo Document Reasoning Constitution V1 — Phases 8.2A → 8.2F-15E
+**Version:** `8.2f-15f-governance-lineage-audit-v7`
+**Scope:** Vaylo Document Reasoning Constitution V1 — Phases 8.2A → 8.2F-15F
 **Mode:** Audit only / no runtime wiring / no behavior modified
 **Overall Status:** `partially_connected`
 
@@ -41,6 +41,20 @@
 > section-exclusion notifications. New moves `no_false_reassurance_framing` and
 > `no_calculated_amount_extraction` now have dedicated diagnostic codes in both mappers.
 > No section presence/absence behavior changed. No user-visible output.
+>
+> **8.2F-15F Update:** Debt 8 (caller-supplied pilot telemetry unauthenticated) is **partially resolved**.
+> `PilotSessionReport` typed provenance contract introduced in `limited-pilot-gate-types.ts`.
+> Carries `reportId`, `sourceKind` (`PilotSessionReportSourceKind`), `attestationStatus`
+> (`PilotSessionAttestationStatus`), `totalTransactionsThisSession`, `maxSessionLimit`,
+> `sequenceId`, `generatedBy`, and `neverUserVisible: true`.
+> `PilotSessionReportValidationResult` added for structural ingress validation.
+> `validatePilotSessionReport` added to `run-limited-pilot-gate-scaffold.ts`.
+> `LimitedPilotGateInput.telemetry` made optional; `sessionReport` added as preferred path.
+> `pilot_session_telemetry_unattested` emitted on raw-telemetry path and on unattested reports.
+> `pilot_session_report_invalid` emitted and gate blocked when structural validation fails.
+> Raw telemetry fallback retained for backward compatibility.
+> 4 new regression cases (Cases 10–13) cover the full provenance-backed session path.
+> Remaining gap: `PilotSessionReport` is still caller-constructed metadata; no session store wired.
 
 ---
 
@@ -297,14 +311,27 @@ New functions in `evaluate-ocr-uncertainty.ts`:
 
 ---
 
-### Debt 8 — Caller-supplied pilot telemetry is unvalidated at ingress *(Added 8.2F-15A)*
+### Debt 8 — Caller-supplied pilot telemetry is unvalidated at ingress *(Added 8.2F-15A)* ⚠ PARTIALLY RESOLVED (8.2F-15F)
 
-**Severity:** Warning
+**Severity:** Warning → Informational (partially resolved)
 **Layer:** `pilot_gate`
 
 `LimitedPilotGateInput.telemetry` fields (`totalTransactionsThisSession`, `maxSessionLimit`) are caller-supplied. No session store or database backs these values. A caller could supply `totalTransactionsThisSession: 0` regardless of actual session state, bypassing the session-limit gate entirely.
 
-**Resolution:** Future phases must bind pilot telemetry to a verified session state (database-backed or signed JWT) rather than trusting caller-supplied metadata.
+**8.2F-15F Resolution:**
+`PilotSessionReport` typed provenance contract introduced in `limited-pilot-gate-types.ts`. Carries:
+- `reportId`: opaque identifier for audit tracing.
+- `sourceKind` (`PilotSessionReportSourceKind`): `synthetic_metadata | manual_test_fixture | future_session_store | imported_session_report`.
+- `attestationStatus` (`PilotSessionAttestationStatus`): `unattested | test_fixture_attested | future_store_attested`.
+- `totalTransactionsThisSession`, `maxSessionLimit`, `sequenceId`, `generatedBy`, `neverUserVisible: true`.
+
+`validatePilotSessionReport` checks structural integrity (non-empty IDs, finite numeric values, cap at 10,000 transactions).
+`LimitedPilotGateInput.telemetry` made optional; `sessionReport` is the preferred path.
+`pilot_session_telemetry_unattested` emitted as informational diagnostic on raw-telemetry path and for `attestationStatus === "unattested"` reports.
+`pilot_session_report_invalid` emitted and gate blocked when structural validation fails.
+Raw telemetry fallback retained for backward compatibility.
+
+**Remaining gap:** `PilotSessionReport` is still caller-constructed metadata. Full resolution requires binding to a verified session store (database-backed or signed token) in a future production phase. No auth, no DB, no real session tracking added.
 
 ---
 

@@ -1600,4 +1600,64 @@ No live OCR added. No OCR SDK imported. No image processing. No LLM. No Smart Ta
 
 ---
 
+## PHASE 8.2F-15F — Pilot Telemetry Provenance Contract
+
+**Mode:** Input provenance hardening / Technical debt partial resolution
+**Files modified:** `limited-pilot-gate-types.ts`, `run-limited-pilot-gate-scaffold.ts`, `limited-pilot-gate-regression-scaffold.ts`
+
+### Mission
+
+Partially resolves **Debt 8**: `LimitedPilotGateInput.telemetry` (`PilotSessionTelemetry`) was a bare caller-supplied struct with no provenance contract. Introduces `PilotSessionReport` — a structured, typed provenance contract that carries source kind, attestation status, and opaque audit identifiers alongside the session transaction counts.
+
+### New Types (`limited-pilot-gate-types.ts`)
+
+| Type | Description |
+|---|---|
+| `PilotSessionReportSourceKind` | `"synthetic_metadata"` \| `"manual_test_fixture"` \| `"future_session_store"` \| `"imported_session_report"` |
+| `PilotSessionAttestationStatus` | `"unattested"` \| `"test_fixture_attested"` \| `"future_store_attested"` |
+| `PilotSessionReport` | Full provenance contract: `reportId`, `sourceKind`, `attestationStatus`, `totalTransactionsThisSession`, `maxSessionLimit`, `sequenceId`, `generatedBy`, `neverUserVisible: true`, `notes?` |
+| `PilotSessionReportValidationResult` | `{ valid, telemetryUsable, diagnostics, neverUserVisible }` |
+
+### New Diagnostic Codes (`limited-pilot-gate-types.ts`)
+
+| Code | Meaning |
+|---|---|
+| `pilot_session_telemetry_unattested` | Informational; emitted when raw `telemetry` path used, or `sessionReport.attestationStatus === "unattested"` |
+| `pilot_session_report_invalid` | Blocking; emitted when `validatePilotSessionReport` returns `telemetryUsable: false`; gate disposition is `blocked` |
+
+### New Function (`run-limited-pilot-gate-scaffold.ts`)
+
+| Function | Signature | Purpose |
+|---|---|---|
+| `validatePilotSessionReport` | `(report) → PilotSessionReportValidationResult` | Structural integrity check: non-empty IDs, finite counts, cap at 10,000 transactions, attestation note for `"unattested"` |
+
+### `LimitedPilotGateInput` Changes
+
+| Field | Change |
+|---|---|
+| `telemetry` | Made `optional` — backward compat path; emits `pilot_session_telemetry_unattested` |
+| `sessionReport` | New optional field — preferred provenance path |
+
+When `sessionReport` is present and valid → its transaction counts drive the session limit gate.
+When `sessionReport` present but `attestationStatus === "unattested"` → `pilot_session_telemetry_unattested` emitted (non-blocking).
+When `sessionReport` present but structurally invalid → `pilot_session_report_invalid` emitted, gate `blocked`.
+When only `telemetry` provided → backward compat path, `pilot_session_telemetry_unattested` emitted (non-blocking).
+When neither is provided → `pilot_metadata_incomplete` emitted, gate `blocked`.
+
+### Regression Updates
+
+| Scaffold | New / updated cases |
+|---|---|
+| `limited-pilot-gate-regression-scaffold.ts` | Case 1 updated: also asserts `pilot_session_telemetry_unattested` (raw telemetry path) |
+| `limited-pilot-gate-regression-scaffold.ts` | Case 10: attested `PilotSessionReport` → allowed, no `pilot_session_telemetry_unattested` |
+| `limited-pilot-gate-regression-scaffold.ts` | Case 11: unattested `PilotSessionReport` → allowed + `pilot_session_telemetry_unattested` |
+| `limited-pilot-gate-regression-scaffold.ts` | Case 12: invalid report (negative count) → blocked, `pilot_session_report_invalid` |
+| `limited-pilot-gate-regression-scaffold.ts` | Case 13: sessionReport overflow → blocked, `pilot_session_limit_reached` |
+
+### Safety Boundary
+
+No session store added. No database reads. No auth SDK imported. No real pilot activation. No real session tracking. No LLM. No Smart Talk runtime wiring. No user-visible output. All new types carry `neverUserVisible: true`. TypeScript and ESLint pass cleanly.
+
+---
+
 > **Reality simulation models safe explanation space, not legal truth.**

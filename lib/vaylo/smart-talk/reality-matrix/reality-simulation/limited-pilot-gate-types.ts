@@ -1,5 +1,6 @@
 /**
- * Limited Trusted Pilot Gate types (Phase 8.2F-11 / 8.2F-15E OCR confidence provenance).
+ * Limited Trusted Pilot Gate types (Phase 8.2F-11 / 8.2F-15E OCR provenance /
+ * 8.2F-15F pilot telemetry provenance contract).
  *
  * Metadata-only type model for the future Limited Trusted Pilot Gate.
  * No real user access, no pilot activation, no DB, no auth integration.
@@ -44,10 +45,17 @@ export type PilotAccessDisposition =
  * Never-user-visible governance diagnostic codes emitted by
  * `runLimitedPilotGateScaffold`.
  *
- * `pilot_ocr_confidence_unattested` (8.2F-15E): emitted as an informational
- * diagnostic when OCR confidence is supplied as a raw `baseOcrConfidenceScore`
- * number rather than a structured `OcrQualityReport`. Does not block the gate —
- * it signals a provenance gap for governance audit purposes only.
+ * `pilot_ocr_confidence_unattested` (8.2F-15E): emitted when OCR confidence is
+ * supplied as a raw `baseOcrConfidenceScore` rather than an `OcrQualityReport`.
+ * Non-blocking — signals a provenance gap for audit purposes only.
+ *
+ * `pilot_session_telemetry_unattested` (8.2F-15F): emitted when session telemetry
+ * is supplied as a raw `PilotSessionTelemetry` (or an `unattested` `PilotSessionReport`)
+ * rather than an attested `PilotSessionReport`. Non-blocking — signals a provenance
+ * gap for audit purposes only.
+ *
+ * `pilot_session_report_invalid` (8.2F-15F): emitted and gate blocked when a
+ * `PilotSessionReport` fails structural validation (non-finite count, empty IDs, etc.).
  */
 export type PilotGateDiagnosticCode =
   | "pilot_gate_passed"
@@ -58,7 +66,9 @@ export type PilotGateDiagnosticCode =
   | "pilot_human_review_required_by_ocr"
   | "pilot_scope_not_allowed"
   | "pilot_metadata_incomplete"
-  | "pilot_ocr_confidence_unattested";
+  | "pilot_ocr_confidence_unattested"
+  | "pilot_session_telemetry_unattested"
+  | "pilot_session_report_invalid";
 
 // ── Input types ───────────────────────────────────────────────────────────────
 
@@ -112,6 +122,82 @@ export interface PilotScopeRequest {
   readonly containsRealUserDocument?: boolean;
 }
 
+// ── Pilot session report provenance contract (Phase 8.2F-15F) ────────────────
+
+/**
+ * The origin kind of a structured pilot session report.
+ *
+ * - `synthetic_metadata`: manually constructed metadata fixture (no real session store).
+ * - `manual_test_fixture`: authored by a human for regression/audit purposes.
+ * - `future_session_store`: reserved for a real session store integration (not yet connected).
+ * - `imported_session_report`: imported from an external session-reporting system.
+ */
+export type PilotSessionReportSourceKind =
+  | "synthetic_metadata"
+  | "manual_test_fixture"
+  | "future_session_store"
+  | "imported_session_report";
+
+/**
+ * The attestation posture of a structured pilot session report.
+ *
+ * - `unattested`: session counts were supplied by the caller without any verified
+ *   source; downstream consumers should note this provenance gap.
+ * - `test_fixture_attested`: report was authored and reviewed as an explicit
+ *   regression/audit fixture; safe to use in governance scaffolds.
+ * - `future_store_attested`: reserved for reports produced by a verified session
+ *   store in a future production phase.
+ */
+export type PilotSessionAttestationStatus =
+  | "unattested"
+  | "test_fixture_attested"
+  | "future_store_attested";
+
+/**
+ * A structured provenance-backed pilot session report.
+ *
+ * This type replaces the bare `PilotSessionTelemetry` interface as the
+ * preferred way to carry session transaction counts through the pilot gate.
+ * It binds the counts to a provenance source and attestation status,
+ * making caller-supplied manipulation detectable at the governance layer.
+ *
+ * `reportId`: opaque identifier for audit tracing; not a real session token.
+ * `sourceKind`: how this report was produced.
+ * `attestationStatus`: the trust posture of this report.
+ * `totalTransactionsThisSession`: caller-supplied session count (validated structurally).
+ * `maxSessionLimit`: the structural cap for this pilot run.
+ * `sequenceId`: opaque audit reference; not a real session ID.
+ * `generatedBy`: opaque string identifying the system or fixture that produced this report.
+ * `neverUserVisible`: compile-time invariant — this report must never reach UI.
+ * `notes`: internal governance notes — never user-visible.
+ */
+export interface PilotSessionReport {
+  readonly reportId: string;
+  readonly sourceKind: PilotSessionReportSourceKind;
+  readonly attestationStatus: PilotSessionAttestationStatus;
+  readonly totalTransactionsThisSession: number;
+  readonly maxSessionLimit: number;
+  readonly sequenceId: string;
+  readonly generatedBy: string;
+  readonly neverUserVisible: true;
+  readonly notes?: readonly string[];
+}
+
+/**
+ * Structural validation result for a `PilotSessionReport` at the governance ingress.
+ *
+ * `valid`: basic structural integrity passed (non-empty IDs, valid numeric fields).
+ * `telemetryUsable`: session counts are finite and within accepted bounds.
+ * `diagnostics`: human-internal notes about detected issues; never user-visible.
+ * `neverUserVisible`: compile-time invariant.
+ */
+export interface PilotSessionReportValidationResult {
+  readonly valid: boolean;
+  readonly telemetryUsable: boolean;
+  readonly diagnostics: readonly string[];
+  readonly neverUserVisible: true;
+}
+
 /**
  * The complete input to `runLimitedPilotGateScaffold`.
  * All fields are structural metadata — no live runtime state.
@@ -132,13 +218,29 @@ export interface PilotScopeRequest {
  */
 export interface LimitedPilotGateInput {
   readonly subject: PilotSubjectProfile;
-  readonly telemetry: PilotSessionTelemetry;
   readonly scopeRequest: PilotScopeRequest;
   readonly ocrDegradation: OcrDegradationVector;
-  /** @deprecated Prefer `ocrQualityReport` (8.2F-15E). Raw number accepted for backward compatibility. */
+  /**
+   * @deprecated Prefer `ocrQualityReport` (8.2F-15E). Raw number accepted for backward compatibility.
+   * When only this is supplied, `pilot_ocr_confidence_unattested` is emitted.
+   */
   readonly baseOcrConfidenceScore?: number;
   /** Structured provenance-backed OCR confidence report (8.2F-15E). Preferred over `baseOcrConfidenceScore`. */
   readonly ocrQualityReport?: OcrQualityReport;
+  /**
+   * @deprecated Prefer `sessionReport` (8.2F-15F). Raw session telemetry accepted for backward compatibility.
+   * When only this is supplied, `pilot_session_telemetry_unattested` is emitted.
+   */
+  readonly telemetry?: PilotSessionTelemetry;
+  /**
+   * Structured provenance-backed pilot session report (8.2F-15F). Preferred over `telemetry`.
+   * When present, its transaction counts are used for the session limit gate.
+   * If `attestationStatus === "unattested"`, `pilot_session_telemetry_unattested` is
+   * still emitted as an informational diagnostic.
+   * At most one of `sessionReport` / `telemetry` should be supplied; if both are present,
+   * `sessionReport` takes precedence.
+   */
+  readonly sessionReport?: PilotSessionReport;
 }
 
 // ── Result type ───────────────────────────────────────────────────────────────

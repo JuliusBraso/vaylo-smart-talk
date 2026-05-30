@@ -926,9 +926,70 @@ A typed `OcrQualityReport` provenance contract was introduced:
 
 `OcrQualityReport` is still caller-constructed metadata. Full resolution requires a future production phase that binds the report to a verified OCR engine output.
 
-**Remaining open debts:** Debt 5 (cross-phase namespace isolation), Debt 6 (bridge-level typing), Debt 8 (pilot telemetry), Debt 9 (wording scores), Debt 10 (`AuditTraceChain.structurallyValid`). Debt 7 partially resolved.
+**Remaining open debts:** Debt 5 (cross-phase namespace isolation), Debt 6 (bridge-level typing), Debt 8 (pilot telemetry — partially resolved in 8.2F-15F), Debt 9 (wording scores), Debt 10 (`AuditTraceChain.structurallyValid`). Debt 7 partially resolved.
 
 **Safety boundary:** No live OCR added. No OCR SDK imported. No image processing. No Smart Talk/LLM/DB/runtime wiring. No user-visible output. TypeScript and ESLint pass cleanly.
+
+---
+
+### Phase 8.2F-15F — Pilot Telemetry Provenance Contract
+
+**Input provenance hardening / technical debt resolution — no session store, no auth, no DB, no runtime wiring.**
+
+Partially resolves **Debt 8** from the Phase 8.2F-15 Governance Lineage Integration Audit.
+
+#### Problem
+
+`LimitedPilotGateInput.telemetry` (`PilotSessionTelemetry`) carried `totalTransactionsThisSession`, `maxSessionLimit`, and `sequenceId` as raw caller-supplied fields with no provenance contract. A caller could under-report transactions or alter session limits to bypass pilot constraints.
+
+#### Solution
+
+A typed `PilotSessionReport` provenance contract was introduced:
+
+| New type | Purpose |
+|---|---|
+| `PilotSessionReportSourceKind` | Origin classification: `synthetic_metadata`, `manual_test_fixture`, `future_session_store`, `imported_session_report` |
+| `PilotSessionAttestationStatus` | Trust posture: `unattested`, `test_fixture_attested`, `future_store_attested` |
+| `PilotSessionReport` | Structured report: `reportId`, `sourceKind`, `attestationStatus`, `totalTransactionsThisSession`, `maxSessionLimit`, `sequenceId`, `generatedBy`, `neverUserVisible: true` |
+| `PilotSessionReportValidationResult` | Structural integrity check result: `{ valid, telemetryUsable, diagnostics, neverUserVisible }` |
+
+| New function | Purpose |
+|---|---|
+| `validatePilotSessionReport` | Structural integrity checker: non-empty IDs, finite counts, cap at 10,000 transactions, attestation note |
+
+`LimitedPilotGateInput` changes:
+- `telemetry` made `optional` — backward compat retained; emits `pilot_session_telemetry_unattested` when used
+- `sessionReport?: PilotSessionReport` added — preferred provenance path
+- `pilot_session_telemetry_unattested` added to `PilotGateDiagnosticCode` — informational, emitted on raw-telemetry path or unattested reports
+- `pilot_session_report_invalid` added to `PilotGateDiagnosticCode` — blocking, emitted when structural validation fails
+
+#### Gate Logic Changes
+
+Before the session limit gate, effective session telemetry is resolved:
+1. If `sessionReport` present and valid → use its counts; if `"unattested"` → emit `pilot_session_telemetry_unattested`
+2. If `sessionReport` present but structurally invalid → emit `pilot_session_report_invalid`, block
+3. If only `telemetry` present → use it, emit `pilot_session_telemetry_unattested` (non-blocking)
+4. If neither → emit `pilot_metadata_incomplete`, block
+
+Session overflow rule unchanged: `totalTransactions >= maxLimit → pilot_session_limit_reached`.
+
+#### Files modified
+
+| File | Change |
+|---|---|
+| `reality-simulation/limited-pilot-gate-types.ts` | 4 new types; `telemetry` optional; `sessionReport` added; 2 new diagnostic codes |
+| `reality-simulation/run-limited-pilot-gate-scaffold.ts` | `validatePilotSessionReport` added; `resolveSessionTelemetry` helper; gate logic updated; version `v3` |
+| `reality-simulation/limited-pilot-gate-regression-scaffold.ts` | Cases 10–13 added; Case 1 updated; `makeInputWithSessionReport` helper; `BASE_SESSION_REPORT` fixture; version `v3` |
+| `run-governance-lineage-audit-scaffold.ts` | Debt 8 → partially resolved; audit version `v7` |
+| `GOVERNANCE_LINEAGE_INTEGRATION_AUDIT.md` | Debt 8 marked ⚠ PARTIALLY RESOLVED |
+
+#### Remaining gap
+
+`PilotSessionReport` is still caller-constructed metadata. Full resolution requires a future production phase that binds the report to a verified session store (database-backed or signed token). No auth, no DB, no real session tracking added.
+
+**Remaining open debts:** Debt 5 (cross-phase namespace isolation), Debt 6 (bridge-level typing), Debt 9 (wording scores), Debt 10 (`AuditTraceChain.structurallyValid`). Debts 7–8 partially resolved.
+
+**Safety boundary:** No session store added. No database reads. No auth SDK imported. No real pilot activation. No real session tracking. No LLM. No Smart Talk runtime wiring. No user-visible output. TypeScript and ESLint pass cleanly.
 
 ---
 

@@ -1,5 +1,5 @@
 /**
- * Governance Lineage Integration Audit scaffold (Phase 8.2F-15 / updated 8.2F-15E).
+ * Governance Lineage Integration Audit scaffold (Phase 8.2F-15 / updated 8.2F-15F).
  *
  * Implements `runGovernanceLineageAuditScaffold` — a pure static inventory
  * function that returns a `GovernanceLineageAuditResult` covering the entire
@@ -71,6 +71,20 @@
  *    typed field remains a future phase.
  *    Finding text updated and split into mapper-resolved + bridge-remaining.
  *
+ * 8.2F-15F changes:
+ *  - Technical Debt 8: caller-supplied pilot telemetry is unauthenticated → PARTIALLY RESOLVED.
+ *    PilotSessionReport type introduced in limited-pilot-gate-types.ts carrying reportId,
+ *    sourceKind (PilotSessionReportSourceKind), attestationStatus (PilotSessionAttestationStatus),
+ *    totalTransactionsThisSession, maxSessionLimit, sequenceId, generatedBy, and neverUserVisible:true.
+ *    PilotSessionReportValidationResult added for structural ingress validation.
+ *    validatePilotSessionReport added to run-limited-pilot-gate-scaffold.ts.
+ *    LimitedPilotGateInput.telemetry made optional; sessionReport added as preferred path.
+ *    pilot_session_telemetry_unattested emitted on raw-telemetry path and on unattested reports.
+ *    pilot_session_report_invalid emitted when structural validation fails (blocks gate).
+ *    Raw telemetry fallback retained for backward compatibility; emits unattested diagnostic.
+ *    Partially resolved: PilotSessionReport contract exists but no session store is wired;
+ *    report is still caller-constructed metadata.
+ *
  * Safety guarantees:
  * - no runtime modification
  * - no telemetry
@@ -89,7 +103,7 @@ import type {
 } from "./governance-lineage-audit-types";
 
 export const GOVERNANCE_LINEAGE_AUDIT_VERSION =
-  "8.2f-15e-governance-lineage-audit-v6";
+  "8.2f-15f-governance-lineage-audit-v7";
 
 // ── Finding factory ───────────────────────────────────────────────────────────
 
@@ -298,6 +312,24 @@ const CONNECTED_LINEAGE_FINDINGS: readonly GovernanceAuditFinding[] = [
       "caller-constructed metadata. Full resolution requires binding to a verified OCR " +
       "provider output in a future production phase.",
   ),
+  finding(
+    "pilot_gate",
+    "informational",
+    "PARTIALLY RESOLVED (8.2F-15F): pilot telemetry now has a typed provenance contract",
+    "Previously reported as a WARNING (Debt 8) in Phase 8.2F-15: " +
+      "LimitedPilotGateInput.telemetry was a bare PilotSessionTelemetry with no provenance. " +
+      "Partially resolved in Phase 8.2F-15F by introducing PilotSessionReport — a typed " +
+      "provenance contract carrying reportId, PilotSessionReportSourceKind, " +
+      "PilotSessionAttestationStatus, totalTransactionsThisSession, maxSessionLimit, " +
+      "sequenceId, generatedBy, and neverUserVisible:true. " +
+      "validatePilotSessionReport provides structural integrity checks (non-empty IDs, " +
+      "finite numeric fields, upper-bound cap at 10,000 transactions). " +
+      "LimitedPilotGateInput accepts sessionReport (preferred) or telemetry (backward-compat); " +
+      "raw-telemetry path and unattested reports emit pilot_session_telemetry_unattested; " +
+      "structurally invalid reports emit pilot_session_report_invalid and block the gate. " +
+      "Remaining gap: no session store is wired; PilotSessionReport is still caller-constructed " +
+      "metadata. Full resolution requires binding to a verified session store in a future phase.",
+  ),
   // ── Partially resolved debts (8.2F-15C) ───────────────────────────────────────
   finding(
     "free_preview_mapper",
@@ -426,17 +458,8 @@ const WARNING_FINDINGS: readonly GovernanceAuditFinding[] = [
       "section mismatch, tier mismatch) without requiring diagnostics array inspection.",
   ),
   // Technical debts identified in 8.2F-15A audit review
-  // Debt 7 partially resolved in 8.2F-15E — moved to CONNECTED_LINEAGE_FINDINGS below
-  finding(
-    "pilot_gate",
-    "warning",
-    "Technical Debt: caller-supplied pilot telemetry is unvalidated at ingress",
-    "LimitedPilotGateInput.telemetry (totalTransactionsThisSession, " +
-      "maxSessionLimit) is caller-supplied. No session store or database backs " +
-      "these values. A caller could supply any telemetry, allowing session-limit " +
-      "rules to be bypassed. Future phases must bind pilot telemetry to a " +
-      "verified session state rather than trusting caller-supplied metadata.",
-  ),
+  // Debt 7 partially resolved in 8.2F-15E — moved to CONNECTED_LINEAGE_FINDINGS above
+  // Debt 8 partially resolved in 8.2F-15F — moved to CONNECTED_LINEAGE_FINDINGS above
   finding(
     "wording_evaluation",
     "warning",
