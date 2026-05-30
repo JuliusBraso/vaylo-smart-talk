@@ -1,7 +1,7 @@
-# Governance Lineage Integration Audit — Phase 8.2F-15 (updated 8.2F-15C)
+# Governance Lineage Integration Audit — Phase 8.2F-15 (updated 8.2F-15D)
 
-**Version:** `8.2f-15c-governance-lineage-audit-v4`
-**Scope:** Vaylo Document Reasoning Constitution V1 — Phases 8.2A → 8.2F-15C
+**Version:** `8.2f-15d-governance-lineage-audit-v5`
+**Scope:** Vaylo Document Reasoning Constitution V1 — Phases 8.2A → 8.2F-15D
 **Mode:** Audit only / no runtime wiring / no behavior modified
 **Overall Status:** `partially_connected`
 
@@ -18,6 +18,16 @@
 > `run-reality-simulation.ts`. No trap semantics or simulation behavior changed.
 >
 > **8.2F-15C Update:** Debts 5 and 6 are partially reduced (see detail below).
+>
+> **8.2F-15D Update:** Debt 4 (`next_steps_safe` dead restriction-state) is resolved.
+> A post-filter added to `run-paid-explanation-mapper.ts` eliminates restriction bookkeeping
+> accumulated for sections that are already excluded by a higher-priority forbidden move.
+> The canonical dead state was: when `no_autonomous_form_submission` and
+> `no_deadline_calculation_when_forbidden` are both active, the effect loop added
+> `next_steps_safe` to both `excludedSectionTypes` and `sectionBlockedReasonCodes`;
+> the section assembly's exclusion check fired first, making the restriction entry
+> permanently unreachable. No section visibility, `blockedReasonCodes`, diagnostics, or
+> mapper output structure changed.
 > Free-preview mapper: `free_preview_paid_field_blocked` is now the structural invariant only —
 > each forbidden move emits its own specific code. Paid mapper: `paid_legal_verdict_blocked`
 > narrowed to `no_definitive_legal_verdicts` only; `paid_autonomous_action_blocked` narrowed to
@@ -199,14 +209,20 @@ False reassurance was modelled in the wording evaluation scaffold (Phase 8.2F-12
 
 ---
 
-### Debt 4 — `next_steps_safe` restriction-state appears unused
+### Debt 4 — `next_steps_safe` restriction-state appears unused ✅ RESOLVED (8.2F-15D)
 
-**Severity:** Warning
-**Layer:** `simulation`
+**Severity:** Warning → **RESOLVED in Phase 8.2F-15D**
+**Layer:** `paid_explanation_mapper`
 
-The `next_steps_safe` restriction-state exists in the boundary policy type model but has no documented activation condition in any current scenario corpus entry or regression case. It is a dead governance path that may cause confusion in future development.
+**Dead path identified:** In `run-paid-explanation-mapper.ts`, the `PAID_FORBIDDEN_MOVE_EFFECTS` table has two entries that affect `next_steps_safe`:
+1. `no_autonomous_form_submission` → `excludedSections: ["next_steps_safe"]` (section fully removed)
+2. `no_deadline_calculation_when_forbidden` → `restrictedSections: ["paid_deep_explanation", "next_steps_safe"]` (section receives blocked reason codes)
 
-**Resolution:** Define an explicit activation condition or remove from the boundary policy table with documentation of the decision.
+When both moves are simultaneously active, the effect loop adds `next_steps_safe` to both `excludedSectionTypes` and `sectionBlockedReasonCodes`. In the section assembly loop, the exclusion check fires first (`excludedSectionTypes.has(sectionType)` → `true` → `continue`), making the accumulated restriction entry in `sectionBlockedReasonCodes` permanently unreachable.
+
+**Resolution applied (8.2F-15D):** A post-filter loop added after the effect loop removes any `sectionBlockedReasonCodes` entries for sections already present in `excludedSectionTypes`. This makes the discarding of unreachable restriction-state explicit at the point of accumulation rather than implicitly at the assembly loop.
+
+**Behavior preservation:** No section visibility changed. No `blockedReasonCodes` on any produced section changed. No diagnostics changed. When only `no_deadline_calculation_when_forbidden` is active (without `no_autonomous_form_submission`), `next_steps_safe` is still produced with its blocked reason code exactly as before — the post-filter is a no-op in that case since the section is not excluded.
 
 ---
 

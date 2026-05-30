@@ -23,7 +23,7 @@ import {
 } from "./run-paid-explanation-mapper";
 
 export const PAID_EXPLANATION_MAPPER_REGRESSION_VERSION =
-  "8.2f-15c-paid-explanation-mapper-regression-scaffold-v2";
+  "8.2f-15d-paid-explanation-mapper-regression-scaffold-v3";
 
 // ── Result types ──────────────────────────────────────────────────────────────
 

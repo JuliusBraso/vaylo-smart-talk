@@ -826,6 +826,58 @@ Resolves **Debt 1** from the Phase 8.2F-15 Governance Lineage Integration Audit:
 
 ---
 
+### Phase 8.2F-15D — `next_steps_safe` Dead Restriction-State Cleanup
+
+**Governance model cleanup / technical debt resolution — no user-visible behavior change, no section visibility change, no access-tier change.**
+
+Resolves **Debt 4** from the Phase 8.2F-15 Governance Lineage Integration Audit.
+
+#### Dead path identified
+
+In `run-paid-explanation-mapper.ts`, the `PAID_FORBIDDEN_MOVE_EFFECTS` table has two entries that affect `next_steps_safe`:
+
+| Forbidden move | Effect on `next_steps_safe` |
+|---|---|
+| `no_autonomous_form_submission` | **Excluded** — section fully removed from draft |
+| `no_deadline_calculation_when_forbidden` | **Restricted** — section receives blocked reason codes |
+
+When **both** moves are active simultaneously, the effect loop accumulates:
+- `excludedSectionTypes ← {"next_steps_safe"}` (from `no_autonomous_form_submission`)
+- `sectionBlockedReasonCodes["next_steps_safe"] ← ["forbidden_move:no_deadline_calculation_when_forbidden"]` (from `no_deadline_calculation_when_forbidden`)
+
+The section assembly exclusion check (`excludedSectionTypes.has(sectionType)` → `true` → `continue`) fires **before** `sectionBlockedReasonCodes` is read. The accumulated restriction entry is permanently unreachable — dead internal bookkeeping.
+
+**When only `no_deadline_calculation_when_forbidden` is active** (without `no_autonomous_form_submission`), `next_steps_safe` is not excluded and the restriction IS reachable. This path is tested by regression Case 3 and corpus case `eo-8-2f-5-0009` and is fully unchanged.
+
+#### Cleanup approach
+
+A post-filter loop added to `runPaidExplanationMapper` after the effect loop:
+
+```typescript
+// 8.2F-15D: Remove restriction bookkeeping for sections that are already excluded.
+for (const excluded of excludedSectionTypes) {
+  sectionBlockedReasonCodes.delete(excluded);
+}
+```
+
+This is the minimal change. No section visibility, `blockedReasonCodes`, diagnostics, mapper output structure, section order, or access-tier behavior changed.
+
+#### Files modified
+
+| File | Change |
+|---|---|
+| `reality-simulation/run-paid-explanation-mapper.ts` | Post-filter loop; version bump to `v3` |
+| `reality-simulation/paid-explanation-mapper-regression-scaffold.ts` | Version bump to `v3` |
+| `reality-simulation/explanation-output-regression-corpus.ts` | Version bump to `v4` |
+| `run-governance-lineage-audit-scaffold.ts` | Debt 4 resolved, moved to `CONNECTED_LINEAGE_FINDINGS`; audit version `v5` |
+| `GOVERNANCE_LINEAGE_INTEGRATION_AUDIT.md` | Debt 4 marked ✅ RESOLVED |
+
+**Remaining open debts:** Debt 5 (cross-phase diagnostic namespace isolation), Debt 6 (bridge-level `BridgeBlockingReason` typed field), Debts 7–10 (caller-supplied metadata, `AuditTraceChain.structurallyValid`).
+
+**Safety boundary:** No section visibility changed. No `blockedReasonCodes` on produced sections changed. No diagnostics changed. No runtime coupling, telemetry, or persistence added. No Smart Talk/OCR/LLM changes. TypeScript and ESLint pass cleanly.
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).

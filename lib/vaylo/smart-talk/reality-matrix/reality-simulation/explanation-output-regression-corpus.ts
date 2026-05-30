@@ -25,7 +25,7 @@ import type {
 } from "./explanation-mapper-types";
 
 export const EXPLANATION_OUTPUT_REGRESSION_CORPUS_VERSION =
-  "8.2f-15c-explanation-output-regression-corpus-v3";
+  "8.2f-15d-explanation-output-regression-corpus-v4";
 
 // ── Failure taxonomy ──────────────────────────────────────────────────────────
 

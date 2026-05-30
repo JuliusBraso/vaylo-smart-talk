@@ -1,5 +1,5 @@
 /**
- * Governance Lineage Integration Audit scaffold (Phase 8.2F-15 / updated 8.2F-15C).
+ * Governance Lineage Integration Audit scaffold (Phase 8.2F-15 / updated 8.2F-15D).
  *
  * Implements `runGovernanceLineageAuditScaffold` — a pure static inventory
  * function that returns a `GovernanceLineageAuditResult` covering the entire
@@ -39,6 +39,16 @@
  *
  * 8.2F-15C changes:
  *  - Technical Debt 5 (overloaded mapper diagnostic taxonomy) → PARTIALLY REDUCED.
+ *
+ * 8.2F-15D changes:
+ *  - Technical Debt 4: next_steps_safe dead restriction-state → RESOLVED.
+ *    A post-filter added to run-paid-explanation-mapper.ts removes any entries from
+ *    sectionBlockedReasonCodes for sections that are already in excludedSectionTypes.
+ *    Dead state was: no_autonomous_form_submission + no_deadline_calculation_when_forbidden
+ *    both active → effect loop added next_steps_safe to both maps; section assembly
+ *    exclusion check fired first, making the restriction entry unreachable.
+ *    Resolved finding moved from WARNING_FINDINGS to CONNECTED_LINEAGE_FINDINGS.
+ *  - No section visibility, blockedReasonCodes, diagnostics, or mapper output changed.
  *    Free-preview mapper: dedicated code per ForbiddenExplanationMove (13 specific codes).
  *    free_preview_paid_field_blocked is now the structural invariant only.
  *    Paid mapper: dedicated code per ForbiddenExplanationMove; paid_legal_verdict_blocked
@@ -68,7 +78,7 @@ import type {
 } from "./governance-lineage-audit-types";
 
 export const GOVERNANCE_LINEAGE_AUDIT_VERSION =
-  "8.2f-15c-governance-lineage-audit-v4";
+  "8.2f-15d-governance-lineage-audit-v5";
 
 // ── Finding factory ───────────────────────────────────────────────────────────
 
@@ -241,6 +251,24 @@ const CONNECTED_LINEAGE_FINDINGS: readonly GovernanceAuditFinding[] = [
       "Defensive runtime lookup guard retained in run-reality-simulation.ts. " +
       "No trap semantics or simulation behavior changed.",
   ),
+  finding(
+    "free_preview_mapper",
+    "informational",
+    "RESOLVED (8.2F-15D): next_steps_safe dead restriction-state removed",
+    "Previously reported as a WARNING (Debt 4) in Phase 8.2F-15: " +
+      "when no_autonomous_form_submission and no_deadline_calculation_when_forbidden " +
+      "were both active in the paid mapper, the effect loop added next_steps_safe to both " +
+      "excludedSectionTypes (from the autonomous submission guard) and " +
+      "sectionBlockedReasonCodes (from the deadline forbidden move). The section assembly " +
+      "exclusion check fired first, making the accumulated restriction entry permanently " +
+      "unreachable. Resolved in Phase 8.2F-15D by adding a post-filter loop after the " +
+      "effect loop in runPaidExplanationMapper: for each section in excludedSectionTypes, " +
+      "the corresponding entry (if any) is deleted from sectionBlockedReasonCodes before " +
+      "the assembly loop runs. No section visibility, blockedReasonCodes on produced sections, " +
+      "diagnostics, mapper output structure, or access-tier behavior changed. The single-move " +
+      "case (only no_deadline_calculation_when_forbidden active) is unaffected: next_steps_safe " +
+      "is still produced with its blocked reason codes when it is not excluded.",
+  ),
   // ── Partially resolved debts (8.2F-15C) ───────────────────────────────────────
   finding(
     "free_preview_mapper",
@@ -338,17 +366,8 @@ const WARNING_FINDINGS: readonly GovernanceAuditFinding[] = [
       "through evaluateOcrUncertainty, then runFreePreviewMapper or " +
       "runPaidExplanationMapper, for end-to-end structural validation.",
   ),
-  // Technical debts (Debt 1 resolved in 8.2F-15B — moved to CONNECTED_LINEAGE_FINDINGS below)
-  finding(
-    "simulation",
-    "warning",
-    "Technical Debt: next_steps_safe restriction-state appears unused",
-    "The next_steps_safe restriction-state in the simulation boundary policy " +
-      "exists in the type model but has no documented activation condition in " +
-      "any current scenario or regression corpus entry. It is a dead code path " +
-      "in the governance scaffold. A future phase should either define activation " +
-      "conditions or remove it from the boundary policy table.",
-  ),
+  // Technical debts (Debt 1 resolved in 8.2F-15B; Debt 4 resolved in 8.2F-15D —
+  //   both moved to CONNECTED_LINEAGE_FINDINGS below)
   finding(
     "incident_governance",
     "warning",

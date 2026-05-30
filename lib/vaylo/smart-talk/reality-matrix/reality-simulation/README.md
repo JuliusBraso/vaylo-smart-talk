@@ -1488,4 +1488,61 @@ No section presence/absence behavior changed. No access-tier routing changed. No
 
 ---
 
+## PHASE 8.2F-15D — `next_steps_safe` Dead Restriction-State Cleanup
+
+**Mode:** Governance model cleanup / Technical debt resolution
+**Files modified:** `run-paid-explanation-mapper.ts`, `paid-explanation-mapper-regression-scaffold.ts`, `explanation-output-regression-corpus.ts`
+
+### Mission
+
+Resolves **Debt 4** from the Governance Lineage Integration Audit: the `next_steps_safe` restriction-state accumulated in the paid mapper effect loop was unreachable whenever `no_autonomous_form_submission` was also active.
+
+### Dead State Anatomy
+
+The effect loop in `runPaidExplanationMapper` processes all active forbidden moves:
+
+1. `no_autonomous_form_submission` effect → `excludedSectionTypes.add("next_steps_safe")`
+2. `no_deadline_calculation_when_forbidden` effect → `sectionBlockedReasonCodes.set("next_steps_safe", [...])`
+
+When **both** are active, `next_steps_safe` is in both data structures. The section assembly loop checks `excludedSectionTypes.has(sectionType)` first — this fires `continue`, and `sectionBlockedReasonCodes.get("next_steps_safe")` is never reached. The restriction entry is dead internal bookkeeping.
+
+When **only** `no_deadline_calculation_when_forbidden` is active (without `no_autonomous_form_submission`), the restriction IS observable: `next_steps_safe` is produced with `blockedReasonCodes`. This path is tested by Case 3 in `paid-explanation-mapper-regression-scaffold.ts` and corpus case `eo-8-2f-5-0009`.
+
+### Cleanup Applied
+
+A post-filter loop added after the effect loop in `runPaidExplanationMapper`:
+
+```typescript
+// 8.2F-15D: Remove restriction bookkeeping for sections that are already excluded.
+for (const excluded of excludedSectionTypes) {
+  sectionBlockedReasonCodes.delete(excluded);
+}
+```
+
+This eliminates the dead state at the point of accumulation rather than relying on the assembly loop to implicitly discard it.
+
+### Behavior Preservation
+
+| Observable output | Changed? |
+|---|---|
+| `next_steps_safe` emitted / not emitted | No |
+| `blockedReasonCodes` on produced sections | No |
+| Diagnostics emitted | No |
+| Mapper output structure | No |
+| Regression case pass/fail | No |
+
+### Version Bumps
+
+| File | Previous version | New version |
+|---|---|---|
+| `run-paid-explanation-mapper.ts` | `v2` (8.2F-15C) | `v3` (8.2F-15D) |
+| `paid-explanation-mapper-regression-scaffold.ts` | `v2` (8.2F-15C) | `v3` (8.2F-15D) |
+| `explanation-output-regression-corpus.ts` | `v3` (8.2F-15C) | `v4` (8.2F-15D) |
+
+### Safety Boundary
+
+No section visibility changed. No `blockedReasonCodes` on produced sections changed. No diagnostics changed. No runtime coupling, telemetry, or persistence added. No Smart Talk/OCR/LLM changes. TypeScript and ESLint pass cleanly.
+
+---
+
 > **Reality simulation models safe explanation space, not legal truth.**

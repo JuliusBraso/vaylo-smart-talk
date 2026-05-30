@@ -1,5 +1,6 @@
 /**
- * Paid Explanation Mapper scaffold (Phase 8.2F-4).
+ * Paid Explanation Mapper scaffold (Phase 8.2F-4 / 8.2F-15C diagnostic hardening /
+ * 8.2F-15D next_steps_safe dead restriction-state cleanup).
  *
  * Specialises the generic Runtime Explanation Mapper for paid-tier cognition.
  * Allows deeper structured section drafts while preserving all Constitution
@@ -40,7 +41,7 @@ import type {
 } from "./explanation-mapper-types";
 
 export const PAID_EXPLANATION_MAPPER_VERSION =
-  "8.2f-15c-paid-explanation-mapper-v2";
+  "8.2f-15d-paid-explanation-mapper-v3";
 
 // ── Structural constants ──────────────────────────────────────────────────────
 
@@ -363,6 +364,23 @@ export function runPaidExplanationMapper(
       existing.push(`forbidden_move:${effect.move}`);
       sectionBlockedReasonCodes.set(s, existing);
     }
+  }
+
+  // 8.2F-15D: Remove any restriction bookkeeping accumulated for sections that are
+  // already excluded. The section assembly skips excluded sections before reading
+  // sectionBlockedReasonCodes, making those entries permanently unreachable.
+  //
+  // The canonical dead state: when no_autonomous_form_submission and
+  // no_deadline_calculation_when_forbidden are both active, the effect loop adds
+  // next_steps_safe to both excludedSectionTypes (from no_autonomous_form_submission)
+  // and sectionBlockedReasonCodes (from no_deadline_calculation_when_forbidden).
+  // The assembly loop's exclusion check fires first, discarding the restriction entry.
+  // This post-filter makes that discarding explicit and eliminates the dead state.
+  //
+  // No visible behavior change: excluded sections produce no section draft entries
+  // and therefore no blockedReasonCodes in the output regardless.
+  for (const excluded of excludedSectionTypes) {
+    sectionBlockedReasonCodes.delete(excluded);
   }
 
   // -- Build section candidates --
