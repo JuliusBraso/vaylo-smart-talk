@@ -23,7 +23,7 @@ import {
 } from "./run-paid-explanation-mapper";
 
 export const PAID_EXPLANATION_MAPPER_REGRESSION_VERSION =
-  "8.2f-4-paid-explanation-mapper-regression-scaffold-v1";
+  "8.2f-15c-paid-explanation-mapper-regression-scaffold-v2";
 
 // ── Result types ──────────────────────────────────────────────────────────────
 
@@ -501,7 +501,7 @@ function runCase8(): PaidExplanationMapperRegressionCaseResult {
   return { caseName: "invalid_free_preview_tier_input", passed: failures.length === 0, draft, failures, notes };
 }
 
-// ── Case 9: Paid with all major forbidden moves ───────────────────────────────
+// ── Case 9: Paid with all major forbidden moves (8.2F-15C: expanded + specific codes) ──
 
 function runCase9(): PaidExplanationMapperRegressionCaseResult {
   const input: RuntimeExplanationMapperInput = {
@@ -520,6 +520,9 @@ function runCase9(): PaidExplanationMapperRegressionCaseResult {
         "no_guaranteed_outcomes",
         "no_tax_certainty",
         "no_immigration_certainty",
+        // 8.2F-15A/15C: new moves with dedicated diagnostics
+        "no_false_reassurance_framing",
+        "no_calculated_amount_extraction",
       ],
     },
     accessTier: "paid_explanation",
@@ -536,17 +539,33 @@ function runCase9(): PaidExplanationMapperRegressionCaseResult {
   if (hasSectionType(draft, "next_steps_safe")) {
     failures.push("next_steps_safe must be excluded when no_autonomous_form_submission is active.");
   }
-  // All five distinct diagnostic codes must be emitted.
-  const requiredDiagCodes = [
-    "paid_autonomous_action_blocked",
-    "paid_deadline_output_blocked",
-    "paid_enforcement_claim_blocked",
-    "paid_legal_verdict_blocked",
-    "paid_cross_lane_merge_blocked",
+  // 8.2F-4 diagnostic codes (retained, semantically narrowed in 8.2F-15C).
+  const retained4Codes = [
+    "paid_autonomous_action_blocked",    // no_autonomous_form_submission only
+    "paid_deadline_output_blocked",      // no_deadline_calculation_when_forbidden
+    "paid_enforcement_claim_blocked",    // no_enforcement_claim_when_forbidden
+    "paid_legal_verdict_blocked",        // no_definitive_legal_verdicts only (narrowed)
+    "paid_cross_lane_merge_blocked",     // no_cross_lane_merging
   ] as const;
-  for (const code of requiredDiagCodes) {
+  for (const code of retained4Codes) {
     if (!hasDiagnosticCode(draft, code)) {
       failures.push(`Expected diagnostic code "${code}" to be present.`);
+    }
+  }
+  // 8.2F-15C diagnostic codes: new specific codes replacing paid_legal_verdict_blocked overload.
+  const new15cCodes = [
+    "paid_guaranteed_outcome_blocked",       // no_guaranteed_outcomes
+    "paid_tax_certainty_blocked",            // no_tax_certainty
+    "paid_immigration_certainty_blocked",    // no_immigration_certainty
+    "paid_truthfulness_blocked",             // no_dry_run_as_fact | no_speculation_as_fact
+    "paid_panic_phrasing_blocked",          // no_high_panic_phrasing
+    "paid_false_reassurance_blocked",        // no_false_reassurance_framing
+    "paid_calculated_amount_blocked",        // no_calculated_amount_extraction
+    "paid_section_excluded_by_forbidden_move", // generic section-exclusion notification
+  ] as const;
+  for (const code of new15cCodes) {
+    if (!hasDiagnosticCode(draft, code)) {
+      failures.push(`Expected diagnostic code "${code}" to be present (8.2F-15C specific code).`);
     }
   }
   // Restricted sections must have blocked reason codes.
@@ -568,6 +587,19 @@ function runCase9(): PaidExplanationMapperRegressionCaseResult {
   ) {
     failures.push("attention_points must have blocked reason for no_enforcement_claim_when_forbidden.");
   }
+  // no_false_reassurance_framing and no_calculated_amount_extraction restrict what_this_means.
+  if (
+    hasSectionType(draft, "what_this_means") &&
+    !sectionHasBlockedCode(draft, "what_this_means", "no_false_reassurance_framing")
+  ) {
+    failures.push("what_this_means must have blocked reason for no_false_reassurance_framing.");
+  }
+  if (
+    hasSectionType(draft, "what_this_means") &&
+    !sectionHasBlockedCode(draft, "what_this_means", "no_calculated_amount_extraction")
+  ) {
+    failures.push("what_this_means must have blocked reason for no_calculated_amount_extraction.");
+  }
   // payment_preview_limited must never appear.
   assertNoFreeOnlySections(draft, failures);
   // document_overview must still be present.
@@ -576,7 +608,11 @@ function runCase9(): PaidExplanationMapperRegressionCaseResult {
   }
   assertProseInvariants(draft, failures);
 
-  notes.push("Case 9: all major forbidden moves — next_steps_safe excluded, all 5 diagnostic codes present, restricted sections have blocked reason codes.");
+  notes.push(
+    "Case 9 (8.2F-15C): all major forbidden moves incl. no_false_reassurance_framing and no_calculated_amount_extraction — " +
+    "next_steps_safe excluded, original 5 diagnostic codes present (narrowed semantics), " +
+    "8.2F-15C specific codes present, restricted sections have blocked reason codes.",
+  );
 
   return { caseName: "paid_all_major_forbidden_moves", passed: failures.length === 0, draft, failures, notes };
 }

@@ -38,7 +38,7 @@ import type {
 } from "./explanation-mapper-types";
 
 export const FREE_PREVIEW_MAPPER_VERSION =
-  "8.2f-3-free-preview-mapper-v1";
+  "8.2f-15c-free-preview-mapper-v2";
 
 // ── Structural constants ──────────────────────────────────────────────────────
 
@@ -89,7 +89,11 @@ interface FreePreviewForbiddenMoveEffect {
   readonly restrictedFreeSections: readonly RuntimeExplanationSectionType[];
 }
 
+// 8.2F-15C: each forbidden move now maps to its own specific diagnostic code.
+// free_preview_paid_field_blocked is emitted separately as a structural invariant
+// (paid sections always absent in free preview) and no longer overloaded per-move.
 const FREE_PREVIEW_FORBIDDEN_MOVE_EFFECTS: readonly FreePreviewForbiddenMoveEffect[] = [
+  // ── Move-specific codes (8.2F-3, retained) ────────────────────────────────
   {
     move: "no_deadline_calculation_when_forbidden",
     diagnosticCode: "free_preview_deadline_detail_blocked",
@@ -106,44 +110,56 @@ const FREE_PREVIEW_FORBIDDEN_MOVE_EFFECTS: readonly FreePreviewForbiddenMoveEffe
     diagnosticCode: "free_preview_action_instruction_blocked",
     restrictedFreeSections: [],
   },
+  // ── Move-specific codes (8.2F-15C: replaces free_preview_paid_field_blocked per-move) ──
   {
     move: "no_definitive_legal_verdicts",
-    diagnosticCode: "free_preview_paid_field_blocked",
+    diagnosticCode: "free_preview_legal_verdict_blocked",
     restrictedFreeSections: [],
   },
   {
     move: "no_guaranteed_outcomes",
-    diagnosticCode: "free_preview_paid_field_blocked",
+    diagnosticCode: "free_preview_guaranteed_outcome_blocked",
     restrictedFreeSections: [],
   },
   {
     move: "no_dry_run_as_fact",
-    diagnosticCode: "free_preview_paid_field_blocked",
+    diagnosticCode: "free_preview_truthfulness_blocked",
     restrictedFreeSections: [],
   },
   {
     move: "no_speculation_as_fact",
-    diagnosticCode: "free_preview_paid_field_blocked",
+    diagnosticCode: "free_preview_truthfulness_blocked",
     restrictedFreeSections: [],
   },
   {
     move: "no_cross_lane_merging",
-    diagnosticCode: "free_preview_paid_field_blocked",
+    diagnosticCode: "free_preview_cross_lane_blocked",
     restrictedFreeSections: [],
   },
   {
     move: "no_tax_certainty",
-    diagnosticCode: "free_preview_paid_field_blocked",
+    diagnosticCode: "free_preview_tax_certainty_blocked",
     restrictedFreeSections: [],
   },
   {
     move: "no_immigration_certainty",
-    diagnosticCode: "free_preview_paid_field_blocked",
+    diagnosticCode: "free_preview_immigration_certainty_blocked",
     restrictedFreeSections: [],
   },
   {
     move: "no_high_panic_phrasing",
-    diagnosticCode: "free_preview_paid_field_blocked",
+    diagnosticCode: "free_preview_panic_phrasing_blocked",
+    restrictedFreeSections: [],
+  },
+  // ── 8.2F-15A moves with dedicated diagnostics (8.2F-15C) ─────────────────
+  {
+    move: "no_false_reassurance_framing",
+    diagnosticCode: "free_preview_false_reassurance_blocked",
+    restrictedFreeSections: [],
+  },
+  {
+    move: "no_calculated_amount_extraction",
+    diagnosticCode: "free_preview_calculated_amount_blocked",
     restrictedFreeSections: [],
   },
 ];

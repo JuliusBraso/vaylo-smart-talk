@@ -1427,4 +1427,65 @@ This phase does not add new traps, modify trap semantics, change enforcement beh
 
 ---
 
+## PHASE 8.2F-15C — Mapper Diagnostic Taxonomy Hardening
+
+**Mode:** Diagnostic taxonomy refinement / Technical debt resolution
+**Files modified:** `explanation-mapper-types.ts`, `run-free-preview-mapper.ts`, `run-paid-explanation-mapper.ts`, `free-preview-mapper-regression-scaffold.ts`, `paid-explanation-mapper-regression-scaffold.ts`, `explanation-output-regression-corpus.ts`
+
+### Mission
+
+Partially resolves **Debts 5 and 6** from the Phase 8.2F-15 Governance Lineage Integration Audit at the mapper layer:
+
+> **Debt 5:** `free_preview_paid_field_blocked` collapsed 8 semantically distinct forbidden-move notifications into one code. `paid_legal_verdict_blocked` covered 5 unrelated certainty/truthfulness risks. Mapper diagnostic taxonomy was overloaded.
+>
+> **Debt 6:** `paid_autonomous_action_blocked` doubled as both a forbidden-move notification and a generic section-exclusion notification.
+
+This phase is a **diagnostic taxonomy refinement only**. No section presence/absence behavior, no access-tier routing, no user-visible output, and no runtime behavior was changed.
+
+### Free Preview Mapper — Diagnostic Changes
+
+| Forbidden Move | Before (8.2F-3) | After (8.2F-15C) |
+|---|---|---|
+| `no_definitive_legal_verdicts` | `free_preview_paid_field_blocked` | `free_preview_legal_verdict_blocked` |
+| `no_guaranteed_outcomes` | `free_preview_paid_field_blocked` | `free_preview_guaranteed_outcome_blocked` |
+| `no_dry_run_as_fact` | `free_preview_paid_field_blocked` | `free_preview_truthfulness_blocked` |
+| `no_speculation_as_fact` | `free_preview_paid_field_blocked` | `free_preview_truthfulness_blocked` |
+| `no_cross_lane_merging` | `free_preview_paid_field_blocked` | `free_preview_cross_lane_blocked` |
+| `no_tax_certainty` | `free_preview_paid_field_blocked` | `free_preview_tax_certainty_blocked` |
+| `no_immigration_certainty` | `free_preview_paid_field_blocked` | `free_preview_immigration_certainty_blocked` |
+| `no_high_panic_phrasing` | `free_preview_paid_field_blocked` | `free_preview_panic_phrasing_blocked` |
+| `no_false_reassurance_framing` | *(none — no entry)* | `free_preview_false_reassurance_blocked` |
+| `no_calculated_amount_extraction` | *(none — no entry)* | `free_preview_calculated_amount_blocked` |
+
+`free_preview_paid_field_blocked` is retained as the **structural invariant**: always emitted to record that paid sections are absent in free preview. It no longer doubles as a per-move notification.
+
+### Paid Mapper — Diagnostic Changes
+
+| Forbidden Move | Before (8.2F-4) | After (8.2F-15C) |
+|---|---|---|
+| `no_definitive_legal_verdicts` | `paid_legal_verdict_blocked` | `paid_legal_verdict_blocked` *(narrowed)* |
+| `no_guaranteed_outcomes` | `paid_legal_verdict_blocked` | `paid_guaranteed_outcome_blocked` |
+| `no_tax_certainty` | `paid_legal_verdict_blocked` | `paid_tax_certainty_blocked` |
+| `no_immigration_certainty` | `paid_legal_verdict_blocked` | `paid_immigration_certainty_blocked` |
+| `no_dry_run_as_fact` | `paid_legal_verdict_blocked` | `paid_truthfulness_blocked` |
+| `no_speculation_as_fact` | `paid_legal_verdict_blocked` | `paid_truthfulness_blocked` |
+| `no_high_panic_phrasing` | `paid_enforcement_claim_blocked` | `paid_panic_phrasing_blocked` |
+| `no_autonomous_form_submission` | `paid_autonomous_action_blocked` | `paid_autonomous_action_blocked` *(narrowed)* |
+| `no_false_reassurance_framing` | *(none — no entry)* | `paid_false_reassurance_blocked` |
+| `no_calculated_amount_extraction` | *(none — no entry)* | `paid_calculated_amount_blocked` |
+| Section exclusion notification | `paid_autonomous_action_blocked` | `paid_section_excluded_by_forbidden_move` |
+| Section restriction notification | `paid_deadline_output_blocked` | `paid_section_excluded_by_forbidden_move` |
+
+### Regression Updates
+
+- `free-preview-mapper-regression-scaffold.ts` Case 7: expanded with `no_false_reassurance_framing` and `no_calculated_amount_extraction`; asserts all 9 new specific codes + structural invariant
+- `paid-explanation-mapper-regression-scaffold.ts` Case 9: expanded with new moves; asserts all 8 new specific codes + `paid_section_excluded_by_forbidden_move`
+- `explanation-output-regression-corpus.ts`: cases 0016/0017 updated to assert specific codes; case 0014 updated to assert all new specific codes; cases 0018/0019 added for paid coverage of new moves
+
+### Safety Boundary
+
+No section presence/absence behavior changed. No access-tier routing changed. No user-visible output introduced. No runtime coupling, telemetry, or persistence added. No Smart Talk/OCR/LLM/UI/payment logic touched. TypeScript and ESLint pass cleanly.
+
+---
+
 > **Reality simulation models safe explanation space, not legal truth.**

@@ -40,7 +40,7 @@ import type {
 } from "./explanation-mapper-types";
 
 export const PAID_EXPLANATION_MAPPER_VERSION =
-  "8.2f-4-paid-explanation-mapper-v1";
+  "8.2f-15c-paid-explanation-mapper-v2";
 
 // ── Structural constants ──────────────────────────────────────────────────────
 
@@ -120,7 +120,12 @@ interface PaidForbiddenMoveEffect {
   readonly restrictedSections: readonly RuntimeExplanationSectionType[];
 }
 
+// 8.2F-15C: each forbidden move maps to its own specific diagnostic code.
+// paid_legal_verdict_blocked is now used only for no_definitive_legal_verdicts.
+// paid_autonomous_action_blocked is now used only for no_autonomous_form_submission.
+// Section-exclusion notifications use paid_section_excluded_by_forbidden_move.
 const PAID_FORBIDDEN_MOVE_EFFECTS: readonly PaidForbiddenMoveEffect[] = [
+  // ── Move-specific codes (8.2F-4, retained with narrowed semantics) ─────────
   {
     move: "no_autonomous_form_submission",
     diagnosticCode: "paid_autonomous_action_blocked",
@@ -143,7 +148,7 @@ const PAID_FORBIDDEN_MOVE_EFFECTS: readonly PaidForbiddenMoveEffect[] = [
   },
   {
     move: "no_definitive_legal_verdicts",
-    diagnosticCode: "paid_legal_verdict_blocked",
+    diagnosticCode: "paid_legal_verdict_blocked",          // narrowed to this move only (8.2F-15C)
     excludedSections: [],
     restrictedSections: ["what_this_means", "paid_deep_explanation"],
   },
@@ -153,39 +158,53 @@ const PAID_FORBIDDEN_MOVE_EFFECTS: readonly PaidForbiddenMoveEffect[] = [
     excludedSections: [],
     restrictedSections: ["what_this_means", "paid_deep_explanation"],
   },
+  // ── Move-specific codes (8.2F-15C: replaces paid_legal_verdict_blocked overload) ──
   {
     move: "no_high_panic_phrasing",
-    diagnosticCode: "paid_enforcement_claim_blocked",
+    diagnosticCode: "paid_panic_phrasing_blocked",         // was paid_enforcement_claim_blocked
     excludedSections: [],
     restrictedSections: ["attention_points", "what_this_means"],
   },
   {
     move: "no_dry_run_as_fact",
-    diagnosticCode: "paid_legal_verdict_blocked",
+    diagnosticCode: "paid_truthfulness_blocked",           // was paid_legal_verdict_blocked
     excludedSections: [],
     restrictedSections: ["what_this_means", "paid_deep_explanation", "attention_points"],
   },
   {
     move: "no_speculation_as_fact",
-    diagnosticCode: "paid_legal_verdict_blocked",
+    diagnosticCode: "paid_truthfulness_blocked",           // was paid_legal_verdict_blocked
     excludedSections: [],
     restrictedSections: ["what_this_means", "paid_deep_explanation"],
   },
   {
     move: "no_guaranteed_outcomes",
-    diagnosticCode: "paid_legal_verdict_blocked",
+    diagnosticCode: "paid_guaranteed_outcome_blocked",     // was paid_legal_verdict_blocked
     excludedSections: [],
     restrictedSections: ["what_this_means", "paid_deep_explanation"],
   },
   {
     move: "no_tax_certainty",
-    diagnosticCode: "paid_legal_verdict_blocked",
+    diagnosticCode: "paid_tax_certainty_blocked",          // was paid_legal_verdict_blocked
     excludedSections: [],
     restrictedSections: ["what_this_means", "paid_deep_explanation"],
   },
   {
     move: "no_immigration_certainty",
-    diagnosticCode: "paid_legal_verdict_blocked",
+    diagnosticCode: "paid_immigration_certainty_blocked",  // was paid_legal_verdict_blocked
+    excludedSections: [],
+    restrictedSections: ["what_this_means", "paid_deep_explanation"],
+  },
+  // ── 8.2F-15A moves with dedicated diagnostics (8.2F-15C) ──────────────────
+  {
+    move: "no_false_reassurance_framing",
+    diagnosticCode: "paid_false_reassurance_blocked",
+    excludedSections: [],
+    restrictedSections: ["what_this_means", "paid_deep_explanation"],
+  },
+  {
+    move: "no_calculated_amount_extraction",
+    diagnosticCode: "paid_calculated_amount_blocked",
     excludedSections: [],
     restrictedSections: ["what_this_means", "paid_deep_explanation"],
   },
@@ -369,9 +388,11 @@ export function runPaidExplanationMapper(
     }
 
     // Forbidden-move exclusions.
+    // 8.2F-15C: generic section-exclusion now uses paid_section_excluded_by_forbidden_move
+    // instead of the semantically specific paid_autonomous_action_blocked.
     if (excludedSectionTypes.has(sectionType)) {
       diagnostics.push({
-        code: "paid_autonomous_action_blocked" satisfies PaidExplanationMapperDiagnosticCode,
+        code: "paid_section_excluded_by_forbidden_move" satisfies PaidExplanationMapperDiagnosticCode,
         detail: `Section "${sectionType}" excluded by active forbidden move(s).`,
         neverUserVisible: true,
       });
@@ -381,8 +402,10 @@ export function runPaidExplanationMapper(
     const blockedReasonCodes = sectionBlockedReasonCodes.get(sectionType) ?? [];
 
     if (blockedReasonCodes.length > 0) {
+      // 8.2F-15C: section restriction notification uses the generic section-exclusion code
+      // rather than the semantically specific paid_deadline_output_blocked.
       diagnostics.push({
-        code: "paid_deadline_output_blocked" satisfies PaidExplanationMapperDiagnosticCode,
+        code: "paid_section_excluded_by_forbidden_move" satisfies PaidExplanationMapperDiagnosticCode,
         detail: `Section "${sectionType}" has content restrictions: ${blockedReasonCodes.join(", ")}.`,
         neverUserVisible: true,
       });

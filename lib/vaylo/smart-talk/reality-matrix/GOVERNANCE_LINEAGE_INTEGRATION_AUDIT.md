@@ -1,7 +1,7 @@
-# Governance Lineage Integration Audit — Phase 8.2F-15 (updated 8.2F-15B)
+# Governance Lineage Integration Audit — Phase 8.2F-15 (updated 8.2F-15C)
 
-**Version:** `8.2f-15b-governance-lineage-audit-v3`
-**Scope:** Vaylo Document Reasoning Constitution V1 — Phases 8.2A → 8.2F-15B
+**Version:** `8.2f-15c-governance-lineage-audit-v4`
+**Scope:** Vaylo Document Reasoning Constitution V1 — Phases 8.2A → 8.2F-15C
 **Mode:** Audit only / no runtime wiring / no behavior modified
 **Overall Status:** `partially_connected`
 
@@ -16,6 +16,15 @@
 > `ENFORCEMENT_CLUSTER_TRAP_KINDS` in `resolve-trap-activations.ts` narrowed from `Set<string>`
 > to `Set<HallucinationTrapKind>`. Defensive runtime lookup guard retained in
 > `run-reality-simulation.ts`. No trap semantics or simulation behavior changed.
+>
+> **8.2F-15C Update:** Debts 5 and 6 are partially reduced (see detail below).
+> Free-preview mapper: `free_preview_paid_field_blocked` is now the structural invariant only —
+> each forbidden move emits its own specific code. Paid mapper: `paid_legal_verdict_blocked`
+> narrowed to `no_definitive_legal_verdicts` only; `paid_autonomous_action_blocked` narrowed to
+> `no_autonomous_form_submission` only; `paid_section_excluded_by_forbidden_move` handles generic
+> section-exclusion notifications. New moves `no_false_reassurance_framing` and
+> `no_calculated_amount_extraction` now have dedicated diagnostic codes in both mappers.
+> No section presence/absence behavior changed. No user-visible output.
 
 ---
 
@@ -201,25 +210,40 @@ The `next_steps_safe` restriction-state exists in the boundary policy type model
 
 ---
 
-### Debt 5 — Overloaded diagnostic taxonomy across phases
+### Debt 5 — Overloaded diagnostic taxonomy across phases ⚠ PARTIALLY REDUCED (8.2F-15C)
 
-**Severity:** Warning
-**Layer:** `incident_governance`
+**Severity:** Warning → **REDUCED at mapper level in Phase 8.2F-15C**
+**Layer:** `incident_governance` (cross-phase) / `free_preview_mapper` / `paid_explanation_mapper`
 
-Eight separate diagnostic code union types exist across phases 8.2F-8 through 8.2F-14: `WordingReviewDiagnosticCode`, `OcrDiagnosticCode`, `PilotGateDiagnosticCode`, `WordingViolationCode`, `IncidentDiagnosticCode`, `AuditTraceDiagnosticCode`, `BridgeDiagnosticCode`, `ExplanationMapperDiagnosticCode`. These are structurally isolated with no shared taxonomy. Cross-phase diagnostic correlation requires manual inspection.
+**Original debt:** Eight separate diagnostic code union types exist across phases 8.2F-8 through 8.2F-14: `WordingReviewDiagnosticCode`, `OcrDiagnosticCode`, `PilotGateDiagnosticCode`, `WordingViolationCode`, `IncidentDiagnosticCode`, `AuditTraceDiagnosticCode`, `BridgeDiagnosticCode`, `ExplanationMapperDiagnosticCode`. These are structurally isolated with no shared taxonomy. Cross-phase diagnostic correlation requires manual inspection.
 
-**Resolution:** Introduce a unified `GovernanceDiagnosticCode` namespace or adapter layer in a future consolidation phase.
+**Mapper-level debt resolved (8.2F-15C):**
+- `FreePreviewMapperDiagnosticCode` now has a dedicated code per `ForbiddenExplanationMove`. `free_preview_paid_field_blocked` is the structural invariant only; all per-move semantics have specific codes (e.g. `free_preview_legal_verdict_blocked`, `free_preview_false_reassurance_blocked`, `free_preview_calculated_amount_blocked`).
+- `PaidExplanationMapperDiagnosticCode` now has a dedicated code per `ForbiddenExplanationMove`. `paid_legal_verdict_blocked` is narrowed to `no_definitive_legal_verdicts` only. New codes include `paid_truthfulness_blocked`, `paid_guaranteed_outcome_blocked`, `paid_false_reassurance_blocked`, `paid_calculated_amount_blocked`, `paid_section_excluded_by_forbidden_move`.
+- No section presence/absence behavior changed. No user-visible output introduced.
+
+**Remaining debt:** Cross-phase diagnostic namespace isolation (eight separate union types across 8.2F-8 through 8.2F-14) has NOT been resolved. A unified `GovernanceDiagnosticCode` namespace or adapter layer remains a future consolidation phase.
+
+**Resolution for remaining debt:** Introduce a unified `GovernanceDiagnosticCode` namespace or cross-type adapter in a future consolidation phase.
 
 ---
 
-### Debt 6 — Broad blocking diagnostic buckets in bridge layer
+### Debt 6 — Broad blocking diagnostic buckets in bridge layer ⚠ PARTIALLY REDUCED (8.2F-15C)
 
-**Severity:** Warning
-**Layer:** `smart_talk_bridge`
+**Severity:** Warning → **REDUCED at mapper level in Phase 8.2F-15C**
+**Layer:** `smart_talk_bridge` / `paid_explanation_mapper`
 
-`SmartTalkBridgeDryRunResult.governanceValid` is a single boolean. When `false`, the caller must inspect the `diagnostics` array to determine which structural check failed. No structured blocking reason type exists at the bridge level.
+**Original debt:** `SmartTalkBridgeDryRunResult.governanceValid` is a single boolean. When `false`, the caller must inspect the `diagnostics` array to determine which structural check failed. No structured blocking reason type exists at the bridge level. Additionally, mapper codes like `paid_autonomous_action_blocked` were overloaded: used both for the `no_autonomous_form_submission` forbidden move and as a generic section-exclusion notification.
 
-**Resolution:** Introduce a typed `BridgeBlockingReason` that classifies failures (no boundary emitted, null draft, section mismatch, tier mismatch) as a first-class result field.
+**Mapper-level debt resolved (8.2F-15C):**
+- `paid_autonomous_action_blocked` is now used **only** for `no_autonomous_form_submission`.
+- Generic section-exclusion notifications now use `paid_section_excluded_by_forbidden_move`.
+- `paid_legal_verdict_blocked` is now used **only** for `no_definitive_legal_verdicts`.
+- No section behavior or runtime routing changed.
+
+**Remaining debt:** The bridge-level `governanceValid` boolean without a typed `BridgeBlockingReason` field has NOT been resolved. The caller must still inspect `diagnostics` manually.
+
+**Resolution for remaining debt:** Introduce a typed `BridgeBlockingReason` that classifies failures (no boundary emitted, null draft, section mismatch, tier mismatch) as a first-class result field in `SmartTalkBridgeDryRunResult`.
 
 ---
 

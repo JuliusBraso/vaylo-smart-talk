@@ -25,7 +25,7 @@ import type {
 } from "./explanation-mapper-types";
 
 export const EXPLANATION_OUTPUT_REGRESSION_CORPUS_VERSION =
-  "8.2f-15a-explanation-output-regression-corpus-v2";
+  "8.2f-15c-explanation-output-regression-corpus-v3";
 
 // ── Failure taxonomy ──────────────────────────────────────────────────────────
 
@@ -534,7 +534,7 @@ export const EXPLANATION_OUTPUT_REGRESSION_CORPUS: readonly ExplanationOutputReg
 
     {
       id: "eo-8-2f-5-0014-paid-all-major-forbidden-moves",
-      title: "Paid explanation: all major forbidden moves active simultaneously",
+      title: "Paid explanation: all major forbidden moves active simultaneously (8.2F-15C: specific codes verified)",
       mapperKind: "paid_explanation",
       simulationResultFixture: EMPTY_SIM,
       contractFixture: paidContract({
@@ -560,12 +560,21 @@ export const EXPLANATION_OUTPUT_REGRESSION_CORPUS: readonly ExplanationOutputReg
         "paid_deep_explanation",
       ],
       expectedSectionsAbsent: ["next_steps_safe", "payment_preview_limited"],
+      // 8.2F-4 codes (narrowed semantics in 8.2F-15C) + 8.2F-15C new specific codes.
       expectedDiagnosticCodes: [
-        "paid_autonomous_action_blocked",
-        "paid_deadline_output_blocked",
-        "paid_enforcement_claim_blocked",
-        "paid_legal_verdict_blocked",
-        "paid_cross_lane_merge_blocked",
+        // Retained 8.2F-4 codes (narrowed):
+        "paid_autonomous_action_blocked",        // no_autonomous_form_submission only
+        "paid_deadline_output_blocked",          // no_deadline_calculation_when_forbidden
+        "paid_enforcement_claim_blocked",        // no_enforcement_claim_when_forbidden
+        "paid_legal_verdict_blocked",            // no_definitive_legal_verdicts only (narrowed)
+        "paid_cross_lane_merge_blocked",         // no_cross_lane_merging
+        // New 8.2F-15C specific codes:
+        "paid_panic_phrasing_blocked",          // no_high_panic_phrasing
+        "paid_truthfulness_blocked",             // no_dry_run_as_fact / no_speculation_as_fact
+        "paid_guaranteed_outcome_blocked",       // no_guaranteed_outcomes
+        "paid_tax_certainty_blocked",            // no_tax_certainty
+        "paid_immigration_certainty_blocked",    // no_immigration_certainty
+        "paid_section_excluded_by_forbidden_move", // generic section-exclusion notification
       ],
       // no_dry_run_as_fact triggers uncertainty_preserved in posture derivation.
       expectedUncertaintyPosture: "uncertainty_preserved",
@@ -589,7 +598,9 @@ export const EXPLANATION_OUTPUT_REGRESSION_CORPUS: readonly ExplanationOutputReg
         },
       ],
       notes:
-        "All 5 paid diagnostic codes must be present. next_steps_safe excluded. no_dry_run_as_fact triggers uncertainty_preserved posture. document_overview must remain present.",
+        "8.2F-15C: All 11 original paid diagnostic codes verified (5 retained with narrowed semantics, 6 new specific codes). " +
+        "next_steps_safe excluded. no_dry_run_as_fact triggers uncertainty_preserved posture. " +
+        "document_overview must remain present. paid_legal_verdict_blocked is now no_definitive_legal_verdicts ONLY.",
     },
 
     // ── 8.2F-15A: New forbidden move preservation cases ─────────────────────────
@@ -597,7 +608,7 @@ export const EXPLANATION_OUTPUT_REGRESSION_CORPUS: readonly ExplanationOutputReg
     {
       id: "eo-8-2f-15a-0016-free-false-reassurance-framing-preserved",
       title:
-        "Free preview: no_false_reassurance_framing accepted and standard sections intact",
+        "Free preview: no_false_reassurance_framing — specific diagnostic emitted, sections intact",
       mapperKind: "free_preview",
       simulationResultFixture: EMPTY_SIM,
       contractFixture: freeContract({
@@ -614,18 +625,25 @@ export const EXPLANATION_OUTPUT_REGRESSION_CORPUS: readonly ExplanationOutputReg
         "next_steps_safe",
         "paid_deep_explanation",
       ],
-      expectedDiagnosticCodes: ["free_preview_paid_field_blocked"],
+      // 8.2F-15C: free_preview_false_reassurance_blocked is the dedicated code.
+      // free_preview_paid_field_blocked remains the structural invariant.
+      expectedDiagnosticCodes: [
+        "free_preview_paid_field_blocked",
+        "free_preview_false_reassurance_blocked",
+      ],
       expectedUncertaintyPosture: "unknown",
       expectedReviewPosture: "none",
       expectedBlockedReasonCodes: [],
       notes:
-        "Preservation validation (8.2F-15A): no_false_reassurance_framing is accepted as a known canonical move. Standard free preview sections remain intact. No dedicated mapper diagnostic for this move yet — dedicated diagnostic handling is future 8.2F-15C work.",
+        "8.2F-15C: no_false_reassurance_framing now emits free_preview_false_reassurance_blocked (dedicated code). " +
+        "free_preview_paid_field_blocked is still emitted as the structural invariant (paid sections absent). " +
+        "Standard free preview sections remain intact. No section-level restrictions.",
     },
 
     {
       id: "eo-8-2f-15a-0017-free-calculated-amount-extraction-preserved",
       title:
-        "Free preview: no_calculated_amount_extraction accepted and standard sections intact",
+        "Free preview: no_calculated_amount_extraction — specific diagnostic emitted, sections intact",
       mapperKind: "free_preview",
       simulationResultFixture: EMPTY_SIM,
       contractFixture: freeContract({
@@ -642,12 +660,83 @@ export const EXPLANATION_OUTPUT_REGRESSION_CORPUS: readonly ExplanationOutputReg
         "next_steps_safe",
         "paid_deep_explanation",
       ],
-      expectedDiagnosticCodes: ["free_preview_paid_field_blocked"],
+      // 8.2F-15C: free_preview_calculated_amount_blocked is the dedicated code.
+      // free_preview_paid_field_blocked remains the structural invariant.
+      expectedDiagnosticCodes: [
+        "free_preview_paid_field_blocked",
+        "free_preview_calculated_amount_blocked",
+      ],
       expectedUncertaintyPosture: "unknown",
       expectedReviewPosture: "none",
       expectedBlockedReasonCodes: [],
       notes:
-        "Preservation validation (8.2F-15A): no_calculated_amount_extraction is accepted as a known canonical move. Standard free preview sections remain intact. No dedicated mapper diagnostic for this move yet — dedicated diagnostic handling is future 8.2F-15C work.",
+        "8.2F-15C: no_calculated_amount_extraction now emits free_preview_calculated_amount_blocked (dedicated code). " +
+        "free_preview_paid_field_blocked is still emitted as the structural invariant (paid sections absent). " +
+        "Standard free preview sections remain intact. No section-level restrictions.",
+    },
+
+    // ── 8.2F-15C: Paid tier coverage for the new 8.2F-15A forbidden moves ──────
+
+    {
+      id: "eo-8-2f-15c-0018-paid-false-reassurance-framing-blocked",
+      title:
+        "Paid explanation: no_false_reassurance_framing — dedicated diagnostic + section restrictions",
+      mapperKind: "paid_explanation",
+      simulationResultFixture: EMPTY_SIM,
+      contractFixture: paidContract({
+        moves: ["no_false_reassurance_framing"],
+      }),
+      expectedSectionsPresent: [
+        "document_overview",
+        "what_this_means",
+        "attention_points",
+        "next_steps_safe",
+        "uncertainty_and_limits",
+        "paid_deep_explanation",
+      ],
+      expectedSectionsAbsent: ["payment_preview_limited"],
+      expectedDiagnosticCodes: ["paid_false_reassurance_blocked"],
+      expectedUncertaintyPosture: "unknown",
+      expectedReviewPosture: "none",
+      expectedBlockedReasonCodes: [
+        { sectionType: "what_this_means", codeFragment: "no_false_reassurance_framing" },
+        { sectionType: "paid_deep_explanation", codeFragment: "no_false_reassurance_framing" },
+      ],
+      notes:
+        "8.2F-15C: no_false_reassurance_framing emits paid_false_reassurance_blocked in paid tier. " +
+        "what_this_means and paid_deep_explanation receive blocked reason codes. " +
+        "No section is fully excluded — content restricted only.",
+    },
+
+    {
+      id: "eo-8-2f-15c-0019-paid-calculated-amount-extraction-blocked",
+      title:
+        "Paid explanation: no_calculated_amount_extraction — dedicated diagnostic + section restrictions",
+      mapperKind: "paid_explanation",
+      simulationResultFixture: EMPTY_SIM,
+      contractFixture: paidContract({
+        moves: ["no_calculated_amount_extraction"],
+      }),
+      expectedSectionsPresent: [
+        "document_overview",
+        "what_this_means",
+        "attention_points",
+        "next_steps_safe",
+        "uncertainty_and_limits",
+        "paid_deep_explanation",
+      ],
+      expectedSectionsAbsent: ["payment_preview_limited"],
+      expectedDiagnosticCodes: ["paid_calculated_amount_blocked"],
+      expectedUncertaintyPosture: "unknown",
+      expectedReviewPosture: "none",
+      expectedBlockedReasonCodes: [
+        { sectionType: "what_this_means", codeFragment: "no_calculated_amount_extraction" },
+        { sectionType: "paid_deep_explanation", codeFragment: "no_calculated_amount_extraction" },
+      ],
+      notes:
+        "8.2F-15C: no_calculated_amount_extraction emits paid_calculated_amount_blocked in paid tier. " +
+        "what_this_means and paid_deep_explanation receive blocked reason codes. " +
+        "No section is fully excluded — content restricted only.",
     },
 
     {

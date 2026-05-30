@@ -2,7 +2,8 @@
  * Runtime Explanation Mapper types (Phase 8.2F-1 sketch / 8.2F-2 skeleton /
  * 8.2F-3 free-preview codes / 8.2F-4 paid codes /
  * 8.2F-6 Smart Talk Bridge Dry Run input+output types /
- * 8.2F-6A bridge_contract_tier_mismatch diagnostic code).
+ * 8.2F-6A bridge_contract_tier_mismatch diagnostic code /
+ * 8.2F-15C mapper diagnostic taxonomy hardening).
  *
  * Safety guarantees (all phases):
  * - no mapper function in this file
@@ -79,28 +80,65 @@ export interface RuntimeExplanationSectionDraft {
 }
 
 /**
- * Strongly-typed diagnostic codes for the free preview mapper (Phase 8.2F-3).
- * Used in `ExplanationMapperDiagnostic.code` to identify which free-preview
- * governance suppression was applied.
+ * Strongly-typed diagnostic codes for the free preview mapper (Phase 8.2F-3 /
+ * 8.2F-15C taxonomy hardening).
+ *
+ * Each `ForbiddenExplanationMove` active in a free-preview contract now emits a
+ * dedicated code rather than collapsing everything into `free_preview_paid_field_blocked`.
+ *
+ * `free_preview_paid_field_blocked` is retained as the **always-emitted structural
+ * invariant** that records paid sections are absent in this tier — it no longer
+ * doubles as a per-move diagnostic.
  */
 export type FreePreviewMapperDiagnosticCode =
-  | "free_preview_paid_field_blocked"
-  | "free_preview_deadline_detail_blocked"
-  | "free_preview_enforcement_claim_blocked"
-  | "free_preview_action_instruction_blocked"
+  // ── Invariant (always emitted) ───────────────────────────────────────────
+  | "free_preview_paid_field_blocked"           // paid sections structurally absent
+  // ── Move-specific codes (8.2F-3, retained) ──────────────────────────────
+  | "free_preview_deadline_detail_blocked"      // no_deadline_calculation_when_forbidden
+  | "free_preview_enforcement_claim_blocked"    // no_enforcement_claim_when_forbidden
+  | "free_preview_action_instruction_blocked"   // no_autonomous_form_submission
+  // ── Move-specific codes (8.2F-15C: replaces free_preview_paid_field_blocked per-move) ──
+  | "free_preview_legal_verdict_blocked"        // no_definitive_legal_verdicts
+  | "free_preview_guaranteed_outcome_blocked"   // no_guaranteed_outcomes
+  | "free_preview_truthfulness_blocked"         // no_dry_run_as_fact | no_speculation_as_fact
+  | "free_preview_cross_lane_blocked"           // no_cross_lane_merging
+  | "free_preview_tax_certainty_blocked"        // no_tax_certainty
+  | "free_preview_immigration_certainty_blocked"// no_immigration_certainty
+  | "free_preview_panic_phrasing_blocked"       // no_high_panic_phrasing
+  | "free_preview_false_reassurance_blocked"    // no_false_reassurance_framing (8.2F-15A/15C)
+  | "free_preview_calculated_amount_blocked"    // no_calculated_amount_extraction (8.2F-15A/15C)
+  // ── Tier error ────────────────────────────────────────────────────────────
   | "invalid_access_tier_for_free_preview_mapper";
 
 /**
- * Strongly-typed diagnostic codes for the paid explanation mapper (Phase 8.2F-4).
- * Used in `ExplanationMapperDiagnostic.code` to identify which paid-tier
- * governance suppression was applied.
+ * Strongly-typed diagnostic codes for the paid explanation mapper (Phase 8.2F-4 /
+ * 8.2F-15C taxonomy hardening).
+ *
+ * Each `ForbiddenExplanationMove` active in a paid contract now emits a dedicated
+ * code rather than collapsing truthfulness/certainty risks into `paid_legal_verdict_blocked`.
+ *
+ * `paid_legal_verdict_blocked` is narrowed to `no_definitive_legal_verdicts` only.
+ * `paid_autonomous_action_blocked` is narrowed to `no_autonomous_form_submission` only.
+ * `paid_section_excluded_by_forbidden_move` is the new generic section-exclusion code.
  */
 export type PaidExplanationMapperDiagnosticCode =
-  | "paid_deadline_output_blocked"
-  | "paid_enforcement_claim_blocked"
-  | "paid_legal_verdict_blocked"
-  | "paid_autonomous_action_blocked"
-  | "paid_cross_lane_merge_blocked"
+  // ── Move-specific codes (8.2F-4, retained with narrowed semantics) ────────
+  | "paid_deadline_output_blocked"              // no_deadline_calculation_when_forbidden
+  | "paid_enforcement_claim_blocked"            // no_enforcement_claim_when_forbidden
+  | "paid_legal_verdict_blocked"                // no_definitive_legal_verdicts only (narrowed 8.2F-15C)
+  | "paid_autonomous_action_blocked"            // no_autonomous_form_submission only (narrowed 8.2F-15C)
+  | "paid_cross_lane_merge_blocked"             // no_cross_lane_merging
+  // ── Move-specific codes (8.2F-15C: replaces paid_legal_verdict_blocked overload) ──
+  | "paid_guaranteed_outcome_blocked"           // no_guaranteed_outcomes
+  | "paid_tax_certainty_blocked"                // no_tax_certainty
+  | "paid_immigration_certainty_blocked"        // no_immigration_certainty
+  | "paid_truthfulness_blocked"                 // no_dry_run_as_fact | no_speculation_as_fact
+  | "paid_panic_phrasing_blocked"              // no_high_panic_phrasing
+  | "paid_false_reassurance_blocked"            // no_false_reassurance_framing (8.2F-15A/15C)
+  | "paid_calculated_amount_blocked"            // no_calculated_amount_extraction (8.2F-15A/15C)
+  // ── Generic section-exclusion (8.2F-15C: replaces paid_autonomous_action_blocked overload) ──
+  | "paid_section_excluded_by_forbidden_move"   // generic section exclusion notification
+  // ── Tier error ────────────────────────────────────────────────────────────
   | "invalid_access_tier_for_paid_explanation_mapper";
 
 export interface ExplanationMapperDiagnostic {

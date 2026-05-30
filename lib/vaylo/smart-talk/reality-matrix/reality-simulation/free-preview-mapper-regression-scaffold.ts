@@ -23,7 +23,7 @@ import {
 } from "./run-free-preview-mapper";
 
 export const FREE_PREVIEW_MAPPER_REGRESSION_VERSION =
-  "8.2f-3-free-preview-mapper-regression-scaffold-v1";
+  "8.2f-15c-free-preview-mapper-regression-scaffold-v2";
 
 // ── Result types ──────────────────────────────────────────────────────────────
 
@@ -410,7 +410,7 @@ function runCase6(): FreePreviewMapperRegressionCaseResult {
   return { caseName: "preview_human_review_flag", passed: failures.length === 0, draft, failures, notes };
 }
 
-// ── Case 7: Preview with all major forbidden moves ────────────────────────────
+// ── Case 7: Preview with all major forbidden moves (8.2F-15C: expanded + specific codes) ─
 
 function runCase7(): FreePreviewMapperRegressionCaseResult {
   const input: RuntimeExplanationMapperInput = {
@@ -429,6 +429,9 @@ function runCase7(): FreePreviewMapperRegressionCaseResult {
         "no_guaranteed_outcomes",
         "no_tax_certainty",
         "no_immigration_certainty",
+        // 8.2F-15A/15C: new moves with dedicated diagnostics
+        "no_false_reassurance_framing",
+        "no_calculated_amount_extraction",
       ],
     },
     accessTier: "free_preview",
@@ -446,23 +449,45 @@ function runCase7(): FreePreviewMapperRegressionCaseResult {
     "no_deadline_calculation_when_forbidden",
     "no_enforcement_claim_when_forbidden",
     "no_autonomous_form_submission",
+    "no_false_reassurance_framing",
+    "no_calculated_amount_extraction",
   ] as const;
   for (const move of expectedMoves) {
     if (!draft.appliedForbiddenMoves.includes(move)) {
       failures.push(`Expected "${move}" in appliedForbiddenMoves.`);
     }
   }
-  // Specific diagnostics must be emitted for each active suppression.
-  const expectedDiagCodes = [
+  // 8.2F-3 diagnostics: specific per-move codes retained.
+  const retained3Codes = [
     "free_preview_deadline_detail_blocked",
     "free_preview_enforcement_claim_blocked",
     "free_preview_action_instruction_blocked",
-    "free_preview_paid_field_blocked",
   ] as const;
-  for (const code of expectedDiagCodes) {
+  for (const code of retained3Codes) {
     if (!hasDiagnosticCode(draft, code)) {
       failures.push(`Expected diagnostic code "${code}" to be present.`);
     }
+  }
+  // 8.2F-15C diagnostics: new specific codes replacing free_preview_paid_field_blocked per-move.
+  const new15cCodes = [
+    "free_preview_legal_verdict_blocked",
+    "free_preview_guaranteed_outcome_blocked",
+    "free_preview_truthfulness_blocked",
+    "free_preview_cross_lane_blocked",
+    "free_preview_tax_certainty_blocked",
+    "free_preview_immigration_certainty_blocked",
+    "free_preview_panic_phrasing_blocked",
+    "free_preview_false_reassurance_blocked",
+    "free_preview_calculated_amount_blocked",
+  ] as const;
+  for (const code of new15cCodes) {
+    if (!hasDiagnosticCode(draft, code)) {
+      failures.push(`Expected diagnostic code "${code}" to be present (8.2F-15C specific code).`);
+    }
+  }
+  // Structural invariant: free_preview_paid_field_blocked always emitted.
+  if (!hasDiagnosticCode(draft, "free_preview_paid_field_blocked")) {
+    failures.push("Expected free_preview_paid_field_blocked structural invariant diagnostic.");
   }
   // No paid-only sections must appear.
   assertNoPaidSections(draft, failures);
@@ -485,7 +510,11 @@ function runCase7(): FreePreviewMapperRegressionCaseResult {
   }
   assertNoProseLeakage(draft, failures);
 
-  notes.push("Case 7: all major forbidden moves — validates all suppression diagnostics, no paid leakage, base sections preserved.");
+  notes.push(
+    "Case 7 (8.2F-15C): all major forbidden moves incl. no_false_reassurance_framing and no_calculated_amount_extraction — " +
+    "validates specific per-move diagnostic codes, free_preview_paid_field_blocked structural invariant, " +
+    "no paid leakage, base sections preserved.",
+  );
 
   return { caseName: "preview_all_major_forbidden_moves", passed: failures.length === 0, draft, failures, notes };
 }

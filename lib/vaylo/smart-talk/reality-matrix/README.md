@@ -790,6 +790,42 @@ Resolves **Debt 1** from the Phase 8.2F-15 Governance Lineage Integration Audit:
 
 ---
 
+### Phase 8.2F-15C — Mapper Diagnostic Taxonomy Hardening
+
+**Mode:** Diagnostic taxonomy refinement / technical debt resolution
+**Risk:** Structural diagnostic refinement only — no user-visible behavior change
+
+**Debt resolved:** Debts 5 and 6 from the Governance Lineage Integration Audit (partially reduced at mapper level).
+
+**Problem statement (pre-8.2F-15C):**
+- `free_preview_paid_field_blocked` was overloaded — emitted both as the structural invariant (paid sections absent) AND as the per-move diagnostic for 8 distinct forbidden moves (legal verdict, tax certainty, immigration certainty, guaranteed outcomes, truthfulness, cross-lane, panic phrasing, plus the new 8.2F-15A moves without dedicated codes).
+- `paid_legal_verdict_blocked` was overloaded — used for `no_definitive_legal_verdicts`, `no_guaranteed_outcomes`, `no_tax_certainty`, `no_immigration_certainty`, `no_dry_run_as_fact`, and `no_speculation_as_fact`.
+- `paid_autonomous_action_blocked` was overloaded — used both as the forbidden-move notification for `no_autonomous_form_submission` AND as the generic section-exclusion notification.
+
+**Changes made:**
+
+| File | Change |
+|---|---|
+| `reality-simulation/explanation-mapper-types.ts` | `FreePreviewMapperDiagnosticCode` extended with 9 move-specific codes; `PaidExplanationMapperDiagnosticCode` extended with 8 move-specific codes + `paid_section_excluded_by_forbidden_move`; doc comments updated |
+| `reality-simulation/run-free-preview-mapper.ts` | `FREE_PREVIEW_FORBIDDEN_MOVE_EFFECTS` updated — each move now maps to its dedicated code; `no_false_reassurance_framing` and `no_calculated_amount_extraction` entries added; version bumped |
+| `reality-simulation/run-paid-explanation-mapper.ts` | `PAID_FORBIDDEN_MOVE_EFFECTS` updated — each move maps to its dedicated code; section-exclusion notification changed from `paid_autonomous_action_blocked` to `paid_section_excluded_by_forbidden_move`; version bumped |
+| `reality-simulation/free-preview-mapper-regression-scaffold.ts` | Case 7 expanded with new moves and assertions for all 9 new specific codes; version bumped |
+| `reality-simulation/paid-explanation-mapper-regression-scaffold.ts` | Case 9 expanded with new moves and assertions for all 8 new specific codes; version bumped |
+| `reality-simulation/explanation-output-regression-corpus.ts` | Cases 0016/0017 updated to assert specific codes; corpus case 0014 updated to assert new 8.2F-15C codes; new cases 0018/0019 added for paid-tier coverage of new moves; version bumped |
+| `run-governance-lineage-audit-scaffold.ts` | Debts 5 and 6 text updated (partial reduction); 2 new `CONNECTED_LINEAGE_FINDINGS` added; version bumped to `v4` |
+| `GOVERNANCE_LINEAGE_INTEGRATION_AUDIT.md` | Debts 5/6 marked partially reduced; 8.2F-15C update note added |
+
+**Semantic narrowing of retained codes:**
+- `free_preview_paid_field_blocked` → invariant only: records that paid sections are structurally absent in this tier
+- `paid_legal_verdict_blocked` → `no_definitive_legal_verdicts` only
+- `paid_autonomous_action_blocked` → `no_autonomous_form_submission` only
+
+**Remaining open debts:** Debt 4 (`next_steps_safe` dead state), Debt 5 (cross-phase namespace isolation, not mapper-level), Debt 6 (bridge-level `BridgeBlockingReason` typed field), Debts 7–10 (caller-supplied metadata, `AuditTraceChain.structurallyValid`).
+
+**Safety boundary:** No section presence/absence behavior changed. No access-tier routing changed. No user-visible output introduced. No runtime coupling, telemetry, or persistence added. No Smart Talk/OCR/LLM changes. TypeScript and ESLint pass cleanly.
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).

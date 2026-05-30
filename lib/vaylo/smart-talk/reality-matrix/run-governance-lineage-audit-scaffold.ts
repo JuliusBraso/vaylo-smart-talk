@@ -1,5 +1,5 @@
 /**
- * Governance Lineage Integration Audit scaffold (Phase 8.2F-15 / updated 8.2F-15B).
+ * Governance Lineage Integration Audit scaffold (Phase 8.2F-15 / updated 8.2F-15C).
  *
  * Implements `runGovernanceLineageAuditScaffold` — a pure static inventory
  * function that returns a `GovernanceLineageAuditResult` covering the entire
@@ -37,6 +37,19 @@
  *    ENFORCEMENT_CLUSTER_TRAP_KINDS narrowed to Set<HallucinationTrapKind>.
  *    Resolved finding moved from WARNING_FINDINGS to CONNECTED_LINEAGE_FINDINGS.
  *
+ * 8.2F-15C changes:
+ *  - Technical Debt 5 (overloaded mapper diagnostic taxonomy) → PARTIALLY REDUCED.
+ *    Free-preview mapper: dedicated code per ForbiddenExplanationMove (13 specific codes).
+ *    free_preview_paid_field_blocked is now the structural invariant only.
+ *    Paid mapper: dedicated code per ForbiddenExplanationMove; paid_legal_verdict_blocked
+ *    narrowed to no_definitive_legal_verdicts; paid_autonomous_action_blocked narrowed to
+ *    no_autonomous_form_submission; paid_section_excluded_by_forbidden_move added.
+ *    Cross-phase namespace isolation remains a future consolidation phase.
+ *  - Technical Debt 6 (broad blocking diagnostic buckets) → PARTIALLY REDUCED.
+ *    Mapper-level overloads resolved (see Debt 5). Bridge-level BridgeBlockingReason
+ *    typed field remains a future phase.
+ *    Finding text updated and split into mapper-resolved + bridge-remaining.
+ *
  * Safety guarantees:
  * - no runtime modification
  * - no telemetry
@@ -55,7 +68,7 @@ import type {
 } from "./governance-lineage-audit-types";
 
 export const GOVERNANCE_LINEAGE_AUDIT_VERSION =
-  "8.2f-15b-governance-lineage-audit-v3";
+  "8.2f-15c-governance-lineage-audit-v4";
 
 // ── Finding factory ───────────────────────────────────────────────────────────
 
@@ -228,6 +241,37 @@ const CONNECTED_LINEAGE_FINDINGS: readonly GovernanceAuditFinding[] = [
       "Defensive runtime lookup guard retained in run-reality-simulation.ts. " +
       "No trap semantics or simulation behavior changed.",
   ),
+  // ── Partially resolved debts (8.2F-15C) ───────────────────────────────────────
+  finding(
+    "free_preview_mapper",
+    "informational",
+    "REDUCED (8.2F-15C, Debt 5): free-preview mapper diagnostic taxonomy hardened",
+    "Previously free_preview_paid_field_blocked was overloaded to cover 8 semantically " +
+      "distinct cases (legal verdicts, tax certainty, immigration certainty, guaranteed " +
+      "outcomes, truthfulness, cross-lane, panic phrasing) in addition to its role as " +
+      "the structural invariant for paid-section absence. Resolved by introducing dedicated " +
+      "per-move codes: free_preview_legal_verdict_blocked, free_preview_guaranteed_outcome_blocked, " +
+      "free_preview_truthfulness_blocked, free_preview_cross_lane_blocked, " +
+      "free_preview_tax_certainty_blocked, free_preview_immigration_certainty_blocked, " +
+      "free_preview_panic_phrasing_blocked, free_preview_false_reassurance_blocked, " +
+      "free_preview_calculated_amount_blocked. free_preview_paid_field_blocked is now the " +
+      "structural invariant only. No section presence/absence behavior changed.",
+  ),
+  finding(
+    "paid_mapper",
+    "informational",
+    "REDUCED (8.2F-15C, Debt 5/6): paid mapper diagnostic taxonomy hardened",
+    "Previously paid_legal_verdict_blocked was overloaded for 5 semantically distinct " +
+      "cases (legal verdicts, guaranteed outcomes, tax certainty, immigration certainty, " +
+      "dry-run/speculation truthfulness). paid_autonomous_action_blocked was overloaded as " +
+      "both a forbidden-move notification and a generic section-exclusion notification. " +
+      "Resolved by introducing: paid_guaranteed_outcome_blocked, paid_tax_certainty_blocked, " +
+      "paid_immigration_certainty_blocked, paid_truthfulness_blocked, paid_panic_phrasing_blocked, " +
+      "paid_false_reassurance_blocked, paid_calculated_amount_blocked, " +
+      "paid_section_excluded_by_forbidden_move. paid_legal_verdict_blocked is now narrowed to " +
+      "no_definitive_legal_verdicts only. paid_autonomous_action_blocked is narrowed to " +
+      "no_autonomous_form_submission only. No section behavior or access-tier routing changed.",
+  ),
 ];
 
 // ── B — Partial connections and technical debts (warning) ────────────────────
@@ -308,24 +352,30 @@ const WARNING_FINDINGS: readonly GovernanceAuditFinding[] = [
   finding(
     "incident_governance",
     "warning",
-    "Technical Debt: overloaded diagnostic taxonomy across phases",
-    "Each phase (8.2F-8 through 8.2F-14) introduced its own diagnostic code " +
-      "union type (WordingReviewDiagnosticCode, OcrDiagnosticCode, " +
-      "PilotGateDiagnosticCode, WordingViolationCode, IncidentDiagnosticCode, " +
-      "AuditTraceDiagnosticCode). These are structurally isolated — no shared " +
-      "diagnostic taxonomy exists. A future consolidation phase should consider " +
-      "a unified GovernanceDiagnosticCode namespace or cross-type adapter.",
+    "Technical Debt (Debt 5, partial): overloaded diagnostic taxonomy — mapper layer resolved, cross-phase isolation remains",
+    "8.2F-15C resolved the mapper-level overload: FreePreviewMapperDiagnosticCode and " +
+      "PaidExplanationMapperDiagnosticCode now have one dedicated code per ForbiddenExplanationMove. " +
+      "free_preview_paid_field_blocked is now the structural invariant only; " +
+      "paid_legal_verdict_blocked is narrowed to no_definitive_legal_verdicts only; " +
+      "paid_autonomous_action_blocked is narrowed to no_autonomous_form_submission only. " +
+      "Remaining debt: each phase (8.2F-8 through 8.2F-14) still has its own isolated diagnostic " +
+      "code union type (WordingReviewDiagnosticCode, OcrDiagnosticCode, PilotGateDiagnosticCode, " +
+      "WordingViolationCode, IncidentDiagnosticCode, AuditTraceDiagnosticCode). " +
+      "No shared cross-phase taxonomy exists. A future consolidation phase should introduce a " +
+      "unified GovernanceDiagnosticCode namespace or cross-type adapter.",
   ),
   finding(
     "smart_talk_bridge",
     "warning",
-    "Technical Debt: broad blocking diagnostic buckets in bridge layer",
-    "SmartTalkBridgeDryRunResult.governanceValid is a single boolean that " +
-      "aggregates all structural validity checks. When governance is invalid, " +
-      "the diagnostics array must be inspected manually to identify which " +
-      "specific check failed. A future phase should introduce typed blocking " +
-      "reasons that directly classify the failure type without requiring " +
-      "diagnostic array inspection.",
+    "Technical Debt (Debt 6, partial): broad diagnostic buckets — mapper overloads resolved, bridge-level reason type remains",
+    "8.2F-15C resolved the mapper-level overloads: paid_autonomous_action_blocked no longer doubles " +
+      "as a generic section-exclusion notification (replaced by paid_section_excluded_by_forbidden_move). " +
+      "paid_legal_verdict_blocked no longer covers all certainty/truthfulness risks. " +
+      "Remaining debt: SmartTalkBridgeDryRunResult.governanceValid is still a single boolean. " +
+      "When governance is invalid, the diagnostics array must be inspected manually to identify " +
+      "which specific structural check failed. A future phase should introduce a typed " +
+      "BridgeBlockingReason that directly classifies failures (no boundary emitted, null draft, " +
+      "section mismatch, tier mismatch) without requiring diagnostics array inspection.",
   ),
   // Technical debts identified in 8.2F-15A audit review
   finding(
