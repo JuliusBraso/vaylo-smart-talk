@@ -665,6 +665,26 @@ Category-specific diagnostics are emitted for `false_reassurance_risk`, `halluci
 
 ---
 
+### Phase 8.2F-14 — Runtime Provenance & Audit Trace Scaffold
+
+**Metadata-only audit trace vocabulary — no persistence, no logging, no telemetry, no runtime hooks, no Smart Talk wiring, no mapper or bridge files touched.**
+
+Defines the structural vocabulary for recording governance decision lineage before any runtime coupling exists. Establishes `AuditTraceNode` (a single governance event with provenance source, decision kind, and parent references), `AuditTraceChain` (a complete lineage sequence), and `validateAuditTraceChain` — a pure structural validator.
+
+**`validateAuditTraceChain(chain)`** — pure function. Validates root existence, duplicate traceIds, parent-reference integrity, orphan nodes (BFS from root), and cycles (DFS with recursion-stack over parent edges). Returns `AuditTraceValidationResult` with `neverUserVisible: true`. `fullyConsistent = true` only when valid AND the only diagnostic is the soft `trace_unknown_source` warning.
+
+**Key types:** `ProvenanceSourceKind` (12 pipeline layers from OCR through incident governance), `AuditDecisionKind` (10 decision types), `AuditTraceDiagnosticCode` (6 codes including the soft `trace_unknown_source` warning).
+
+**Regression scaffold:** 8 cases — single root, multi-node chain, duplicate ID, missing root, orphan node, invalid parent reference, cycle detection (4-node A→C→B→A loop), unknown source kind warning.
+
+**Documentation:** `RUNTIME_PROVENANCE_AUDIT_TRACE.md` explains provenance, trace lineage, governance ancestry, decision traceability, and the future phases needed to build a real audit system (runtime attachment, persistent records, incident investigation support, governance review tooling, trace signing).
+
+**Cross-phase vocabulary coverage:** `sourceKind` values map every prior governance layer (Phases 8.2F-3 through 8.2F-13) to a traceable provenance kind. Future runtime coupling can propagate `traceId`s across OCR → mapper → bridge → wording review → pilot gate → incident governance for end-to-end lineage.
+
+**Safety boundary:** No database writes, no log writes, no telemetry SDK, no file system access, no runtime execution hooks, no feature flags, no Smart Talk connection, no OCR SDK, no LLM calls. All types carry `neverUserVisible: true`.
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).

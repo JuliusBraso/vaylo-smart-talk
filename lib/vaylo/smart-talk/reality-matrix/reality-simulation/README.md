@@ -1282,4 +1282,71 @@ This phase does not activate a real kill switch, disable runtime systems, call O
 
 ---
 
+## Phase 8.2F-14 — Runtime Provenance & Audit Trace Scaffold
+
+**Mode:** Governance metadata scaffold / no runtime persistence
+**Status:** Structural vocabulary only — no live audit system, no logging, no telemetry
+
+### Files
+
+| File | Role |
+|---|---|
+| `provenance-audit-types.ts` | `ProvenanceSourceKind`, `AuditDecisionKind`, `AuditTraceNode`, `AuditTraceChain`, `AuditTraceDiagnosticCode`, `AuditTraceValidationResult` |
+| `run-provenance-audit-scaffold.ts` | `validateAuditTraceChain(chain)` — pure structural validator |
+| `provenance-audit-regression-scaffold.ts` | 8-case regression scaffold for all validation rules |
+
+See also: `RUNTIME_PROVENANCE_AUDIT_TRACE.md` in the parent `reality-matrix/` directory.
+
+### Type model
+
+**`ProvenanceSourceKind`** — 12 values covering all pipeline layers: `OCR`, `reality_matrix`, `evidence_gate`, `simulation`, `explanation_contract`, `mapper`, `wording_review`, `wording_evaluation`, `pilot_gate`, `incident_governance`, `manual_review`, `unknown`.
+
+**`AuditDecisionKind`** — 10 values: `boundary_applied`, `forbidden_move_applied`, `required_constraint_applied`, `uncertainty_escalation`, `human_review_required`, `pilot_block`, `incident_escalation`, `wording_rejection`, `governance_breach`, `informational`.
+
+**`AuditTraceNode`** — `{ traceId, sourceKind, decisionKind, parentTraceIds, neverUserVisible: true, notes? }`. Root node has `parentTraceIds: []`.
+
+**`AuditTraceChain`** — `{ rootTraceId, nodes, structurallyValid, neverUserVisible: true }`. `structurallyValid` is caller-supplied; use `validateAuditTraceChain` for authoritative structural integrity.
+
+**`AuditTraceDiagnosticCode`** — 6 codes: `trace_missing_root`, `trace_orphan_node`, `trace_duplicate_id`, `trace_cycle_detected`, `trace_unknown_source` (soft warning), `trace_invalid_parent_reference`.
+
+**`AuditTraceValidationResult`** — `{ valid, fullyConsistent, diagnostics, neverUserVisible: true }`. `fullyConsistent` is `true` iff `valid` AND every diagnostic is the soft `trace_unknown_source` warning.
+
+### Validation rules
+
+| Rule | Check | Diagnostic |
+|---|---|---|
+| 1 | `rootTraceId` must match a node in the chain | `trace_missing_root` |
+| 2 | All `traceId` values must be unique | `trace_duplicate_id` |
+| 3 | All `parentTraceIds` must reference existing nodes | `trace_invalid_parent_reference` |
+| 4 | All nodes reachable from root (BFS forward from root) | `trace_orphan_node` |
+| 5 | No cycles in parent-reference graph (DFS with recursion-stack) | `trace_cycle_detected` |
+| 6 | `sourceKind === "unknown"` soft warning | `trace_unknown_source` |
+
+`valid` = all structural checks pass. `fullyConsistent` = `valid` AND diagnostics ⊆ `{trace_unknown_source}`.
+
+### Regression scaffold — 8 cases
+
+| # | Case | Expected |
+|---|---|---|
+| 1 | Single valid root | `valid=true`, `fullyConsistent=true`, no diagnostics |
+| 2 | Valid multi-node chain (root → 2 children → grandchild) | `valid=true`, `fullyConsistent=true` |
+| 3 | Duplicate `traceId` | `valid=false`, `trace_duplicate_id` |
+| 4 | `rootTraceId` matches no node | `valid=false`, `trace_missing_root` |
+| 5 | Disconnected node with no parents (not root) | `valid=false`, `trace_orphan_node` |
+| 6 | Node references one valid parent + one phantom parent | `valid=false`, `trace_invalid_parent_reference` |
+| 7 | 4-node graph with A→C→B→A cycle | `valid=false`, `trace_cycle_detected` |
+| 8 | Valid chain with one `sourceKind: "unknown"` node | `valid=true`, `fullyConsistent=true`, `trace_unknown_source` |
+
+### Algorithm notes
+
+**Orphan detection:** forward BFS from root through a `childrenMap` (inverted from `parentTraceIds`). Any nodeId not in the reachable set is an orphan.
+
+**Cycle detection:** DFS over parent edges using two sets (`visited`, `onPath`). If DFS reaches a node already on the active recursion path, a cycle is detected. Handles multi-node cycles across the full graph.
+
+### Safety boundary
+
+This phase does not persist traces, write logs, emit telemetry, connect to Smart Talk, call OCR SDKs, call LLMs, add runtime hooks, or expose any data to users. All types carry `neverUserVisible: true`. All validation is pure metadata structural checking.
+
+---
+
 > **Reality simulation models safe explanation space, not legal truth.**

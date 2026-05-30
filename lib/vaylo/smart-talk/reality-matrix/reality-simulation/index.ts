@@ -1,5 +1,5 @@
 /**
- * Reality Simulation (8.2D-1+ / extended through 8.2F-13) — pre-explanation governance skeleton.
+ * Reality Simulation (8.2D-1+ / extended through 8.2F-14) — pre-explanation governance skeleton.
  * Not Smart Talk, not UI, not user-visible prose.
  */
 
@@ -259,3 +259,22 @@ export {
   type IncidentGovernanceRegressionCaseResult,
   type IncidentGovernanceRegressionScaffoldResult,
 } from "./incident-governance-regression-scaffold";
+// ── Phase 8.2F-14 — Runtime Provenance & Audit Trace Scaffold ─────────────────
+export type {
+  ProvenanceSourceKind,
+  AuditDecisionKind,
+  AuditTraceNode,
+  AuditTraceChain,
+  AuditTraceDiagnosticCode,
+  AuditTraceValidationResult,
+} from "./provenance-audit-types";
+export {
+  PROVENANCE_AUDIT_SCAFFOLD_VERSION,
+  validateAuditTraceChain,
+} from "./run-provenance-audit-scaffold";
+export {
+  PROVENANCE_AUDIT_REGRESSION_VERSION,
+  runProvenanceAuditRegressionScaffold,
+  type ProvenanceAuditRegressionCaseResult,
+  type ProvenanceAuditRegressionScaffoldResult,
+} from "./provenance-audit-regression-scaffold";
