@@ -1,5 +1,5 @@
 /**
- * Governance Lineage Integration Audit scaffold (Phase 8.2F-15 / updated 8.2F-15K).
+ * Governance Lineage Integration Audit scaffold (Phase 8.2F-15 / updated 8.2F-15L).
  *
  * Implements `runGovernanceLineageAuditScaffold` — a pure static inventory
  * function that returns a `GovernanceLineageAuditResult` covering the entire
@@ -121,6 +121,22 @@
  *    Source modules retain their own typed diagnostic unions; no codes renamed/removed.
  *    Full migration to normalized envelopes at emission sites is future work.
  *
+ * 8.2F-15L changes:
+ *  - Technical Debt 8: pilot session telemetry attestation store contract → PARTIALLY RESOLVED (upgraded).
+ *    PilotSessionAttestationRecord defined in pilot-session-attestation-types.ts with:
+ *    PilotSessionReportIssuerKind (6 values), PilotSessionReportStoreKind (5 values),
+ *    PilotSessionAttestationMethod (5 values), PilotSessionReportLifecycleStatus (5 values),
+ *    PilotSessionAttestationVerificationStatus (4 values),
+ *    PilotSessionAttestationValidationDiagnostic (11 codes).
+ *    validatePilotSessionAttestation implements 12 pure rules producing:
+ *    valid (structural integrity), trustedForPilot (lifecycle validated + acceptable verification),
+ *    trustedForProduction (trusted pilot + verified + real store + known issuer).
+ *    PilotSessionAttestationValidationResult carries valid, trustedForPilot, trustedForProduction,
+ *    diagnostics, neverUserVisible, notes.
+ *    10-case regression scaffold covers all trust paths.
+ *    No real auth wired. No DB or persistence added. No runtime coupling created.
+ *    No pilot access activated. Raw telemetry fallback and PilotSessionReport from 8.2F-15F unchanged.
+ *
  * 8.2F-15K changes:
  *  - Technical Debt 7: OCR confidence attestation store contract → PARTIALLY RESOLVED (upgraded).
  *    OcrQualityAttestationRecord defined in ocr-quality-attestation-types.ts with:
@@ -170,7 +186,7 @@ import type {
 } from "./governance-lineage-audit-types";
 
 export const GOVERNANCE_LINEAGE_AUDIT_VERSION =
-  "8.2f-15k-governance-lineage-audit-v12";
+  "8.2f-15l-governance-lineage-audit-v13";
 
 // ── Finding factory ───────────────────────────────────────────────────────────
 
@@ -388,20 +404,29 @@ const CONNECTED_LINEAGE_FINDINGS: readonly GovernanceAuditFinding[] = [
   finding(
     "pilot_gate",
     "informational",
-    "PARTIALLY RESOLVED (8.2F-15F): pilot telemetry now has a typed provenance contract",
+    "PARTIALLY RESOLVED (8.2F-15F + 8.2F-15L): pilot telemetry now has a typed provenance " +
+      "contract and a full attestation store contract",
     "Previously reported as a WARNING (Debt 8) in Phase 8.2F-15: " +
       "LimitedPilotGateInput.telemetry was a bare PilotSessionTelemetry with no provenance. " +
-      "Partially resolved in Phase 8.2F-15F by introducing PilotSessionReport — a typed " +
-      "provenance contract carrying reportId, PilotSessionReportSourceKind, " +
-      "PilotSessionAttestationStatus, totalTransactionsThisSession, maxSessionLimit, " +
-      "sequenceId, generatedBy, and neverUserVisible:true. " +
-      "validatePilotSessionReport provides structural integrity checks (non-empty IDs, " +
-      "finite numeric fields, upper-bound cap at 10,000 transactions). " +
+      "Phase 8.2F-15F introduced PilotSessionReport — a typed provenance contract carrying " +
+      "reportId, PilotSessionReportSourceKind, PilotSessionAttestationStatus, " +
+      "totalTransactionsThisSession, maxSessionLimit, sequenceId, generatedBy, and " +
+      "neverUserVisible:true. validatePilotSessionReport provides structural integrity checks. " +
       "LimitedPilotGateInput accepts sessionReport (preferred) or telemetry (backward-compat); " +
       "raw-telemetry path and unattested reports emit pilot_session_telemetry_unattested; " +
       "structurally invalid reports emit pilot_session_report_invalid and block the gate. " +
-      "Remaining gap: no session store is wired; PilotSessionReport is still caller-constructed " +
-      "metadata. Full resolution requires binding to a verified session store in a future phase.",
+      "Phase 8.2F-15L upgraded Debt 8 by adding the full attestation store contract: " +
+      "PilotSessionAttestationRecord with issuerKind (6 values including future_auth_gateway), " +
+      "storeKind (5 values including future_session_store_record), attestationMethod (5 values), " +
+      "verificationStatus (4 values), lifecycleStatus (5 values). " +
+      "validatePilotSessionAttestation produces PilotSessionAttestationValidationResult with " +
+      "valid, trustedForPilot (accepts synthetic fixtures via not_applicable verification), " +
+      "and trustedForProduction (requires verified + real store + known issuer). " +
+      "11 diagnostic codes. 10-case regression scaffold covers all trust and failure paths. " +
+      "Remaining gap: no real auth or session store is wired; both PilotSessionReport and " +
+      "PilotSessionAttestationRecord are still caller-constructed metadata. " +
+      "Full resolution requires binding to a verified session store or auth gateway and a " +
+      "real attestation store in a future production phase.",
   ),
   // ── Partially resolved debts (8.2F-15C) ───────────────────────────────────────
   finding(
@@ -567,7 +592,7 @@ const WARNING_FINDINGS: readonly GovernanceAuditFinding[] = [
   ),
   // Technical debts identified in 8.2F-15A audit review
   // Debt 7 partially resolved in 8.2F-15E, upgraded in 8.2F-15K — moved to CONNECTED_LINEAGE_FINDINGS above
-  // Debt 8 partially resolved in 8.2F-15F — moved to CONNECTED_LINEAGE_FINDINGS above
+  // Debt 8 partially resolved in 8.2F-15F, upgraded in 8.2F-15L — moved to CONNECTED_LINEAGE_FINDINGS above
   // Debt 9 partially resolved in 8.2F-15G — moved to CONNECTED_LINEAGE_FINDINGS above
   finding(
     "provenance_audit",
@@ -662,7 +687,7 @@ const CRITICAL_FINDINGS: readonly GovernanceAuditFinding[] = [
 
 /**
  * Returns a static never-user-visible `GovernanceLineageAuditResult` covering
- * the entire 8.2A → 8.2F-15K governance stack.
+ * the entire 8.2A → 8.2F-15L governance stack.
  *
  * Pure function — no file reads, no API calls, no schema inspection, no runtime
  * scanning. All findings are pre-authored based on the known architecture.

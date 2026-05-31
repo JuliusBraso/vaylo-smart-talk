@@ -1879,4 +1879,106 @@ No real OCR processing. No images parsed. No database writes. No persistence add
 
 ---
 
+## PHASE 8.2F-15L — Pilot Session Attestation Store Contract
+
+**Mode:** Pilot session provenance attestation hardening / Technical debt continuation (Debt 8)
+**Files created:** `pilot-session-attestation-types.ts`, `validate-pilot-session-attestation.ts`, `pilot-session-attestation-regression-scaffold.ts`
+**Files modified:** `index.ts`
+
+### Mission
+
+Upgrades the Debt 8 resolution from Phase 8.2F-15F. Phase 8.2F-15F introduced `PilotSessionReport` as a typed provenance contract, but there was no model describing how a report would be trusted, issued, versioned, verified, or stored. Phase 8.2F-15L adds a full attestation store contract.
+
+**Constraint:** Contract/scaffold only. No real auth, no session state, no DB, no persistence, no runtime wiring, no pilot activation.
+
+### Attestation Record Model
+
+`PilotSessionAttestationRecord` (`pilot-session-attestation-types.ts`):
+
+| Field | Type | Description |
+|---|---|---|
+| `attestationId` | `string` | Opaque unique identifier for this record |
+| `reportId` | `string` | References `PilotSessionReport.reportId` |
+| `issuerKind` | `PilotSessionReportIssuerKind` | Who issued the session report |
+| `storeKind` | `PilotSessionReportStoreKind` | Where the report is stored |
+| `attestationMethod` | `PilotSessionAttestationMethod` | How attestation was performed |
+| `verificationStatus` | `PilotSessionAttestationVerificationStatus` | Verification outcome |
+| `lifecycleStatus` | `PilotSessionReportLifecycleStatus` | Current lifecycle stage |
+| `generatedBy` | `string` | System or fixture identifier |
+| `neverUserVisible` | `true` | Compile-time invariant |
+| `notes?` | `readonly string[]` | Internal governance notes |
+
+### Enum Types
+
+| Enum | Values |
+|---|---|
+| `PilotSessionReportIssuerKind` | `synthetic_fixture`, `manual_reviewer`, `future_session_store`, `future_auth_gateway`, `imported_external_report`, `unknown` |
+| `PilotSessionReportStoreKind` | `in_memory_test_fixture`, `future_database_record`, `future_session_store_record`, `imported_static_fixture`, `none` |
+| `PilotSessionAttestationMethod` | `none`, `fixture_declared`, `manual_review_declared`, `future_store_verified`, `future_auth_signed` |
+| `PilotSessionReportLifecycleStatus` | `draft`, `validated`, `rejected`, `expired`, `superseded` |
+| `PilotSessionAttestationVerificationStatus` | `verified`, `unverifiable`, `failed`, `not_applicable` |
+
+### Trust Tier Semantics
+
+`validatePilotSessionAttestation` produces two independent trust flags:
+
+**`trustedForPilot`** — `true` when:
+- `valid === true`
+- `lifecycleStatus === "validated"`
+- `verificationStatus` is `"verified"` OR `"not_applicable"`
+
+> Synthetic fixtures with `fixture_declared` method legitimately use `"not_applicable"` verification and are pilot-trusted without requiring a real verified session store or auth gateway.
+
+**`trustedForProduction`** — `true` when all pilot conditions hold AND:
+- `verificationStatus === "verified"` (not just `not_applicable`)
+- `storeKind !== "none"` (real store reference required)
+- `issuerKind !== "unknown"` (issuer must be identified)
+
+> Production trust is structurally defined only — no real auth or session store is connected in this phase. Future issuers include `future_session_store` and `future_auth_gateway`.
+
+### Validation Diagnostic Codes (11)
+
+| Code | Trigger | Hard failure? |
+|---|---|---|
+| `pilot_session_attestation_missing_id` | blank `attestationId` | ✓ |
+| `pilot_session_attestation_missing_report_id` | blank `reportId` | ✓ |
+| `pilot_session_attestation_missing_generated_by` | blank `generatedBy` | ✓ |
+| `pilot_session_attestation_failed` | `verificationStatus === "failed"` | ✓ |
+| `pilot_session_attestation_rejected` | `lifecycleStatus === "rejected"` | ✓ |
+| `pilot_session_attestation_unknown_issuer` | `issuerKind === "unknown"` | (soft — blocks production trust) |
+| `pilot_session_attestation_no_store` | `storeKind === "none"` | (soft — blocks production trust) |
+| `pilot_session_attestation_unverified` | `verificationStatus === "unverifiable"` | (soft — blocks production trust) |
+| `pilot_session_attestation_expired` | `lifecycleStatus === "expired"` | (soft — blocks pilot + production trust) |
+| `pilot_session_attestation_superseded` | `lifecycleStatus === "superseded"` | (soft — blocks pilot + production trust) |
+| `pilot_session_attestation_missing_issuer` | reserved for future deserialization use | (contract stub) |
+
+### Regression Scaffold (10 cases)
+
+| Case | Scenario | `valid` | `trustedForPilot` | `trustedForProduction` |
+|---|---|---|---|---|
+| 1 | Valid synthetic fixture (`fixture_declared` + `not_applicable`) | `true` | `true` | `false` |
+| 2 | Future session store (`future_store_verified` + `verified` + real store) | `true` | `true` | `true` |
+| 3 | Missing `attestationId` | `false` | `false` | `false` |
+| 4 | Missing `reportId` | `false` | `false` | `false` |
+| 5 | Unknown issuer | `true` | `true` | `false` |
+| 6 | No store reference | `true` | `true` | `false` |
+| 7 | Failed verification | `false` | `false` | `false` |
+| 8 | Rejected lifecycle | `false` | `false` | `false` |
+| 9 | Expired lifecycle | `true` | `false` | `false` |
+| 10 | Superseded lifecycle | `true` | `false` | `false` |
+
+### Future Role
+
+Before real pilot access can be production-trusted, the following must be implemented in future phases:
+1. A verified session store or auth gateway supplies `PilotSessionReport` records (not caller-constructed)
+2. `PilotSessionAttestationRecord` is populated by the session store with `verified` verification
+3. `validatePilotSessionAttestation` is called at the pilot gate to check production trust
+4. `trustedForProduction=true` becomes a gate condition for full production pilot access
+
+### Safety Boundary
+
+No real auth processing. No session state read or written. No database writes. No persistence added. No runtime coupling. No logging. No telemetry. No Smart Talk wiring. No LLM called. No pilot access activated. All result types carry `neverUserVisible: true`. `run-limited-pilot-gate-scaffold.ts` is not modified.
+
+---
+
 > **Reality simulation models safe explanation space, not legal truth.**

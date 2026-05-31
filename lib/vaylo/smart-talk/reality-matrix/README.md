@@ -1174,6 +1174,57 @@ Synthetic fixtures (`fixture_declared` + `not_applicable`) are pilot-trusted but
 
 ---
 
+### Phase 8.2F-15L — Pilot Session Attestation Store Contract
+
+**Debt addressed:** Debt 8 (upgraded from 8.2F-15F partial resolution)
+**Audit version:** `v13`
+
+Defines the full pilot session attestation store contract as a metadata-only scaffold. Phase 8.2F-15F introduced `PilotSessionReport`; 8.2F-15L adds the trust-tier model that governs how a session report would be verified, stored, and trusted in a future production deployment.
+
+#### New types (`pilot-session-attestation-types.ts`)
+
+- `PilotSessionReportIssuerKind` — 6 values including `future_session_store` and `future_auth_gateway`
+- `PilotSessionReportStoreKind` — 5 values including `future_database_record` and `future_session_store_record`
+- `PilotSessionAttestationMethod` — 5 values including `future_store_verified` and `future_auth_signed`
+- `PilotSessionReportLifecycleStatus` — 5 values: `draft`, `validated`, `rejected`, `expired`, `superseded`
+- `PilotSessionAttestationVerificationStatus` — 4 values: `verified`, `unverifiable`, `failed`, `not_applicable`
+- `PilotSessionAttestationRecord` — structured attestation record binding a session report to its trust provenance
+- `PilotSessionAttestationValidationDiagnostic` — 11 typed diagnostic codes
+- `PilotSessionAttestationValidationResult` — contains `valid`, `trustedForPilot`, `trustedForProduction`, `diagnostics`, `neverUserVisible`
+
+#### Trust tiers
+
+| Tier | Condition |
+|---|---|
+| `trustedForPilot` | `valid` + `lifecycleStatus === "validated"` + verification is `"verified"` or `"not_applicable"` |
+| `trustedForProduction` | Pilot trust + `verificationStatus === "verified"` + `storeKind !== "none"` + `issuerKind !== "unknown"` |
+
+Synthetic fixtures are pilot-trusted but never production-trusted. Future session store / auth gateway attestations with real store references can be production-trusted structurally.
+
+#### Files created
+
+| File | Description |
+|---|---|
+| `reality-simulation/pilot-session-attestation-types.ts` | All 8 types and enums |
+| `reality-simulation/validate-pilot-session-attestation.ts` | 12-rule pure validator |
+| `reality-simulation/pilot-session-attestation-regression-scaffold.ts` | 10-case regression scaffold |
+
+#### Files modified
+
+| File | Change |
+|---|---|
+| `reality-simulation/index.ts` | New exports added |
+| `run-governance-lineage-audit-scaffold.ts` | Debt 8 upgraded; audit version `v13` |
+| `GOVERNANCE_LINEAGE_INTEGRATION_AUDIT.md` | Debt 8 section expanded |
+
+**Remaining gap:** No real auth or session store connected. No DB or store writes. No persistence. No runtime coupling. No pilot activation. Full production trust requires a future phase binding attestation to a verified session store or auth gateway.
+
+**Safety boundary:** No auth SDK imported. No session state accessed. No DB writes. No persistence. No telemetry. No logging. No Smart Talk wiring. No LLM called. No pilot access activated. `run-limited-pilot-gate-scaffold.ts` unchanged.
+
+**Remaining open debts:** Debt 5 (cross-phase namespace isolation), Debt 10 (`AuditTraceChain` provenance recording at emission sites). Debts 6–9 resolved or partially resolved (upgraded).
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).

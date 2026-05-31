@@ -300,3 +300,24 @@ export {
   type OcrAttestationRegressionCaseResult,
   type OcrAttestationRegressionScaffoldResult,
 } from "./ocr-quality-attestation-regression-scaffold";
+// ── Phase 8.2F-15L — Pilot Session Attestation Store Contract ─────────────────
+export type {
+  PilotSessionReportIssuerKind,
+  PilotSessionReportStoreKind,
+  PilotSessionAttestationMethod,
+  PilotSessionReportLifecycleStatus,
+  PilotSessionAttestationVerificationStatus,
+  PilotSessionAttestationRecord,
+  PilotSessionAttestationValidationDiagnostic,
+  PilotSessionAttestationValidationResult,
+} from "./pilot-session-attestation-types";
+export {
+  PILOT_SESSION_ATTESTATION_VALIDATOR_VERSION,
+  validatePilotSessionAttestation,
+} from "./validate-pilot-session-attestation";
+export {
+  PILOT_SESSION_ATTESTATION_REGRESSION_VERSION,
+  runPilotSessionAttestationRegressionScaffold,
+  type PilotSessionAttestationRegressionCaseResult,
+  type PilotSessionAttestationRegressionScaffoldResult,
+} from "./pilot-session-attestation-regression-scaffold";

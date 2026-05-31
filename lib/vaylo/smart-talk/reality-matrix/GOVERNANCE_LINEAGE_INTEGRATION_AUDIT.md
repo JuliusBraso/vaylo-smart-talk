@@ -1,7 +1,7 @@
-# Governance Lineage Integration Audit — Phase 8.2F-15 (updated 8.2F-15K)
+# Governance Lineage Integration Audit — Phase 8.2F-15 (updated 8.2F-15L)
 
-**Version:** `8.2f-15k-governance-lineage-audit-v12`
-**Scope:** Vaylo Document Reasoning Constitution V1 — Phases 8.2A → 8.2F-15K
+**Version:** `8.2f-15l-governance-lineage-audit-v13`
+**Scope:** Vaylo Document Reasoning Constitution V1 — Phases 8.2A → 8.2F-15L
 **Mode:** Audit only / no runtime wiring / no behavior modified
 **Overall Status:** `partially_connected`
 
@@ -85,13 +85,21 @@
 > **8.2F-15K Update:** Debt 7 (OCR confidence attestation store contract) is **upgraded — still
 > partially resolved**. `OcrQualityAttestationRecord` defined with 5 enum types
 > (`OcrQualityReportIssuerKind`, `OcrQualityReportStoreKind`, `OcrQualityAttestationMethod`,
-> `OcrQualityReportLifecycleStatus`, `OcrQualityAttestationVerificationStatus`) and 10 diagnostic
+> `OcrQualityReportLifecycleStatus`, `OcrQualityAttestationVerificationStatus`) and 11 diagnostic
 > codes (`OcrQualityAttestationValidationDiagnostic`). `validateOcrQualityAttestation` implements
 > 12 pure rules producing `valid`, `trustedForPilot`, and `trustedForProduction` tiers.
 > Synthetic fixtures with `fixture_declared` method and `not_applicable` verification are
 > `trustedForPilot` but not `trustedForProduction`. Production trust requires `verified`
 > verification + real store reference + known issuer. 10-case regression scaffold covers all
 > paths. No real OCR engine wired. No DB or persistence added. No runtime coupling created.
+>
+> **8.2F-15L Update:** Debt 8 (pilot session telemetry attestation store contract) is **upgraded
+> — still partially resolved**. `PilotSessionAttestationRecord` defined with 6-value issuer kind
+> (including `future_auth_gateway`), 5-value store kind (including `future_session_store_record`),
+> 5-value attestation method, 5-value lifecycle status, 4-value verification status, and 11
+> diagnostic codes. `validatePilotSessionAttestation` implements 12 pure rules producing `valid`,
+> `trustedForPilot`, and `trustedForProduction` tiers. 10-case regression scaffold covers all
+> trust and failure paths. No real auth wired. No DB or session store added. No pilot activation.
 
 ---
 
@@ -403,7 +411,7 @@ New functions in `evaluate-ocr-uncertainty.ts`:
 
 ---
 
-### Debt 8 — Caller-supplied pilot telemetry is unvalidated at ingress *(Added 8.2F-15A)* ⚠ PARTIALLY RESOLVED (8.2F-15F)
+### Debt 8 — Caller-supplied pilot telemetry is unvalidated at ingress *(Added 8.2F-15A)* ⚠ PARTIALLY RESOLVED (8.2F-15F + 8.2F-15L upgraded)
 
 **Severity:** Warning → Informational (partially resolved)
 **Layer:** `pilot_gate`
@@ -423,7 +431,31 @@ New functions in `evaluate-ocr-uncertainty.ts`:
 `pilot_session_report_invalid` emitted and gate blocked when structural validation fails.
 Raw telemetry fallback retained for backward compatibility.
 
-**Remaining gap:** `PilotSessionReport` is still caller-constructed metadata. Full resolution requires binding to a verified session store (database-backed or signed token) in a future production phase. No auth, no DB, no real session tracking added.
+**8.2F-15L Upgrade — Full Attestation Store Contract:**
+
+`PilotSessionAttestationRecord` defined in `pilot-session-attestation-types.ts`:
+
+| Enum | Values |
+|------|--------|
+| `PilotSessionReportIssuerKind` | `synthetic_fixture`, `manual_reviewer`, `future_session_store`, `future_auth_gateway`, `imported_external_report`, `unknown` |
+| `PilotSessionReportStoreKind` | `in_memory_test_fixture`, `future_database_record`, `future_session_store_record`, `imported_static_fixture`, `none` |
+| `PilotSessionAttestationMethod` | `none`, `fixture_declared`, `manual_review_declared`, `future_store_verified`, `future_auth_signed` |
+| `PilotSessionReportLifecycleStatus` | `draft`, `validated`, `rejected`, `expired`, `superseded` |
+| `PilotSessionAttestationVerificationStatus` | `verified`, `unverifiable`, `failed`, `not_applicable` |
+
+`validatePilotSessionAttestation` — 12-rule pure validator producing `PilotSessionAttestationValidationResult`:
+- `valid` — no hard structural violations (non-blank IDs, non-failed/non-rejected status)
+- `trustedForPilot` — valid + `lifecycleStatus === "validated"` + verification is `"verified"` or `"not_applicable"` (accepts synthetic fixtures)
+- `trustedForProduction` — pilot-trusted + `verificationStatus === "verified"` + `storeKind !== "none"` + `issuerKind !== "unknown"`
+- `diagnostics` — 11 typed codes including soft warnings (`unknown_issuer`, `no_store`, `unverified`) and hard failures (`missing_id`, `failed`, `rejected`)
+
+10-case regression scaffold covers all trust tiers and failure paths.
+
+**Trust tier semantics:**
+- Synthetic fixture with `fixture_declared` + `not_applicable` verification → `trustedForPilot=true`, `trustedForProduction=false`
+- Future session store or auth gateway with `future_store_verified`/`future_auth_signed` + `verified` + real store → `trustedForPilot=true`, `trustedForProduction=true`
+
+**Remaining gap:** No real auth or session store is wired. Both `PilotSessionReport` and `PilotSessionAttestationRecord` are still caller-constructed metadata. No DB or real session tracking added. Full resolution requires binding to a verified session store or auth gateway and a real attestation store in a future production phase.
 
 ---
 
