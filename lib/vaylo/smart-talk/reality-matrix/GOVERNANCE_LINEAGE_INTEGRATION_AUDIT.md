@@ -1,7 +1,7 @@
-# Governance Lineage Integration Audit — Phase 8.2F-15 (updated 8.2F-15H)
+# Governance Lineage Integration Audit — Phase 8.2F-15 (updated 8.2F-15I)
 
-**Version:** `8.2f-15h-governance-lineage-audit-v9`
-**Scope:** Vaylo Document Reasoning Constitution V1 — Phases 8.2A → 8.2F-15H
+**Version:** `8.2f-15i-governance-lineage-audit-v10`
+**Scope:** Vaylo Document Reasoning Constitution V1 — Phases 8.2A → 8.2F-15I
 **Mode:** Audit only / no runtime wiring / no behavior modified
 **Overall Status:** `partially_connected`
 
@@ -52,6 +52,12 @@
 > `structurallyValid` removed from `AuditTraceChain`. `AuditTraceValidationResult.valid` is now
 > the sole authoritative source of structural truth. `validateAuditTraceChain` is unchanged.
 > All 8 regression cases pass with identical outcomes.
+>
+> **8.2F-15I Update:** Debt 6 (bridge-level `BridgeBlockingReason` typed field) is **resolved**.
+> `BridgeBlockingReason` union type added. `SmartTalkBridgeDryRunResult` gains `blockingReasons:
+> readonly BridgeBlockingReason[]`. All 7 bridge checks populate typed reasons in parallel with
+> diagnostics. `bridge_contract_tier_mismatch` remains observability-only (no blocking reason).
+> All 8 regression cases assert `blockingReasons.length === 0` for healthy invocations.
 > `WordingToneScoreReport` typed provenance contract introduced in `wording-evaluation-types.ts`.
 > `validateWordingToneScoreReport` added. `evaluateExplanationWordingFromScoreReport` is the new
 > preferred provenance-backed evaluation entry point. Raw `WordingEvaluationInput` path retained
@@ -279,22 +285,35 @@ When both moves are simultaneously active, the effect loop adds `next_steps_safe
 
 ---
 
-### Debt 6 — Broad blocking diagnostic buckets in bridge layer ⚠ PARTIALLY REDUCED (8.2F-15C)
+### Debt 6 — Broad blocking diagnostic buckets in bridge layer ✓ RESOLVED (8.2F-15I)
 
-**Severity:** Warning → **REDUCED at mapper level in Phase 8.2F-15C**
-**Layer:** `smart_talk_bridge` / `paid_explanation_mapper`
+**Severity:** Warning → Partially reduced (8.2F-15C) → **RESOLVED in Phase 8.2F-15I**
+**Layer:** `smart_talk_bridge`
 
-**Original debt:** `SmartTalkBridgeDryRunResult.governanceValid` is a single boolean. When `false`, the caller must inspect the `diagnostics` array to determine which structural check failed. No structured blocking reason type exists at the bridge level. Additionally, mapper codes like `paid_autonomous_action_blocked` were overloaded: used both for the `no_autonomous_form_submission` forbidden move and as a generic section-exclusion notification.
+**Original debt:** `SmartTalkBridgeDryRunResult` carried only a boolean `governancePreserved` and an untyped `diagnostics` array. When governance was not preserved, callers had to inspect individual diagnostic codes to understand which structural check had failed. No structured blocking reason type existed. Additionally, mapper codes were overloaded (resolved in 8.2F-15C).
 
-**Mapper-level debt resolved (8.2F-15C):**
-- `paid_autonomous_action_blocked` is now used **only** for `no_autonomous_form_submission`.
-- Generic section-exclusion notifications now use `paid_section_excluded_by_forbidden_move`.
-- `paid_legal_verdict_blocked` is now used **only** for `no_definitive_legal_verdicts`.
-- No section behavior or runtime routing changed.
+**8.2F-15I Resolution:**
+`BridgeBlockingReason` union type added to `explanation-mapper-types.ts`:
 
-**Remaining debt:** The bridge-level `governanceValid` boolean without a typed `BridgeBlockingReason` field has NOT been resolved. The caller must still inspect `diagnostics` manually.
+```typescript
+type BridgeBlockingReason =
+  | "section_invariant_violation"       // Check 1+2: sourceBound / neverContainsUserVisibleCopy
+  | "diagnostic_visibility_violation"   // Check 3: neverUserVisible on mapper diagnostics
+  | "free_preview_paid_section_leakage" // Check 6: free-preview draft has paid-only sections
+  | "paid_free_only_section_leakage"    // Check 7: paid draft has free-only sections
+  | "forbidden_move_not_preserved"      // Check 4: contract forbidden move absent from draft
+  | "required_constraint_not_preserved" // Check 5: contract required constraint absent from draft
+  | "invalid_access_tier"               // exhaustion guard: unrecognized tier
+  | "missing_governance_metadata"       // reserved: governance metadata absent
+```
 
-**Resolution for remaining debt:** Introduce a typed `BridgeBlockingReason` that classifies failures (no boundary emitted, null draft, section mismatch, tier mismatch) as a first-class result field in `SmartTalkBridgeDryRunResult`.
+`SmartTalkBridgeDryRunResult` gains `blockingReasons: readonly BridgeBlockingReason[]`:
+- Always present; empty array when no blocking condition exists.
+- Populated in parallel with `diagnostics` using a `Set<BridgeBlockingReason>` (deduplicated).
+- Does not replace `diagnostics` — both are emitted.
+- `governancePreserved` semantics unchanged.
+- `bridge_contract_tier_mismatch` is intentionally **not** a `BridgeBlockingReason` — it is observability-only (Phase 8.2F-6A) and does not affect `governancePreserved` or `structurallyValid`.
+- All 8 regression cases assert `blockingReasons.length === 0` for healthy invocations. Case 8 confirms `blockingReasons` remains empty when only `bridge_contract_tier_mismatch` fires.
 
 ---
 

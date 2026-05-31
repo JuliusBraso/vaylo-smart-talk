@@ -74,6 +74,7 @@ export {
 } from "./contract-boundary-regression";
 export type {
   AppliedGovernanceConstraint,
+  BridgeBlockingReason,
   BridgeDiagnostic,
   BridgeDiagnosticCode,
   ExplanationMapperDiagnostic,

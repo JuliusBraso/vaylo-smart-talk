@@ -75,6 +75,7 @@ SmartTalkBridgeDryRunResult
   ├── draft: RuntimeExplanationDraft
   ├── structurallyValid: boolean
   ├── governancePreserved: boolean
+  ├── blockingReasons: readonly BridgeBlockingReason[]   ← Phase 8.2F-15I
   ├── diagnostics: readonly BridgeDiagnostic[]
   ├── notes: readonly string[]
   └── neverUserVisible: true
@@ -104,6 +105,7 @@ SmartTalkBridgeDryRunResult
 | `draft` | `RuntimeExplanationDraft` | Mapper output — structural metadata only |
 | `structurallyValid` | `boolean` | All section-level invariants passed |
 | `governancePreserved` | `boolean` | No cross-tier leakage, contract arrays intact |
+| `blockingReasons` | `readonly BridgeBlockingReason[]` | Typed, deduplicated reason codes for bridge failures (8.2F-15I) |
 | `diagnostics` | `readonly BridgeDiagnostic[]` | Bridge-level governance/structural findings |
 | `notes` | `readonly string[]` | Human-readable audit summary (never user-facing) |
 | `neverUserVisible` | `true` | Structural guarantee — entire result is internal only |

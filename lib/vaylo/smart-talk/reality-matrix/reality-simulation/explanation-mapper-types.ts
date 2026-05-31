@@ -3,7 +3,8 @@
  * 8.2F-3 free-preview codes / 8.2F-4 paid codes /
  * 8.2F-6 Smart Talk Bridge Dry Run input+output types /
  * 8.2F-6A bridge_contract_tier_mismatch diagnostic code /
- * 8.2F-15C mapper diagnostic taxonomy hardening).
+ * 8.2F-15C mapper diagnostic taxonomy hardening /
+ * 8.2F-15I BridgeBlockingReason typed field).
  *
  * Safety guarantees (all phases):
  * - no mapper function in this file
@@ -185,6 +186,41 @@ export interface BridgeDiagnostic {
   readonly neverUserVisible: true;
 }
 
+// ── Phase 8.2F-15I — Bridge Blocking Reason type ──────────────────────────────
+
+/**
+ * Typed reason codes for bridge-level governance failures and structural
+ * violations. Never-user-visible audit metadata.
+ *
+ * These run in **parallel** with `diagnostics` and do not replace them.
+ * They give typed, structured, deduplicated reason codes for audit correlation —
+ * explaining why `SmartTalkBridgeDryRunResult.governancePreserved` may be
+ * `false` or why structural checks failed.
+ *
+ * - `section_invariant_violation`       — a section draft violates the `sourceBound`
+ *                                         or `neverContainsUserVisibleCopy` invariant.
+ * - `diagnostic_visibility_violation`   — a mapper diagnostic violates `neverUserVisible`.
+ * - `free_preview_paid_section_leakage` — a free-preview draft contains paid-only sections.
+ * - `paid_free_only_section_leakage`    — a paid draft contains free-only sections.
+ * - `forbidden_move_not_preserved`      — a contract forbidden move is absent from the draft.
+ * - `required_constraint_not_preserved` — a contract required constraint is absent from the draft.
+ * - `invalid_access_tier`               — the access tier is unrecognized.
+ * - `missing_governance_metadata`       — governance metadata required by the bridge is absent.
+ *
+ * Note: `bridge_contract_tier_mismatch` is an observability-only diagnostic
+ * (Phase 8.2F-6A) and is intentionally **not** a `BridgeBlockingReason` — it
+ * does not affect `governancePreserved` or `structurallyValid`.
+ */
+export type BridgeBlockingReason =
+  | "section_invariant_violation"
+  | "diagnostic_visibility_violation"
+  | "free_preview_paid_section_leakage"
+  | "paid_free_only_section_leakage"
+  | "forbidden_move_not_preserved"
+  | "required_constraint_not_preserved"
+  | "invalid_access_tier"
+  | "missing_governance_metadata";
+
 /**
  * Input to the Smart Talk Bridge Dry Run (Phase 8.2F-6).
  *
@@ -207,13 +243,19 @@ export interface SmartTalkBridgeDryRunInput {
 }
 
 /**
- * Output of the Smart Talk Bridge Dry Run (Phase 8.2F-6).
+ * Output of the Smart Talk Bridge Dry Run (Phase 8.2F-6 / 8.2F-15I).
  *
  * Contains the routed `RuntimeExplanationDraft`, bridge-level structural
- * validity and governance preservation flags, bridge diagnostics, and notes.
+ * validity and governance preservation flags, bridge diagnostics, typed
+ * blocking reasons, and notes.
  *
  * `neverUserVisible: true` guarantees this entire result is internal only —
  * no prose, no rendered explanation, no legal wording.
+ *
+ * `blockingReasons` — typed, deduplicated list of `BridgeBlockingReason` codes
+ * that explain why `governancePreserved` may be `false` or why structural checks
+ * failed. Always present; empty array when no blocking condition exists.
+ * Does not replace `diagnostics` — both are emitted in parallel.
  */
 export interface SmartTalkBridgeDryRunResult {
   readonly bridgeVersion: string;
@@ -221,6 +263,7 @@ export interface SmartTalkBridgeDryRunResult {
   readonly draft: RuntimeExplanationDraft;
   readonly structurallyValid: boolean;
   readonly governancePreserved: boolean;
+  readonly blockingReasons: readonly BridgeBlockingReason[];
   readonly diagnostics: readonly BridgeDiagnostic[];
   readonly notes: readonly string[];
   readonly neverUserVisible: true;

@@ -1,5 +1,5 @@
 /**
- * Smart Talk Bridge Dry Run (Phase 8.2F-6).
+ * Smart Talk Bridge Dry Run (Phase 8.2F-6 / 8.2F-15I blocking reasons).
  *
  * Connects the existing governance cognition pipeline into a complete dry-run
  * flow — routing a paired (simulationResult, explanationContract) through the
@@ -28,6 +28,7 @@
  */
 
 import type {
+  BridgeBlockingReason,
   BridgeDiagnostic,
   BridgeDiagnosticCode,
   RuntimeExplanationDraft,
@@ -40,7 +41,7 @@ import { runFreePreviewMapper } from "./run-free-preview-mapper";
 import { runPaidExplanationMapper } from "./run-paid-explanation-mapper";
 
 export const SMART_TALK_BRIDGE_DRY_RUN_VERSION =
-  "8.2f-6-smart-talk-bridge-dry-run-v1";
+  "8.2f-15i-smart-talk-bridge-dry-run-v2";
 
 // ── Structural constants ──────────────────────────────────────────────────────
 
@@ -86,6 +87,9 @@ export function runSmartTalkBridgeDryRun(
   input: SmartTalkBridgeDryRunInput,
 ): SmartTalkBridgeDryRunResult {
   const bridgeDiagnostics: BridgeDiagnostic[] = [];
+  // 8.2F-15I: typed blocking reasons accumulated in parallel with diagnostics.
+  // Use a Set to deduplicate — multiple sections can violate the same invariant.
+  const blockingReasonsSet = new Set<BridgeBlockingReason>();
 
   // ── Build mapper input ────────────────────────────────────────────────────
 
@@ -116,6 +120,7 @@ export function runSmartTalkBridgeDryRun(
         `Unrecognized accessTier: "${String(input.accessTier)}". Defaulting to free_preview mapper.`,
       ),
     );
+    blockingReasonsSet.add("invalid_access_tier");
     mapperKind = "free_preview";
     draft = runFreePreviewMapper(mapperInput);
   }
@@ -153,6 +158,7 @@ export function runSmartTalkBridgeDryRun(
           `Section "${section.sectionType}" violates sourceBound invariant (expected true).`,
         ),
       );
+      blockingReasonsSet.add("section_invariant_violation");
     }
   }
 
@@ -166,6 +172,7 @@ export function runSmartTalkBridgeDryRun(
           `Section "${section.sectionType}" violates neverContainsUserVisibleCopy invariant (expected true).`,
         ),
       );
+      blockingReasonsSet.add("section_invariant_violation");
     }
   }
 
@@ -179,6 +186,7 @@ export function runSmartTalkBridgeDryRun(
           `Mapper diagnostic code="${diag.code}" violates neverUserVisible invariant (expected true).`,
         ),
       );
+      blockingReasonsSet.add("diagnostic_visibility_violation");
     }
   }
 
@@ -197,6 +205,7 @@ export function runSmartTalkBridgeDryRun(
           `Contract forbiddenMove "${move}" is absent from draft.appliedForbiddenMoves — governance contract not preserved.`,
         ),
       );
+      blockingReasonsSet.add("forbidden_move_not_preserved");
     }
   }
 
@@ -209,6 +218,7 @@ export function runSmartTalkBridgeDryRun(
           `Contract requiredConstraint "${constraint}" is absent from draft.appliedRequiredConstraints — governance contract not preserved.`,
         ),
       );
+      blockingReasonsSet.add("required_constraint_not_preserved");
     }
   }
 
@@ -223,6 +233,7 @@ export function runSmartTalkBridgeDryRun(
             `Free preview draft contains paid-only section "${sectionType}" — tier boundary violated.`,
           ),
         );
+        blockingReasonsSet.add("free_preview_paid_section_leakage");
       }
     }
   }
@@ -238,6 +249,7 @@ export function runSmartTalkBridgeDryRun(
             `Paid explanation draft contains free-only section "${sectionType}" — tier boundary violated.`,
           ),
         );
+        blockingReasonsSet.add("paid_free_only_section_leakage");
       }
     }
   }
@@ -258,6 +270,13 @@ export function runSmartTalkBridgeDryRun(
   );
 
   const governancePreserved = !hasGovernanceViolation && structurallyValid;
+
+  // 8.2F-15I: Convert deduplicated blocking reason set to a stable readonly array.
+  // bridge_contract_tier_mismatch is observability-only and intentionally excluded —
+  // it does not affect governancePreserved or structurallyValid.
+  const blockingReasons: readonly BridgeBlockingReason[] = [
+    ...blockingReasonsSet,
+  ];
 
   // ── NOTES ─────────────────────────────────────────────────────────────────
 
@@ -290,6 +309,7 @@ export function runSmartTalkBridgeDryRun(
     draft,
     structurallyValid,
     governancePreserved,
+    blockingReasons,
     diagnostics: bridgeDiagnostics,
     notes,
     neverUserVisible: true,

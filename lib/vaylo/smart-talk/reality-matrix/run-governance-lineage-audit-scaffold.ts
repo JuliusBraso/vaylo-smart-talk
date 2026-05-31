@@ -1,5 +1,5 @@
 /**
- * Governance Lineage Integration Audit scaffold (Phase 8.2F-15 / updated 8.2F-15H).
+ * Governance Lineage Integration Audit scaffold (Phase 8.2F-15 / updated 8.2F-15I).
  *
  * Implements `runGovernanceLineageAuditScaffold` — a pure static inventory
  * function that returns a `GovernanceLineageAuditResult` covering the entire
@@ -108,6 +108,22 @@
  *    All 8 regression cases pass with the same assertions; validator behavior is unchanged.
  *    RUNTIME_PROVENANCE_AUDIT_TRACE.md spec updated.
  *
+ * 8.2F-15I changes:
+ *  - Technical Debt 6: bridge-level BridgeBlockingReason typed field → RESOLVED.
+ *    BridgeBlockingReason union type added to explanation-mapper-types.ts with 8 variants:
+ *    section_invariant_violation, diagnostic_visibility_violation,
+ *    free_preview_paid_section_leakage, paid_free_only_section_leakage,
+ *    forbidden_move_not_preserved, required_constraint_not_preserved,
+ *    invalid_access_tier, missing_governance_metadata.
+ *    SmartTalkBridgeDryRunResult gains blockingReasons: readonly BridgeBlockingReason[].
+ *    runSmartTalkBridgeDryRun populates blockingReasons in parallel with diagnostics using a
+ *    Set<BridgeBlockingReason> for deduplication. Each of the 7 structural/governance checks
+ *    contributes the appropriate typed reason. bridge_contract_tier_mismatch is intentionally
+ *    excluded — it is observability-only (Phase 8.2F-6A) and does not produce a blocking reason.
+ *    governancePreserved semantics unchanged. diagnostics unchanged. No routing behavior changed.
+ *    All 8 regression cases updated to assert blockingReasons.length === 0 for healthy invocations.
+ *    Case 8 additionally confirms blockingReasons is empty when only bridge_contract_tier_mismatch fires.
+ *
  * Safety guarantees:
  * - no runtime modification
  * - no telemetry
@@ -126,7 +142,7 @@ import type {
 } from "./governance-lineage-audit-types";
 
 export const GOVERNANCE_LINEAGE_AUDIT_VERSION =
-  "8.2f-15h-governance-lineage-audit-v9";
+  "8.2f-15i-governance-lineage-audit-v10";
 
 // ── Finding factory ───────────────────────────────────────────────────────────
 
@@ -469,16 +485,24 @@ const WARNING_FINDINGS: readonly GovernanceAuditFinding[] = [
   ),
   finding(
     "smart_talk_bridge",
-    "warning",
-    "Technical Debt (Debt 6, partial): broad diagnostic buckets — mapper overloads resolved, bridge-level reason type remains",
-    "8.2F-15C resolved the mapper-level overloads: paid_autonomous_action_blocked no longer doubles " +
-      "as a generic section-exclusion notification (replaced by paid_section_excluded_by_forbidden_move). " +
-      "paid_legal_verdict_blocked no longer covers all certainty/truthfulness risks. " +
-      "Remaining debt: SmartTalkBridgeDryRunResult.governanceValid is still a single boolean. " +
-      "When governance is invalid, the diagnostics array must be inspected manually to identify " +
-      "which specific structural check failed. A future phase should introduce a typed " +
-      "BridgeBlockingReason that directly classifies failures (no boundary emitted, null draft, " +
-      "section mismatch, tier mismatch) without requiring diagnostics array inspection.",
+    "informational",
+    "RESOLVED (8.2F-15I): BridgeBlockingReason typed field added to SmartTalkBridgeDryRunResult",
+    "Previously reported as a WARNING (Debt 6, partially reduced in 8.2F-15C): " +
+      "SmartTalkBridgeDryRunResult carried only a boolean governancePreserved and an untyped " +
+      "diagnostics array, requiring callers to inspect individual diagnostic codes to understand " +
+      "why the bridge failed. Fully resolved in Phase 8.2F-15I: " +
+      "BridgeBlockingReason union type added to explanation-mapper-types.ts with 8 variants: " +
+      "section_invariant_violation, diagnostic_visibility_violation, " +
+      "free_preview_paid_section_leakage, paid_free_only_section_leakage, " +
+      "forbidden_move_not_preserved, required_constraint_not_preserved, " +
+      "invalid_access_tier, missing_governance_metadata. " +
+      "SmartTalkBridgeDryRunResult.blockingReasons: readonly BridgeBlockingReason[] added. " +
+      "runSmartTalkBridgeDryRun populates blockingReasons in parallel with diagnostics using a " +
+      "Set<BridgeBlockingReason> for deduplication across all 7 structural/governance checks. " +
+      "bridge_contract_tier_mismatch (Phase 8.2F-6A) is intentionally excluded from blockingReasons " +
+      "— it remains observability-only and does not affect governancePreserved or structurallyValid. " +
+      "governancePreserved semantics and all diagnostic emissions are unchanged. " +
+      "No routing behavior changed. Bridge version bumped to v2.",
   ),
   finding(
     "wording_evaluation",

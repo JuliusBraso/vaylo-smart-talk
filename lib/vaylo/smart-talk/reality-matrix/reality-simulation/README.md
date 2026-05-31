@@ -1709,6 +1709,48 @@ No LLM judge added. No NLP. No real text evaluated. No prose generated. No OpenA
 
 ---
 
+## PHASE 8.2F-15I — Bridge Blocking Reason Typed Field
+
+**Mode:** Bridge auditability hardening / Technical debt resolution
+**Files modified:** `explanation-mapper-types.ts`, `run-smart-talk-bridge-dry-run.ts`, `smart-talk-bridge-dry-run-regression.ts`
+
+### Mission
+
+Fully resolves **Debt 6**: `SmartTalkBridgeDryRunResult` previously exposed only a `governancePreserved: boolean` flag and an untyped `diagnostics` array, requiring manual inspection to identify which bridge check had failed. Phase 8.2F-15I adds a typed, deduplicated `blockingReasons` array that precisely classifies every bridge-level failure.
+
+### `BridgeBlockingReason` Type
+
+```typescript
+type BridgeBlockingReason =
+  | "section_invariant_violation"       // sourceBound / neverContainsUserVisibleCopy
+  | "diagnostic_visibility_violation"   // neverUserVisible on mapper diagnostics
+  | "free_preview_paid_section_leakage" // free-preview contains paid-only sections
+  | "paid_free_only_section_leakage"    // paid contains free-only sections
+  | "forbidden_move_not_preserved"      // contract forbidden move absent from draft
+  | "required_constraint_not_preserved" // contract required constraint absent from draft
+  | "invalid_access_tier"               // unrecognized accessTier
+  | "missing_governance_metadata"       // reserved: governance metadata absent
+```
+
+### `SmartTalkBridgeDryRunResult` Changes
+
+`blockingReasons: readonly BridgeBlockingReason[]` added alongside existing fields.
+Always present; empty array on healthy bridge invocations. Deduplication via `Set<BridgeBlockingReason>` before conversion to array.
+
+### `governancePreserved` Semantics — Unchanged
+
+`governancePreserved` is derived exactly as before from `hasGovernanceViolation && structurallyValid`. `blockingReasons` is additive, never replacing the boolean.
+
+### `bridge_contract_tier_mismatch` — Still Non-Blocking
+
+`bridge_contract_tier_mismatch` (Phase 8.2F-6A) is intentionally **not** included in `blockingReasons`. It remains observability-only. Case 8 of the regression scaffold explicitly asserts `blockingReasons.length === 0` when this diagnostic fires.
+
+### Safety Boundary
+
+No persistence, logging, telemetry, or runtime coupling. Smart Talk runtime not modified. No routing behavior changed. No section emission/suppression changed. No diagnostic codes removed. TypeScript and ESLint pass cleanly.
+
+---
+
 ## PHASE 8.2F-15H — AuditTraceChain.structurallyValid Consistency Fix
 
 **Mode:** Audit trace consistency hardening / Technical debt resolution

@@ -1,7 +1,8 @@
 /**
- * Smart Talk Bridge Dry Run regression scaffold (Phase 8.2F-6).
+ * Smart Talk Bridge Dry Run regression scaffold
+ * (Phase 8.2F-6 / 8.2F-15I: BridgeBlockingReason typed field).
  *
- * Seven structural regression cases exercising the full bridge pipeline:
+ * Eight structural regression cases exercising the full bridge pipeline:
  *
  *  Case 1 — free preview basic dry run
  *  Case 2 — paid explanation basic dry run
@@ -10,10 +11,12 @@
  *  Case 5 — paid with deadline suppression forbidden move
  *  Case 6 — free preview with enforcement forbidden move
  *  Case 7 — paid with all major forbidden moves
+ *  Case 8 — contract tier mismatch detection (8.2F-6A)
  *
- * Each case asserts:
+ * Each healthy case asserts:
  *  - governancePreserved === true
  *  - structurallyValid === true
+ *  - blockingReasons.length === 0   ← NEW (8.2F-15I)
  *  - no prose in draft sections
  *  - no cross-tier leakage
  *  - contract governance arrays preserved in draft
@@ -27,14 +30,17 @@ import type {
   FreePreviewSimulationExplanationContract,
   PaidSimulationExplanationContract,
 } from "./explanation-contract-types";
-import type { SmartTalkBridgeDryRunResult } from "./explanation-mapper-types";
+import type {
+  BridgeBlockingReason,
+  SmartTalkBridgeDryRunResult,
+} from "./explanation-mapper-types";
 import {
   SMART_TALK_BRIDGE_DRY_RUN_VERSION,
   runSmartTalkBridgeDryRun,
 } from "./run-smart-talk-bridge-dry-run";
 
 export const SMART_TALK_BRIDGE_DRY_RUN_REGRESSION_VERSION =
-  "8.2f-6a-smart-talk-bridge-dry-run-regression-v2";
+  "8.2f-15i-smart-talk-bridge-dry-run-regression-v3";
 
 // ── Result types ──────────────────────────────────────────────────────────────
 
@@ -114,6 +120,8 @@ function assertBridgeResult(
     requiredConstraintsInDraft?: readonly string[];
     noProseCheck?: boolean;
     noLeakageCheck?: boolean;
+    /** 8.2F-15I: expected blocking reasons. Defaults to [] (empty = healthy). */
+    expectBlockingReasons?: readonly BridgeBlockingReason[];
   },
 ): SmartTalkBridgeDryRunRegressionCaseResult {
   const failures: string[] = [];
@@ -131,6 +139,23 @@ function assertBridgeResult(
     failures.push(
       `structurallyValid expected=${String(structValid)}, got=${String(result.structurallyValid)}`,
     );
+  }
+
+  // 8.2F-15I: blockingReasons assertions.
+  const expectedReasons = opts.expectBlockingReasons ?? [];
+  if (expectedReasons.length === 0) {
+    // Healthy case: blockingReasons must be empty.
+    if (result.blockingReasons.length !== 0) {
+      failures.push(
+        `blockingReasons expected=[] (empty), got=[${result.blockingReasons.join(", ")}]`,
+      );
+    }
+  } else {
+    for (const reason of expectedReasons) {
+      if (!result.blockingReasons.includes(reason)) {
+        failures.push(`Expected blockingReason "${reason}" not in result.blockingReasons`);
+      }
+    }
   }
   if (result.mapperKind !== opts.expectedMapperKind) {
     failures.push(
@@ -278,6 +303,10 @@ function runCase3(): SmartTalkBridgeDryRunRegressionCaseResult {
   if (!result.governancePreserved) failures.push("governancePreserved must be true");
   if (!result.structurallyValid) failures.push("structurallyValid must be true");
   if (result.mapperKind !== "paid_explanation") failures.push("mapperKind must be paid_explanation");
+  // 8.2F-15I: healthy case — blockingReasons must be empty.
+  if (result.blockingReasons.length !== 0) {
+    failures.push(`blockingReasons expected=[] (empty), got=[${result.blockingReasons.join(", ")}]`);
+  }
 
   if (!draft.appliedRequiredConstraints.includes("required_uncertainty_wording")) {
     failures.push('appliedRequiredConstraints must include "required_uncertainty_wording"');
@@ -356,6 +385,10 @@ function runCase4(): SmartTalkBridgeDryRunRegressionCaseResult {
   if (!result.governancePreserved) failures.push("governancePreserved must be true");
   if (!result.structurallyValid) failures.push("structurallyValid must be true");
   if (result.mapperKind !== "paid_explanation") failures.push("mapperKind must be paid_explanation");
+  // 8.2F-15I: healthy case — blockingReasons must be empty.
+  if (result.blockingReasons.length !== 0) {
+    failures.push(`blockingReasons expected=[] (empty), got=[${result.blockingReasons.join(", ")}]`);
+  }
 
   const reviewPostures: string[] = [
     "review_suggested",
@@ -474,6 +507,10 @@ function runCase7(): SmartTalkBridgeDryRunRegressionCaseResult {
   if (!result.structurallyValid) failures.push("structurallyValid must be true");
   if (result.mapperKind !== "paid_explanation") failures.push("mapperKind must be paid_explanation");
   if (!result.neverUserVisible) failures.push("neverUserVisible must be true");
+  // 8.2F-15I: healthy case — blockingReasons must be empty.
+  if (result.blockingReasons.length !== 0) {
+    failures.push(`blockingReasons expected=[] (empty), got=[${result.blockingReasons.join(", ")}]`);
+  }
 
   // All major forbidden moves must survive the full pipeline.
   for (const move of allMajorMoves) {
@@ -589,6 +626,14 @@ function runCase8(): SmartTalkBridgeDryRunRegressionCaseResult {
     );
   }
 
+  // 8.2F-15I: bridge_contract_tier_mismatch is observability-only — must NOT produce
+  // any blockingReason. blockingReasons must remain empty for this case.
+  if (result.blockingReasons.length !== 0) {
+    failures.push(
+      `blockingReasons must be [] — bridge_contract_tier_mismatch is observability-only and must not produce a blocking reason. Got: [${result.blockingReasons.join(", ")}]`,
+    );
+  }
+
   // Overall result must remain never-user-visible.
   if (!result.neverUserVisible) {
     failures.push("neverUserVisible must be true on bridge result");
@@ -618,11 +663,11 @@ function runCase8(): SmartTalkBridgeDryRunRegressionCaseResult {
 
   notes.push(
     failures.length === 0
-      ? `Case "contract_tier_mismatch_detection" passed — bridge_contract_tier_mismatch emitted, routing unchanged, governance preserved, all invariants hold.`
+      ? `Case "contract_tier_mismatch_detection" passed — bridge_contract_tier_mismatch emitted, routing unchanged, governance preserved, blockingReasons empty, all invariants hold.`
       : `Case "contract_tier_mismatch_detection" failed with ${String(failures.length)} failure(s).`,
   );
   notes.push(
-    "bridge_contract_tier_mismatch is observability-only: routing behavior, structurallyValid, and governancePreserved are not affected.",
+    "bridge_contract_tier_mismatch is observability-only (8.2F-6A): routing behavior, structurallyValid, governancePreserved, and blockingReasons are not affected.",
   );
 
   return {
@@ -639,6 +684,10 @@ function runCase8(): SmartTalkBridgeDryRunRegressionCaseResult {
 /**
  * Executes all 8 Smart Talk Bridge Dry Run regression cases and aggregates
  * the results. Case 8 added in Phase 8.2F-6A.
+ *
+ * 8.2F-15I: All 8 cases now assert blockingReasons.length === 0 for healthy
+ * bridge invocations. Case 8 additionally confirms bridge_contract_tier_mismatch
+ * does not produce any blocking reason (observability-only behavior preserved).
  *
  * Does not throw. All assertions are collected as failure strings.
  * No prose generated. No LLM. No OCR. No Smart Talk runtime.
@@ -665,7 +714,8 @@ export function runSmartTalkBridgeDryRunRegression(): SmartTalkBridgeDryRunRegre
 
   if (allPassed) {
     notes.push(
-      "All bridge pipeline routes, structural invariants, governance preservation checks, leakage checks, tier-mismatch detection, and neverUserVisible guarantees validated.",
+      "All bridge pipeline routes, structural invariants, governance preservation checks, leakage checks, " +
+        "tier-mismatch detection, blockingReasons (8.2F-15I), and neverUserVisible guarantees validated.",
     );
   } else {
     notes.push(

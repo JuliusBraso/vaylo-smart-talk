@@ -1012,6 +1012,32 @@ Session overflow rule unchanged: `totalTransactions >= maxLimit → pilot_sessio
 
 **Remaining open debts:** Debt 5 (cross-phase namespace isolation), Debt 6 (bridge-level `BridgeBlockingReason` typed field). Debts 7–9 partially resolved.
 
+---
+
+### Phase 8.2F-15I — Bridge Blocking Reason Typed Field
+
+**Governance audit version:** `8.2f-15i-governance-lineage-audit-v10`
+**Bridge version:** `8.2f-15i-smart-talk-bridge-dry-run-v2`
+
+**Technical Debt 6 — RESOLVED.** `SmartTalkBridgeDryRunResult` now includes `blockingReasons: readonly BridgeBlockingReason[]` — a typed, deduplicated list of structured failure codes that classifies exactly which bridge-level check failed, without requiring `diagnostics` array inspection.
+
+**`BridgeBlockingReason` variants:** `section_invariant_violation`, `diagnostic_visibility_violation`, `free_preview_paid_section_leakage`, `paid_free_only_section_leakage`, `forbidden_move_not_preserved`, `required_constraint_not_preserved`, `invalid_access_tier`, `missing_governance_metadata`.
+
+**Changes:**
+- `explanation-mapper-types.ts` — `BridgeBlockingReason` type added; `SmartTalkBridgeDryRunResult.blockingReasons` added; header updated.
+- `run-smart-talk-bridge-dry-run.ts` — All 7 structural/governance checks emit typed blocking reasons via `Set<BridgeBlockingReason>`; `bridge_contract_tier_mismatch` explicitly excluded (observability-only); version bumped to `v2`.
+- `smart-talk-bridge-dry-run-regression.ts` — All 8 cases assert `blockingReasons.length === 0`; Case 8 asserts `blockingReasons` empty when only tier-mismatch fires; version bumped to `v3`.
+- `run-governance-lineage-audit-scaffold.ts` — version `v10`; Debt 6 changed from WARNING to RESOLVED.
+- `GOVERNANCE_LINEAGE_INTEGRATION_AUDIT.md` — Debt 6 marked RESOLVED.
+
+**`governancePreserved` semantics:** Unchanged. `blockingReasons` is additive audit metadata only.
+
+**`bridge_contract_tier_mismatch` (Phase 8.2F-6A):** Intentionally not a `BridgeBlockingReason`. It remains observability-only — does not affect `governancePreserved`, `structurallyValid`, or `blockingReasons`.
+
+**Safety:** No persistence, logging, telemetry, or runtime coupling. Smart Talk runtime not modified. No routing behavior changed. TypeScript and ESLint pass.
+
+**Remaining open debts:** Debt 5 (cross-phase diagnostic namespace isolation). Debts 7–9 partially resolved.
+
 **Safety boundary:** No session store added. No database reads. No auth SDK imported. No real pilot activation. No real session tracking. No LLM. No Smart Talk runtime wiring. No user-visible output. TypeScript and ESLint pass cleanly.
 
 ---
