@@ -1014,6 +1014,34 @@ Session overflow rule unchanged: `totalTransactions >= maxLimit → pilot_sessio
 
 ---
 
+### Phase 8.2F-15J — Cross-Phase Diagnostic Namespace Isolation
+
+**Governance audit version:** `8.2f-15j-governance-lineage-audit-v11`
+
+**Technical Debt 5 — PARTIALLY RESOLVED.** A typed namespace envelope foundation has been established to enable cross-phase audit correlation of diagnostic codes without merging source unions or changing any diagnostic generation behavior.
+
+**New files (all in `lib/vaylo/smart-talk/reality-matrix/`):**
+
+| File | Purpose |
+|---|---|
+| `diagnostic-namespace-types.ts` | Core types: `DiagnosticNamespaceLayer`, `DiagnosticSeverity`, `DiagnosticVisibility`, `DiagnosticNormalizedEnvelope`, `DiagnosticNamespaceValidationResult` |
+| `diagnostic-namespace-registry.ts` | `KNOWN_DIAGNOSTIC_NAMESPACE_LAYERS`, `makeDiagnosticEnvelope()` factory, `validateDiagnosticNamespaceEnvelopes()` validator, `DIAGNOSTIC_NAMESPACE_SAMPLE_REGISTRY` (26 representative envelopes) |
+| `diagnostic-namespace-regression-scaffold.ts` | 8-case regression scaffold (`runDiagnosticNamespaceRegressionScaffold`) |
+
+**`DiagnosticNamespaceLayer` values (13):** `mapper_free_preview`, `mapper_paid_explanation`, `bridge`, `wording_review`, `wording_evaluation`, `ocr_uncertainty`, `pilot_gate`, `incident_governance`, `provenance_audit`, `corpus_validation`, `contract_validation`, `governance_lineage_audit`, `unknown`.
+
+**`DiagnosticNormalizedEnvelope`** wraps any raw diagnostic code with: `layer`, `code`, `severity` (informational/warning/blocking/critical), `visibility` (never_user_visible/internal_audit_only), optional `phase`/`sourceVersion`, and `neverUserVisible: true`.
+
+**Validation rules:** non-empty `code` (hard failure → `valid=false`), `neverUserVisible === true` (hard failure), `layer === "unknown"` (soft warning → `fullyConsistent=false`), duplicate `${layer}:${code}:${phase}` keys (soft warning → `fullyConsistent=false`).
+
+**What did NOT change:** Source modules (mappers, bridge, pilot gate, incident governance, provenance audit) retain their own typed diagnostic unions and emit diagnostics exactly as before. No diagnostic codes were renamed, removed, or merged. No runtime behavior was changed. No persistence, telemetry, or logging was added.
+
+**Remaining future work:** Source emission sites adopting `makeDiagnosticEnvelope()` directly so normalized envelopes are produced at runtime (rather than authored in a static sample registry). This is a separate future consolidation phase.
+
+**Remaining open debts:** Debt 5 partially resolved (namespace envelope foundation established; source emission migration is future work). Debts 7–9 partially resolved.
+
+---
+
 ### Phase 8.2F-15I — Bridge Blocking Reason Typed Field
 
 **Governance audit version:** `8.2f-15i-governance-lineage-audit-v10`

@@ -1,5 +1,5 @@
 /**
- * Governance Lineage Integration Audit scaffold (Phase 8.2F-15 / updated 8.2F-15I).
+ * Governance Lineage Integration Audit scaffold (Phase 8.2F-15 / updated 8.2F-15J).
  *
  * Implements `runGovernanceLineageAuditScaffold` — a pure static inventory
  * function that returns a `GovernanceLineageAuditResult` covering the entire
@@ -108,6 +108,19 @@
  *    All 8 regression cases pass with the same assertions; validator behavior is unchanged.
  *    RUNTIME_PROVENANCE_AUDIT_TRACE.md spec updated.
  *
+ * 8.2F-15J changes:
+ *  - Technical Debt 5: cross-phase diagnostic namespace isolation → PARTIALLY RESOLVED.
+ *    DiagnosticNamespaceLayer union (13 layers) defined in diagnostic-namespace-types.ts.
+ *    DiagnosticNormalizedEnvelope wraps any raw diagnostic code with layer, severity,
+ *    visibility (never_user_visible / internal_audit_only), phase, and sourceVersion.
+ *    DiagnosticNamespaceValidationResult models structural checks on envelope collections.
+ *    diagnostic-namespace-registry.ts provides KNOWN_DIAGNOSTIC_NAMESPACE_LAYERS,
+ *    makeDiagnosticEnvelope() factory, validateDiagnosticNamespaceEnvelopes() validator,
+ *    and DIAGNOSTIC_NAMESPACE_SAMPLE_REGISTRY (26 representative envelopes across 8 layers).
+ *    diagnostic-namespace-regression-scaffold.ts provides 8 regression cases.
+ *    Source modules retain their own typed diagnostic unions; no codes renamed/removed.
+ *    Full migration to normalized envelopes at emission sites is future work.
+ *
  * 8.2F-15I changes:
  *  - Technical Debt 6: bridge-level BridgeBlockingReason typed field → RESOLVED.
  *    BridgeBlockingReason union type added to explanation-mapper-types.ts with 8 variants:
@@ -142,7 +155,7 @@ import type {
 } from "./governance-lineage-audit-types";
 
 export const GOVERNANCE_LINEAGE_AUDIT_VERSION =
-  "8.2f-15i-governance-lineage-audit-v10";
+  "8.2f-15j-governance-lineage-audit-v11";
 
 // ── Finding factory ───────────────────────────────────────────────────────────
 
@@ -469,19 +482,27 @@ const WARNING_FINDINGS: readonly GovernanceAuditFinding[] = [
   // Technical debts (Debt 1 resolved in 8.2F-15B; Debt 4 resolved in 8.2F-15D —
   //   both moved to CONNECTED_LINEAGE_FINDINGS below)
   finding(
-    "incident_governance",
-    "warning",
-    "Technical Debt (Debt 5, partial): overloaded diagnostic taxonomy — mapper layer resolved, cross-phase isolation remains",
-    "8.2F-15C resolved the mapper-level overload: FreePreviewMapperDiagnosticCode and " +
-      "PaidExplanationMapperDiagnosticCode now have one dedicated code per ForbiddenExplanationMove. " +
-      "free_preview_paid_field_blocked is now the structural invariant only; " +
-      "paid_legal_verdict_blocked is narrowed to no_definitive_legal_verdicts only; " +
-      "paid_autonomous_action_blocked is narrowed to no_autonomous_form_submission only. " +
-      "Remaining debt: each phase (8.2F-8 through 8.2F-14) still has its own isolated diagnostic " +
-      "code union type (WordingReviewDiagnosticCode, OcrDiagnosticCode, PilotGateDiagnosticCode, " +
-      "WordingViolationCode, IncidentDiagnosticCode, AuditTraceDiagnosticCode). " +
-      "No shared cross-phase taxonomy exists. A future consolidation phase should introduce a " +
-      "unified GovernanceDiagnosticCode namespace or cross-type adapter.",
+    "provenance_audit",
+    "informational",
+    "PARTIALLY RESOLVED (8.2F-15J): DiagnosticNormalizedEnvelope namespace model established",
+    "Previously reported as a WARNING (Debt 5, partially reduced in 8.2F-15C): " +
+      "8.2F-15C resolved mapper-level overloads (one dedicated diagnostic per ForbiddenExplanationMove; " +
+      "free_preview_paid_field_blocked narrowed to structural invariant; " +
+      "paid_legal_verdict_blocked narrowed to no_definitive_legal_verdicts; " +
+      "paid_autonomous_action_blocked narrowed to no_autonomous_form_submission). " +
+      "Each governance layer still emits its own isolated diagnostic code union type " +
+      "(BridgeDiagnosticCode, OcrDiagnosticCode, PilotGateDiagnosticCode, " +
+      "AuditTraceDiagnosticCode, etc.) with no shared cross-phase namespace. " +
+      "Partially resolved in Phase 8.2F-15J by introducing: " +
+      "DiagnosticNamespaceLayer (13-value union), DiagnosticNormalizedEnvelope (typed audit wrapper), " +
+      "DiagnosticNamespaceValidationResult, KNOWN_DIAGNOSTIC_NAMESPACE_LAYERS, " +
+      "makeDiagnosticEnvelope() factory, validateDiagnosticNamespaceEnvelopes() validator, " +
+      "DIAGNOSTIC_NAMESPACE_SAMPLE_REGISTRY (26 representative envelopes across 8 layers), " +
+      "and a full 8-case regression scaffold. " +
+      "Source modules retain their own typed unions and emit diagnostics exactly as before — " +
+      "no codes renamed, removed, or merged. " +
+      "Remaining future work: source emission sites adopt envelopes directly so normalized " +
+      "envelopes are produced at runtime rather than authored in a sample registry.",
   ),
   finding(
     "smart_talk_bridge",

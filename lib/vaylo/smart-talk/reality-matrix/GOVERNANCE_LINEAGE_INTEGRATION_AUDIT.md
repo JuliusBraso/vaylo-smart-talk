@@ -1,7 +1,7 @@
-# Governance Lineage Integration Audit — Phase 8.2F-15 (updated 8.2F-15I)
+# Governance Lineage Integration Audit — Phase 8.2F-15 (updated 8.2F-15J)
 
-**Version:** `8.2f-15i-governance-lineage-audit-v10`
-**Scope:** Vaylo Document Reasoning Constitution V1 — Phases 8.2A → 8.2F-15I
+**Version:** `8.2f-15j-governance-lineage-audit-v11`
+**Scope:** Vaylo Document Reasoning Constitution V1 — Phases 8.2A → 8.2F-15J
 **Mode:** Audit only / no runtime wiring / no behavior modified
 **Overall Status:** `partially_connected`
 
@@ -54,6 +54,11 @@
 > All 8 regression cases pass with identical outcomes.
 >
 > **8.2F-15I Update:** Debt 6 (bridge-level `BridgeBlockingReason` typed field) is **resolved**.
+> See detail in Debt 6 section below.
+>
+> **8.2F-15J Update:** Debt 5 (cross-phase diagnostic namespace isolation) is **partially resolved**.
+> `DiagnosticNormalizedEnvelope` and `DiagnosticNamespaceLayer` established. Source modules retain
+> their own typed unions; envelope model is additive audit infrastructure. See Debt 5 section below.
 > `BridgeBlockingReason` union type added. `SmartTalkBridgeDryRunResult` gains `blockingReasons:
 > readonly BridgeBlockingReason[]`. All 7 bridge checks populate typed reasons in parallel with
 > diagnostics. `bridge_contract_tier_mismatch` remains observability-only (no blocking reason).
@@ -267,21 +272,39 @@ When both moves are simultaneously active, the effect loop adds `next_steps_safe
 
 ---
 
-### Debt 5 — Overloaded diagnostic taxonomy across phases ⚠ PARTIALLY REDUCED (8.2F-15C)
+### Debt 5 — Overloaded diagnostic taxonomy across phases ⚠ PARTIALLY RESOLVED (8.2F-15J)
 
-**Severity:** Warning → **REDUCED at mapper level in Phase 8.2F-15C**
-**Layer:** `incident_governance` (cross-phase) / `free_preview_mapper` / `paid_explanation_mapper`
+**Severity:** Warning → Reduced at mapper level (8.2F-15C) → **PARTIALLY RESOLVED in Phase 8.2F-15J**
+**Layer:** cross-phase / `governance_lineage_audit`
 
-**Original debt:** Eight separate diagnostic code union types exist across phases 8.2F-8 through 8.2F-14: `WordingReviewDiagnosticCode`, `OcrDiagnosticCode`, `PilotGateDiagnosticCode`, `WordingViolationCode`, `IncidentDiagnosticCode`, `AuditTraceDiagnosticCode`, `BridgeDiagnosticCode`, `ExplanationMapperDiagnosticCode`. These are structurally isolated with no shared taxonomy. Cross-phase diagnostic correlation requires manual inspection.
+**Original debt:** Multiple isolated diagnostic code union types exist across governance layers (e.g. `FreePreviewMapperDiagnosticCode`, `PaidExplanationMapperDiagnosticCode`, `BridgeDiagnosticCode`, `OcrDiagnosticCode`, `PilotGateDiagnosticCode`, `AuditTraceDiagnosticCode`). No shared taxonomy or namespace model exists for cross-phase audit correlation.
 
-**Mapper-level debt resolved (8.2F-15C):**
-- `FreePreviewMapperDiagnosticCode` now has a dedicated code per `ForbiddenExplanationMove`. `free_preview_paid_field_blocked` is the structural invariant only; all per-move semantics have specific codes (e.g. `free_preview_legal_verdict_blocked`, `free_preview_false_reassurance_blocked`, `free_preview_calculated_amount_blocked`).
-- `PaidExplanationMapperDiagnosticCode` now has a dedicated code per `ForbiddenExplanationMove`. `paid_legal_verdict_blocked` is narrowed to `no_definitive_legal_verdicts` only. New codes include `paid_truthfulness_blocked`, `paid_guaranteed_outcome_blocked`, `paid_false_reassurance_blocked`, `paid_calculated_amount_blocked`, `paid_section_excluded_by_forbidden_move`.
-- No section presence/absence behavior changed. No user-visible output introduced.
+**Mapper-level debt reduced (8.2F-15C):**
+- `FreePreviewMapperDiagnosticCode` now has a dedicated code per `ForbiddenExplanationMove`.
+- `PaidExplanationMapperDiagnosticCode` now has a dedicated code per `ForbiddenExplanationMove`.
+- `paid_legal_verdict_blocked` narrowed to `no_definitive_legal_verdicts` only.
+- No section behavior or runtime routing changed.
 
-**Remaining debt:** Cross-phase diagnostic namespace isolation (eight separate union types across 8.2F-8 through 8.2F-14) has NOT been resolved. A unified `GovernanceDiagnosticCode` namespace or adapter layer remains a future consolidation phase.
+**8.2F-15J Partial Resolution — Namespace Envelope Foundation:**
 
-**Resolution for remaining debt:** Introduce a unified `GovernanceDiagnosticCode` namespace or cross-type adapter in a future consolidation phase.
+New files added to `lib/vaylo/smart-talk/reality-matrix/`:
+
+| File | Contents |
+|---|---|
+| `diagnostic-namespace-types.ts` | `DiagnosticNamespaceLayer` (13 values), `DiagnosticSeverity`, `DiagnosticVisibility`, `DiagnosticNormalizedEnvelope`, `DiagnosticNamespaceValidationResult` |
+| `diagnostic-namespace-registry.ts` | `KNOWN_DIAGNOSTIC_NAMESPACE_LAYERS`, `makeDiagnosticEnvelope()`, `validateDiagnosticNamespaceEnvelopes()`, `DIAGNOSTIC_NAMESPACE_SAMPLE_REGISTRY` (26 representative envelopes) |
+| `diagnostic-namespace-regression-scaffold.ts` | 8-case regression scaffold (`runDiagnosticNamespaceRegressionScaffold`) |
+
+`DiagnosticNormalizedEnvelope` wraps any raw diagnostic code from any layer with:
+- `layer: DiagnosticNamespaceLayer` — which pipeline layer owns it
+- `severity: DiagnosticSeverity` — informational / warning / blocking / critical
+- `visibility: DiagnosticVisibility` — never_user_visible / internal_audit_only
+- `phase?: string`, `sourceVersion?: string` — optional provenance tags
+- `neverUserVisible: true` — compile-time invariant
+
+`validateDiagnosticNamespaceEnvelopes()` checks: non-empty codes (hard failure), `neverUserVisible === true` (hard failure), unknown layers (soft warning → `fullyConsistent = false`), duplicate keys (soft warning → `fullyConsistent = false`).
+
+**Remaining future work:** Source modules still emit their own typed diagnostic unions at runtime. Normalized envelopes are authored in the sample registry only — not produced at emission sites. Full migration requires each source module to adopt `makeDiagnosticEnvelope()` at the point of diagnostic emission, which is a separate future consolidation phase.
 
 ---
 
