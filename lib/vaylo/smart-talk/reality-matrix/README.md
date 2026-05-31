@@ -1274,7 +1274,54 @@ Both `manual_reviewer` and `future_llm_judge` can achieve production trust when 
 
 **Safety boundary:** No LLM SDK imported. No NLP executed. No real text evaluated. No user-visible output generated. No DB writes. No persistence. No telemetry. No Smart Talk wiring. `run-wording-evaluation-scaffold.ts` unchanged.
 
-**Remaining open debts:** Debt 5 (cross-phase namespace isolation), Debt 10 (`AuditTraceChain` provenance recording). Debts 6–9 resolved or partially resolved (all upgraded through 8.2F-15M).
+**Remaining open debts:** Debt 5 (cross-phase namespace isolation). Provenance recording gap partially resolved in 8.2F-15N (emission contract exists; runtime wiring is future work). Debts 6–9 resolved or partially resolved (all upgraded through 8.2F-15M).
+
+---
+
+### Phase 8.2F-15N — Audit Trace Emission Contract
+
+**Mission:** Introduce a typed emission contract for audit trace records, bridging governance layer decisions to `AuditTraceNode` in an `AuditTraceChain`. This addresses the provenance recording gap where `AuditTraceNode` vocabulary existed but no governance layer had a typed contract for producing emission records.
+
+#### New types (`AuditTraceEmissionLayer`, `AuditTraceEmissionKind`, `AuditTraceEmissionSeverity`, `AuditTraceEmissionRecord`, `AuditTraceEmissionValidationDiagnostic`, `AuditTraceEmissionValidationResult`)
+
+- `AuditTraceEmissionLayer` — 14 values covering all governance layers (OCR through diagnostic_namespace)
+- `AuditTraceEmissionKind` — 12 values covering all structural governance decision types
+- `AuditTraceEmissionSeverity` — 4 values: `informational`, `warning`, `blocking`, `critical`
+- `AuditTraceEmissionRecord` — the typed emission record with 11 fields including `neverUserVisible: true` and optional reference fields
+- `AuditTraceEmissionValidationDiagnostic` — 6 codes (3 hard failures, 3 soft)
+- `AuditTraceEmissionValidationResult` — contains `valid`, `fullyConsistent`, `diagnostics`, `neverUserVisible`
+
+#### Validator (`validateAuditTraceEmission`)
+
+8 structural rules: 3 hard failures (blank `emissionId`, blank `parentTraceId`, `neverUserVisible !== true`) and 3 soft diagnostics (unknown layer, duplicate parent IDs, missing reference for blocking/critical). Pure function; no side effects.
+
+#### AuditTraceNode adapter (`buildAuditTraceNodeFromEmission`)
+
+Explicit layer → `ProvenanceSourceKind` mapping (14 cases) and emissionKind → `AuditDecisionKind` mapping (12 cases). No string inference. Conservative mappings: `bridge` → `"mapper"`, `diagnostic_namespace` → `"unknown"` (documented in both function and converted node notes).
+
+#### AuditTraceChain integration
+
+Case 10 of the regression scaffold proves the full pipeline: 3 emissions built → converted to `AuditTraceNode[]` → assembled into `AuditTraceChain` → validated with `validateAuditTraceChain` → `valid = true` confirmed.
+
+#### Files created
+
+| File | Description |
+|---|---|
+| `reality-simulation/audit-trace-emission-types.ts` | All 6 types/unions |
+| `reality-simulation/build-audit-trace-emission.ts` | Validator + AuditTraceNode adapter |
+| `reality-simulation/audit-trace-emission-regression-scaffold.ts` | 10-case regression (incl. chain integration) |
+
+#### Files modified
+
+| File | Change |
+|---|---|
+| `reality-simulation/index.ts` | New exports added |
+| `run-governance-lineage-audit-scaffold.ts` | Provenance recording gap upgraded; audit version `v15` |
+| `GOVERNANCE_LINEAGE_INTEGRATION_AUDIT.md` | Provenance recording section updated |
+
+**Provenance recording tracking:** The `WARNING` finding for "trace vocabulary not attached to any live runtime event" has been upgraded to `informational` / partially resolved. Remaining gap: no production governance layer emits `AuditTraceEmissionRecord` at runtime; no audit trace store or persistence layer exists.
+
+**Safety boundary:** No runtime emission wired. No persistence added. No telemetry SDK imported. No runtime hooks. No Smart Talk production connection. No OCR SDK or LLM calls. No mapper, bridge, pilot gate, or incident governance behavior changed. All result types carry `neverUserVisible: true`.
 
 ---
 

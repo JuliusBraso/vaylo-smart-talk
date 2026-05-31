@@ -2086,4 +2086,141 @@ No LLM judge called. No NLP. No real text evaluated. No user-visible wording gen
 
 ---
 
+## Phase 8.2F-15N — Audit Trace Emission Contract
+
+### Mission
+
+The Vaylo governance stack has had `AuditTraceNode`, `AuditTraceChain`, and `validateAuditTraceChain` since Phase 8.2F-14, but no governance layer produced typed emission records describing the traces they would emit. Phase 8.2F-15N introduces the **emission contract** — the typed bridge between governance decisions and their future audit trace representation.
+
+### New Types (`audit-trace-emission-types.ts`)
+
+#### `AuditTraceEmissionLayer` (14 values)
+
+The governance pipeline layer producing an emission. Follows the naming style of `ProvenanceSourceKind`:
+
+`OCR` | `reality_matrix` | `evidence_gate` | `simulation` | `explanation_contract` | `mapper` | `bridge` | `wording_review` | `wording_evaluation` | `pilot_gate` | `incident_governance` | `manual_review` | `diagnostic_namespace` | `unknown`
+
+#### `AuditTraceEmissionKind` (12 values)
+
+The structural type of governance decision:
+
+`boundary_emitted` | `forbidden_move_applied` | `required_constraint_applied` | `uncertainty_escalated` | `human_review_requested` | `section_suppressed` | `bridge_blocking_reason_observed` | `pilot_gate_blocked` | `incident_escalated` | `diagnostic_enveloped` | `attestation_validated` | `informational`
+
+#### `AuditTraceEmissionSeverity` (4 values)
+
+`informational` | `warning` | `blocking` | `critical`
+
+#### `AuditTraceEmissionRecord`
+
+The core emission contract — a typed record capturing all governance context before conversion to `AuditTraceNode`:
+
+| Field | Type | Description |
+|---|---|---|
+| `emissionId` | `string` | Unique ID; becomes `AuditTraceNode.traceId` |
+| `layer` | `AuditTraceEmissionLayer` | Producing governance layer |
+| `emissionKind` | `AuditTraceEmissionKind` | Type of governance decision |
+| `severity` | `AuditTraceEmissionSeverity` | Severity level |
+| `parentTraceIds` | `readonly string[]` | Upstream trace IDs |
+| `referencedArtifactId?` | `string` | Optional governance artifact |
+| `referencedDiagnosticCode?` | `string` | Optional diagnostic code |
+| `referencedBoundaryId?` | `string` | Optional boundary ID |
+| `referencedForbiddenMove?` | `string` | Optional forbidden move |
+| `referencedRequiredConstraint?` | `string` | Optional required constraint |
+| `neverUserVisible` | `true` | Compile-time invariant |
+| `notes?` | `readonly string[]` | Internal governance notes |
+
+#### `AuditTraceEmissionValidationDiagnostic` (6 codes)
+
+| Code | Type | Trigger |
+|---|---|---|
+| `audit_emission_missing_id` | Hard | `emissionId` is blank |
+| `audit_emission_empty_parent_id` | Hard | `parentTraceIds` contains blank entry |
+| `audit_emission_user_visible_violation` | Hard | `neverUserVisible !== true` at runtime |
+| `audit_emission_unknown_layer` | Soft | `layer === "unknown"` |
+| `audit_emission_duplicate_parent_id` | Soft | Duplicate entries in `parentTraceIds` |
+| `audit_emission_missing_reference_for_blocking` | Soft | `blocking`/`critical` severity + no reference field |
+
+### Validator (`validateAuditTraceEmission`)
+
+Located in `build-audit-trace-emission.ts`. Pure function; no side effects.
+
+**Hard failures** (set `valid = false`): Rules 1, 3, 5  
+**Soft diagnostics** (set `fullyConsistent = false`, don't affect `valid`): Rules 2, 4, 6  
+**`fullyConsistent = valid AND no soft diagnostics`**
+
+### AuditTraceNode Adapter (`buildAuditTraceNodeFromEmission`)
+
+Located in `build-audit-trace-emission.ts`. Converts `AuditTraceEmissionRecord` → `AuditTraceNode`.
+
+**Layer → ProvenanceSourceKind mapping (explicit; no string inference):**
+
+| `AuditTraceEmissionLayer` | `ProvenanceSourceKind` | Notes |
+|---|---|---|
+| `OCR` | `"OCR"` | |
+| `reality_matrix` | `"reality_matrix"` | |
+| `evidence_gate` | `"evidence_gate"` | |
+| `simulation` | `"simulation"` | |
+| `explanation_contract` | `"explanation_contract"` | |
+| `mapper` | `"mapper"` | |
+| `bridge` | `"mapper"` | Conservative — no dedicated bridge ProvenanceSourceKind |
+| `wording_review` | `"wording_review"` | |
+| `wording_evaluation` | `"wording_evaluation"` | |
+| `pilot_gate` | `"pilot_gate"` | |
+| `incident_governance` | `"incident_governance"` | |
+| `manual_review` | `"manual_review"` | |
+| `diagnostic_namespace` | `"unknown"` | Conservative — no dedicated ProvenanceSourceKind |
+| `unknown` | `"unknown"` | |
+
+**EmissionKind → AuditDecisionKind mapping (explicit; no string inference):**
+
+| `AuditTraceEmissionKind` | `AuditDecisionKind` |
+|---|---|
+| `boundary_emitted` | `"boundary_applied"` |
+| `forbidden_move_applied` | `"forbidden_move_applied"` |
+| `required_constraint_applied` | `"required_constraint_applied"` |
+| `uncertainty_escalated` | `"uncertainty_escalation"` |
+| `human_review_requested` | `"human_review_required"` |
+| `section_suppressed` | `"informational"` |
+| `bridge_blocking_reason_observed` | `"informational"` |
+| `pilot_gate_blocked` | `"pilot_block"` |
+| `incident_escalated` | `"incident_escalation"` |
+| `diagnostic_enveloped` | `"informational"` |
+| `attestation_validated` | `"informational"` |
+| `informational` | `"informational"` |
+
+### Regression Scaffold (10 cases, `audit-trace-emission-regression-scaffold.ts`)
+
+| Case | Scenario | `valid` | `fullyConsistent` |
+|---|---|---|---|
+| 1 | Valid simulation boundary emission + conversion | `true` | `true` |
+| 1 (conv) | Converted node has correct traceId/sourceKind/decisionKind | ✓ | — |
+| 2 | Valid mapper forbidden move emission + conversion | `true` | `true` |
+| 2 (conv) | Converted node has correct sourceKind + parentTraceIds | ✓ | — |
+| 3 | Valid pilot gate block emission with parent IDs | `true` | `true` |
+| 3 (conv) | Converted node has pilot_gate sourceKind + pilot_block decision | ✓ | — |
+| 4 | Blank `emissionId` | `false` | `false` |
+| 5 | `layer === "unknown"` | `true` | `false` |
+| 6 | Blank parent ID | `false` | `false` |
+| 7 | Duplicate `parentTraceIds` | `true` | `false` |
+| 8 | `blocking` severity + no reference | `true` | `false` |
+| 9 | `neverUserVisible = false` forced via cast | `false` | `false` |
+| 10 | 3 converted emissions form valid `AuditTraceChain` | `valid=true` confirmed | — |
+
+**Case 10** is the chain integration regression: builds `ROOT_SIMULATION_EMISSION` → `MAPPER_CHILD_EMISSION` → `PILOT_CHILD_EMISSION`, converts all to `AuditTraceNode[]`, builds an `AuditTraceChain`, and validates with `validateAuditTraceChain`. Result: `valid = true`.
+
+### Future Role
+
+Before production audit trails can be operational, the following must be implemented in future phases:
+
+1. Each governance layer (mapper, bridge, pilot gate, incident governance) produces `AuditTraceEmissionRecord` at its governance decision points.
+2. `validateAuditTraceEmission` is called at each emission site.
+3. `buildAuditTraceNodeFromEmission` converts records to `AuditTraceNode[]`.
+4. A persistence layer stores `AuditTraceChain` records for audit investigation.
+
+### Safety Boundary
+
+No runtime emission wired. No persistence added (no DB writes, no file writes, no log writes). No telemetry SDK imported. No runtime execution hooks. No Smart Talk production connection. No OCR SDK or LLM calls. No mapper, bridge, pilot gate, or incident governance behavior changed. All result types carry `neverUserVisible: true`.
+
+---
+
 > **Reality simulation models safe explanation space, not legal truth.**

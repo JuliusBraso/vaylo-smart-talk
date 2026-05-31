@@ -342,3 +342,21 @@ export {
   type WordingJudgeAttestationRegressionCaseResult,
   type WordingJudgeAttestationRegressionScaffoldResult,
 } from "./wording-judge-attestation-regression-scaffold";
+// ── Phase 8.2F-15N — Audit Trace Emission Contract ────────────────────────────
+export type {
+  AuditTraceEmissionLayer,
+  AuditTraceEmissionKind,
+  AuditTraceEmissionSeverity,
+  AuditTraceEmissionRecord,
+  AuditTraceEmissionValidationDiagnostic,
+  AuditTraceEmissionValidationResult,
+} from "./audit-trace-emission-types";
+export {
+  AUDIT_TRACE_EMISSION_BUILDER_VERSION,
+  validateAuditTraceEmission,
+  buildAuditTraceNodeFromEmission,
+} from "./build-audit-trace-emission";
+export {
+  AUDIT_TRACE_EMISSION_REGRESSION_VERSION,
+  runAuditTraceEmissionRegressionScaffold,
+} from "./audit-trace-emission-regression-scaffold";

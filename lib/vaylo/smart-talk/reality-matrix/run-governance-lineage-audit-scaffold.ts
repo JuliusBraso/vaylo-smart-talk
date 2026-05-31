@@ -121,6 +121,24 @@
  *    Source modules retain their own typed diagnostic unions; no codes renamed/removed.
  *    Full migration to normalized envelopes at emission sites is future work.
  *
+ * 8.2F-15N changes:
+ *  - Provenance recording gap: trace vocabulary not wired to any live governance event → PARTIALLY RESOLVED.
+ *    AuditTraceEmissionRecord defined in audit-trace-emission-types.ts with:
+ *    AuditTraceEmissionLayer (14 values), AuditTraceEmissionKind (12 values),
+ *    AuditTraceEmissionSeverity (4 values), AuditTraceEmissionValidationDiagnostic (6 codes).
+ *    validateAuditTraceEmission implements 8 rules (3 hard failures, 3 soft diagnostics).
+ *    buildAuditTraceNodeFromEmission provides explicit layer → ProvenanceSourceKind and
+ *    emissionKind → AuditDecisionKind mapping (14 + 12 explicit cases; no string inference).
+ *    Conservative mappings: bridge → "mapper", diagnostic_namespace → "unknown" (documented).
+ *    10-case regression scaffold covers validity, conversion, and AuditTraceChain integration.
+ *    Case 10 builds 3 emission records, converts to AuditTraceNode[], forms an AuditTraceChain,
+ *    and validates with validateAuditTraceChain — result.valid = true confirmed.
+ *    No runtime emission wired. No persistence/store added. No governance layer behavior changed.
+ *    No Smart Talk, OCR, LLM, or telemetry coupling added.
+ *    Remaining gap: no production governance layer emits AuditTraceEmissionRecord at runtime;
+ *    no audit trace store or persistence layer exists. Full resolution requires future wiring.
+ *    WARNING finding for provenance recording upgraded to informational/partially resolved.
+ *
  * 8.2F-15M changes:
  *  - Technical Debt 9: wording score attestation store contract → PARTIALLY RESOLVED (upgraded).
  *    WordingJudgeAttestationRecord defined in wording-judge-attestation-types.ts with:
@@ -201,7 +219,7 @@ import type {
 } from "./governance-lineage-audit-types";
 
 export const GOVERNANCE_LINEAGE_AUDIT_VERSION =
-  "8.2f-15m-governance-lineage-audit-v14";
+  "8.2f-15n-governance-lineage-audit-v15";
 
 // ── Finding factory ───────────────────────────────────────────────────────────
 
@@ -513,14 +531,36 @@ const WARNING_FINDINGS: readonly GovernanceAuditFinding[] = [
   ),
   finding(
     "provenance_audit",
-    "warning",
-    "Provenance Audit: trace vocabulary not attached to any live runtime event",
-    "AuditTraceNode, AuditTraceChain, and validateAuditTraceChain define the " +
-      "structural vocabulary for governance lineage but are not populated by any " +
+    "informational",
+    "PARTIALLY RESOLVED (8.2F-15N): AuditTraceEmissionRecord contract and AuditTraceNode " +
+      "adapter introduced; no runtime emission wired yet",
+    "Previously reported as a WARNING (provenance recording gap): " +
+      "AuditTraceNode, AuditTraceChain, and validateAuditTraceChain defined the " +
+      "structural vocabulary for governance lineage but were not populated by any " +
       "existing scaffold. No governance decision in phases 8.2F-1 through 8.2F-14 " +
-      "emits an AuditTraceNode. Future phases must attach provenance recording to " +
-      "all governance decision points.",
+      "emitted an AuditTraceNode. " +
+      "Partially resolved in Phase 8.2F-15N by introducing: " +
+      "AuditTraceEmissionRecord — a typed emission contract capturing layer, emissionKind, " +
+      "severity, parentTraceIds, referenced artifact/diagnostic/boundary/move/constraint fields, " +
+      "and neverUserVisible:true. " +
+      "AuditTraceEmissionLayer (14 values: OCR, reality_matrix, evidence_gate, simulation, " +
+      "explanation_contract, mapper, bridge, wording_review, wording_evaluation, pilot_gate, " +
+      "incident_governance, manual_review, diagnostic_namespace, unknown). " +
+      "AuditTraceEmissionKind (12 values) and AuditTraceEmissionSeverity (4 values). " +
+      "validateAuditTraceEmission: 3 hard failures (blank emissionId, blank parentTraceId, " +
+      "neverUserVisible !== true) + 3 soft diagnostics (unknown layer, duplicate parent IDs, " +
+      "missing reference for blocking/critical severity). " +
+      "buildAuditTraceNodeFromEmission: explicit layer → ProvenanceSourceKind and " +
+      "emissionKind → AuditDecisionKind mapping for all 14 + 12 values; no string inference. " +
+      "Conservative: bridge → mapper sourceKind, diagnostic_namespace → unknown (documented). " +
+      "10-case regression scaffold: Cases 1–3 prove valid emissions convert correctly; " +
+      "Cases 4–9 cover all error paths; Case 10 converts 3 emissions to AuditTraceNode[], " +
+      "builds an AuditTraceChain, and confirms validateAuditTraceChain returns valid=true. " +
+      "Remaining gap: no production governance layer emits AuditTraceEmissionRecord at runtime; " +
+      "no audit trace store or persistence layer exists. Full resolution requires a future phase " +
+      "that wires emission sites in the mapper, bridge, pilot gate, and incident governance layers.",
   ),
+  // Provenance recording gap partially resolved in 8.2F-15N — moved from WARNING to informational above
   finding(
     "wording_review",
     "warning",

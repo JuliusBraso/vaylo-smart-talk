@@ -1,7 +1,7 @@
-# Governance Lineage Integration Audit — Phase 8.2F-15 (updated 8.2F-15M)
+# Governance Lineage Integration Audit — Phase 8.2F-15 (updated 8.2F-15N)
 
-**Version:** `8.2f-15m-governance-lineage-audit-v14`
-**Scope:** Vaylo Document Reasoning Constitution V1 — Phases 8.2A → 8.2F-15M
+**Version:** `8.2f-15n-governance-lineage-audit-v15`
+**Scope:** Vaylo Document Reasoning Constitution V1 — Phases 8.2A → 8.2F-15N
 **Mode:** Audit only / no runtime wiring / no behavior modified
 **Overall Status:** `partially_connected`
 
@@ -110,6 +110,24 @@
 > manual reviewer production trust case (Case 3). No real LLM judge wired. No NLP. No real text
 > evaluation. No DB or persistence added. `run-wording-evaluation-scaffold.ts` unchanged.
 > Debt 9 remains explicitly tracked in `WARNING_FINDINGS` as partially resolved.
+>
+> **8.2F-15N Update:** The provenance recording gap (trace vocabulary not wired to any live
+> governance event) is **partially resolved**. `AuditTraceEmissionRecord` typed emission contract
+> introduced in `audit-trace-emission-types.ts`. `AuditTraceEmissionLayer` (14 values),
+> `AuditTraceEmissionKind` (12 values), `AuditTraceEmissionSeverity` (4 values), and
+> `AuditTraceEmissionValidationDiagnostic` (6 codes) defined.
+> `validateAuditTraceEmission` implements 8 structural rules: 3 hard failures (blank `emissionId`,
+> blank `parentTraceId`, `neverUserVisible !== true` at runtime) and 3 soft diagnostics (unknown
+> layer, duplicate parent IDs, missing reference for `blocking`/`critical` severity).
+> `buildAuditTraceNodeFromEmission` provides explicit layer → `ProvenanceSourceKind` and
+> `emissionKind` → `AuditDecisionKind` mapping for all 14 + 12 values with no string inference.
+> Conservative mappings: `bridge` → `"mapper"` sourceKind, `diagnostic_namespace` → `"unknown"`.
+> 10-case regression scaffold: Cases 1–3 prove valid emissions convert to `AuditTraceNode` with
+> correct `traceId`, `sourceKind`, and `decisionKind`; Cases 4–9 cover all error paths; Case 10
+> converts 3 emissions to `AuditTraceNode[]`, builds an `AuditTraceChain`, and confirms
+> `validateAuditTraceChain` returns `valid = true`. No runtime emission wired. No persistence
+> or store added. No governance layer (mapper, bridge, pilot, incident) behavior changed.
+> Remaining gap: no production governance layer emits `AuditTraceEmissionRecord` at runtime.
 
 ---
 
@@ -595,6 +613,8 @@ No OCR SDK is integrated. All OCR metadata (`OcrDegradationVector`, `baseConfide
 
 No governance decision across phases 8.2A through 8.2F-14 is persisted, logged, or transmitted to any monitoring system. Audit traces (`AuditTraceNode`) are not populated from any real governance event. Incident governance (`IncidentGovernanceResult`) produces metadata-only recommendations with no operational effect.
 
+**8.2F-15N partial resolution:** `AuditTraceEmissionRecord` typed contract now exists with `validateAuditTraceEmission` and `buildAuditTraceNodeFromEmission`. Emission records can be converted to `AuditTraceNode[]` and form a structurally valid `AuditTraceChain` (proven in regression Case 10). No runtime emission site is wired; no persistence layer exists. This contract defines the interface that future phases must implement at each governance layer.
+
 **Impact:** Production operation is ungovernable without an audit trail. Incident investigation, regulatory compliance review, and pilot governance review cannot be performed.
 
 ---
@@ -620,7 +640,7 @@ The OCR uncertainty harness is called by the pilot gate but not by the mapper or
 | Wording safety gated before pilot | No | `verifyHumanReviewCompliance` not called in pilot gate |
 | Real-world document corpus | No | Synthetic exemplars only |
 | Incident escalation modelled | Yes | Phase 8.2F-13 |
-| Audit trace vocabulary | Yes | Phase 8.2F-14 (vocabulary only, not populated) |
+| Audit trace vocabulary | Yes | Phase 8.2F-14 vocabulary + 8.2F-15N emission contract; not yet wired at runtime |
 | Pilot → incident auto-escalation | No | Manual routing required |
 | Real OCR path | No | Caller-supplied metadata only |
 | Operational telemetry | No | Not implemented |
