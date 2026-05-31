@@ -121,6 +121,29 @@
  *    Source modules retain their own typed diagnostic unions; no codes renamed/removed.
  *    Full migration to normalized envelopes at emission sites is future work.
  *
+ * 8.2F-15O changes:
+ *  - Technical Debt 5: cross-phase diagnostic namespace isolation → PARTIALLY RESOLVED (upgraded).
+ *    Phase 8.2F-15J established the envelope model (DiagnosticNormalizedEnvelope, namespace layers,
+ *    validateDiagnosticNamespaceEnvelopes, DIAGNOSTIC_NAMESPACE_SAMPLE_REGISTRY).
+ *    Phase 8.2F-15O adds the native diagnostic adapter contract:
+ *    DiagnosticEnvelopeSourceKind (13 values: native_mapper_free_preview through unknown),
+ *    DiagnosticEnvelopeAdapterInput (7 fields including neverUserVisible:true),
+ *    DiagnosticEnvelopeAdapterDiagnostic (5 codes: empty_code, user_visible_violation,
+ *    unknown_source, default_severity_used, layer_mapping_fallback),
+ *    DiagnosticEnvelopeAdapterResult (envelope + adapted flag + diagnostics).
+ *    buildDiagnosticEnvelopeFromNativeDiagnostic: explicit 13-case sourceKind → layer mapping
+ *    (no string inference); hard failures for blank code and neverUserVisible violation;
+ *    soft diagnostics for unknown source, default severity, and exhaustiveness fallback.
+ *    Envelope always returned (best-effort) even on hard failure.
+ *    buildDiagnosticEnvelopesFromNativeDiagnostics: batch variant with allAdapted aggregation.
+ *    12-case regression: Cases 1–6 cover all named source kinds; Case 7 covers unknown source;
+ *    Cases 8–9 cover hard failures; Cases 10–11 cover batch behavior; Case 12 confirms adapted
+ *    envelopes pass validateDiagnosticNamespaceEnvelopes with valid=true.
+ *    No source modules modified. No diagnostic codes renamed or removed.
+ *    No runtime coupling added. No persistence, telemetry, or logging. No behavior changed.
+ *    Remaining gap: source emission sites do not yet adopt envelopes at runtime.
+ *    Debt 5 tracking: WARNING finding upgraded to informational/partially resolved (upgraded).
+ *
  * 8.2F-15N changes:
  *  - Provenance recording gap: trace vocabulary not wired to any live governance event → PARTIALLY RESOLVED.
  *    AuditTraceEmissionRecord defined in audit-trace-emission-types.ts with:
@@ -219,7 +242,7 @@ import type {
 } from "./governance-lineage-audit-types";
 
 export const GOVERNANCE_LINEAGE_AUDIT_VERSION =
-  "8.2f-15n-governance-lineage-audit-v15";
+  "8.2f-15o-governance-lineage-audit-v16";
 
 // ── Finding factory ───────────────────────────────────────────────────────────
 
@@ -585,7 +608,8 @@ const WARNING_FINDINGS: readonly GovernanceAuditFinding[] = [
   finding(
     "provenance_audit",
     "informational",
-    "PARTIALLY RESOLVED (8.2F-15J): DiagnosticNormalizedEnvelope namespace model established",
+    "PARTIALLY RESOLVED (8.2F-15J + 8.2F-15O): DiagnosticNormalizedEnvelope namespace model " +
+      "and native diagnostic adapter contract established",
     "Previously reported as a WARNING (Debt 5, partially reduced in 8.2F-15C): " +
       "8.2F-15C resolved mapper-level overloads (one dedicated diagnostic per ForbiddenExplanationMove; " +
       "free_preview_paid_field_blocked narrowed to structural invariant; " +
@@ -600,6 +624,18 @@ const WARNING_FINDINGS: readonly GovernanceAuditFinding[] = [
       "makeDiagnosticEnvelope() factory, validateDiagnosticNamespaceEnvelopes() validator, " +
       "DIAGNOSTIC_NAMESPACE_SAMPLE_REGISTRY (26 representative envelopes across 8 layers), " +
       "and a full 8-case regression scaffold. " +
+      "Upgraded in Phase 8.2F-15O by introducing the native diagnostic adapter contract: " +
+      "DiagnosticEnvelopeSourceKind (13 values with native_ prefix), " +
+      "DiagnosticEnvelopeAdapterInput (7 fields including neverUserVisible:true), " +
+      "DiagnosticEnvelopeAdapterDiagnostic (5 codes), " +
+      "DiagnosticEnvelopeAdapterResult (envelope + adapted + diagnostics). " +
+      "buildDiagnosticEnvelopeFromNativeDiagnostic: explicit 13-case sourceKind → layer mapping " +
+      "(no string inference); hard failures for blank code and neverUserVisible violation; " +
+      "soft diagnostics for unknown source, default severity, and exhaustiveness fallback. " +
+      "buildDiagnosticEnvelopesFromNativeDiagnostics: batch variant with allAdapted aggregation. " +
+      "12-case regression: Cases 1–6 cover named source kinds; Case 7 covers unknown source; " +
+      "Cases 8–9 cover hard failures; Cases 10–11 cover batch; Case 12 confirms adapted envelopes " +
+      "pass validateDiagnosticNamespaceEnvelopes with valid=true. " +
       "Source modules retain their own typed unions and emit diagnostics exactly as before — " +
       "no codes renamed, removed, or merged. " +
       "Remaining future work: source emission sites adopt envelopes directly so normalized " +

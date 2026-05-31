@@ -1,7 +1,7 @@
-# Governance Lineage Integration Audit — Phase 8.2F-15 (updated 8.2F-15N)
+# Governance Lineage Integration Audit — Phase 8.2F-15 (updated 8.2F-15O)
 
-**Version:** `8.2f-15n-governance-lineage-audit-v15`
-**Scope:** Vaylo Document Reasoning Constitution V1 — Phases 8.2A → 8.2F-15N
+**Version:** `8.2f-15o-governance-lineage-audit-v16`
+**Scope:** Vaylo Document Reasoning Constitution V1 — Phases 8.2A → 8.2F-15O
 **Mode:** Audit only / no runtime wiring / no behavior modified
 **Overall Status:** `partially_connected`
 
@@ -110,6 +110,21 @@
 > manual reviewer production trust case (Case 3). No real LLM judge wired. No NLP. No real text
 > evaluation. No DB or persistence added. `run-wording-evaluation-scaffold.ts` unchanged.
 > Debt 9 remains explicitly tracked in `WARNING_FINDINGS` as partially resolved.
+>
+> **8.2F-15O Update:** Debt 5 (cross-phase diagnostic namespace isolation) is **upgraded —
+> still partially resolved**. `DiagnosticEnvelopeAdapterInput` typed adapter input introduced in
+> `diagnostic-envelope-adapter-types.ts`. `DiagnosticEnvelopeSourceKind` (13 values with `native_`
+> prefix), `DiagnosticEnvelopeAdapterDiagnostic` (5 codes), and `DiagnosticEnvelopeAdapterResult`
+> (with `envelope`, `adapted`, `diagnostics`) defined.
+> `buildDiagnosticEnvelopeFromNativeDiagnostic`: explicit 13-case `sourceKind` → `DiagnosticNamespaceLayer`
+> mapping; hard failures for blank `code` and `neverUserVisible !== true`; soft diagnostics for unknown
+> source, default severity, and exhaustiveness fallback; envelope always returned (best-effort even on failure).
+> `buildDiagnosticEnvelopesFromNativeDiagnostics`: batch adapter with `allAdapted` aggregation.
+> 12-case regression scaffold: Cases 1–6 verify all named source kinds; Case 12 confirms adapted
+> envelopes pass `validateDiagnosticNamespaceEnvelopes` with `valid = true`.
+> No source modules modified. No diagnostic codes renamed or removed. No runtime coupling added.
+> No persistence, telemetry, or logging. Remaining gap: source emission sites do not yet adopt
+> envelopes at runtime; no cross-phase diagnostic correlation store exists.
 >
 > **8.2F-15N Update:** The provenance recording gap (trace vocabulary not wired to any live
 > governance event) is **partially resolved**. `AuditTraceEmissionRecord` typed emission contract
@@ -319,9 +334,9 @@ When both moves are simultaneously active, the effect loop adds `next_steps_safe
 
 ---
 
-### Debt 5 — Overloaded diagnostic taxonomy across phases ⚠ PARTIALLY RESOLVED (8.2F-15J)
+### Debt 5 — Overloaded diagnostic taxonomy across phases ⚠ PARTIALLY RESOLVED (8.2F-15J + 8.2F-15O)
 
-**Severity:** Warning → Reduced at mapper level (8.2F-15C) → **PARTIALLY RESOLVED in Phase 8.2F-15J**
+**Severity:** Warning → Reduced at mapper level (8.2F-15C) → **PARTIALLY RESOLVED in Phase 8.2F-15J** → **Upgraded in Phase 8.2F-15O**
 **Layer:** cross-phase / `governance_lineage_audit`
 
 **Original debt:** Multiple isolated diagnostic code union types exist across governance layers (e.g. `FreePreviewMapperDiagnosticCode`, `PaidExplanationMapperDiagnosticCode`, `BridgeDiagnosticCode`, `OcrDiagnosticCode`, `PilotGateDiagnosticCode`, `AuditTraceDiagnosticCode`). No shared taxonomy or namespace model exists for cross-phase audit correlation.
@@ -351,7 +366,23 @@ New files added to `lib/vaylo/smart-talk/reality-matrix/`:
 
 `validateDiagnosticNamespaceEnvelopes()` checks: non-empty codes (hard failure), `neverUserVisible === true` (hard failure), unknown layers (soft warning → `fullyConsistent = false`), duplicate keys (soft warning → `fullyConsistent = false`).
 
-**Remaining future work:** Source modules still emit their own typed diagnostic unions at runtime. Normalized envelopes are authored in the sample registry only — not produced at emission sites. Full migration requires each source module to adopt `makeDiagnosticEnvelope()` at the point of diagnostic emission, which is a separate future consolidation phase.
+**8.2F-15O Upgrade — Native Diagnostic Adapter Contract:**
+
+New files added to `lib/vaylo/smart-talk/reality-matrix/`:
+
+| File | Contents |
+|---|---|
+| `diagnostic-envelope-adapter-types.ts` | `DiagnosticEnvelopeSourceKind` (13 values), `DiagnosticEnvelopeAdapterInput`, `DiagnosticEnvelopeAdapterDiagnostic` (5 codes), `DiagnosticEnvelopeAdapterResult` |
+| `build-diagnostic-envelope-adapter.ts` | `buildDiagnosticEnvelopeFromNativeDiagnostic()`, `buildDiagnosticEnvelopesFromNativeDiagnostics()` |
+| `diagnostic-envelope-adapter-regression-scaffold.ts` | 12-case regression scaffold |
+
+`DiagnosticEnvelopeAdapterInput` describes a native diagnostic code with its `sourceKind` (which source module emitted it), optional `severity`, `phase`, `sourceVersion`, `notes`, and `neverUserVisible: true`.
+
+`buildDiagnosticEnvelopeFromNativeDiagnostic` maps `DiagnosticEnvelopeSourceKind` → `DiagnosticNamespaceLayer` via explicit 13-case switch (no string inference). Hard failures: blank `code`, `neverUserVisible !== true`. Soft diagnostics: `unknown` source, default severity used, exhaustiveness fallback. Envelope always returned even on failure (best-effort with forced invariant).
+
+Regression Case 12 confirms that envelopes produced by the adapter pass `validateDiagnosticNamespaceEnvelopes` with `valid = true` and `neverUserVisible = true`.
+
+**Remaining future work:** Source modules still emit their own typed diagnostic unions at runtime. Normalized envelopes are produced by the adapter only on demand — not at native emission sites. Full migration requires each source module to call `buildDiagnosticEnvelopeFromNativeDiagnostic` at the point of diagnostic emission, which is a separate future consolidation phase. No diagnostic codes renamed or removed. No source module behavior changed.
 
 ---
 
