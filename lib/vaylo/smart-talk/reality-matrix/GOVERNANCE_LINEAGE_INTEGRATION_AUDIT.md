@@ -1,9 +1,16 @@
 # Governance Lineage Integration Audit — Phase 8.2F-15 (updated 8.2F-15O)
 
-**Version:** `8.2f-15o-governance-lineage-audit-v16`
-**Scope:** Vaylo Document Reasoning Constitution V1 — Phases 8.2A → 8.2F-15O
-**Mode:** Audit only / no runtime wiring / no behavior modified
+**Version:** `8.2f-15o-governance-lineage-audit-v16`  
+**Scope:** Vaylo Document Reasoning Constitution V1 — Phases 8.2A → 8.2F-15O  
+**Mode:** Audit only / no runtime wiring / no behavior modified  
 **Overall Status:** `partially_connected`
+
+> **⚠ EPOCH CLOSURE NOTICE (Phase 8.2F-16):**
+> The final epoch-level closure audit is now tracked in
+> **[`GOVERNANCE_KERNEL_CLOSURE_AUDIT.md`](./GOVERNANCE_KERNEL_CLOSURE_AUDIT.md)**.
+> That document is the authoritative closure verdict for Epoch 8.2F and supersedes this
+> lineage audit as the final architectural inventory. The present document remains as the
+> detailed per-debt lineage record and is complementary to the closure audit, not replaced by it.
 
 > **8.2F-15A Update:** Debt 2 (`calculated_amount`) and Debt 3 (`false_reassurance`) have been
 > resolved. Both dedicated `ForbiddenExplanationMove` tokens have been added to

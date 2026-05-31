@@ -1400,6 +1400,57 @@ Case 10 of the regression scaffold proves the full pipeline: 3 emissions built �
 
 ---
 
+### Phase 8.2F-16 — Governance Kernel Closure Audit
+
+**Mission:** Perform the final closure audit for the Vaylo Smart Talk Governance Kernel (phases 8.2A → 8.2F-15O) and formally end Epoch 8.2F.
+
+#### Closure verdict
+
+> **`complete_for_runtime_integration`**
+
+The governance kernel defines, validates, and documents the complete set of safety constraints, forbidden moves, required constraints, uncertainty handling, wording governance, audit provenance, attestation contracts, and cross-phase diagnostic infrastructure required to safely integrate a real LLM into the Smart Talk explanation pipeline.
+
+**Epoch 8.2F (Governance Kernel) is closed.**  
+**Next epoch: Epoch 8.2G — Runtime LLM Integration.**
+
+#### What this means
+
+All 20 governance layers have typed contracts, pure validators, regression scaffolds, and classified technical debts. All 10 tracked debts are resolved, partially resolved, or formally accepted as runtime debts belonging to Epoch 8.2G.
+
+#### What this does NOT mean
+
+- Not production-ready (no prose generation, no end-to-end pipeline, no real documents)
+- Not pilot-ready for real users (no wording certification gate, no auth, no real corpus)
+- Not audit-persisted (no AuditTraceNode storage, no compliance trail)
+- Not LLM-integrated (no real LLM calls)
+- Not OCR-integrated (no photo/PDF ingestion)
+
+#### Files created
+
+| File | Description |
+|---|---|
+| `governance-kernel-closure-types.ts` | `GovernanceKernelClosureStatus`, `GovernanceKernelLayerReadiness`, `GovernanceKernelClosureFinding`, `GovernanceKernelClosureAuditResult` |
+| `run-governance-kernel-closure-audit-scaffold.ts` | `runGovernanceKernelClosureAuditScaffold()` — static pre-authored inventory for all 20 layers |
+| `GOVERNANCE_KERNEL_CLOSURE_AUDIT.md` | Full closure document: executive verdict, layer inventory, resolved debts, accepted runtime debts, production blockers, pilot blockers, next epoch scope, non-negotiable invariants |
+
+#### Layer readiness summary (all 20 layers)
+
+| Status | Count | Layers |
+|---|---|---|
+| Complete | 19 | All except redacted_corpus |
+| Partially complete | 1 | `redacted_corpus` (synthetic only; not yet consumed end-to-end) |
+| Blocked | 0 | — |
+
+#### Non-negotiable invariants preserved into Epoch 8.2G
+
+No unsupported deadline calculation · No unsupported enforcement claim · No false reassurance · No calculated amount extraction from uncertain input · No dry-run-as-fact · No speculation-as-fact · No cross-lane merging · No panic amplification · No legal verdict posture · All user-visible wording must pass wording governance · High-risk output must support human review path · Audit metadata remains `neverUserVisible`
+
+#### Safety boundary
+
+No runtime behavior changed. No new governance machinery wired. No persistence, telemetry, or logging. No user-visible output. All result types carry `neverUserVisible: true`. This phase is documentation and static type model only.
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
