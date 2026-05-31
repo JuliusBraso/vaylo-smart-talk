@@ -279,3 +279,24 @@ export {
   type ProvenanceAuditRegressionCaseResult,
   type ProvenanceAuditRegressionScaffoldResult,
 } from "./provenance-audit-regression-scaffold";
+// ── Phase 8.2F-15K — OCR Confidence Full Attestation Store Contract ───────────
+export type {
+  OcrQualityReportIssuerKind,
+  OcrQualityReportStoreKind,
+  OcrQualityAttestationMethod,
+  OcrQualityReportLifecycleStatus,
+  OcrQualityAttestationVerificationStatus,
+  OcrQualityAttestationRecord,
+  OcrQualityAttestationValidationDiagnostic,
+  OcrQualityAttestationValidationResult,
+} from "./ocr-quality-attestation-types";
+export {
+  OCR_QUALITY_ATTESTATION_VALIDATOR_VERSION,
+  validateOcrQualityAttestation,
+} from "./validate-ocr-quality-attestation";
+export {
+  OCR_QUALITY_ATTESTATION_REGRESSION_VERSION,
+  runOcrQualityAttestationRegressionScaffold,
+  type OcrAttestationRegressionCaseResult,
+  type OcrAttestationRegressionScaffoldResult,
+} from "./ocr-quality-attestation-regression-scaffold";

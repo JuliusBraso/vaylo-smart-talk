@@ -1123,6 +1123,57 @@ Raw `WordingEvaluationInput` (toneMatrix) path **retained unchanged** for backwa
 
 ---
 
+### Phase 8.2F-15K — OCR Confidence Full Attestation Store Contract
+
+**Debt addressed:** Debt 7 (upgraded from 8.2F-15E partial resolution)
+**Audit version:** `v12`
+
+Defines the full OCR quality attestation store contract as a metadata-only scaffold. Phase 8.2F-15E introduced `OcrQualityReport`; 8.2F-15K adds the trust-tier model that governs how a report would be verified, stored, and trusted in a future production deployment.
+
+#### New types (`ocr-quality-attestation-types.ts`)
+
+- `OcrQualityReportIssuerKind` — 5 values: `synthetic_fixture`, `manual_reviewer`, `future_ocr_engine`, `imported_external_report`, `unknown`
+- `OcrQualityReportStoreKind` — 5 values: `in_memory_test_fixture`, `future_database_record`, `future_object_storage_metadata`, `imported_static_fixture`, `none`
+- `OcrQualityAttestationMethod` — 5 values: `none`, `fixture_declared`, `manual_review_declared`, `future_engine_signed`, `future_store_verified`
+- `OcrQualityReportLifecycleStatus` — 5 values: `draft`, `validated`, `rejected`, `expired`, `superseded`
+- `OcrQualityAttestationVerificationStatus` — 4 values: `verified`, `unverifiable`, `failed`, `not_applicable`
+- `OcrQualityAttestationRecord` — structured attestation record binding a report to its trust provenance
+- `OcrQualityAttestationValidationDiagnostic` — 10 typed diagnostic codes
+- `OcrQualityAttestationValidationResult` — contains `valid`, `trustedForPilot`, `trustedForProduction`, `diagnostics`, `neverUserVisible`
+
+#### Trust tiers
+
+| Tier | Condition |
+|---|---|
+| `trustedForPilot` | `valid` + `lifecycleStatus === "validated"` + verification is `"verified"` or `"not_applicable"` |
+| `trustedForProduction` | Pilot trust + `verificationStatus === "verified"` + `storeKind !== "none"` + `issuerKind !== "unknown"` |
+
+Synthetic fixtures (`fixture_declared` + `not_applicable`) are pilot-trusted but never production-trusted. Future engine attestations with real store references can be production-trusted structurally.
+
+#### Files created
+
+| File | Description |
+|---|---|
+| `reality-simulation/ocr-quality-attestation-types.ts` | All 8 types and enums |
+| `reality-simulation/validate-ocr-quality-attestation.ts` | 12-rule pure validator |
+| `reality-simulation/ocr-quality-attestation-regression-scaffold.ts` | 10-case regression scaffold |
+
+#### Files modified
+
+| File | Change |
+|---|---|
+| `reality-simulation/index.ts` | New exports added |
+| `run-governance-lineage-audit-scaffold.ts` | Debt 7 upgraded; audit version `v12` |
+| `GOVERNANCE_LINEAGE_INTEGRATION_AUDIT.md` | Debt 7 section expanded |
+
+**Remaining gap:** No real OCR engine connected. No DB or store writes. No persistence. No runtime coupling. Full production trust requires a future phase binding attestation to a verified OCR provider and real attestation store.
+
+**Safety boundary:** No OCR SDK imported. No images processed. No DB writes. No persistence. No telemetry. No logging. No Smart Talk wiring. No LLM called. `evaluate-ocr-uncertainty.ts` and `run-limited-pilot-gate-scaffold.ts` unchanged.
+
+**Remaining open debts:** Debt 5 (cross-phase namespace isolation), Debt 10 (`AuditTraceChain` provenance recording at emission sites). Debts 6–9 resolved or partially resolved.
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).

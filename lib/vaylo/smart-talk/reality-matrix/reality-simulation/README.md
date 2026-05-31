@@ -1786,4 +1786,97 @@ No persistence added. No logging. No telemetry. No runtime hooks. No Smart Talk 
 
 ---
 
+## PHASE 8.2F-15K — OCR Confidence Full Attestation Store Contract
+
+**Mode:** OCR provenance attestation hardening / Technical debt continuation (Debt 7)
+**Files created:** `ocr-quality-attestation-types.ts`, `validate-ocr-quality-attestation.ts`, `ocr-quality-attestation-regression-scaffold.ts`
+**Files modified:** `index.ts`
+
+### Mission
+
+Upgrades the Debt 7 resolution from Phase 8.2F-15E. Phase 8.2F-15E introduced `OcrQualityReport` as a typed provenance contract, but there was no model describing how a report would be trusted, issued, versioned, verified, or stored. Phase 8.2F-15K adds a full attestation store contract.
+
+**Constraint:** Contract/scaffold only. No real OCR, no images, no DB, no persistence, no runtime wiring.
+
+### Attestation Record Model
+
+`OcrQualityAttestationRecord` (`ocr-quality-attestation-types.ts`):
+
+| Field | Type | Description |
+|---|---|---|
+| `attestationId` | `string` | Opaque unique identifier for this record |
+| `reportId` | `string` | References `OcrQualityReport.reportId` |
+| `issuerKind` | `OcrQualityReportIssuerKind` | Who issued the report |
+| `storeKind` | `OcrQualityReportStoreKind` | Where the report is stored |
+| `attestationMethod` | `OcrQualityAttestationMethod` | How attestation was performed |
+| `verificationStatus` | `OcrQualityAttestationVerificationStatus` | Verification outcome |
+| `lifecycleStatus` | `OcrQualityReportLifecycleStatus` | Current lifecycle stage |
+| `generatedBy` | `string` | System or fixture identifier |
+| `neverUserVisible` | `true` | Compile-time invariant |
+| `notes?` | `readonly string[]` | Internal governance notes |
+
+### Enum Types
+
+| Enum | Values |
+|---|---|
+| `OcrQualityReportIssuerKind` | `synthetic_fixture`, `manual_reviewer`, `future_ocr_engine`, `imported_external_report`, `unknown` |
+| `OcrQualityReportStoreKind` | `in_memory_test_fixture`, `future_database_record`, `future_object_storage_metadata`, `imported_static_fixture`, `none` |
+| `OcrQualityAttestationMethod` | `none`, `fixture_declared`, `manual_review_declared`, `future_engine_signed`, `future_store_verified` |
+| `OcrQualityReportLifecycleStatus` | `draft`, `validated`, `rejected`, `expired`, `superseded` |
+| `OcrQualityAttestationVerificationStatus` | `verified`, `unverifiable`, `failed`, `not_applicable` |
+
+### Trust Tier Semantics
+
+`validateOcrQualityAttestation` produces two independent trust flags:
+
+**`trustedForPilot`** — `true` when:
+- `valid === true`
+- `lifecycleStatus === "validated"`
+- `verificationStatus` is `"verified"` OR `"not_applicable"`
+
+> Synthetic fixtures with `fixture_declared` method legitimately use `"not_applicable"` verification and are pilot-trusted without requiring a real verified engine.
+
+**`trustedForProduction`** — `true` when all pilot conditions hold AND:
+- `verificationStatus === "verified"` (not just `not_applicable`)
+- `storeKind !== "none"` (real store reference required)
+- `issuerKind !== "unknown"` (issuer must be identified)
+
+> Production trust is structurally defined only — no real OCR engine is connected in this phase.
+
+### Validation Diagnostic Codes
+
+| Code | Trigger | Hard failure? |
+|---|---|---|
+| `ocr_attestation_missing_id` | blank `attestationId` | ✓ |
+| `ocr_attestation_missing_report_id` | blank `reportId` | ✓ |
+| `ocr_attestation_missing_generated_by` | blank `generatedBy` | ✓ |
+| `ocr_attestation_failed` | `verificationStatus === "failed"` | ✓ |
+| `ocr_attestation_rejected` | `lifecycleStatus === "rejected"` | ✓ |
+| `ocr_attestation_unknown_issuer` | `issuerKind === "unknown"` | (soft — blocks production trust) |
+| `ocr_attestation_no_store` | `storeKind === "none"` | (soft — blocks production trust) |
+| `ocr_attestation_unverified` | `verificationStatus === "unverifiable"` | (soft — blocks production trust) |
+| `ocr_attestation_expired` | `lifecycleStatus === "expired"` | (soft — blocks pilot + production trust) |
+| `ocr_attestation_superseded` | `lifecycleStatus === "superseded"` | (soft — blocks pilot + production trust) |
+
+### Regression Scaffold (10 cases)
+
+| Case | Scenario | `valid` | `trustedForPilot` | `trustedForProduction` |
+|---|---|---|---|---|
+| 1 | Valid synthetic fixture (`fixture_declared` + `not_applicable`) | `true` | `true` | `false` |
+| 2 | Future OCR engine (`future_store_verified` + `verified` + real store) | `true` | `true` | `true` |
+| 3 | Missing `attestationId` | `false` | `false` | `false` |
+| 4 | Missing `reportId` | `false` | `false` | `false` |
+| 5 | Unknown issuer | `true` | `true` | `false` |
+| 6 | No store reference | `true` | `true` | `false` |
+| 7 | Failed verification | `false` | `false` | `false` |
+| 8 | Rejected lifecycle | `false` | `false` | `false` |
+| 9 | Expired lifecycle | `true` | `false` | `false` |
+| 10 | Superseded lifecycle | `true` | `false` | `false` |
+
+### Safety Boundary
+
+No real OCR processing. No images parsed. No database writes. No persistence added. No runtime coupling. No logging. No telemetry. No Smart Talk wiring. No LLM called. All result types carry `neverUserVisible: true`. `evaluate-ocr-uncertainty.ts` and `run-limited-pilot-gate-scaffold.ts` are not modified.
+
+---
+
 > **Reality simulation models safe explanation space, not legal truth.**

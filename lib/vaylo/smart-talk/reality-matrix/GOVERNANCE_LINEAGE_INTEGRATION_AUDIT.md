@@ -1,7 +1,7 @@
-# Governance Lineage Integration Audit — Phase 8.2F-15 (updated 8.2F-15J)
+# Governance Lineage Integration Audit — Phase 8.2F-15 (updated 8.2F-15K)
 
-**Version:** `8.2f-15j-governance-lineage-audit-v11`
-**Scope:** Vaylo Document Reasoning Constitution V1 — Phases 8.2A → 8.2F-15J
+**Version:** `8.2f-15k-governance-lineage-audit-v12`
+**Scope:** Vaylo Document Reasoning Constitution V1 — Phases 8.2A → 8.2F-15K
 **Mode:** Audit only / no runtime wiring / no behavior modified
 **Overall Status:** `partially_connected`
 
@@ -81,6 +81,17 @@
 > Raw telemetry fallback retained for backward compatibility.
 > 4 new regression cases (Cases 10–13) cover the full provenance-backed session path.
 > Remaining gap: `PilotSessionReport` is still caller-constructed metadata; no session store wired.
+>
+> **8.2F-15K Update:** Debt 7 (OCR confidence attestation store contract) is **upgraded — still
+> partially resolved**. `OcrQualityAttestationRecord` defined with 5 enum types
+> (`OcrQualityReportIssuerKind`, `OcrQualityReportStoreKind`, `OcrQualityAttestationMethod`,
+> `OcrQualityReportLifecycleStatus`, `OcrQualityAttestationVerificationStatus`) and 10 diagnostic
+> codes (`OcrQualityAttestationValidationDiagnostic`). `validateOcrQualityAttestation` implements
+> 12 pure rules producing `valid`, `trustedForPilot`, and `trustedForProduction` tiers.
+> Synthetic fixtures with `fixture_declared` method and `not_applicable` verification are
+> `trustedForPilot` but not `trustedForProduction`. Production trust requires `verified`
+> verification + real store reference + known issuer. 10-case regression scaffold covers all
+> paths. No real OCR engine wired. No DB or persistence added. No runtime coupling created.
 
 ---
 
@@ -340,9 +351,9 @@ type BridgeBlockingReason =
 
 ---
 
-### Debt 7 — Caller-supplied OCR confidence score is unvalidated at ingress ⚠ PARTIALLY RESOLVED (8.2F-15E)
+### Debt 7 — Caller-supplied OCR confidence score is unvalidated at ingress ⚠ PARTIALLY RESOLVED (8.2F-15E + 8.2F-15K upgraded)
 
-**Severity:** Warning → **PARTIALLY RESOLVED in Phase 8.2F-15E**
+**Severity:** Warning → **PARTIALLY RESOLVED in Phase 8.2F-15E, Upgraded in Phase 8.2F-15K**
 **Layer:** `ocr_uncertainty`
 
 **Original debt:** `evaluateOcrUncertainty` accepted `baseConfidenceScore` as a raw caller-supplied number with no provenance or attestation contract. A caller could supply any value, bypassing the intent of OCR governance.
@@ -364,7 +375,31 @@ New functions in `evaluate-ocr-uncertainty.ts`:
 - `ocrQualityReport` added as preferred path
 - Raw-score path emits `pilot_ocr_confidence_unattested` informational diagnostic
 
-**Remaining gap:** No real OCR engine is wired. `OcrQualityReport` is still caller-constructed metadata. The attestation status (`unattested` vs. `test_fixture_attested`) is caller-supplied. Full resolution requires a future production phase that binds `OcrQualityReport` to a verified OCR engine output.
+**Upgrade applied (8.2F-15K) — Full Attestation Store Contract:**
+
+`OcrQualityAttestationRecord` defined in `ocr-quality-attestation-types.ts`:
+
+| Enum | Values |
+|------|--------|
+| `OcrQualityReportIssuerKind` | `synthetic_fixture`, `manual_reviewer`, `future_ocr_engine`, `imported_external_report`, `unknown` |
+| `OcrQualityReportStoreKind` | `in_memory_test_fixture`, `future_database_record`, `future_object_storage_metadata`, `imported_static_fixture`, `none` |
+| `OcrQualityAttestationMethod` | `none`, `fixture_declared`, `manual_review_declared`, `future_engine_signed`, `future_store_verified` |
+| `OcrQualityReportLifecycleStatus` | `draft`, `validated`, `rejected`, `expired`, `superseded` |
+| `OcrQualityAttestationVerificationStatus` | `verified`, `unverifiable`, `failed`, `not_applicable` |
+
+`validateOcrQualityAttestation` — 12-rule pure validator producing `OcrQualityAttestationValidationResult`:
+- `valid` — no hard structural violations (non-blank IDs, non-failed/non-rejected status)
+- `trustedForPilot` — valid + `lifecycleStatus === "validated"` + verification is `"verified"` or `"not_applicable"` (accepts synthetic fixtures)
+- `trustedForProduction` — pilot-trusted + `verificationStatus === "verified"` + `storeKind !== "none"` + `issuerKind !== "unknown"`
+- `diagnostics` — 10 typed codes including soft warnings (`unknown_issuer`, `no_store`, `unverified`) and hard failures (`missing_id`, `failed`, `rejected`)
+
+10-case regression scaffold covers all trust tiers and failure paths.
+
+**Trust tier semantics:**
+- Synthetic fixture with `fixture_declared` + `not_applicable` verification → `trustedForPilot=true`, `trustedForProduction=false`
+- Future OCR engine with `future_store_verified` + `verified` + real store → `trustedForPilot=true`, `trustedForProduction=true`
+
+**Remaining gap:** No real OCR engine is wired. Both `OcrQualityReport` and `OcrQualityAttestationRecord` are still caller-constructed metadata. No real DB or store is connected. Full resolution requires a future production phase that binds the attestation record to a verified OCR engine output and a real attestation store.
 
 ---
 

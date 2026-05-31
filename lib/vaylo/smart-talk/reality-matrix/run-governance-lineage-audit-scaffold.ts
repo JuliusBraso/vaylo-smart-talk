@@ -1,5 +1,5 @@
 /**
- * Governance Lineage Integration Audit scaffold (Phase 8.2F-15 / updated 8.2F-15J).
+ * Governance Lineage Integration Audit scaffold (Phase 8.2F-15 / updated 8.2F-15K).
  *
  * Implements `runGovernanceLineageAuditScaffold` — a pure static inventory
  * function that returns a `GovernanceLineageAuditResult` covering the entire
@@ -121,6 +121,21 @@
  *    Source modules retain their own typed diagnostic unions; no codes renamed/removed.
  *    Full migration to normalized envelopes at emission sites is future work.
  *
+ * 8.2F-15K changes:
+ *  - Technical Debt 7: OCR confidence attestation store contract → PARTIALLY RESOLVED (upgraded).
+ *    OcrQualityAttestationRecord defined in ocr-quality-attestation-types.ts with:
+ *    OcrQualityReportIssuerKind (5 values), OcrQualityReportStoreKind (5 values),
+ *    OcrQualityAttestationMethod (5 values), OcrQualityReportLifecycleStatus (5 values),
+ *    OcrQualityAttestationVerificationStatus (4 values), OcrQualityAttestationValidationDiagnostic (10 codes).
+ *    validateOcrQualityAttestation implements 12 pure rules producing:
+ *    valid (structural integrity), trustedForPilot (lifecycle validated + acceptable verification),
+ *    trustedForProduction (trusted pilot + verified + real store + known issuer).
+ *    OcrQualityAttestationValidationResult carries valid, trustedForPilot, trustedForProduction,
+ *    diagnostics, neverUserVisible, notes.
+ *    10-case regression scaffold covers all trust paths.
+ *    No real OCR engine wired. No DB or persistence added. No runtime coupling created.
+ *    Raw baseOcrConfidenceScore fallback and OcrQualityReport from 8.2F-15E unchanged.
+ *
  * 8.2F-15I changes:
  *  - Technical Debt 6: bridge-level BridgeBlockingReason typed field → RESOLVED.
  *    BridgeBlockingReason union type added to explanation-mapper-types.ts with 8 variants:
@@ -155,7 +170,7 @@ import type {
 } from "./governance-lineage-audit-types";
 
 export const GOVERNANCE_LINEAGE_AUDIT_VERSION =
-  "8.2f-15j-governance-lineage-audit-v11";
+  "8.2f-15k-governance-lineage-audit-v12";
 
 // ── Finding factory ───────────────────────────────────────────────────────────
 
@@ -349,20 +364,26 @@ const CONNECTED_LINEAGE_FINDINGS: readonly GovernanceAuditFinding[] = [
   finding(
     "ocr_uncertainty",
     "informational",
-    "PARTIALLY RESOLVED (8.2F-15E): OCR confidence now has a typed provenance contract",
+    "PARTIALLY RESOLVED (8.2F-15E + 8.2F-15K): OCR confidence now has a typed provenance " +
+      "contract and a full attestation store contract",
     "Previously reported as a WARNING (Debt 7) in Phase 8.2F-15: evaluateOcrUncertainty " +
       "accepted baseConfidenceScore as a raw caller-supplied number with no provenance. " +
-      "Partially resolved in Phase 8.2F-15E by introducing OcrQualityReport — a typed " +
-      "provenance contract carrying confidenceScore, OcrQualityReportSourceKind, " +
-      "OcrQualityAttestationStatus, qualityFlags, generatedBy, and neverUserVisible:true. " +
-      "evaluateOcrUncertaintyFromQualityReport consumes OcrQualityReport and appends an " +
-      "attestation warning note when attestationStatus==='unattested'. " +
-      "validateOcrQualityReport provides structural integrity checks. " +
-      "LimitedPilotGateInput accepts ocrQualityReport (preferred) or baseOcrConfidenceScore " +
-      "(backward-compat); raw-score path emits pilot_ocr_confidence_unattested informational " +
-      "diagnostic. Remaining gap: no real OCR engine is wired; OcrQualityReport is still " +
-      "caller-constructed metadata. Full resolution requires binding to a verified OCR " +
-      "provider output in a future production phase.",
+      "Phase 8.2F-15E introduced OcrQualityReport — a typed provenance contract carrying " +
+      "confidenceScore, OcrQualityReportSourceKind, OcrQualityAttestationStatus, qualityFlags, " +
+      "generatedBy, and neverUserVisible:true. evaluateOcrUncertaintyFromQualityReport and " +
+      "validateOcrQualityReport added. LimitedPilotGateInput accepts ocrQualityReport (preferred) " +
+      "or baseOcrConfidenceScore (backward-compat); raw-score path emits pilot_ocr_confidence_unattested. " +
+      "Phase 8.2F-15K upgraded Debt 7 by adding the full attestation store contract: " +
+      "OcrQualityAttestationRecord with issuerKind (5 values), storeKind (5 values), " +
+      "attestationMethod (5 values), verificationStatus (4 values), lifecycleStatus (5 values). " +
+      "validateOcrQualityAttestation produces OcrQualityAttestationValidationResult with " +
+      "valid, trustedForPilot (accepts synthetic fixtures via not_applicable verification), " +
+      "and trustedForProduction (requires verified + real store + known issuer). " +
+      "10-case regression scaffold covers all trust and failure paths. " +
+      "Remaining gap: no real OCR engine is wired; both OcrQualityReport and " +
+      "OcrQualityAttestationRecord are still caller-constructed metadata. " +
+      "Full resolution requires binding to a verified OCR provider output and a real " +
+      "attestation store in a future production phase.",
   ),
   finding(
     "pilot_gate",
@@ -545,7 +566,7 @@ const WARNING_FINDINGS: readonly GovernanceAuditFinding[] = [
       "metadata. Full resolution requires binding to a verified score evaluator in a future phase.",
   ),
   // Technical debts identified in 8.2F-15A audit review
-  // Debt 7 partially resolved in 8.2F-15E — moved to CONNECTED_LINEAGE_FINDINGS above
+  // Debt 7 partially resolved in 8.2F-15E, upgraded in 8.2F-15K — moved to CONNECTED_LINEAGE_FINDINGS above
   // Debt 8 partially resolved in 8.2F-15F — moved to CONNECTED_LINEAGE_FINDINGS above
   // Debt 9 partially resolved in 8.2F-15G — moved to CONNECTED_LINEAGE_FINDINGS above
   finding(
@@ -641,7 +662,7 @@ const CRITICAL_FINDINGS: readonly GovernanceAuditFinding[] = [
 
 /**
  * Returns a static never-user-visible `GovernanceLineageAuditResult` covering
- * the entire 8.2A → 8.2F-14 governance stack.
+ * the entire 8.2A → 8.2F-15K governance stack.
  *
  * Pure function — no file reads, no API calls, no schema inspection, no runtime
  * scanning. All findings are pre-authored based on the known architecture.
