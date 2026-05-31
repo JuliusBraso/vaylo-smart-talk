@@ -1,5 +1,5 @@
 /**
- * Governance Lineage Integration Audit scaffold (Phase 8.2F-15 / updated 8.2F-15L).
+ * Governance Lineage Integration Audit scaffold (Phase 8.2F-15 / updated 8.2F-15M).
  *
  * Implements `runGovernanceLineageAuditScaffold` — a pure static inventory
  * function that returns a `GovernanceLineageAuditResult` covering the entire
@@ -121,6 +121,21 @@
  *    Source modules retain their own typed diagnostic unions; no codes renamed/removed.
  *    Full migration to normalized envelopes at emission sites is future work.
  *
+ * 8.2F-15M changes:
+ *  - Technical Debt 9: wording score attestation store contract → PARTIALLY RESOLVED (upgraded).
+ *    WordingJudgeAttestationRecord defined in wording-judge-attestation-types.ts with:
+ *    WordingJudgeIssuerKind (6 values including future_llm_judge and future_human_review_system),
+ *    WordingScoreReportStoreKind (5 values including future_review_store_record),
+ *    WordingJudgeAttestationMethod (5 values including future_judge_signed),
+ *    WordingScoreReportLifecycleStatus (5 values), WordingJudgeVerificationStatus (4 values),
+ *    WordingJudgeAttestationValidationDiagnostic (11 codes).
+ *    validateWordingJudgeAttestation implements 12 pure rules producing:
+ *    valid (structural integrity), trustedForPilot (lifecycle validated + acceptable verification),
+ *    trustedForProduction (trusted pilot + verified + real store + known issuer).
+ *    11-case regression scaffold covers all trust paths including manual reviewer production trust.
+ *    No real LLM judge wired. No NLP. No real text evaluation. No DB or persistence added.
+ *    No runtime coupling created. run-wording-evaluation-scaffold.ts unchanged.
+ *
  * 8.2F-15L changes:
  *  - Technical Debt 8: pilot session telemetry attestation store contract → PARTIALLY RESOLVED (upgraded).
  *    PilotSessionAttestationRecord defined in pilot-session-attestation-types.ts with:
@@ -186,7 +201,7 @@ import type {
 } from "./governance-lineage-audit-types";
 
 export const GOVERNANCE_LINEAGE_AUDIT_VERSION =
-  "8.2f-15l-governance-lineage-audit-v13";
+  "8.2f-15m-governance-lineage-audit-v14";
 
 // ── Finding factory ───────────────────────────────────────────────────────────
 
@@ -574,26 +589,36 @@ const WARNING_FINDINGS: readonly GovernanceAuditFinding[] = [
   finding(
     "wording_evaluation",
     "informational",
-    "PARTIALLY RESOLVED (8.2F-15G): wording tone scores now have a typed provenance contract",
+    "PARTIALLY RESOLVED (8.2F-15G + 8.2F-15M): wording tone scores now have a typed " +
+      "provenance contract and a full attestation store contract",
     "Previously reported as a WARNING (Debt 9) in Phase 8.2F-15: " +
       "WordingEvaluationInput.toneMatrix was a bare caller-supplied struct with no provenance. " +
-      "Partially resolved in Phase 8.2F-15G by introducing WordingToneScoreReport — a typed " +
-      "provenance contract carrying reportId, WordingToneScoreReportSourceKind, " +
-      "WordingToneScoreAttestationStatus, toneMatrix, evaluatorId, evaluatorVersion, " +
-      "generatedBy, and neverUserVisible:true. " +
-      "validateWordingToneScoreReport provides structural integrity checks (non-empty IDs, " +
-      "finite numeric values; out-of-range values noted as wording_score_clamped). " +
+      "Phase 8.2F-15G introduced WordingToneScoreReport — a typed provenance contract carrying " +
+      "reportId, WordingToneScoreReportSourceKind, WordingToneScoreAttestationStatus, toneMatrix, " +
+      "evaluatorId, evaluatorVersion, generatedBy, and neverUserVisible:true. " +
+      "validateWordingToneScoreReport provides structural integrity checks. " +
       "evaluateExplanationWordingFromScoreReport is the preferred provenance-backed entry point: " +
       "non-finite scores → human_review_required; unattested reports → evaluation proceeds + " +
       "provenance note appended; all existing evaluation rules and dispositions unchanged. " +
       "Raw WordingEvaluationInput (toneMatrix) path retained for backward compatibility. " +
-      "Remaining gap: no LLM judge is wired; WordingToneScoreReport is still caller-constructed " +
+      "Phase 8.2F-15M upgraded Debt 9 by adding the full attestation store contract: " +
+      "WordingJudgeAttestationRecord with issuerKind (6 values including future_llm_judge and " +
+      "future_human_review_system), storeKind (5 values including future_review_store_record), " +
+      "attestationMethod (5 values including future_judge_signed), verificationStatus (4 values), " +
+      "lifecycleStatus (5 values). validateWordingJudgeAttestation produces " +
+      "WordingJudgeAttestationValidationResult with valid, trustedForPilot (accepts synthetic " +
+      "fixtures and manual reviewers via not_applicable verification), and trustedForProduction " +
+      "(requires verified + real store + known issuer). 11 diagnostic codes. " +
+      "11-case regression scaffold covers all trust tiers and failure paths, including " +
+      "the manual reviewer production trust path (Case 3). " +
+      "Remaining gap: no real LLM judge or human review system is wired; both " +
+      "WordingToneScoreReport and WordingJudgeAttestationRecord are still caller-constructed " +
       "metadata. Full resolution requires binding to a verified score evaluator in a future phase.",
   ),
   // Technical debts identified in 8.2F-15A audit review
   // Debt 7 partially resolved in 8.2F-15E, upgraded in 8.2F-15K — moved to CONNECTED_LINEAGE_FINDINGS above
   // Debt 8 partially resolved in 8.2F-15F, upgraded in 8.2F-15L — moved to CONNECTED_LINEAGE_FINDINGS above
-  // Debt 9 partially resolved in 8.2F-15G — moved to CONNECTED_LINEAGE_FINDINGS above
+  // Debt 9 partially resolved in 8.2F-15G, upgraded in 8.2F-15M — retained in WARNING_FINDINGS (still partially resolved)
   finding(
     "provenance_audit",
     "informational",
@@ -687,7 +712,7 @@ const CRITICAL_FINDINGS: readonly GovernanceAuditFinding[] = [
 
 /**
  * Returns a static never-user-visible `GovernanceLineageAuditResult` covering
- * the entire 8.2A → 8.2F-15L governance stack.
+ * the entire 8.2A → 8.2F-15M governance stack.
  *
  * Pure function — no file reads, no API calls, no schema inspection, no runtime
  * scanning. All findings are pre-authored based on the known architecture.

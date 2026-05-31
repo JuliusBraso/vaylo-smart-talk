@@ -1981,4 +1981,109 @@ No real auth processing. No session state read or written. No database writes. N
 
 ---
 
+## PHASE 8.2F-15M — Wording Judge Attestation Contract
+
+**Mode:** Wording score attestation hardening / Technical debt continuation (Debt 9)
+**Files created:** `wording-judge-attestation-types.ts`, `validate-wording-judge-attestation.ts`, `wording-judge-attestation-regression-scaffold.ts`
+**Files modified:** `index.ts`
+
+### Mission
+
+Upgrades the Debt 9 resolution from Phase 8.2F-15G. Phase 8.2F-15G introduced `WordingToneScoreReport` as a typed provenance contract, but there was no model describing how a score report would be trusted, issued, versioned, verified, or stored. Phase 8.2F-15M adds a full attestation store contract.
+
+**Constraint:** Contract/scaffold only. No real LLM judge, no NLP, no real text evaluation, no DB, no persistence, no runtime wiring, no user-visible output generation.
+
+### Attestation Record Model
+
+`WordingJudgeAttestationRecord` (`wording-judge-attestation-types.ts`):
+
+| Field | Type | Description |
+|---|---|---|
+| `attestationId` | `string` | Opaque unique identifier for this record |
+| `reportId` | `string` | References `WordingToneScoreReport.reportId` |
+| `issuerKind` | `WordingJudgeIssuerKind` | Who issued the score report |
+| `storeKind` | `WordingScoreReportStoreKind` | Where the report is stored |
+| `attestationMethod` | `WordingJudgeAttestationMethod` | How attestation was performed |
+| `verificationStatus` | `WordingJudgeVerificationStatus` | Verification outcome |
+| `lifecycleStatus` | `WordingScoreReportLifecycleStatus` | Current lifecycle stage |
+| `generatedBy` | `string` | System or fixture identifier |
+| `neverUserVisible` | `true` | Compile-time invariant |
+| `notes?` | `readonly string[]` | Internal governance notes |
+
+### Enum Types
+
+| Enum | Values |
+|---|---|
+| `WordingJudgeIssuerKind` | `synthetic_fixture`, `manual_reviewer`, `future_llm_judge`, `future_human_review_system`, `imported_external_report`, `unknown` |
+| `WordingScoreReportStoreKind` | `in_memory_test_fixture`, `future_database_record`, `future_review_store_record`, `imported_static_fixture`, `none` |
+| `WordingJudgeAttestationMethod` | `none`, `fixture_declared`, `manual_review_declared`, `future_judge_signed`, `future_store_verified` |
+| `WordingScoreReportLifecycleStatus` | `draft`, `validated`, `rejected`, `expired`, `superseded` |
+| `WordingJudgeVerificationStatus` | `verified`, `unverifiable`, `failed`, `not_applicable` |
+
+### Trust Tier Semantics
+
+`validateWordingJudgeAttestation` produces two independent trust flags:
+
+**`trustedForPilot`** — `true` when:
+- `valid === true`
+- `lifecycleStatus === "validated"`
+- `verificationStatus` is `"verified"` OR `"not_applicable"`
+
+> Synthetic fixtures with `fixture_declared` and manual reviewers with `manual_review_declared` legitimately use `"not_applicable"` verification and are pilot-trusted without a live LLM judge.
+
+**`trustedForProduction`** — `true` when all pilot conditions hold AND:
+- `verificationStatus === "verified"` (not just `not_applicable`)
+- `storeKind !== "none"` (real score store reference required)
+- `issuerKind !== "unknown"` (issuer must be identified)
+
+> Both `manual_reviewer` (with `verified`) and `future_llm_judge` (with `verified`) can achieve production trust when paired with a real score store reference.
+
+### Validation Diagnostic Codes (11)
+
+| Code | Trigger | Hard failure? |
+|---|---|---|
+| `wording_judge_attestation_missing_id` | blank `attestationId` | ✓ |
+| `wording_judge_attestation_missing_report_id` | blank `reportId` | ✓ |
+| `wording_judge_attestation_missing_generated_by` | blank `generatedBy` | ✓ |
+| `wording_judge_attestation_failed` | `verificationStatus === "failed"` | ✓ |
+| `wording_judge_attestation_rejected` | `lifecycleStatus === "rejected"` | ✓ |
+| `wording_judge_attestation_unknown_issuer` | `issuerKind === "unknown"` | (soft — blocks production trust) |
+| `wording_judge_attestation_no_store` | `storeKind === "none"` | (soft — blocks production trust) |
+| `wording_judge_attestation_unverified` | `verificationStatus === "unverifiable"` | (soft — blocks production trust) |
+| `wording_judge_attestation_expired` | `lifecycleStatus === "expired"` | (soft — blocks pilot + production trust) |
+| `wording_judge_attestation_superseded` | `lifecycleStatus === "superseded"` | (soft — blocks pilot + production trust) |
+| `wording_judge_attestation_missing_issuer` | reserved for future deserialization use | (contract stub) |
+
+### Regression Scaffold (11 cases)
+
+| Case | Scenario | `valid` | `trustedForPilot` | `trustedForProduction` |
+|---|---|---|---|---|
+| 1 | Valid synthetic fixture (`fixture_declared` + `not_applicable`) | `true` | `true` | `false` |
+| 2 | Future LLM judge (`future_judge_signed` + `verified` + review store) | `true` | `true` | `true` |
+| 3 | Manual reviewer (`manual_review_declared` + `verified` + DB store) | `true` | `true` | `true` |
+| 4 | Missing `attestationId` | `false` | `false` | `false` |
+| 5 | Missing `reportId` | `false` | `false` | `false` |
+| 6 | Unknown issuer | `true` | `true` | `false` |
+| 7 | No store reference | `true` | `true` | `false` |
+| 8 | Failed verification | `false` | `false` | `false` |
+| 9 | Rejected lifecycle | `false` | `false` | `false` |
+| 10 | Expired lifecycle | `true` | `false` | `false` |
+| 11 | Superseded lifecycle | `true` | `false` | `false` |
+
+Case 3 (manual reviewer achieving production trust) is the unique addition in this phase — it demonstrates that human reviewers with `verified` verification and a real store can be structurally production-trusted without an LLM judge.
+
+### Future Role
+
+Before user-visible wording can be production-trusted, the following must be implemented in future phases:
+1. A verified LLM judge or human review system supplies `WordingToneScoreReport` records
+2. `WordingJudgeAttestationRecord` is populated with `verified` verification + real store reference
+3. `validateWordingJudgeAttestation` is called at the wording evaluation gate
+4. `trustedForProduction=true` becomes a gate condition before output wording is surfaced
+
+### Safety Boundary
+
+No LLM judge called. No NLP. No real text evaluated. No user-visible wording generated. No database writes. No persistence added. No runtime coupling. No logging. No telemetry. No Smart Talk wiring. All result types carry `neverUserVisible: true`. `run-wording-evaluation-scaffold.ts` is not modified.
+
+---
+
 > **Reality simulation models safe explanation space, not legal truth.**

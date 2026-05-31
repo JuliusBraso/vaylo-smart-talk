@@ -321,3 +321,24 @@ export {
   type PilotSessionAttestationRegressionCaseResult,
   type PilotSessionAttestationRegressionScaffoldResult,
 } from "./pilot-session-attestation-regression-scaffold";
+// ── Phase 8.2F-15M — Wording Judge Attestation Contract ───────────────────────
+export type {
+  WordingJudgeIssuerKind,
+  WordingScoreReportStoreKind,
+  WordingJudgeAttestationMethod,
+  WordingScoreReportLifecycleStatus,
+  WordingJudgeVerificationStatus,
+  WordingJudgeAttestationRecord,
+  WordingJudgeAttestationValidationDiagnostic,
+  WordingJudgeAttestationValidationResult,
+} from "./wording-judge-attestation-types";
+export {
+  WORDING_JUDGE_ATTESTATION_VALIDATOR_VERSION,
+  validateWordingJudgeAttestation,
+} from "./validate-wording-judge-attestation";
+export {
+  WORDING_JUDGE_ATTESTATION_REGRESSION_VERSION,
+  runWordingJudgeAttestationRegressionScaffold,
+  type WordingJudgeAttestationRegressionCaseResult,
+  type WordingJudgeAttestationRegressionScaffoldResult,
+} from "./wording-judge-attestation-regression-scaffold";

@@ -1225,6 +1225,59 @@ Synthetic fixtures are pilot-trusted but never production-trusted. Future sessio
 
 ---
 
+### Phase 8.2F-15M — Wording Judge Attestation Contract
+
+**Debt addressed:** Debt 9 (upgraded from 8.2F-15G partial resolution)
+**Audit version:** `v14`
+
+Defines the full wording judge attestation store contract as a metadata-only scaffold. Phase 8.2F-15G introduced `WordingToneScoreReport`; 8.2F-15M adds the trust-tier model that governs how a wording score report would be verified, stored, and trusted in a future production deployment.
+
+#### New types (`wording-judge-attestation-types.ts`)
+
+- `WordingJudgeIssuerKind` — 6 values including `future_llm_judge` and `future_human_review_system`
+- `WordingScoreReportStoreKind` — 5 values including `future_review_store_record`
+- `WordingJudgeAttestationMethod` — 5 values including `future_judge_signed` and `future_store_verified`
+- `WordingScoreReportLifecycleStatus` — 5 values: `draft`, `validated`, `rejected`, `expired`, `superseded`
+- `WordingJudgeVerificationStatus` — 4 values: `verified`, `unverifiable`, `failed`, `not_applicable`
+- `WordingJudgeAttestationRecord` — structured attestation record binding a wording score report to its trust provenance
+- `WordingJudgeAttestationValidationDiagnostic` — 11 typed diagnostic codes
+- `WordingJudgeAttestationValidationResult` — contains `valid`, `trustedForPilot`, `trustedForProduction`, `diagnostics`, `neverUserVisible`
+
+#### Trust tiers
+
+| Tier | Condition |
+|---|---|
+| `trustedForPilot` | `valid` + `lifecycleStatus === "validated"` + verification is `"verified"` or `"not_applicable"` |
+| `trustedForProduction` | Pilot trust + `verificationStatus === "verified"` + `storeKind !== "none"` + `issuerKind !== "unknown"` |
+
+Both `manual_reviewer` and `future_llm_judge` can achieve production trust when paired with a real store. Synthetic fixtures are pilot-trusted but never production-trusted.
+
+#### Files created
+
+| File | Description |
+|---|---|
+| `reality-simulation/wording-judge-attestation-types.ts` | All 8 types and enums |
+| `reality-simulation/validate-wording-judge-attestation.ts` | 12-rule pure validator |
+| `reality-simulation/wording-judge-attestation-regression-scaffold.ts` | 11-case regression scaffold |
+
+#### Files modified
+
+| File | Change |
+|---|---|
+| `reality-simulation/index.ts` | New exports added |
+| `run-governance-lineage-audit-scaffold.ts` | Debt 9 upgraded; audit version `v14` |
+| `GOVERNANCE_LINEAGE_INTEGRATION_AUDIT.md` | Debt 9 section expanded |
+
+**Debt 9 tracking:** Debt 9 is explicitly retained in `WARNING_FINDINGS` (severity `informational`, partially resolved). The misleading "moved to CONNECTED_LINEAGE_FINDINGS" comment in prior phases has been corrected to accurately reflect that Debt 9 remains partially open.
+
+**Remaining gap:** No real LLM judge or human review system connected. No DB or store writes. No real text evaluated. No user-visible wording generated. Full production trust requires a future phase binding attestation to a verified evaluator and a real score store.
+
+**Safety boundary:** No LLM SDK imported. No NLP executed. No real text evaluated. No user-visible output generated. No DB writes. No persistence. No telemetry. No Smart Talk wiring. `run-wording-evaluation-scaffold.ts` unchanged.
+
+**Remaining open debts:** Debt 5 (cross-phase namespace isolation), Debt 10 (`AuditTraceChain` provenance recording). Debts 6–9 resolved or partially resolved (all upgraded through 8.2F-15M).
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).

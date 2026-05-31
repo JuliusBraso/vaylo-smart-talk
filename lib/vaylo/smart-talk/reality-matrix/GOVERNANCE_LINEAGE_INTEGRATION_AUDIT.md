@@ -1,7 +1,7 @@
-# Governance Lineage Integration Audit — Phase 8.2F-15 (updated 8.2F-15L)
+# Governance Lineage Integration Audit — Phase 8.2F-15 (updated 8.2F-15M)
 
-**Version:** `8.2f-15l-governance-lineage-audit-v13`
-**Scope:** Vaylo Document Reasoning Constitution V1 — Phases 8.2A → 8.2F-15L
+**Version:** `8.2f-15m-governance-lineage-audit-v14`
+**Scope:** Vaylo Document Reasoning Constitution V1 — Phases 8.2A → 8.2F-15M
 **Mode:** Audit only / no runtime wiring / no behavior modified
 **Overall Status:** `partially_connected`
 
@@ -100,6 +100,16 @@
 > diagnostic codes. `validatePilotSessionAttestation` implements 12 pure rules producing `valid`,
 > `trustedForPilot`, and `trustedForProduction` tiers. 10-case regression scaffold covers all
 > trust and failure paths. No real auth wired. No DB or session store added. No pilot activation.
+>
+> **8.2F-15M Update:** Debt 9 (wording score attestation store contract) is **upgraded — still
+> partially resolved**. `WordingJudgeAttestationRecord` defined with 6-value issuer kind
+> (including `future_llm_judge` and `future_human_review_system`), 5-value store kind (including
+> `future_review_store_record`), 5-value attestation method (including `future_judge_signed`),
+> 5-value lifecycle status, 4-value verification status, and 11 diagnostic codes.
+> `validateWordingJudgeAttestation` implements 12 pure rules. 11-case regression scaffold includes
+> manual reviewer production trust case (Case 3). No real LLM judge wired. No NLP. No real text
+> evaluation. No DB or persistence added. `run-wording-evaluation-scaffold.ts` unchanged.
+> Debt 9 remains explicitly tracked in `WARNING_FINDINGS` as partially resolved.
 
 ---
 
@@ -459,9 +469,9 @@ Raw telemetry fallback retained for backward compatibility.
 
 ---
 
-### Debt 9 — Caller-supplied wording tone scores are unvalidated at ingress *(Added 8.2F-15A)* ⚠ PARTIALLY RESOLVED (8.2F-15G)
+### Debt 9 — Caller-supplied wording tone scores are unvalidated at ingress *(Added 8.2F-15A)* ⚠ PARTIALLY RESOLVED (8.2F-15G + 8.2F-15M upgraded)
 
-**Severity:** Warning → Informational (partially resolved)
+**Severity:** Warning → Informational (partially resolved — upgraded in 8.2F-15M)
 **Layer:** `wording_evaluation`
 
 `WordingEvaluationInput.toneMatrix` scores are entirely caller-supplied. The intended future workflow — an LLM judge or human reviewer supplies scores — is not enforced at the type layer. A caller could supply `{ authoritativeLegalAdvice: 0, falseReassurance: 0 }` for any draft, bypassing tone governance.
@@ -481,7 +491,34 @@ Raw telemetry fallback retained for backward compatibility.
 - Otherwise → delegates to existing `evaluateExplanationWordingScaffold`; all rules unchanged.
 Raw `WordingEvaluationInput` (toneMatrix) path retained for backward compatibility.
 
-**Remaining gap:** `WordingToneScoreReport` is still caller-constructed metadata. Full resolution requires binding to a verified score evaluator (LLM judge or attested human reviewer system) in a future production phase. No LLM calls, no NLP, no real text evaluation added.
+**8.2F-15M Upgrade — Full Attestation Store Contract:**
+
+`WordingJudgeAttestationRecord` defined in `wording-judge-attestation-types.ts`:
+
+| Enum | Values |
+|------|--------|
+| `WordingJudgeIssuerKind` | `synthetic_fixture`, `manual_reviewer`, `future_llm_judge`, `future_human_review_system`, `imported_external_report`, `unknown` |
+| `WordingScoreReportStoreKind` | `in_memory_test_fixture`, `future_database_record`, `future_review_store_record`, `imported_static_fixture`, `none` |
+| `WordingJudgeAttestationMethod` | `none`, `fixture_declared`, `manual_review_declared`, `future_judge_signed`, `future_store_verified` |
+| `WordingScoreReportLifecycleStatus` | `draft`, `validated`, `rejected`, `expired`, `superseded` |
+| `WordingJudgeVerificationStatus` | `verified`, `unverifiable`, `failed`, `not_applicable` |
+
+`validateWordingJudgeAttestation` — 12-rule pure validator producing `WordingJudgeAttestationValidationResult`:
+- `valid` — no hard structural violations (non-blank IDs, non-failed/non-rejected status)
+- `trustedForPilot` — valid + `lifecycleStatus === "validated"` + verification is `"verified"` or `"not_applicable"`
+- `trustedForProduction` — pilot-trusted + `verificationStatus === "verified"` + `storeKind !== "none"` + `issuerKind !== "unknown"`
+- `diagnostics` — 11 typed codes
+
+**Trust tier semantics:**
+- Synthetic fixture with `fixture_declared` + `not_applicable` → `trustedForPilot=true`, `trustedForProduction=false`
+- Manual reviewer with `manual_review_declared` + `verified` + real store → `trustedForPilot=true`, `trustedForProduction=true`
+- Future LLM judge with `future_judge_signed` + `verified` + real store → `trustedForPilot=true`, `trustedForProduction=true`
+
+11-case regression scaffold covers all trust tiers (Cases 1–3) and all failure paths (Cases 4–11).
+
+**Debt 9 tracking confirmed:** Debt 9 is explicitly retained in `WARNING_FINDINGS` with severity `informational` (partially resolved). It will remain there until a real LLM judge or human review system is wired and the raw `WordingToneMatrix` fallback is removed.
+
+**Remaining gap:** No real LLM judge or human review system is wired. Both `WordingToneScoreReport` and `WordingJudgeAttestationRecord` are still caller-constructed metadata. No real text is evaluated. Full resolution requires a future production phase binding to a verified score evaluator and a real attestation store.
 
 ---
 
