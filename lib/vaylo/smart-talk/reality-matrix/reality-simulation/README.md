@@ -1709,4 +1709,39 @@ No LLM judge added. No NLP. No real text evaluated. No prose generated. No OpenA
 
 ---
 
+## PHASE 8.2F-15H — AuditTraceChain.structurallyValid Consistency Fix
+
+**Mode:** Audit trace consistency hardening / Technical debt resolution
+**Files modified:** `provenance-audit-types.ts`, `run-provenance-audit-scaffold.ts`, `provenance-audit-regression-scaffold.ts`
+
+### Mission
+
+Fully resolves **Debt 10**: `AuditTraceChain.structurallyValid` was a caller-supplied boolean that could diverge from `AuditTraceValidationResult.valid`, creating a dual-source-of-truth risk. Removes the field entirely — the validator is now the sole authority.
+
+### Strategy: Full Removal
+
+`structurallyValid` was removed from `AuditTraceChain`. Churn was minimal:
+- Only the `chain()` fixture helper in the regression scaffold needed updating (parameter removed)
+- `validateAuditTraceChain` required no changes — it never read `chain.structurallyValid`
+- All 8 existing regression cases pass with identical outcomes
+
+### `AuditTraceChain` After Change
+
+| Field | Before | After |
+|---|---|---|
+| `rootTraceId` | `string` | `string` (unchanged) |
+| `nodes` | `readonly AuditTraceNode[]` | `readonly AuditTraceNode[]` (unchanged) |
+| `structurallyValid` | `boolean` (caller-supplied, not authoritative) | **removed** |
+| `neverUserVisible` | `true` | `true` (unchanged) |
+
+### Authoritative Source of Truth
+
+`AuditTraceValidationResult.valid` (returned by `validateAuditTraceChain`) is now the only place where chain structural validity is expressed. Callers that need to know whether a chain is structurally valid must call `validateAuditTraceChain`.
+
+### Safety Boundary
+
+No persistence added. No logging. No telemetry. No runtime hooks. No Smart Talk wiring. No LLM. Validator behavior and all diagnostic codes unchanged. TypeScript and ESLint pass cleanly.
+
+---
+
 > **Reality simulation models safe explanation space, not legal truth.**

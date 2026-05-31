@@ -1,5 +1,6 @@
 /**
- * Runtime Provenance & Audit Trace regression scaffold (Phase 8.2F-14).
+ * Runtime Provenance & Audit Trace regression scaffold
+ * (Phase 8.2F-14 / 8.2F-15H: structurallyValid removed from AuditTraceChain).
  *
  * Eight structural cases exercising validateAuditTraceChain:
  *
@@ -28,7 +29,7 @@ import {
 } from "./run-provenance-audit-scaffold";
 
 export const PROVENANCE_AUDIT_REGRESSION_VERSION =
-  "8.2f-14-provenance-audit-regression-scaffold-v1";
+  "8.2f-15h-provenance-audit-regression-scaffold-v2";
 
 // ── Result types ──────────────────────────────────────────────────────────────
 
@@ -64,12 +65,13 @@ function node(
   };
 }
 
+// 8.2F-15H: structurallyValid removed from AuditTraceChain.
+// Validator (validateAuditTraceChain) is the sole authoritative source of structural truth.
 function chain(
   rootTraceId: string,
   nodes: readonly AuditTraceNode[],
-  structurallyValid = true,
 ): AuditTraceChain {
-  return { rootTraceId, nodes, structurallyValid, neverUserVisible: true };
+  return { rootTraceId, nodes, neverUserVisible: true };
 }
 
 // ── Assertion helper ──────────────────────────────────────────────────────────
@@ -357,6 +359,10 @@ function runCase8(): ProvenanceAuditRegressionCaseResult {
 /**
  * Runs all 8 provenance audit regression cases and aggregates results.
  *
+ * All 8 cases exercise the same structural rules as in Phase 8.2F-14.
+ * 8.2F-15H: `structurallyValid` removed from `AuditTraceChain` and from
+ * the `chain()` fixture helper. Validator outcomes are unchanged.
+ *
  * Does not throw. All assertions are collected as failure strings.
  * No persistence. No logging. No telemetry. No Smart Talk runtime. No LLM.
  */
@@ -384,6 +390,10 @@ export function runProvenanceAuditRegressionScaffold(): ProvenanceAuditRegressio
     notes.push(
       "All structural rules validated: root existence, duplicate detection, parent-reference " +
         "integrity, orphan detection, cycle detection, and soft unknown-source warning.",
+    );
+    notes.push(
+      "8.2F-15H: structurallyValid removed from AuditTraceChain. " +
+        "validateAuditTraceChain is now the sole authoritative source of structural truth.",
     );
   } else {
     notes.push(

@@ -989,6 +989,29 @@ Session overflow rule unchanged: `totalTransactions >= maxLimit → pilot_sessio
 
 **Remaining open debts:** Debt 5 (cross-phase namespace isolation), Debt 6 (bridge-level typing), Debt 9 (wording scores — partially resolved in 8.2F-15G), Debt 10 (`AuditTraceChain.structurallyValid`). Debts 7–8 partially resolved.
 
+---
+
+### Phase 8.2F-15H — AuditTraceChain.structurallyValid Consistency Fix
+
+**Governance audit version:** `8.2f-15h-governance-lineage-audit-v9`
+**Provenance audit scaffold version:** `8.2f-15h-provenance-audit-scaffold-v2`
+
+**Technical Debt 10 — RESOLVED.** `AuditTraceChain.structurallyValid` was a caller-supplied boolean not consumed by `validateAuditTraceChain`, creating a potential dual-source-of-truth inconsistency (e.g. `chain.structurallyValid === true` while `validateAuditTraceChain` returns `valid === false`).
+
+**Strategy chosen:** Full removal. `structurallyValid` is no longer a field on `AuditTraceChain`. `AuditTraceValidationResult.valid` (from `validateAuditTraceChain`) is the sole authoritative source of structural truth.
+
+**Changes:**
+- `provenance-audit-types.ts` — `structurallyValid` removed from `AuditTraceChain`; JSDoc updated.
+- `run-provenance-audit-scaffold.ts` — header and version bumped to `v2`; no logic changed.
+- `provenance-audit-regression-scaffold.ts` — `chain()` helper updated (parameter dropped); version bumped to `v2`; all 8 cases pass unchanged.
+- `RUNTIME_PROVENANCE_AUDIT_TRACE.md` — spec updated.
+- `run-governance-lineage-audit-scaffold.ts` — version `v9`; Debt 10 moved to `CONNECTED_LINEAGE_FINDINGS` as RESOLVED.
+- `GOVERNANCE_LINEAGE_INTEGRATION_AUDIT.md` — Debt 10 marked RESOLVED.
+
+**Safety:** No persistence, logging, telemetry, or runtime coupling. Smart Talk runtime not modified. Validator behavior semantically unchanged. TypeScript and ESLint pass.
+
+**Remaining open debts:** Debt 5 (cross-phase namespace isolation), Debt 6 (bridge-level `BridgeBlockingReason` typed field). Debts 7–9 partially resolved.
+
 **Safety boundary:** No session store added. No database reads. No auth SDK imported. No real pilot activation. No real session tracking. No LLM. No Smart Talk runtime wiring. No user-visible output. TypeScript and ESLint pass cleanly.
 
 ---

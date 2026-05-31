@@ -1,5 +1,5 @@
 /**
- * Governance Lineage Integration Audit scaffold (Phase 8.2F-15 / updated 8.2F-15G).
+ * Governance Lineage Integration Audit scaffold (Phase 8.2F-15 / updated 8.2F-15H).
  *
  * Implements `runGovernanceLineageAuditScaffold` — a pure static inventory
  * function that returns a `GovernanceLineageAuditResult` covering the entire
@@ -99,6 +99,15 @@
  *    Partially resolved: WordingToneScoreReport contract exists but no LLM judge is wired;
  *    report is still caller-constructed metadata.
  *
+ * 8.2F-15H changes:
+ *  - Technical Debt 10: AuditTraceChain.structurallyValid caller-supplied flag → RESOLVED.
+ *    structurallyValid removed from AuditTraceChain in provenance-audit-types.ts.
+ *    AuditTraceValidationResult.valid is now the sole authoritative source of structural truth.
+ *    validateAuditTraceChain is unchanged — it never read chain.structurallyValid.
+ *    chain() fixture helper in provenance-audit-regression-scaffold.ts updated (parameter removed).
+ *    All 8 regression cases pass with the same assertions; validator behavior is unchanged.
+ *    RUNTIME_PROVENANCE_AUDIT_TRACE.md spec updated.
+ *
  * Safety guarantees:
  * - no runtime modification
  * - no telemetry
@@ -117,7 +126,7 @@ import type {
 } from "./governance-lineage-audit-types";
 
 export const GOVERNANCE_LINEAGE_AUDIT_VERSION =
-  "8.2f-15g-governance-lineage-audit-v8";
+  "8.2f-15h-governance-lineage-audit-v9";
 
 // ── Finding factory ───────────────────────────────────────────────────────────
 
@@ -496,16 +505,20 @@ const WARNING_FINDINGS: readonly GovernanceAuditFinding[] = [
   // Debt 9 partially resolved in 8.2F-15G — moved to CONNECTED_LINEAGE_FINDINGS above
   finding(
     "provenance_audit",
-    "warning",
-    "Technical Debt: AuditTraceChain.structurallyValid set by caller, not enforced",
-    "AuditTraceChain.structurallyValid is a field that callers set when " +
-      "constructing a chain, but validateAuditTraceChain does not use this " +
-      "field — it re-derives validity from the node structure. There is a " +
-      "potential consistency risk if a chain is constructed with " +
-      "structurallyValid: true but then fails validation. Future phases should " +
-      "either remove the field from the input type or enforce that it matches " +
-      "validateAuditTraceChain output.",
+    "informational",
+    "RESOLVED (8.2F-15H): AuditTraceChain.structurallyValid removed — validator is sole authority",
+    "Previously reported as a WARNING (Debt 10) in Phase 8.2F-15: " +
+      "AuditTraceChain.structurallyValid was a caller-supplied boolean that could " +
+      "diverge from the structural truth computed by validateAuditTraceChain, creating " +
+      "a dual-source-of-truth risk (chain.structurallyValid=true while validator.valid=false, " +
+      "or vice versa). Resolved in Phase 8.2F-15H by removing structurallyValid from " +
+      "AuditTraceChain entirely. AuditTraceValidationResult.valid is now the sole " +
+      "authoritative source of structural truth. validateAuditTraceChain was not modified — " +
+      "it never read chain.structurallyValid. The chain() fixture helper in the regression " +
+      "scaffold was updated to remove the parameter. All 8 existing regression cases pass " +
+      "with identical outcomes. No validator semantics changed.",
   ),
+  // Debt 10 resolved in 8.2F-15H — moved to CONNECTED_LINEAGE_FINDINGS above
 ];
 
 // ── C — Production blockers and disconnected safeguards (critical) ────────────

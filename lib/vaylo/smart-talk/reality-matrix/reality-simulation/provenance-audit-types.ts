@@ -1,5 +1,5 @@
 /**
- * Runtime Provenance & Audit Trace types (Phase 8.2F-14).
+ * Runtime Provenance & Audit Trace types (Phase 8.2F-14 / 8.2F-15H consistency fix).
  *
  * Metadata-only governance lineage model. Defines the structural vocabulary
  * for recording where governance decisions originate and how they propagate
@@ -107,16 +107,17 @@ export interface AuditTraceNode {
 /**
  * A complete audit trace chain for a governance sequence.
  *
- * `rootTraceId`       — the traceId of the root node (no parents, starting point).
- * `nodes`             — all nodes in the chain, including root and descendants.
- * `structurallyValid` — caller-supplied pre-validation flag; not authoritative.
- *                       Use `validateAuditTraceChain` to verify structural integrity.
- * `neverUserVisible`  — compile-time invariant.
+ * `rootTraceId`      — the traceId of the root node (no parents, starting point).
+ * `nodes`            — all nodes in the chain, including root and descendants.
+ * `neverUserVisible` — compile-time invariant.
+ *
+ * **Structural validity is derived by `validateAuditTraceChain`, not supplied by
+ * the caller.** (8.2F-15H: `structurallyValid` removed — `AuditTraceValidationResult.valid`
+ * is the sole authoritative source of truth for chain integrity.)
  */
 export interface AuditTraceChain {
   readonly rootTraceId: string;
   readonly nodes: readonly AuditTraceNode[];
-  readonly structurallyValid: boolean;
   readonly neverUserVisible: true;
 }
 

@@ -88,12 +88,13 @@ A complete governance lineage for one decision sequence:
 
 ```typescript
 {
-  rootTraceId: string        // must match the root node's traceId
-  nodes: AuditTraceNode[]    // all nodes in the sequence
-  structurallyValid: boolean // caller-supplied; not authoritative — use validateAuditTraceChain
+  rootTraceId: string     // must match the root node's traceId
+  nodes: AuditTraceNode[] // all nodes in the sequence
   neverUserVisible: true
 }
 ```
+
+> **8.2F-15H:** `structurallyValid` has been removed from `AuditTraceChain`. Structural validity is now derived exclusively by `validateAuditTraceChain` — `AuditTraceValidationResult.valid` is the sole authoritative source of truth. Callers must not supply or cache a validity flag on the chain itself.
 
 ---
 

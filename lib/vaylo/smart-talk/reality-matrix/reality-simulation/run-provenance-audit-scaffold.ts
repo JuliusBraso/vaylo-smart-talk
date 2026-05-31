@@ -1,5 +1,5 @@
 /**
- * Runtime Provenance & Audit Trace validator (Phase 8.2F-14).
+ * Runtime Provenance & Audit Trace validator (Phase 8.2F-14 / 8.2F-15H consistency fix).
  *
  * Implements `validateAuditTraceChain` — a pure function that checks the
  * structural integrity of an `AuditTraceChain` and returns a never-user-visible
@@ -59,7 +59,7 @@ import type {
 } from "./provenance-audit-types";
 
 export const PROVENANCE_AUDIT_SCAFFOLD_VERSION =
-  "8.2f-14-provenance-audit-scaffold-v1";
+  "8.2f-15h-provenance-audit-scaffold-v2";
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 

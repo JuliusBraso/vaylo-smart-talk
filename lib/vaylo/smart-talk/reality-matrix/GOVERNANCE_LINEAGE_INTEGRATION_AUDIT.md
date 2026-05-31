@@ -1,7 +1,7 @@
-# Governance Lineage Integration Audit — Phase 8.2F-15 (updated 8.2F-15G)
+# Governance Lineage Integration Audit — Phase 8.2F-15 (updated 8.2F-15H)
 
-**Version:** `8.2f-15g-governance-lineage-audit-v8`
-**Scope:** Vaylo Document Reasoning Constitution V1 — Phases 8.2A → 8.2F-15G
+**Version:** `8.2f-15h-governance-lineage-audit-v9`
+**Scope:** Vaylo Document Reasoning Constitution V1 — Phases 8.2A → 8.2F-15H
 **Mode:** Audit only / no runtime wiring / no behavior modified
 **Overall Status:** `partially_connected`
 
@@ -46,6 +46,12 @@
 > See detail in Debt 8 section below.
 >
 > **8.2F-15G Update:** Debt 9 (caller-supplied wording tone scores unvalidated) is **partially resolved**.
+> See detail in Debt 9 section below.
+>
+> **8.2F-15H Update:** Debt 10 (`AuditTraceChain.structurallyValid` consistency) is **resolved**.
+> `structurallyValid` removed from `AuditTraceChain`. `AuditTraceValidationResult.valid` is now
+> the sole authoritative source of structural truth. `validateAuditTraceChain` is unchanged.
+> All 8 regression cases pass with identical outcomes.
 > `WordingToneScoreReport` typed provenance contract introduced in `wording-evaluation-types.ts`.
 > `validateWordingToneScoreReport` added. `evaluateExplanationWordingFromScoreReport` is the new
 > preferred provenance-backed evaluation entry point. Raw `WordingEvaluationInput` path retained
@@ -370,14 +376,21 @@ Raw `WordingEvaluationInput` (toneMatrix) path retained for backward compatibili
 
 ---
 
-### Debt 10 — `AuditTraceChain.structurallyValid` set by caller, not enforced *(Added 8.2F-15A)*
+### Debt 10 — `AuditTraceChain.structurallyValid` set by caller, not enforced *(Added 8.2F-15A)* ✓ RESOLVED (8.2F-15H)
 
-**Severity:** Warning
+**Severity:** Warning → Resolved
 **Layer:** `provenance_audit`
 
-`AuditTraceChain.structurallyValid` is a field that callers set when constructing a chain. `validateAuditTraceChain` does not use this field — it re-derives validity from the node structure. A chain could be constructed with `structurallyValid: true` but then fail validation, creating inconsistency between the stored chain and its actual validity status.
+`AuditTraceChain.structurallyValid` was a caller-supplied boolean that could diverge from the structural truth computed by `validateAuditTraceChain`, creating a dual-source-of-truth risk.
 
-**Resolution:** Either remove `structurallyValid` from the input type (making it a validator-only output) or enforce that stored chains always reflect the result of `validateAuditTraceChain`.
+**8.2F-15H Resolution:**
+`structurallyValid` removed from `AuditTraceChain` in `provenance-audit-types.ts`. The type now carries only `rootTraceId`, `nodes`, and `neverUserVisible: true`.
+
+`AuditTraceValidationResult.valid` (returned by `validateAuditTraceChain`) is the sole authoritative source of structural truth. No caller can supply a conflicting validity flag.
+
+`validateAuditTraceChain` was not modified — it never read `chain.structurallyValid`.
+
+The `chain()` fixture helper in the regression scaffold was updated to remove the parameter. All 8 existing regression cases pass with identical outcomes. No validator semantics changed.
 
 ---
 
