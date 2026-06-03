@@ -239,4 +239,11 @@ This phase:
 - Does **not** produce user-visible text.
 - Does **not** couple to any runtime process or database.
 
-Next phase: **8.2G-2 — LLM Output Contract Validator**
+Next phase: **8.2G-2 — LLM Output Contract Validator** ✓ implemented.
+
+**8.2G-2 validates `RuntimeLLMDraftAdapterResult` before wording governance.**  
+`validateRuntimeLLMOutputContract({ input, result })` checks visibility invariants,
+safety flags, section membership, forbidden move and required constraint coverage,
+and mock prefix discipline. Verdict: `accepted_for_next_gate` |
+`rejected_unsafe_draft` | `rejected_contract_violation` |
+`rejected_visibility_violation`. See `RUNTIME_LLM_OUTPUT_CONTRACT_VALIDATOR.md`.

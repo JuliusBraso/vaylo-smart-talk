@@ -1533,9 +1533,60 @@ No runtime behavior changed. No new governance machinery wired. No persistence, 
 - `future_live_llm` mode is explicitly blocked — returns empty candidates with `llm_adapter_live_llm_forbidden`.
 - No LLM SDK imported. No API keys. No env vars. No external calls. No randomness.
 
-**Next phase: 8.2G-2 — LLM Output Contract Validator**
+**Next phase: 8.2G-2 — LLM Output Contract Validator** ✓ completed — see below.
 
 **Safety boundary:** No LLM called. No API keys. No env vars. No Smart Talk runtime touched. No user-visible output. No final explanation text generated.
+
+---
+
+### Phase 8.2G-2 — LLM Output Contract Validator
+
+**First safety gate after the LLM draft adapter.** Validates that a `RuntimeLLMDraftAdapterResult` (Phase 8.2G-1) respects all governance boundaries before it can proceed to the wording governance gate (Phase 8.2G-3).
+
+**No LLM is called. No user-visible output. No runtime wiring.**
+
+#### Verdict
+
+> Validator is `defined`. `liveLLMCalled: false`. `userVisibleOutputAllowed: false`. `acceptedForUserVisibleAssembly: false`. `nextRecommendedPhase: "8.2G-3"`.
+
+#### What was defined
+
+- **`RuntimeLLMOutputContractVerdict`** — 4 verdicts: `accepted_for_next_gate`, `rejected_contract_violation`, `rejected_unsafe_draft`, `rejected_visibility_violation`.
+- **`RuntimeLLMOutputContractViolationCode`** — 14 violation codes covering visibility, safety flags, contract gaps, adapter mode, and mock prefix rules.
+- **`RuntimeLLMOutputSectionValidationResult`** — per-section validation result with `accepted`, `violations`, and `neverUserVisible: true`.
+- **`RuntimeLLMOutputContractValidationResult`** — full result. `acceptedForUserVisibleAssembly: false`, `liveLLMCalled: false`, and `userVisibleOutputAllowed: false` are compile-time literal types.
+- **`validateRuntimeLLMOutputContract({ input, result })`** — pure validator enforcing 12+ rules with clear verdict precedence: visibility > unsafe > contract > accepted.
+- **14-case regression scaffold** — covers happy paths, all violation types, tampered invariants, unsafe fixture path, forbidden adapter mode, coverage gaps, prefix checks.
+
+#### Verdict precedence
+
+```
+rejected_visibility_violation  (neverUserVisible / liveLLMCalled / userVisibleOutputAllowed)
+  ↓ rejected_unsafe_draft       (safety flags on sections)
+  ↓ rejected_contract_violation  (adapter mode, section types, coverage, prefix, empty text)
+  ↓ accepted_for_next_gate
+```
+
+#### Files created
+
+| File | Description |
+|---|---|
+| `runtime-llm-output-contract-validator-types.ts` | All types for Phase 8.2G-2 |
+| `validate-runtime-llm-output-contract.ts` | `validateRuntimeLLMOutputContract()` |
+| `runtime-llm-output-contract-validator-regression-scaffold.ts` | 14-case regression scaffold |
+| `RUNTIME_LLM_OUTPUT_CONTRACT_VALIDATOR.md` | Full validator governance document |
+
+#### Key invariants enforced
+
+- `acceptedForUserVisibleAssembly: false` — literal type, always false in Phase 8.2G-2.
+- Defensive runtime checks on `liveLLMCalled`, `userVisibleOutputAllowed`, `neverUserVisible` — catches tampered/cast values.
+- `future_live_llm` adapter mode explicitly rejected via `llm_output_forbidden_adapter_mode`.
+- All sections validated for type membership, safety flags, and mock prefix.
+- Forbidden move and required constraint coverage verified by intersection.
+
+**Next phase: 8.2G-3 — Wording Governance Runtime Gate**
+
+**Safety boundary:** No LLM called. No API keys. No env vars. No mock adapter modified. No user-visible output. `acceptedForUserVisibleAssembly` always false.
 
 ---
 

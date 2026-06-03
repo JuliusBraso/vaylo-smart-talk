@@ -417,7 +417,13 @@ Draft adapter boundary established as mock-only; live LLM remains forbidden.
 
 `RuntimeLLMDraftAdapterInput`, `RuntimeLLMDraftSectionCandidate`, and `RuntimeLLMDraftAdapterResult` are defined. `runRuntimeLLMDraftMockAdapter` implements the mock boundary. `liveLLMCalled: false` and `userVisibleOutputAllowed: false` are compile-time literal types. See `RUNTIME_LLM_DRAFT_ADAPTER.md` for full documentation.
 
-**Next phase: 8.2G-2 — LLM Output Contract Validator.**
+**Next phase: 8.2G-2 — LLM Output Contract Validator.** ✓ completed — see Phase 8.2G-2 Status below.
+
+## Phase 8.2G-2 Status
+
+Output contract validator established. `validateRuntimeLLMOutputContract({ input, result })` is a pure function enforcing 12+ rules across visibility invariants, unsafe safety flags, section type membership, forbidden move / required constraint coverage, and mock prefix discipline. Verdict precedence: `rejected_visibility_violation` > `rejected_unsafe_draft` > `rejected_contract_violation` > `accepted_for_next_gate`. `acceptedForUserVisibleAssembly: false` is a compile-time literal type. 14-case regression scaffold passes. See `RUNTIME_LLM_OUTPUT_CONTRACT_VALIDATOR.md`.
+
+**Next phase: 8.2G-3 — Wording Governance Runtime Gate.**
 
 ---
 
