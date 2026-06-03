@@ -1451,6 +1451,51 @@ No runtime behavior changed. No new governance machinery wired. No persistence, 
 
 ---
 
+### Phase 8.2G-0 — Runtime LLM Integration Architecture Plan
+
+**Epoch 8.2G opened.** Epoch 8.2F (Governance Kernel) was formally closed as `complete_for_runtime_integration` in Phase 8.2F-16. This phase opens Epoch 8.2G by defining the architecture for connecting a future LLM to the governance kernel.
+
+**No LLM is called. No runtime behavior is changed. No user-visible output is created.**
+
+#### Verdict
+
+> Architecture is `defined`. `liveLLMAllowed: false`. `userVisibleOutputAllowed: false`. `nextRecommendedPhase: "8.2G-1"`.
+
+#### What was defined
+
+- **15-layer runtime pipeline** — the ordered sequence every LLM-generated draft must traverse: `input_normalization` → `document_reality_simulation` → `explanation_contract_builder` → `llm_draft_adapter` → `llm_output_contract_validator` → mapper → bridge → `wording_evaluation_gate` → `wording_review_gate` → `diagnostic_envelope_adapter` → `audit_trace_emission` → `incident_governance` → `pilot_gate` → `user_visible_response_assembler`
+- **LLM adapter boundary** — what may enter the LLM (governance-constrained prompts) and what may not (raw OCR text, PII, deadline extraction instructions)
+- **LLM output restrictions** — 10 explicit rules the output contract validator will enforce
+- **Non-negotiable invariants** — 13 constitutional invariants the LLM must never violate
+- **Recommended 8.2G phase sequence** — 8.2G-1 through 8.2G-8
+
+#### Files created
+
+| File | Description |
+|---|---|
+| `runtime-llm-integration-plan-types.ts` | `RuntimeLLMIntegrationReadiness`, `RuntimeLLMIntegrationLayerId`, `RuntimeLLMIntegrationRiskLevel`, `RuntimeLLMIntegrationFinding`, `RuntimeLLMIntegrationPlanResult` |
+| `run-runtime-llm-integration-plan-scaffold.ts` | `runRuntimeLLMIntegrationPlanScaffold()` — static plan with 15-layer sequence and per-layer findings |
+| `RUNTIME_LLM_INTEGRATION_ARCHITECTURE.md` | Full architecture document (20 sections) |
+
+#### Recommended 8.2G phase sequence
+
+| Phase | Name |
+|---|---|
+| **8.2G-1** | Runtime LLM Draft Adapter Types + Mock Scaffold |
+| **8.2G-2** | LLM Output Contract Validator |
+| **8.2G-3** | Wording Governance Runtime Gate |
+| **8.2G-4** | Audit Trace + Diagnostic Envelope Runtime Dry Run |
+| **8.2G-5** | First Live LLM Sandboxed Corpus Call |
+| **8.2G-6** | User-Visible Response Assembler Scaffold |
+| **8.2G-7** | End-to-End Synthetic Runtime Harness |
+| **8.2G-8** | Trusted Internal Text-Only Pilot Gate |
+
+**Next phase: 8.2G-1**
+
+**Safety boundary:** No LLM called. No OCR called. No API routes modified. No runtime state changed. No user-visible output. All result types carry `neverUserVisible: true`.
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).

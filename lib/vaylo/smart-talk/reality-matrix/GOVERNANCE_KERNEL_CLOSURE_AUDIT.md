@@ -253,4 +253,8 @@ Classification:    Internal governance / never user-visible
 
 ---
 
+> **Epoch 8.2G Update (Phase 8.2G-0):** Epoch 8.2G has been opened via [`RUNTIME_LLM_INTEGRATION_ARCHITECTURE.md`](./RUNTIME_LLM_INTEGRATION_ARCHITECTURE.md). The closure verdict remains `complete_for_runtime_integration`. No LLM has been wired. No runtime behavior has changed.
+
+---
+
 > **This document is a governance audit record. It is never user-visible. It does not change any runtime behavior. It does not constitute a legal determination, compliance certification, or product readiness declaration.**
