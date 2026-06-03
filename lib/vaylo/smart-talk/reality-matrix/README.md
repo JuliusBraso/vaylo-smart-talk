@@ -1490,9 +1490,52 @@ No runtime behavior changed. No new governance machinery wired. No persistence, 
 | **8.2G-7** | End-to-End Synthetic Runtime Harness |
 | **8.2G-8** | Trusted Internal Text-Only Pilot Gate |
 
-**Next phase: 8.2G-1**
+**Next phase: 8.2G-1** ✓ completed — see below.
 
 **Safety boundary:** No LLM called. No OCR called. No API routes modified. No runtime state changed. No user-visible output. All result types carry `neverUserVisible: true`.
+
+---
+
+### Phase 8.2G-1 — Runtime LLM Draft Adapter Types + Mock Scaffold
+
+**First typed LLM draft adapter boundary.** Defines the governance-constrained typed interface between the explanation contract layer and a future LLM, as a mock-only scaffold. No live LLM is called. No user-visible output is produced.
+
+**No LLM is called. No API keys. No environment variables. No runtime wiring.**
+
+#### Verdict
+
+> Adapter is `mock_only`. `liveLLMCalled: false`. `userVisibleOutputAllowed: false`. `nextRecommendedPhase: "8.2G-2"`.
+
+#### What was defined
+
+- **`RuntimeLLMDraftAdapterInput`** — governance-constrained adapter input: adapter mode, access tier, contract ref, allowed section types, active forbidden moves, required constraints, uncertainty/review flags, audit trace parent IDs.
+- **`RuntimeLLMDraftSectionCandidate`** — a single typed draft section candidate. Never user-visible. Carries `safetyFlags`, `sourceBound`, and `neverUserVisible: true`.
+- **`RuntimeLLMDraftAdapterResult`** — full adapter result. `liveLLMCalled: false` and `userVisibleOutputAllowed: false` are compile-time literal types.
+- **`RuntimeLLMDraftAdapterDiagnosticCode`** — 8 governance diagnostic codes emitted by the adapter.
+- **`runRuntimeLLMDraftMockAdapter(input)`** — pure deterministic mock returning fixture candidates for `allowedSectionTypes` only. Blocks `future_live_llm` mode with `llm_adapter_live_llm_forbidden`. Propagates all governance metadata.
+- **10-case regression scaffold** — validates all invariants: live LLM blocking, section filtering, forbidden move propagation, constraint propagation, `neverUserVisible` enforcement, blank contract ref, audit trace ID preservation, and unsafe fixture flag behavior.
+
+#### Files created
+
+| File | Description |
+|---|---|
+| `runtime-llm-draft-adapter-types.ts` | All types for Phase 8.2G-1 |
+| `run-runtime-llm-draft-mock-adapter.ts` | Mock adapter: `runRuntimeLLMDraftMockAdapter()` |
+| `runtime-llm-draft-adapter-regression-scaffold.ts` | 10-case regression scaffold |
+| `RUNTIME_LLM_DRAFT_ADAPTER.md` | Full adapter governance document |
+
+#### Key invariants enforced
+
+- `liveLLMCalled: false` — literal type, cannot be set to `true` in this phase.
+- `userVisibleOutputAllowed: false` — literal type, cannot be set to `true` in this phase.
+- All `RuntimeLLMDraftSectionCandidate` instances carry `neverUserVisible: true`.
+- All `draftText` values are prefixed with `[MOCK_DRAFT_NEVER_USER_VISIBLE]`.
+- `future_live_llm` mode is explicitly blocked — returns empty candidates with `llm_adapter_live_llm_forbidden`.
+- No LLM SDK imported. No API keys. No env vars. No external calls. No randomness.
+
+**Next phase: 8.2G-2 — LLM Output Contract Validator**
+
+**Safety boundary:** No LLM called. No API keys. No env vars. No Smart Talk runtime touched. No user-visible output. No final explanation text generated.
 
 ---
 

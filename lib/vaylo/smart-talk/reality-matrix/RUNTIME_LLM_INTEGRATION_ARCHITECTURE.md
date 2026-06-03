@@ -411,4 +411,14 @@ None of these are resolved by this phase. All remain as production requirements 
 
 ---
 
+## Phase 8.2G-1 Status
+
+Draft adapter boundary established as mock-only; live LLM remains forbidden.
+
+`RuntimeLLMDraftAdapterInput`, `RuntimeLLMDraftSectionCandidate`, and `RuntimeLLMDraftAdapterResult` are defined. `runRuntimeLLMDraftMockAdapter` implements the mock boundary. `liveLLMCalled: false` and `userVisibleOutputAllowed: false` are compile-time literal types. See `RUNTIME_LLM_DRAFT_ADAPTER.md` for full documentation.
+
+**Next phase: 8.2G-2 — LLM Output Contract Validator.**
+
+---
+
 > **This document is an internal governance architecture plan. It is never user-visible. It does not constitute a product specification, legal determination, or compliance certification. No LLM has been called. No user-visible output has been produced. No runtime behavior has changed.**
