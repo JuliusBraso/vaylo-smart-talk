@@ -1584,9 +1584,64 @@ rejected_visibility_violation  (neverUserVisible / liveLLMCalled / userVisibleOu
 - All sections validated for type membership, safety flags, and mock prefix.
 - Forbidden move and required constraint coverage verified by intersection.
 
-**Next phase: 8.2G-3 — Wording Governance Runtime Gate**
+**Next phase: 8.2G-3 — Wording Governance Runtime Gate** ✓ completed — see below.
 
 **Safety boundary:** No LLM called. No API keys. No env vars. No mock adapter modified. No user-visible output. `acceptedForUserVisibleAssembly` always false.
+
+---
+
+### Phase 8.2G-3 — Wording Governance Runtime Gate
+
+**Third gate in the 8.2G pipeline.** Consumes only drafts accepted by Phase 8.2G-2, then evaluates wording safety using the existing `evaluateExplanationWordingFromScoreReport` scaffold — without any live LLM judge, NLP library, or semantic prose analysis.
+
+**No LLM judge. No NLP. No semantic text evaluation. No user-visible output.**
+
+#### Verdict
+
+> Gate is `defined`. `liveLLMJudgeCalled: false`. `realTextSemanticallyEvaluated: false`. `acceptedForUserVisibleAssembly: false`. `nextRecommendedPhase: "8.2G-4"`.
+
+#### What was defined
+
+- **`RuntimeWordingGateInput`** — gate input: mock draft result, Phase 8.2G-2 validation result, `WordingToneScoreReport | null`, `neverUserVisible: true`.
+- **`RuntimeWordingGateResult`** — gate result. `acceptedForUserVisibleAssembly: false`, `liveLLMJudgeCalled: false`, `realTextSemanticallyEvaluated: false` are compile-time literal types.
+- **`RuntimeWordingGateVerdict`** — 6 verdicts: `accepted_for_audit_dry_run`, `rejected_previous_gate_failed`, `human_review_required`, `hard_fail_wording_violation`, `rejected_missing_score_report`, `rejected_invalid_score_report`.
+- **`RuntimeWordingGateDiagnosticCode`** — 10 diagnostic codes.
+- **`RuntimeWordingGateSectionResult`** — per-section gate result with `wordingEvaluationDisposition` and `neverUserVisible: true`.
+- **`runRuntimeWordingGovernanceGate(input)`** — pure gate function: validates previous gate, validates score report, runs `evaluateExplanationWordingFromScoreReport`, maps disposition to verdict, builds section results.
+- **12-case regression scaffold** — covers all verdict paths, invariant preservation, score report handling.
+
+#### Verdict mapping
+
+| Score Report Outcome | Gate Verdict |
+|---|---|
+| `approved` | `accepted_for_audit_dry_run` |
+| `human_review_required` | `human_review_required` |
+| `hard_fail_tone_violation` | `hard_fail_wording_violation` |
+| Previous gate not accepted | `rejected_previous_gate_failed` |
+| Score report null | `rejected_missing_score_report` |
+| Score report invalid | `rejected_invalid_score_report` |
+
+#### Files created
+
+| File | Description |
+|---|---|
+| `runtime-wording-governance-gate-types.ts` | All types for Phase 8.2G-3 |
+| `run-runtime-wording-governance-gate.ts` | `runRuntimeWordingGovernanceGate()` |
+| `runtime-wording-governance-gate-regression-scaffold.ts` | 12-case regression scaffold |
+| `RUNTIME_WORDING_GOVERNANCE_GATE.md` | Full gate governance document |
+
+#### Key invariants enforced
+
+- `acceptedForUserVisibleAssembly: false` — literal type, always false.
+- `liveLLMJudgeCalled: false` — literal type, no LLM judge called.
+- `realTextSemanticallyEvaluated: false` — literal type, no prose analysis.
+- Previous gate failure (`rejected_*`) blocks wording evaluation completely.
+- Hard fail tone violations cannot be overridden.
+- Unattested score reports proceed with provenance gap recorded, not hard-failed.
+
+**Next phase: 8.2G-4 — Audit Trace + Diagnostic Envelope Runtime Dry Run**
+
+**Safety boundary:** No LLM judge called. No NLP imported. No prose evaluated. No wording evaluation thresholds modified. No user-visible output.
 
 ---
 

@@ -263,4 +263,7 @@ This phase:
 `liveLLMCalled` is always `false`.  
 `userVisibleOutputAllowed` is always `false`.
 
-Next phase: **8.2G-3 — Wording Governance Runtime Gate**
+Next phase: **8.2G-3 — Wording Governance Runtime Gate** ✓ implemented.
+
+**8.2G-3 consumes `accepted_for_next_gate` outputs from this validator.**  
+`runRuntimeWordingGovernanceGate({ draftResult, outputContractValidation, scoreReport })` evaluates `WordingToneScoreReport` metadata using `evaluateExplanationWordingFromScoreReport`. No live LLM judge. No NLP. See `RUNTIME_WORDING_GOVERNANCE_GATE.md`.

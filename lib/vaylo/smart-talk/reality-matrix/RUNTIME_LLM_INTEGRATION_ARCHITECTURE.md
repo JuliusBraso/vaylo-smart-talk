@@ -423,7 +423,13 @@ Draft adapter boundary established as mock-only; live LLM remains forbidden.
 
 Output contract validator established. `validateRuntimeLLMOutputContract({ input, result })` is a pure function enforcing 12+ rules across visibility invariants, unsafe safety flags, section type membership, forbidden move / required constraint coverage, and mock prefix discipline. Verdict precedence: `rejected_visibility_violation` > `rejected_unsafe_draft` > `rejected_contract_violation` > `accepted_for_next_gate`. `acceptedForUserVisibleAssembly: false` is a compile-time literal type. 14-case regression scaffold passes. See `RUNTIME_LLM_OUTPUT_CONTRACT_VALIDATOR.md`.
 
-**Next phase: 8.2G-3 — Wording Governance Runtime Gate.**
+**Next phase: 8.2G-3 — Wording Governance Runtime Gate.** ✓ completed — see Phase 8.2G-3 Status below.
+
+## Phase 8.2G-3 Status
+
+Wording governance gate established. `runRuntimeWordingGovernanceGate(input)` is a pure function that validates the upstream contract validation result, validates `WordingToneScoreReport` structurally, then delegates to `evaluateExplanationWordingFromScoreReport` without any live LLM judge or NLP. Verdict mapping: `approved` → `accepted_for_audit_dry_run`; `human_review_required` → `human_review_required`; `hard_fail_tone_violation` → `hard_fail_wording_violation`. `acceptedForUserVisibleAssembly: false`, `liveLLMJudgeCalled: false`, and `realTextSemanticallyEvaluated: false` are compile-time literal types. 12-case regression scaffold passes. See `RUNTIME_WORDING_GOVERNANCE_GATE.md`.
+
+**Next phase: 8.2G-4 — Audit Trace + Diagnostic Envelope Runtime Dry Run.**
 
 ---
 
