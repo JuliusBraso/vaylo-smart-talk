@@ -230,14 +230,20 @@ user-visible assembly is not permitted. The draft must also pass:
 
 ---
 
-## 14. Next Phase: 8.2G-4 — Audit Trace + Diagnostic Envelope Runtime Dry Run
+## 14. Phase 8.2G-4 — Audit Trace + Diagnostic Envelope Runtime Dry Run (completed)
 
-Phase 8.2G-4 will:
-- Consume drafts with `acceptedForAuditDryRun: true` from Phase 8.2G-3.
-- Wire `buildAuditTraceNodeFromEmission` (Phase 8.2F-15N) at all emission sites.
-- Wire `buildDiagnosticEnvelopeFromNativeDiagnostic` (Phase 8.2F-15O) for all diagnostics.
-- Prove that an end-to-end governance chain produces a `valid: true` `AuditTraceChain`.
-- No live LLM. No user-visible output.
+**8.2G-4 consumes wording gate results for audit trace and diagnostic dry-run.**
+
+Phase 8.2G-4 `runRuntimeGovernanceDryRun` consumes:
+- Drafts with `acceptedForAuditDryRun: true` from Phase 8.2G-3.
+- `wordingGateResult` from Phase 8.2G-3 to determine the audit trace emission variant
+  (informational, `human_review_requested` / warning, or `section_suppressed` / blocking).
+- `wordingGateResult.diagnostics` to populate `DiagnosticNormalizedEnvelope` instances
+  mapped to `native_wording_evaluation` source kind.
+
+Proven: an end-to-end governance chain produces `auditTraceValid: true` and
+`diagnosticEnvelopeValid: true` in all verdict scenarios. No live LLM. No persistence.
+No user-visible output.
 
 ---
 

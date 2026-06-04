@@ -1639,9 +1639,67 @@ rejected_visibility_violation  (neverUserVisible / liveLLMCalled / userVisibleOu
 - Hard fail tone violations cannot be overridden.
 - Unattested score reports proceed with provenance gap recorded, not hard-failed.
 
-**Next phase: 8.2G-4 — Audit Trace + Diagnostic Envelope Runtime Dry Run**
+**Next phase: 8.2G-4 — Audit Trace + Diagnostic Envelope Runtime Dry Run** ✓ completed — see below.
 
 **Safety boundary:** No LLM judge called. No NLP imported. No prose evaluated. No wording evaluation thresholds modified. No user-visible output.
+
+---
+
+### Phase 8.2G-4 — Audit Trace + Diagnostic Envelope Runtime Dry Run
+
+**Runtime governance dry-run harness.** Connects the 8.2G-1/2/3 pipeline gates into a single orchestrated dry run that emits audit trace records, validates the assembled `AuditTraceChain`, normalizes diagnostics into `DiagnosticNormalizedEnvelope` instances, and validates the envelope namespace. No live LLM. No persistence. No user-visible output.
+
+> Dry run is `complete`. `liveLLMCalled: false`. `persistenceUsed: false`. `userVisibleOutputAllowed: false`. `neverUserVisible: true`. `nextRecommendedPhase: "8.2G-5"`.
+
+#### What was defined
+
+- **`RuntimeGovernanceDryRunInput`** — input: `RuntimeLLMDraftAdapterInput`, `WordingToneScoreReport | null`, deterministic `dryRunId`, `neverUserVisible: true`.
+- **`RuntimeGovernanceDryRunResult`** — full pipeline result. `liveLLMCalled: false`, `persistenceUsed: false`, `userVisibleOutputAllowed: false`, `neverUserVisible: true` are compile-time literal types.
+- **`RuntimeGovernanceDryRunVerdict`** — 6 verdicts: `completed_successfully`, `completed_with_human_review_required`, `blocked_by_output_contract`, `blocked_by_wording_gate`, `failed_audit_trace_validation`, `failed_diagnostic_envelope_validation`.
+- **`RuntimeGovernanceDryRunDiagnosticCode`** — 16 diagnostic codes covering progress markers, blocking markers, and invariant confirmations.
+- **`runRuntimeGovernanceDryRun(input)`** — orchestrator: runs 8.2G-1 → 8.2G-2 → 8.2G-3, creates 3 audit trace emissions, validates them, converts to `AuditTraceNode`, assembles and validates `AuditTraceChain`, builds and validates diagnostic envelopes.
+- **10-case regression scaffold** — covers all verdict paths, chain shape, envelope content, invariant preservation.
+
+#### Audit trace chain structure
+
+3 nodes in a linear parent chain:
+
+```
+adapter (root, explanation_contract) → output_contract (explanation_contract) → wording_gate (wording_evaluation)
+```
+
+EmissionIds are deterministic: `dry-run:{dryRunId}:{step}`. No `Date`. No randomness.
+
+#### Diagnostic envelope source mapping
+
+| Source | DiagnosticEnvelopeSourceKind | Layer |
+|---|---|---|
+| Draft adapter diagnostics | `unknown` (no dedicated source kind) | unknown |
+| Output contract violations | `native_contract_validation` | contract_validation |
+| Wording gate diagnostics | `native_wording_evaluation` | wording_evaluation |
+| Runtime dry-run diagnostics | `native_governance_lineage_audit` | governance_lineage_audit |
+
+#### Files created
+
+| File | Description |
+|---|---|
+| `runtime-governance-dry-run-types.ts` | All types for Phase 8.2G-4 |
+| `run-runtime-governance-dry-run.ts` | `runRuntimeGovernanceDryRun()` |
+| `runtime-governance-dry-run-regression-scaffold.ts` | 10-case regression scaffold |
+| `RUNTIME_GOVERNANCE_DRY_RUN.md` | Full dry-run governance document |
+
+#### Key invariants enforced
+
+- `liveLLMCalled: false` — literal type, no live LLM called in any scenario.
+- `persistenceUsed: false` — literal type, no DB/log/file writes.
+- `userVisibleOutputAllowed: false` — literal type, no output reaches users.
+- `auditTraceValid: true` in all non-infrastructure-failure scenarios.
+- `diagnosticEnvelopeValid: true` in all non-infrastructure-failure scenarios.
+- All `auditTraceEmissions`, `AuditTraceNode`, and `DiagnosticNormalizedEnvelope` instances carry `neverUserVisible: true`.
+
+**Next phase: 8.2G-5 — First Live LLM Sandboxed Corpus Call**
+
+**Safety boundary:** No live LLM called. No persistence. No Smart Talk wiring. No audit trace emission infrastructure modified. No user-visible output.
 
 ---
 

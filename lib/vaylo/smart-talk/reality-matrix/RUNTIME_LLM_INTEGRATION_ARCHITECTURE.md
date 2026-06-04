@@ -429,7 +429,13 @@ Output contract validator established. `validateRuntimeLLMOutputContract({ input
 
 Wording governance gate established. `runRuntimeWordingGovernanceGate(input)` is a pure function that validates the upstream contract validation result, validates `WordingToneScoreReport` structurally, then delegates to `evaluateExplanationWordingFromScoreReport` without any live LLM judge or NLP. Verdict mapping: `approved` → `accepted_for_audit_dry_run`; `human_review_required` → `human_review_required`; `hard_fail_tone_violation` → `hard_fail_wording_violation`. `acceptedForUserVisibleAssembly: false`, `liveLLMJudgeCalled: false`, and `realTextSemanticallyEvaluated: false` are compile-time literal types. 12-case regression scaffold passes. See `RUNTIME_WORDING_GOVERNANCE_GATE.md`.
 
-**Next phase: 8.2G-4 — Audit Trace + Diagnostic Envelope Runtime Dry Run.**
+**Next phase: 8.2G-4 — Audit Trace + Diagnostic Envelope Runtime Dry Run.** ✓ completed — see Phase 8.2G-4 Status below.
+
+## Phase 8.2G-4 Status
+
+Runtime governance dry-run harness established. `runRuntimeGovernanceDryRun(input)` orchestrates 8.2G-1 → 8.2G-2 → 8.2G-3 then emits 3 deterministic `AuditTraceEmissionRecord` entries (adapter root → output contract → wording gate), validates each, converts to `AuditTraceNode`, assembles and validates `AuditTraceChain`, normalizes all native diagnostics from 4 sources into `DiagnosticNormalizedEnvelope` instances, and validates the namespace. `liveLLMCalled: false`, `persistenceUsed: false`, `userVisibleOutputAllowed: false` are compile-time literal types. 10-case regression scaffold passes. See `RUNTIME_GOVERNANCE_DRY_RUN.md`.
+
+**Next phase: 8.2G-5 — First Live LLM Sandboxed Corpus Call.**
 
 ---
 
