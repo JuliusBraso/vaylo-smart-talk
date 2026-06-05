@@ -9,6 +9,7 @@ import type {
   SmartTalkInputType,
   SmartTalkLocale,
 } from "@/lib/vaylo/smart-talk/build-smart-talk-prompt";
+import { runRuntimeGuardedDelivery } from "@/lib/vaylo/smart-talk/reality-matrix/run-runtime-guarded-delivery";
 
 function isSmartTalkInputType(v: unknown): v is SmartTalkInputType {
   return v === "text" || v === "question";
@@ -85,6 +86,44 @@ export async function POST(req: Request) {
   }
 
   const o = body as Record<string, unknown>;
+
+  // ── Guarded internal delivery branch (Phase 8.2G-9) ──────────────────────
+  // Activates ONLY when internalRuntimeMode or internalRuntimeGuard are
+  // present. Normal Smart Talk requests never include these fields.
+  if (
+    o.internalRuntimeMode !== undefined ||
+    o.internalRuntimeGuard !== undefined
+  ) {
+    const deliveryResult = runRuntimeGuardedDelivery({
+      internalRuntimeMode: o.internalRuntimeMode,
+      internalRuntimeGuard: o.internalRuntimeGuard,
+      fixtureMode: o.fixtureMode,
+      featureFlagEnabled:
+        process.env.VAYLO_ENABLE_INTERNAL_SMART_TALK_RUNTIME === "true",
+      deliveryRunId: `smart-talk-guarded-${Date.now().toString()}`,
+      neverUserVisible: true,
+    });
+
+    if (deliveryResult.verdict !== "delivered_guarded_synthetic_response") {
+      return NextResponse.json(
+        {
+          error: "Internal guarded runtime disabled or rejected",
+          code: deliveryResult.verdict,
+          diagnostics: deliveryResult.diagnostics,
+        },
+        { status: 403 },
+      );
+    }
+
+    return NextResponse.json(
+      {
+        mode: "synthetic_e2e_guarded",
+        result: deliveryResult.responsePayload,
+      },
+      { status: 200 },
+    );
+  }
+  // ── End guarded internal delivery branch ─────────────────────────────────
 
   if (o.context !== "anonymous") {
     return badRequest("invalid_context");

@@ -1838,7 +1838,18 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 - Does not call live LLM; does not persist; `emittedToUserNow: false` always
 - 6 fixture modes; 12 regression cases
 
-**Next phase: 8.2G-9 — Smart Talk Runtime Delivery Wiring (first API/UI connection)**
+---
+
+**PHASE 8.2G-9 — Smart Talk Runtime Delivery Wiring, Guarded Internal Mode** ✓ completed
+
+**State:**
+- Adds guarded internal branch to `app/api/smart-talk/route.ts`
+- Requires `VAYLO_ENABLE_INTERNAL_SMART_TALK_RUNTIME=true` + `internalRuntimeMode` + `internalRuntimeGuard`
+- Returns synthetic governed response only; no live LLM, no persistence, no DNA/offline save
+- Normal Smart Talk behavior entirely unchanged when guard fields absent
+- Wrong/missing guard → HTTP 403
+
+**Next phase: 8.2G-10 — Smart Talk Runtime Delivery Wiring, Authenticated Internal Mode**
 
 ---
 
