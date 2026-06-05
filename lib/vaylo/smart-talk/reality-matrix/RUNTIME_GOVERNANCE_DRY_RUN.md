@@ -209,3 +209,9 @@ governance corpus. It will consume the infrastructure proven by 8.2G-4:
   is the planned entry point.
 
 Phase 8.2G-4 dry-run infrastructure remains unchanged when 8.2G-5 is introduced.
+
+> **Phase 8.2G-5 pointer:** Phase 8.2G-5 introduces sandboxed live LLM draft generation
+> via `runRuntimeLiveLLMSandboxAdapter`. Non-live results (mock_fallback / unavailable) can
+> be converted through `convertLiveSandboxResultToDraftAdapterResult` and then routed through
+> the 8.2G-4 dry-run. Live-called results require Phase 8.2G-5A type extensions before they
+> can enter the full dry-run pipeline. The 8.2G-4 mock adapter path is not replaced.

@@ -435,7 +435,13 @@ Wording governance gate established. `runRuntimeWordingGovernanceGate(input)` is
 
 Runtime governance dry-run harness established. `runRuntimeGovernanceDryRun(input)` orchestrates 8.2G-1 → 8.2G-2 → 8.2G-3 then emits 3 deterministic `AuditTraceEmissionRecord` entries (adapter root → output contract → wording gate), validates each, converts to `AuditTraceNode`, assembles and validates `AuditTraceChain`, normalizes all native diagnostics from 4 sources into `DiagnosticNormalizedEnvelope` instances, and validates the namespace. `liveLLMCalled: false`, `persistenceUsed: false`, `userVisibleOutputAllowed: false` are compile-time literal types. 10-case regression scaffold passes. See `RUNTIME_GOVERNANCE_DRY_RUN.md`.
 
-**Next phase: 8.2G-5 — First Live LLM Sandboxed Corpus Call.**
+**Next phase: 8.2G-5 — First Live LLM Sandboxed Corpus Call.** ✓ completed — see Phase 8.2G-5 Status below.
+
+## Phase 8.2G-5 Status
+
+First live LLM sandboxed corpus call boundary established. `runRuntimeLiveLLMSandboxAdapter(input)` implements a 6-guard chain (allowLiveCall, syntheticOnly, neverContainsRealPii, neverUserVisible, provider, OPENAI_API_KEY) before any live call. Uses `fetch` directly (no SDK). Output shape validated by `validateLiveLLMOutputShape` before candidates are accepted. Modeling gap discovered: `RuntimeLLMDraftAdapterResult.liveLLMCalled: false` literal prevents live-called results from flowing into 8.2G-2 without a type extension; `RuntimeLiveLLMSandboxDraftCandidateResult` introduced for this path. Non-live results can be converted via `convertLiveSandboxResultToDraftAdapterResult` and are fully 8.2G-2 compatible. `userVisibleOutputAllowed: false`, `persistenceUsed: false`, `realUserInputUsed: false` are literal types. 10-case regression scaffold; optional live call skipped unless `VAYLO_ALLOW_LIVE_LLM_SANDBOX=true`. See `RUNTIME_LIVE_LLM_SANDBOX.md`.
+
+**Next phase: 8.2G-5A — Live Path Type Extension (resolve liveLLMCalled literal conflict to enable live results through 8.2G-2 validator).**
 
 ---
 

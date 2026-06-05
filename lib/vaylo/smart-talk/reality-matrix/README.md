@@ -1697,9 +1697,43 @@ EmissionIds are deterministic: `dry-run:{dryRunId}:{step}`. No `Date`. No random
 - `diagnosticEnvelopeValid: true` in all non-infrastructure-failure scenarios.
 - All `auditTraceEmissions`, `AuditTraceNode`, and `DiagnosticNormalizedEnvelope` instances carry `neverUserVisible: true`.
 
-**Next phase: 8.2G-5 — First Live LLM Sandboxed Corpus Call**
+**Phase 8.2G-5 — First Live LLM Sandboxed Corpus Call** ✓ completed
 
-**Safety boundary:** No live LLM called. No persistence. No Smart Talk wiring. No audit trace emission infrastructure modified. No user-visible output.
+**Verdict:** First strictly sandboxed live LLM call path established.
+
+**Defined:**
+- `RuntimeLiveLLMSandboxProvider` — `openai | unavailable | mock_fallback`
+- `RuntimeLiveLLMSandboxCorpusKind` — `synthetic_redacted_corpus | controlled_governance_fixture | imported_static_fixture`
+- `RuntimeLiveLLMSandboxDisposition` — 8 outcome values
+- `RuntimeLiveLLMSandboxDiagnosticCode` — 15 diagnostic codes
+- `RuntimeLiveLLMSandboxFixture` — controlled synthetic corpus fixture
+- `RuntimeLiveLLMSandboxInput` / `RuntimeLiveLLMSandboxResult`
+- `RuntimeLiveLLMSandboxDraftCandidateResult` — live-call result holding type (modeling gap)
+- `runRuntimeLiveLLMSandboxAdapter()` — 6-guard live LLM adapter using `fetch`
+- `validateLiveLLMOutputShape()` — standalone JSON shape validator
+- `buildSandboxPrompt()` — prompt contract builder
+- `convertLiveSandboxResultToDraftAdapterResult()` — compatibility bridge (non-live only)
+- `buildLiveSandboxDraftCandidateResult()` — wraps live-call results (pending 8.2G-5A)
+- `runRuntimeLiveLLMSandboxRegressionScaffold()` — 10 cases, always runnable without API key
+
+**Modeling gap discovered:**
+`RuntimeLLMDraftAdapterResult.liveLLMCalled: false` is a literal type. Live-called results
+cannot flow through `validateRuntimeLLMOutputContract` (8.2G-2) without Phase 8.2G-5A
+type extensions. Non-live results are fully 8.2G-2 compatible via the converter.
+
+**Key invariants:**
+- `userVisibleOutputAllowed: false` — literal type on all returned structures
+- `persistenceUsed: false` — literal type; no DB, no log, no file writes
+- `realUserInputUsed: false` — literal type; only synthetic fixtures admitted
+- `neverUserVisible: true` — enforced on all results and candidates
+- Live LLM call impossible unless all 6 guards pass simultaneously
+- No API key committed; no env files created or modified
+- No Smart Talk route touched; no UI touched
+- Optional live call skipped unless `VAYLO_ALLOW_LIVE_LLM_SANDBOX=true` + API key
+
+**Next phase: 8.2G-5A — Live Path Type Extension**
+
+**Safety boundary:** Live LLM only under 6-guard chain. No persistence. No user-visible output. No Smart Talk wiring. No env files modified. No API key committed.
 
 ---
 
