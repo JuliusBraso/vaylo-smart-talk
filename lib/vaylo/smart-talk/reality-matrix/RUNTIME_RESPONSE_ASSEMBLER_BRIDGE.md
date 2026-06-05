@@ -127,7 +127,11 @@ These are compile-time invariants that match `persistenceUsed: false` in the ups
 | 13 | Live sandbox path assembles | `assembled_internal_candidate`, `liveLLMCalled:true` |
 | 14 | No internal objects in candidates | Only allowed fields in `RuntimeResponseAssemblerSectionCandidate` |
 
-## 14. Next Phase Recommendation
+## 14. Phase 8.2G-6A Update
+
+**Phase 8.2G-6A** resolved the modeling weakness noted in section 16 of the Phase 8.2G-6 output report. `RuntimeWordingGateInput.draftResult` was changed to accept `RuntimeLLMOutputContractDraftResult`, so live sandbox results can now flow through the wording gate natively. Cases 8 and 13 of this scaffold were updated to use `runRuntimeWordingGovernanceGate()` directly instead of the synthetic `ACCEPTED_WORDING_GATE` fixture. See `RUNTIME_WORDING_GATE_LIVE_PATH_EXTENSION.md`.
+
+## 15. Next Phase Recommendation
 
 **Phase 8.2G-7 — User-Visible Response Authorisation Gate**: The first gate that can set `acceptedForUserVisibleAssembly: true`. This gate would:
 - Accept only `assembled_internal_candidate` results from Phase 8.2G-6

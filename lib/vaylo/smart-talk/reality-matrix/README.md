@@ -1790,6 +1790,32 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 - `detectInternalMetadataLeak()` — pure metadata leak detector
 - `runResponseAssemblerBridgeRegressionScaffold()` — 14 regression cases
 
+---
+
+**PHASE 8.2G-6A — Wording Gate Live Path Extension** ✓ completed
+
+**Verdict:** `RuntimeWordingGateInput.draftResult` now accepts `RuntimeLLMOutputContractDraftResult`. Both mock and live sandbox paths flow through the wording gate natively. The workaround of synthesizing `RuntimeWordingGateResult` for live path tests is eliminated.
+
+**State:**
+- `RuntimeWordingGateInput.draftResult` updated from `RuntimeLLMDraftAdapterResult` → `RuntimeLLMOutputContractDraftResult`
+- Mock path remains unchanged (structural subtype compatibility)
+- Live sandbox path can pass through wording gate after output contract validation
+- No live judge — wording gate still operates on caller-supplied `WordingToneScoreReport` only
+- No semantic prose analysis of `draftText`
+- `acceptedForUserVisibleAssembly: false`, `userVisibleOutputAllowed: false` on all paths
+- No Smart Talk runtime wiring; no UI/API route; no LLM call
+- Response assembler bridge regression cases 8 and 13 now use native wording gate path
+
+**Modified files:**
+- `runtime-wording-governance-gate-types.ts` — `draftResult` type extended to `RuntimeLLMOutputContractDraftResult`
+- `run-runtime-wording-governance-gate.ts` — `deriveDraftId` helper added for safe field access
+- `runtime-wording-governance-gate-regression-scaffold.ts` — header updated; mock cases unchanged
+- `runtime-response-assembler-bridge-regression-scaffold.ts` — cases 8 and 13 use native gate
+
+**New files:**
+- `runtime-wording-gate-live-path-extension-regression-scaffold.ts` — 10 live path regression cases
+- `RUNTIME_WORDING_GATE_LIVE_PATH_EXTENSION.md` — phase documentation
+
 **Next phase: 8.2G-7 — User-Visible Response Authorisation Gate**
 
 ---

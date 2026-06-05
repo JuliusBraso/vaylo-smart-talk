@@ -31,7 +31,13 @@
  *
  * The gate never inspects `draftText` content semantically — it delegates all
  * prose analysis to the future LLM judge (Phase 8.2G-5) and trusts Phase
- * 8.2G-2 for structural output contract validation.
+ * 8.2G-2 / 8.2G-5A for structural output contract and sandbox proof validation.
+ *
+ * Phase 8.2G-6A: `RuntimeWordingGateInput.draftResult` now accepts
+ * `RuntimeLLMOutputContractDraftResult`, allowing both mock adapter results
+ * (Phase 8.2G-1) and live sandbox draft candidates (Phase 8.2G-5/8.2G-5A)
+ * to flow through natively. The gate does NOT revalidate `sandboxGuardProof`
+ * — that responsibility belongs to the upstream output contract validator (8.2G-5A).
  *
  * Safety guarantees:
  * - no live LLM judge called
@@ -59,6 +65,31 @@ import type {
   RuntimeWordingGateSectionResult,
   RuntimeWordingGateVerdict,
 } from "./runtime-wording-governance-gate-types";
+import type { RuntimeLLMOutputContractDraftResult } from "./runtime-llm-output-contract-validator-types";
+
+// ── Defensive runtime field reader ───────────────────────────────────────────
+
+/**
+ * Reads a field from `RuntimeLLMOutputContractDraftResult` bypassing TypeScript's
+ * literal-type narrowing. Required because `draftId` (mock path) and `sandboxRunId`
+ * (live sandbox path) are not part of the shared interface.
+ */
+function unsafeDraftField<T>(draft: RuntimeLLMOutputContractDraftResult, field: string): T | undefined {
+  return (draft as unknown as Record<string, unknown>)[field] as T | undefined;
+}
+
+/**
+ * Derives a stable draft identifier from whatever draft result is supplied.
+ * Mock path: reads `draftId`. Live sandbox path: reads `sandboxRunId`.
+ * Fallback: "unknown-draft-id" (should not occur in practice).
+ */
+function deriveDraftId(draft: RuntimeLLMOutputContractDraftResult): string {
+  return (
+    unsafeDraftField<string>(draft, "draftId") ??
+    unsafeDraftField<string>(draft, "sandboxRunId") ??
+    "unknown-draft-id"
+  );
+}
 
 export const RUNTIME_WORDING_GOVERNANCE_GATE_VERSION =
   "8.2g-3-runtime-wording-governance-gate-v1";
@@ -207,8 +238,13 @@ export function runRuntimeWordingGovernanceGate(
 
   // ── Rule 6 — evaluate wording ─────────────────────────────────────────────
 
+  // `draftId` is not part of `RuntimeLLMOutputContractDraftResult`; it lives on
+  // `RuntimeLLMDraftAdapterResult` (mock path) as `draftId` and on the live
+  // sandbox result as `sandboxRunId`. deriveDraftId handles both via unsafe read.
+  const draftId = deriveDraftId(input.draftResult);
+
   const wordingEvaluationResult = evaluateExplanationWordingFromScoreReport({
-    draftId: input.draftResult.draftId,
+    draftId,
     scoreReport: input.scoreReport,
   });
 

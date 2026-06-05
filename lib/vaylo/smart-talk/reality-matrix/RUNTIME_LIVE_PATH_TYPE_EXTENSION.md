@@ -141,6 +141,13 @@ into the Phase 8.2G-6 Response Assembler Bridge. The bridge consumes
 `RuntimeLLMOutputContractDraftResult` and produces internal section candidates with
 prefixes stripped. See `RUNTIME_RESPONSE_ASSEMBLER_BRIDGE.md` for details.
 
+## 13. Phase 8.2G-6A — Wording Gate Extension (completed)
+
+`RuntimeWordingGateInput.draftResult` was extended to accept `RuntimeLLMOutputContractDraftResult`
+(the union interface introduced in this phase). Live sandbox draft candidates validated here can now
+flow into the wording gate natively without synthesized fixtures. See
+`RUNTIME_WORDING_GATE_LIVE_PATH_EXTENSION.md`.
+
 ## 12. Original Next Phase Recommendation
 
 **Phase 8.2G-6 — Response Assembler Bridge (now completed)**: The first phase that reads accepted output from the wording gate and prepares a validated, structured payload for user-visible assembly. The assembler must:

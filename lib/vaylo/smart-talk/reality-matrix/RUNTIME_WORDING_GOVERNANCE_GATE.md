@@ -271,3 +271,8 @@ This phase:
 `acceptedForUserVisibleAssembly: false` — always.  
 `liveLLMJudgeCalled: false` — always.  
 `realTextSemanticallyEvaluated: false` — always.
+
+> **Phase 8.2G-6A pointer:** `RuntimeWordingGateInput.draftResult` was extended to accept
+> `RuntimeLLMOutputContractDraftResult` so that live sandbox draft candidates (Phase 8.2G-5/8.2G-5A)
+> can flow through the wording gate natively. Mock path behaviour and all invariants are unchanged.
+> See `RUNTIME_WORDING_GATE_LIVE_PATH_EXTENSION.md`.

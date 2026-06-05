@@ -32,11 +32,13 @@
 
 import type { RuntimeLLMDraftSectionType } from "./runtime-llm-draft-adapter-types";
 import type { WordingEvaluationDisposition, WordingEvaluationResult, WordingToneScoreReport } from "./reality-simulation/wording-evaluation-types";
-import type { RuntimeLLMDraftAdapterResult } from "./runtime-llm-draft-adapter-types";
-import type { RuntimeLLMOutputContractValidationResult } from "./runtime-llm-output-contract-validator-types";
+import type {
+  RuntimeLLMOutputContractDraftResult,
+  RuntimeLLMOutputContractValidationResult,
+} from "./runtime-llm-output-contract-validator-types";
 
 // Re-export for convenience so callers only need to import from this file.
-export type { WordingToneScoreReport };
+export type { WordingToneScoreReport, RuntimeLLMOutputContractDraftResult };
 
 // ── Verdict ───────────────────────────────────────────────────────────────────
 
@@ -135,7 +137,13 @@ export interface RuntimeWordingGateSectionResult {
 /**
  * Input to `runRuntimeWordingGovernanceGate`.
  *
- * `draftResult`               — the mock adapter result from Phase 8.2G-1.
+ * `draftResult`               — the draft result, accepting both the mock adapter result
+ *                               (Phase 8.2G-1, `RuntimeLLMDraftAdapterResult`) and the live
+ *                               sandbox draft candidate (Phase 8.2G-5, extended by 8.2G-5A).
+ *                               Both satisfy `RuntimeLLMOutputContractDraftResult` structurally.
+ *                               The gate does NOT revalidate the `sandboxGuardProof`; that is
+ *                               the responsibility of the upstream output contract validator
+ *                               (Phase 8.2G-5A). (Updated in Phase 8.2G-6A.)
  * `outputContractValidation`  — the contract validation result from Phase 8.2G-2;
  *                               must have `verdict === "accepted_for_next_gate"` for
  *                               wording evaluation to proceed.
@@ -145,7 +153,7 @@ export interface RuntimeWordingGateSectionResult {
  * `notes`                     — optional governance notes.
  */
 export interface RuntimeWordingGateInput {
-  readonly draftResult: RuntimeLLMDraftAdapterResult;
+  readonly draftResult: RuntimeLLMOutputContractDraftResult;
   readonly outputContractValidation: RuntimeLLMOutputContractValidationResult;
   readonly scoreReport: WordingToneScoreReport | null;
   readonly neverUserVisible: true;

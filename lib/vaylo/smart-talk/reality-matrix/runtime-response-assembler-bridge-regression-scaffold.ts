@@ -55,7 +55,7 @@ import type { RuntimeLiveSandboxGuardProof } from "./runtime-live-path-type-exte
 import { LIVE_SANDBOX_DRAFT_TEXT_PREFIX } from "./runtime-live-path-type-extension-types";
 
 export const RESPONSE_ASSEMBLER_REGRESSION_SCAFFOLD_VERSION =
-  "8.2g-6-runtime-response-assembler-bridge-regression-v1";
+  "8.2g-6a-runtime-response-assembler-bridge-regression-v2";
 
 // ── Result types ──────────────────────────────────────────────────────────────
 
@@ -218,7 +218,14 @@ const LIVE_PROOF: RuntimeLiveSandboxGuardProof = {
   notes: ["Scaffold live proof fixture."],
 };
 
-/** A synthetic accepted wording gate result for the live sandbox path. */
+/**
+ * Synthetic accepted wording gate result — retained for cases where a wording
+ * gate result is needed without constructing a full live sandbox fixture (e.g.
+ * case 2, which injects a pre-built rejected contract validation). Cases 8 and
+ * 13 were updated in Phase 8.2G-6A to use the native wording gate path instead.
+ *
+ * @deprecated for live path testing — use runRuntimeWordingGovernanceGate() natively.
+ */
 const ACCEPTED_WORDING_GATE: RuntimeWordingGateResult = {
   verdict: "accepted_for_audit_dry_run",
   acceptedForAuditDryRun: true,
@@ -234,7 +241,10 @@ const ACCEPTED_WORDING_GATE: RuntimeWordingGateResult = {
   realTextSemanticallyEvaluated: false,
   userVisibleOutputAllowed: false,
   neverUserVisible: true,
-  notes: ["Synthetic accepted wording gate for live sandbox test."],
+  notes: [
+    "Synthetic accepted wording gate — retained for cases needing a pre-built gate result.",
+    "Phase 8.2G-6A: cases 8 and 13 now use runRuntimeWordingGovernanceGate() natively.",
+  ],
 };
 
 // ── Cases ─────────────────────────────────────────────────────────────────────
@@ -435,7 +445,7 @@ function case7_mockPrefixStripped(): AssemblerRegressionCaseResult {
   };
 }
 
-// Case 8: live sandbox prefix stripped
+// Case 8: live sandbox prefix stripped (Phase 8.2G-6A: now uses native wording gate)
 function case8_liveSandboxPrefixStripped(): AssemblerRegressionCaseResult {
   const failures: string[] = [];
 
@@ -463,26 +473,36 @@ function case8_liveSandboxPrefixStripped(): AssemblerRegressionCaseResult {
     notes: ["Case 8 scaffold live sandbox draft."],
   };
 
+  const liveContractInput = {
+    adapterMode: "future_live_llm" as const,
+    accessTier: "free_preview" as const,
+    contractRef: "8.2g-6-case8-contract",
+    allowedSectionTypes: ["document_type_signal", "uncertainty_notice"] as const,
+    activeForbiddenMoves: [] as const,
+    activeRequiredConstraints: [] as const,
+    uncertaintyRequired: false,
+    humanReviewRequired: false,
+    auditTraceParentIds: [] as const,
+    neverUserVisible: true as const,
+  };
+
   const liveContractValidation = validateRuntimeLLMOutputContract({
-    input: {
-      adapterMode: "future_live_llm",
-      accessTier: "free_preview",
-      contractRef: "8.2g-6-case8-contract",
-      allowedSectionTypes: ["document_type_signal", "uncertainty_notice"],
-      activeForbiddenMoves: [],
-      activeRequiredConstraints: [],
-      uncertaintyRequired: false,
-      humanReviewRequired: false,
-      auditTraceParentIds: [],
-      neverUserVisible: true,
-    },
+    input: liveContractInput,
     result: liveSandboxResult,
+  });
+
+  // Phase 8.2G-6A: now flows through wording gate natively (no synthetic gate result needed)
+  const wordingGateResult = runRuntimeWordingGovernanceGate({
+    draftResult: liveSandboxResult,
+    outputContractValidation: liveContractValidation,
+    scoreReport: BASE_SAFE_SCORE_REPORT,
+    neverUserVisible: true,
   });
 
   const result = runRuntimeResponseAssemblerBridge({
     draftResult: liveSandboxResult,
     outputContractValidation: liveContractValidation,
-    wordingGateResult: ACCEPTED_WORDING_GATE,
+    wordingGateResult,
     auditTraceValid: true,
     diagnosticEnvelopeValid: true,
     assemblyRunId: "8.2g-6-case8-assembly",
@@ -514,13 +534,14 @@ function case8_liveSandboxPrefixStripped(): AssemblerRegressionCaseResult {
 
   return {
     caseNumber: 8,
-    caseName: "live sandbox prefix [LIVE_SANDBOX_DRAFT_NEVER_USER_VISIBLE] stripped",
+    caseName: "live sandbox prefix [LIVE_SANDBOX_DRAFT_NEVER_USER_VISIBLE] stripped (native wording gate via Phase 8.2G-6A)",
     passed: failures.length === 0,
     failures,
     bridgeResult: result,
     notes: [
       "Live sandbox prefix removed from textCandidate.",
       "liveLLMCalled:true preserved in bridge result.",
+      "Phase 8.2G-6A: now uses runRuntimeWordingGovernanceGate() natively — no synthetic gate result.",
       "Still neverUserVisible.",
     ],
   };
@@ -757,26 +778,36 @@ function case13_liveSandboxPathAssembles(): AssemblerRegressionCaseResult {
     modelingGapNote: "Phase 8.2G-5A resolved.",
   };
 
+  const case13ContractInput = {
+    adapterMode: "future_live_llm" as const,
+    accessTier: "free_preview" as const,
+    contractRef: "8.2g-6-case13-contract",
+    allowedSectionTypes: ["document_type_signal", "uncertainty_notice"] as const,
+    activeForbiddenMoves: [] as const,
+    activeRequiredConstraints: [] as const,
+    uncertaintyRequired: false,
+    humanReviewRequired: false,
+    auditTraceParentIds: [] as const,
+    neverUserVisible: true as const,
+  };
+
   const liveContractValidation = validateRuntimeLLMOutputContract({
-    input: {
-      adapterMode: "future_live_llm",
-      accessTier: "free_preview",
-      contractRef: "8.2g-6-case13-contract",
-      allowedSectionTypes: ["document_type_signal", "uncertainty_notice"],
-      activeForbiddenMoves: [],
-      activeRequiredConstraints: [],
-      uncertaintyRequired: false,
-      humanReviewRequired: false,
-      auditTraceParentIds: [],
-      neverUserVisible: true,
-    },
+    input: case13ContractInput,
     result: liveSandboxResult,
+  });
+
+  // Phase 8.2G-6A: live path now flows through wording gate natively
+  const case13WordingGate = runRuntimeWordingGovernanceGate({
+    draftResult: liveSandboxResult,
+    outputContractValidation: liveContractValidation,
+    scoreReport: BASE_SAFE_SCORE_REPORT,
+    neverUserVisible: true,
   });
 
   const result = runRuntimeResponseAssemblerBridge({
     draftResult: liveSandboxResult,
     outputContractValidation: liveContractValidation,
-    wordingGateResult: ACCEPTED_WORDING_GATE,
+    wordingGateResult: case13WordingGate,
     auditTraceValid: true,
     diagnosticEnvelopeValid: true,
     assemblyRunId: "8.2g-6-case13-assembly",
@@ -792,12 +823,13 @@ function case13_liveSandboxPathAssembles(): AssemblerRegressionCaseResult {
 
   return {
     caseNumber: 13,
-    caseName: "live sandbox path with valid proof → assembled_internal_candidate, liveLLMCalled:true",
+    caseName: "live sandbox path with valid proof → assembled_internal_candidate (native wording gate via Phase 8.2G-6A)",
     passed: failures.length === 0,
     failures,
     bridgeResult: result,
     notes: [
-      "First confirmed live sandbox assembly candidate.",
+      "First confirmed live sandbox full native pipeline: contract validator → wording gate → assembler bridge.",
+      "Phase 8.2G-6A: runRuntimeWordingGovernanceGate() used natively — no synthesized gate result.",
       "liveLLMCalled:true; userVisibleOutputEmitted:false; eligibleForFutureUserVisibleAssembly:true.",
     ],
   };

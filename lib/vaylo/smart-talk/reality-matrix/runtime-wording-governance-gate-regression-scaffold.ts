@@ -1,5 +1,10 @@
 /**
  * Regression scaffold for the Runtime Wording Governance Gate (Phase 8.2G-3).
+ * Updated in Phase 8.2G-6A: RuntimeWordingGateInput.draftResult now accepts
+ * RuntimeLLMOutputContractDraftResult (the wider union interface). Existing mock
+ * cases remain unchanged because RuntimeLLMDraftAdapterResult is structurally
+ * compatible with RuntimeLLMOutputContractDraftResult. Live sandbox path cases
+ * are covered by runtime-wording-gate-live-path-extension-regression-scaffold.ts.
  *
  * Runs 12 cases covering:
  *  - happy path: safe score report → accepted_for_audit_dry_run

@@ -451,6 +451,10 @@ Modeling gap resolved. `RuntimeLiveSandboxGuardProof` introduced with 13-rule va
 
 Response Assembler Bridge established. `runRuntimeResponseAssemblerBridge` consumes a fully-validated 8.2G pipeline result and produces an internal `RuntimeResponseAssemblerBridgeResult`. Strips `[MOCK_DRAFT_NEVER_USER_VISIBLE]` and `[LIVE_SANDBOX_DRAFT_NEVER_USER_VISIBLE]` prefixes. Detects and rejects internal metadata leaks. `eligibleForFutureUserVisibleAssembly: true` only on `assembled_internal_candidate` verdict. `userVisibleOutputEmitted: false`, `persistenceUsed: false`, `dnaSavePerformed: false`, `offlineSavePerformed: false` are literal type invariants. 14-case regression scaffold. No LLM call. No UI/API route. See `RUNTIME_RESPONSE_ASSEMBLER_BRIDGE.md`.
 
+## Phase 8.2G-6A Status
+
+Wording gate live path extension resolved. `RuntimeWordingGateInput.draftResult` changed from `RuntimeLLMDraftAdapterResult` to `RuntimeLLMOutputContractDraftResult`. Live sandbox drafts can now flow through the wording gate natively after output contract validation. Mock path unchanged (structural subtype compatibility). `deriveDraftId` helper added for safe field access. 10-case live path regression scaffold. No LLM judge, no semantic prose analysis, no user-visible output. See `RUNTIME_WORDING_GATE_LIVE_PATH_EXTENSION.md`.
+
 **Next phase: 8.2G-7 — User-Visible Response Authorisation Gate.**
 
 ---
