@@ -1816,7 +1816,19 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 - `runtime-wording-gate-live-path-extension-regression-scaffold.ts` — 10 live path regression cases
 - `RUNTIME_WORDING_GATE_LIVE_PATH_EXTENSION.md` — phase documentation
 
-**Next phase: 8.2G-7 — User-Visible Response Authorisation Gate**
+---
+
+**PHASE 8.2G-7 — User-Visible Response Authorisation Gate** ✓ completed
+
+**State:**
+- Creates internal `UserVisibleResponsePacket` candidate from `assembled_internal_candidate` (8.2G-6)
+- Does not emit to UI or API; `emittedToUserNow: false` always
+- Does not persist; `persistenceUsed: false`, `dnaSavePerformed: false`, `offlineSavePerformed: false` always
+- `acceptedForUserVisibleAssembly: true` and `userVisibleOutputAllowedForFuture: true` on success only
+- Human review packets remain blocked from user-visible delivery
+- First phase where `acceptedForUserVisibleAssembly: true` is possible
+
+**Next phase: 8.2G-8 — Smart Talk Runtime Delivery Wiring**
 
 ---
 

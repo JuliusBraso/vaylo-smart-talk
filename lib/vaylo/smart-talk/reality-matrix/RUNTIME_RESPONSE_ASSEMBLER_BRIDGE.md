@@ -131,7 +131,11 @@ These are compile-time invariants that match `persistenceUsed: false` in the ups
 
 **Phase 8.2G-6A** resolved the modeling weakness noted in section 16 of the Phase 8.2G-6 output report. `RuntimeWordingGateInput.draftResult` was changed to accept `RuntimeLLMOutputContractDraftResult`, so live sandbox results can now flow through the wording gate natively. Cases 8 and 13 of this scaffold were updated to use `runRuntimeWordingGovernanceGate()` directly instead of the synthetic `ACCEPTED_WORDING_GATE` fixture. See `RUNTIME_WORDING_GATE_LIVE_PATH_EXTENSION.md`.
 
-## 15. Next Phase Recommendation
+## 15. Phase 8.2G-7 — User-Visible Response Authorisation Gate (completed)
+
+Phase 8.2G-7 consumes `assembled_internal_candidate` results from this bridge. It verifies all upstream invariants and produces a `UserVisibleResponsePacket` with `authorisedForFutureDelivery: true`. The packet is still never emitted in Phase 8.2G-7 — Phase 8.2G-8+ is required for Smart Talk runtime delivery.
+
+## 16. Next Phase Recommendation
 
 **Phase 8.2G-7 — User-Visible Response Authorisation Gate**: The first gate that can set `acceptedForUserVisibleAssembly: true`. This gate would:
 - Accept only `assembled_internal_candidate` results from Phase 8.2G-6
