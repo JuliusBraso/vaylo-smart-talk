@@ -134,9 +134,16 @@ No LLM call is made. The live call infrastructure (from Phase 8.2G-5) is unchang
 | 13 | Both paths: `acceptedForUserVisibleAssembly` | Always `false` |
 | 14 | Both paths: `userVisibleOutputAllowed` | Always `false` |
 
-## 11. Next Phase Recommendation
+## 11. Phase 8.2G-6 — Response Assembler Bridge (completed)
 
-**Phase 8.2G-6 — Response Assembler Bridge**: The first phase that reads accepted output from the wording gate and prepares a validated, structured payload for user-visible assembly. The assembler must:
+The live sandbox path accepted by the output contract validator (8.2G-5A) can now flow
+into the Phase 8.2G-6 Response Assembler Bridge. The bridge consumes
+`RuntimeLLMOutputContractDraftResult` and produces internal section candidates with
+prefixes stripped. See `RUNTIME_RESPONSE_ASSEMBLER_BRIDGE.md` for details.
+
+## 12. Original Next Phase Recommendation
+
+**Phase 8.2G-6 — Response Assembler Bridge (now completed)**: The first phase that reads accepted output from the wording gate and prepares a validated, structured payload for user-visible assembly. The assembler must:
 - Only accept verdicts from Phase 8.2G-3 with `acceptedForWordingGate: true`
 - Only set `acceptedForUserVisibleAssembly: true` after its own safety pass
 - Not expose `draftText` directly; transform to final explanation format

@@ -215,3 +215,9 @@ Phase 8.2G-4 dry-run infrastructure remains unchanged when 8.2G-5 is introduced.
 > be converted through `convertLiveSandboxResultToDraftAdapterResult` and then routed through
 > the 8.2G-4 dry-run. Live-called results require Phase 8.2G-5A type extensions before they
 > can enter the full dry-run pipeline. The 8.2G-4 mock adapter path is not replaced.
+
+> **Phase 8.2G-6 pointer:** Phase 8.2G-6 (Response Assembler Bridge) consumes the
+> `auditTraceValid` and `diagnosticEnvelopeValid` booleans that Phase 8.2G-4 produces.
+> Only when both are `true` (alongside accepted output contract and wording gate verdicts)
+> does the assembler bridge produce an `assembled_internal_candidate`. The dry-run
+> infrastructure itself is not modified by Phase 8.2G-6.

@@ -1762,7 +1762,35 @@ type extensions. Non-live results are fully 8.2G-2 compatible via the converter.
 **`liveLLMCalled` in `RuntimeLLMOutputContractValidationResult`:**
 Changed from literal `false` to `boolean`. It is `true` only when the live sandbox path is accepted with a valid proof. The mock adapter's own `liveLLMCalled: false` literal is unchanged.
 
-**Next phase: 8.2G-6 — Response Assembler Bridge**
+---
+
+**PHASE 8.2G-6 — Response Assembler Bridge** ✓ completed
+
+**Verdict:** First internal response assembly candidate created from a fully-validated 8.2G pipeline. Internal draft prefixes stripped; internal metadata leaks detected and rejected.
+
+**State:**
+- Creates internal response assembly candidate from accepted output contract + wording gate + audit/diagnostic validity
+- Strips `[MOCK_DRAFT_NEVER_USER_VISIBLE]` and `[LIVE_SANDBOX_DRAFT_NEVER_USER_VISIBLE]` prefixes
+- Rejects any candidate containing internal governance metadata markers
+- `userVisibleOutputEmitted: false` — literal type invariant; never relaxed in this phase
+- `userVisibleOutputAllowed: false` — literal type invariant
+- `persistenceUsed: false`, `dnaSavePerformed: false`, `offlineSavePerformed: false` — literal invariants
+- `eligibleForFutureUserVisibleAssembly: true` only on `assembled_internal_candidate` verdict
+- No Smart Talk runtime wiring; no UI/API route; no LLM call
+- Mock and live sandbox paths both supported
+
+**New types and functions:**
+- `RuntimeResponseAssemblerBridgeVerdict` — 9 possible outcomes
+- `RuntimeResponseAssemblerBridgeDiagnosticCode` — 18 diagnostic codes
+- `RuntimeResponseAssemblerSectionKind` — 7 section kinds (mirrors `RuntimeLLMDraftSectionType`)
+- `RuntimeResponseAssemblerSectionCandidate` — internal section with stripped text
+- `RuntimeResponseAssemblerBridgeInput` / `RuntimeResponseAssemblerBridgeResult`
+- `runRuntimeResponseAssemblerBridge()` — main bridge function
+- `stripKnownInternalDraftPrefix()` — pure prefix-stripping helper
+- `detectInternalMetadataLeak()` — pure metadata leak detector
+- `runResponseAssemblerBridgeRegressionScaffold()` — 14 regression cases
+
+**Next phase: 8.2G-7 — User-Visible Response Authorisation Gate**
 
 ---
 

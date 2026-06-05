@@ -441,7 +441,17 @@ Runtime governance dry-run harness established. `runRuntimeGovernanceDryRun(inpu
 
 First live LLM sandboxed corpus call boundary established. `runRuntimeLiveLLMSandboxAdapter(input)` implements a 6-guard chain (allowLiveCall, syntheticOnly, neverContainsRealPii, neverUserVisible, provider, OPENAI_API_KEY) before any live call. Uses `fetch` directly (no SDK). Output shape validated by `validateLiveLLMOutputShape` before candidates are accepted. Modeling gap discovered: `RuntimeLLMDraftAdapterResult.liveLLMCalled: false` literal prevents live-called results from flowing into 8.2G-2 without a type extension; `RuntimeLiveLLMSandboxDraftCandidateResult` introduced for this path. Non-live results can be converted via `convertLiveSandboxResultToDraftAdapterResult` and are fully 8.2G-2 compatible. `userVisibleOutputAllowed: false`, `persistenceUsed: false`, `realUserInputUsed: false` are literal types. 10-case regression scaffold; optional live call skipped unless `VAYLO_ALLOW_LIVE_LLM_SANDBOX=true`. See `RUNTIME_LIVE_LLM_SANDBOX.md`.
 
-**Next phase: 8.2G-5A — Live Path Type Extension (resolve liveLLMCalled literal conflict to enable live results through 8.2G-2 validator).**
+---
+
+## Phase 8.2G-5A Status
+
+Modeling gap resolved. `RuntimeLiveSandboxGuardProof` introduced with 13-rule validator. `RuntimeLLMOutputContractDraftResult` union interface bridges mock and live sandbox paths. `validateRuntimeLLMOutputContract` updated to accept live sandbox path only with valid proof. `liveLLMCalled` on `RuntimeLLMOutputContractValidationResult` changed from literal `false` to `boolean`. 14-case regression scaffold. No LLM call in this phase. See `RUNTIME_LIVE_PATH_TYPE_EXTENSION.md`.
+
+## Phase 8.2G-6 Status
+
+Response Assembler Bridge established. `runRuntimeResponseAssemblerBridge` consumes a fully-validated 8.2G pipeline result and produces an internal `RuntimeResponseAssemblerBridgeResult`. Strips `[MOCK_DRAFT_NEVER_USER_VISIBLE]` and `[LIVE_SANDBOX_DRAFT_NEVER_USER_VISIBLE]` prefixes. Detects and rejects internal metadata leaks. `eligibleForFutureUserVisibleAssembly: true` only on `assembled_internal_candidate` verdict. `userVisibleOutputEmitted: false`, `persistenceUsed: false`, `dnaSavePerformed: false`, `offlineSavePerformed: false` are literal type invariants. 14-case regression scaffold. No LLM call. No UI/API route. See `RUNTIME_RESPONSE_ASSEMBLER_BRIDGE.md`.
+
+**Next phase: 8.2G-7 — User-Visible Response Authorisation Gate.**
 
 ---
 
