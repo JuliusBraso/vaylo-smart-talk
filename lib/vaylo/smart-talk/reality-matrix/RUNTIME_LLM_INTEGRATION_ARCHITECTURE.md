@@ -455,7 +455,11 @@ Response Assembler Bridge established. `runRuntimeResponseAssemblerBridge` consu
 
 Wording gate live path extension resolved. `RuntimeWordingGateInput.draftResult` changed from `RuntimeLLMDraftAdapterResult` to `RuntimeLLMOutputContractDraftResult`. Live sandbox drafts can now flow through the wording gate natively after output contract validation. Mock path unchanged (structural subtype compatibility). `deriveDraftId` helper added for safe field access. 10-case live path regression scaffold. No LLM judge, no semantic prose analysis, no user-visible output. See `RUNTIME_WORDING_GATE_LIVE_PATH_EXTENSION.md`.
 
-**Next phase: 8.2G-7 — User-Visible Response Authorisation Gate.**
+## Phase 8.2G-8 Status
+
+End-to-end synthetic harness established. `runRuntimeSyntheticE2EHarness` orchestrates the full 8.2G-1→8.2G-7 pipeline using deterministic synthetic fixtures. 6 fixture modes; 12 regression cases. All invariants (`emittedToUserNow: false`, `liveLLMCalled: false`, `apiRouteTouched: false`, `persistenceUsed: false`) verified on all paths. No API/UI wiring. Proves pipeline readiness before Phase 8.2G-9 delivery wiring.
+
+**Next phase: 8.2G-9 — Smart Talk Runtime Delivery Wiring (first API/UI connection).**
 
 ---
 

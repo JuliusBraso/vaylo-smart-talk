@@ -1828,7 +1828,17 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 - Human review packets remain blocked from user-visible delivery
 - First phase where `acceptedForUserVisibleAssembly: true` is possible
 
-**Next phase: 8.2G-8 — Smart Talk Runtime Delivery Wiring**
+---
+
+**PHASE 8.2G-8 — End-to-End Synthetic Runtime Harness** ✓ completed
+
+**State:**
+- Runs full internal synthetic pipeline: 8.2G-1 → 8.2G-2 → 8.2G-3 → 8.2G-6 → 8.2G-7
+- Proves readiness for future delivery wiring without touching API/UI
+- Does not call live LLM; does not persist; `emittedToUserNow: false` always
+- 6 fixture modes; 12 regression cases
+
+**Next phase: 8.2G-9 — Smart Talk Runtime Delivery Wiring (first API/UI connection)**
 
 ---
 
