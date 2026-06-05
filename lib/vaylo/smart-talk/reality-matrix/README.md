@@ -1731,9 +1731,38 @@ type extensions. Non-live results are fully 8.2G-2 compatible via the converter.
 - No Smart Talk route touched; no UI touched
 - Optional live call skipped unless `VAYLO_ALLOW_LIVE_LLM_SANDBOX=true` + API key
 
-**Next phase: 8.2G-5A — Live Path Type Extension**
-
 **Safety boundary:** Live LLM only under 6-guard chain. No persistence. No user-visible output. No Smart Talk wiring. No env files modified. No API key committed.
+
+---
+
+**PHASE 8.2G-5A — Live Path Type Extension** ✓ completed
+
+**Verdict:** Modeling gap from Phase 8.2G-5 resolved. Live sandbox results can now be accepted by the output contract validator (8.2G-2) only when they carry a valid `RuntimeLiveSandboxGuardProof`.
+
+**State:**
+- Live sandbox results accepted by `validateRuntimeLLMOutputContract` only with valid guard proof
+- Mock path remains unchanged; all Phase 8.2G-2 guarantees preserved
+- `acceptedForUserVisibleAssembly: false` — permanent invariant, both paths
+- `userVisibleOutputAllowed: false` — permanent invariant, both paths
+- No Smart Talk runtime wiring
+- No user-visible output produced
+- No live LLM call in this phase (type/validator extension only)
+- No env files modified; no API keys added
+
+**New types and functions:**
+- `RuntimeLiveSandboxGuardProof` — formal proof that all 6 sandbox guards passed
+- `RuntimeLiveSandboxGuardProofStatus` — `proven | missing | invalid`
+- `RuntimeLiveSandboxGuardProofDiagnosticCode` — 10 diagnostic codes
+- `validateRuntimeLiveSandboxGuardProof()` — pure 13-rule proof validator
+- `RuntimeLLMOutputContractDraftResult` — union interface accepted by output contract validator
+- `RuntimeLLMOutputContractDraftSourceKind` — `mock_adapter_result | live_sandbox_result`
+- 5 new violation codes: `llm_output_live_sandbox_proof_missing`, `llm_output_live_sandbox_proof_invalid`, `llm_output_live_sandbox_prefix_missing`, `llm_output_live_sandbox_shape_not_attested`, `llm_output_unrecognized_draft_source`
+- `runLivePathExtensionRegressionScaffold()` — 14 regression cases
+
+**`liveLLMCalled` in `RuntimeLLMOutputContractValidationResult`:**
+Changed from literal `false` to `boolean`. It is `true` only when the live sandbox path is accepted with a valid proof. The mock adapter's own `liveLLMCalled: false` literal is unchanged.
+
+**Next phase: 8.2G-6 — Response Assembler Bridge**
 
 ---
 

@@ -163,15 +163,18 @@ Phase 8.2G-5 ends with a `RuntimeLiveLLMSandboxResult`. To move further:
 - `convertLiveSandboxResultToDraftAdapterResult()` converts to `RuntimeLLMDraftAdapterResult`
 - This can be passed to `validateRuntimeLLMOutputContract` (8.2G-2) → `runRuntimeWordingGovernanceGate` (8.2G-3) → `runRuntimeGovernanceDryRun` (8.2G-4)
 
-**For live results** (`liveLLMCalled: true`):
+**For live results** (`liveLLMCalled: true`) — Phase 8.2G-5A resolution:
 - `buildLiveSandboxDraftCandidateResult()` wraps in `RuntimeLiveLLMSandboxDraftCandidateResult`
-- This type has `adapterMode: "future_live_llm"` and `liveLLMCalled: true`
-- Phase 8.2G-5A must extend the 8.2G-2 validator to accept this before the live path can proceed to 8.2G-6
+- This type now carries a required `sandboxGuardProof: RuntimeLiveSandboxGuardProof`
+- The sandbox adapter builds the proof automatically when the live call succeeds and shape validates
+- The output contract validator (8.2G-2) now accepts this via `RuntimeLLMOutputContractDraftResult`
+- Live path is accepted only when `validateRuntimeLiveSandboxGuardProof(proof).valid === true`
 
-**Modeling gap (Phase 8.2G-5A):**
-`RuntimeLLMDraftAdapterResult.liveLLMCalled: false` is a literal type. The output
-contract validator (8.2G-2) also rejects `adapterMode: "future_live_llm"`. These
-constraints must be resolved before live-called results can enter the full pipeline.
+**Modeling gap resolved (Phase 8.2G-5A):**
+`RuntimeLiveSandboxGuardProof` and `validateRuntimeLiveSandboxGuardProof` (see
+`runtime-live-path-type-extension-types.ts`) now bridge the gap. The output contract
+validator accepts `adapterMode: "future_live_llm"` when `liveLLMCalled: true` and
+a valid guard proof is present. See `RUNTIME_LIVE_PATH_TYPE_EXTENSION.md` for details.
 
 ---
 
@@ -204,6 +207,8 @@ To run a live call against the OpenAI API:
    if all guards passed and the shape was valid.
 6. To proceed through the full governance pipeline, use `buildLiveSandboxDraftCandidateResult()`
    to wrap the result — but note that Phase 8.2G-2 validation will reject
-   `adapterMode: "future_live_llm"` until Phase 8.2G-5A resolves the type gap.
+   `adapterMode: "future_live_llm"` — Phase 8.2G-5A resolved this gap.
+   The live result now carries a `RuntimeLiveSandboxGuardProof` and can be passed
+   to `validateRuntimeLLMOutputContract` via `RuntimeLLMOutputContractDraftResult`.
 
 **Never run the live sandbox with real user documents or real PII.**

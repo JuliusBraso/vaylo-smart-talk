@@ -266,8 +266,9 @@ function case4_futureLiveLLMModeRejected(): ValidatorRegressionCaseResult {
     failures,
     validationResult: vr,
     notes: [
-      "input.adapterMode === 'future_live_llm' is rejected by the contract validator.",
-      "Violation: llm_output_forbidden_adapter_mode.",
+      "Mock adapter with input.adapterMode='future_live_llm' returns result.adapterMode='future_live_llm' + liveLLMCalled:false.",
+      "Phase 8.2G-5A: this combination (future_live_llm + liveLLMCalled:false) is the 'forbidden_future_llm' path.",
+      "Violation: llm_output_forbidden_adapter_mode. Live path requires liveLLMCalled:true + valid proof.",
     ],
   };
 }

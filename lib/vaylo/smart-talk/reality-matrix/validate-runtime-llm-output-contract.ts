@@ -1,34 +1,41 @@
 /**
- * Runtime LLM Output Contract Validator (Phase 8.2G-2).
+ * Runtime LLM Output Contract Validator (Phase 8.2G-2, extended 8.2G-5A).
  *
  * Implements `validateRuntimeLLMOutputContract` — a pure safety gate that
- * checks a `RuntimeLLMDraftAdapterResult` (from Phase 8.2G-1) against the
- * originating `RuntimeLLMDraftAdapterInput` before the draft can proceed to
- * the wording governance gate (Phase 8.2G-3).
+ * checks a draft result (from Phase 8.2G-1 mock adapter OR Phase 8.2G-5 live
+ * sandbox adapter) against the originating `RuntimeLLMDraftAdapterInput` before
+ * the draft can proceed to the wording governance gate (Phase 8.2G-3).
  *
- * This is the first safety gate after the LLM draft adapter. Its job is to
- * refuse any draft that:
- *  - violates visibility invariants (neverUserVisible, liveLLMCalled, userVisibleOutputAllowed)
- *  - carries unsafe safety flags on any section candidate
- *  - contains sections not in the allowed section type list
- *  - has gaps in forbidden move or required constraint coverage
- *  - lacks the required mock prefix on draftText
- *  - uses the forbidden `future_live_llm` adapter mode
+ * Phase 8.2G-5A extension:
+ *   The `result` parameter now accepts `RuntimeLLMOutputContractDraftResult`, a
+ *   union interface satisfied by both `RuntimeLLMDraftAdapterResult` (mock) and
+ *   `RuntimeLiveLLMSandboxDraftCandidateResult` (live sandbox). Path selection:
  *
- * Position in pipeline:
- *   llm_draft_adapter → [THIS GATE] → wording_evaluation_gate (8.2G-3)
+ *     Mock path    — result.adapterMode === "mock"
+ *     Live path    — result.adapterMode === "future_live_llm" AND
+ *                    result.liveLLMCalled === true (runtime check)
+ *     Forbidden    — result.adapterMode === "future_live_llm" AND
+ *                    result.liveLLMCalled !== true (mock adapter blocked live mode)
+ *     Unrecognized — any other combination
+ *
+ * Mock path behaviour (unchanged from Phase 8.2G-2):
+ *   - liveLLMCalled must be false.
+ *   - draftText must start with [MOCK_DRAFT_NEVER_USER_VISIBLE].
+ *
+ * Live sandbox path acceptance requires (Phase 8.2G-5A):
+ *   - result.sandboxGuardProof present and valid per validateRuntimeLiveSandboxGuardProof.
+ *   - proof.outputShapeValidated === true.
+ *   - every draftText starts with [LIVE_SANDBOX_DRAFT_NEVER_USER_VISIBLE].
  *
  * Verdict precedence (highest → lowest):
- *   1. rejected_visibility_violation  — neverUserVisible/liveLLMCalled/userVisibleOutputAllowed
- *   2. rejected_unsafe_draft          — safety flags on any section
- *   3. rejected_contract_violation    — adapter mode, section membership, coverage gaps,
- *                                       prefix, empty text
- *   4. accepted_for_next_gate         — all rules pass
+ *   1. rejected_visibility_violation
+ *   2. rejected_unsafe_draft
+ *   3. rejected_contract_violation
+ *   4. accepted_for_next_gate
  *
- * Key invariants (all enforced at compile time via literal types):
- *   - acceptedForUserVisibleAssembly: false  — never true in Phase 8.2G-2
- *   - liveLLMCalled: false                   — never relaxed in this phase
- *   - userVisibleOutputAllowed: false        — never relaxed in this phase
+ * Key invariants (enforced at compile time via literal types):
+ *   - acceptedForUserVisibleAssembly: false  — never true in any phase
+ *   - userVisibleOutputAllowed: false        — never relaxed
  *
  * Safety guarantees:
  * - no LLM SDK imported
@@ -42,41 +49,39 @@
 
 import type {
   RuntimeLLMDraftAdapterInput,
-  RuntimeLLMDraftAdapterResult,
-  RuntimeLLMDraftSectionCandidate,
   RuntimeLLMDraftSectionType,
 } from "./runtime-llm-draft-adapter-types";
 import type {
+  RuntimeLLMOutputContractDraftResult,
   RuntimeLLMOutputContractValidationResult,
   RuntimeLLMOutputContractVerdict,
   RuntimeLLMOutputContractViolationCode,
   RuntimeLLMOutputSectionValidationResult,
 } from "./runtime-llm-output-contract-validator-types";
+import {
+  validateRuntimeLiveSandboxGuardProof,
+} from "./runtime-live-path-type-extension-types";
+import type { RuntimeLiveSandboxGuardProof } from "./runtime-live-path-type-extension-types";
 
 export const RUNTIME_LLM_OUTPUT_CONTRACT_VALIDATOR_VERSION =
-  "8.2g-2-runtime-llm-output-contract-validator-v1";
+  "8.2g-2-runtime-llm-output-contract-validator-v2-8.2g-5a";
+
+// ── Prefix constants ───────────────────────────────────────────────────────────
+
+const MOCK_DRAFT_PREFIX = "[MOCK_DRAFT_NEVER_USER_VISIBLE]";
+const LIVE_SANDBOX_DRAFT_PREFIX = "[LIVE_SANDBOX_DRAFT_NEVER_USER_VISIBLE]";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const MOCK_DRAFT_PREFIX = "[MOCK_DRAFT_NEVER_USER_VISIBLE]";
-
-/**
- * Returns true if `value` has any non-whitespace characters when trimmed.
- */
 function isNonBlank(value: string): boolean {
   return value.trim().length > 0;
 }
 
 /**
  * Returns true if the content portion of a draft text (after stripping the
- * required mock prefix) is blank or empty.
- *
- * This allows the blank-content check (Rule 10) and the missing-prefix check
- * (Rule 9) to be independent:
- *  - Rule 9 fires if the prefix is absent from the full text.
- *  - Rule 10 fires if the prefix is present but no actual content follows it.
+ * required prefix) is blank or empty.
  */
-function hasMockPrefixButBlankContent(draftText: string, prefix: string): boolean {
+function hasDraftPrefixButBlankContent(draftText: string, prefix: string): boolean {
   if (!draftText.startsWith(prefix)) return false;
   const content = draftText.slice(prefix.length);
   return !isNonBlank(content);
@@ -94,24 +99,26 @@ function unsafeReadField<T>(obj: unknown, field: string): T {
 // ── Section validator ─────────────────────────────────────────────────────────
 
 function validateSection(
-  section: RuntimeLLMDraftSectionCandidate,
+  section: RuntimeLLMOutputContractDraftResult["sectionCandidates"][number],
   allowedSectionTypes: readonly RuntimeLLMDraftSectionType[],
+  draftPrefix: string,
+  prefixViolationCode: RuntimeLLMOutputContractViolationCode,
 ): RuntimeLLMOutputSectionValidationResult {
   const violations: RuntimeLLMOutputContractViolationCode[] = [];
   const notes: string[] = [];
 
-  // Rule 4 — section neverUserVisible invariant (defensive runtime check)
+  // Rule — section neverUserVisible invariant (defensive runtime check)
   const sectionNeverUserVisible = unsafeReadField<unknown>(section, "neverUserVisible");
   if (sectionNeverUserVisible !== true) {
     violations.push("llm_output_section_not_never_user_visible");
   }
 
-  // Rule 5 — allowed section membership
+  // Rule — allowed section membership
   if (!allowedSectionTypes.includes(section.sectionType)) {
     violations.push("llm_output_section_type_not_allowed");
   }
 
-  // Rule 6 — safety flags
+  // Rule — safety flags
   if (section.safetyFlags.length > 0) {
     violations.push("llm_output_unsafe_safety_flag");
     if (section.safetyFlags.includes("contains_user_visible_diagnostic")) {
@@ -119,23 +126,20 @@ function validateSection(
     }
   }
 
-  // Rule 9 — mock prefix
-  if (!section.draftText.startsWith(MOCK_DRAFT_PREFIX)) {
-    violations.push("llm_output_missing_mock_prefix");
+  // Rule — required prefix on draftText
+  if (!section.draftText.startsWith(draftPrefix)) {
+    violations.push(prefixViolationCode);
   }
 
-  // Rule 10 — empty content after mock prefix
-  // Checked separately from Rule 9: fires when the prefix is present but the
-  // content portion following it is blank (e.g., draftText === "[MOCK_DRAFT_NEVER_USER_VISIBLE]").
-  // When the full draftText is blank, Rule 9 (missing prefix) fires instead.
-  if (hasMockPrefixButBlankContent(section.draftText, MOCK_DRAFT_PREFIX)) {
+  // Rule — empty content after prefix
+  if (hasDraftPrefixButBlankContent(section.draftText, draftPrefix)) {
     violations.push("llm_output_empty_draft_text");
   }
 
-  // Rule 11 — sourceBound advisory (no failure, just note)
+  // Rule — sourceBound advisory (no failure, just note)
   if (!section.sourceBound) {
     notes.push(
-      "sourceBound remains false in mock phase; production source binding is future work.",
+      "sourceBound is false; source binding verification is future work.",
     );
   }
 
@@ -150,10 +154,6 @@ function validateSection(
 
 // ── Verdict resolver ──────────────────────────────────────────────────────────
 
-/**
- * Applies verdict precedence rules:
- *   visibility > unsafe > contract > accepted
- */
 function resolveVerdict(
   resultViolations: readonly RuntimeLLMOutputContractViolationCode[],
   sectionResults: readonly RuntimeLLMOutputSectionValidationResult[],
@@ -163,11 +163,13 @@ function resolveVerdict(
     "llm_output_user_visible_enabled",
     "llm_output_result_not_never_user_visible",
     "llm_output_missing_mock_prefix",
+    "llm_output_live_sandbox_prefix_missing",
   ];
 
   const SECTION_VISIBILITY_VIOLATIONS: readonly RuntimeLLMOutputContractViolationCode[] = [
     "llm_output_section_not_never_user_visible",
     "llm_output_missing_mock_prefix",
+    "llm_output_live_sandbox_prefix_missing",
   ];
 
   const UNSAFE_VIOLATIONS: readonly RuntimeLLMOutputContractViolationCode[] = [
@@ -175,12 +177,9 @@ function resolveVerdict(
     "llm_output_user_visible_diagnostic_detected",
   ];
 
-  // Check result-level visibility violations
   const hasResultVisibilityViolation = resultViolations.some((v) =>
     VISIBILITY_VIOLATIONS.includes(v),
   );
-
-  // Check section-level visibility violations
   const hasSectionVisibilityViolation = sectionResults.some((sr) =>
     sr.violations.some((v) => SECTION_VISIBILITY_VIOLATIONS.includes(v)),
   );
@@ -189,7 +188,6 @@ function resolveVerdict(
     return "rejected_visibility_violation";
   }
 
-  // Check section-level unsafe violations
   const hasSectionUnsafeViolation = sectionResults.some((sr) =>
     sr.violations.some((v) => UNSAFE_VIOLATIONS.includes(v)),
   );
@@ -198,11 +196,9 @@ function resolveVerdict(
     return "rejected_unsafe_draft";
   }
 
-  // Check result-level and section-level contract violations
   const allSectionViolations = sectionResults.flatMap((sr) => sr.violations);
   const hasContractViolation =
-    resultViolations.length > 0 ||
-    allSectionViolations.length > 0;
+    resultViolations.length > 0 || allSectionViolations.length > 0;
 
   if (hasContractViolation) {
     return "rejected_contract_violation";
@@ -214,8 +210,12 @@ function resolveVerdict(
 // ── Main validator ────────────────────────────────────────────────────────────
 
 /**
- * Validates a `RuntimeLLMDraftAdapterResult` against its originating
+ * Validates a `RuntimeLLMOutputContractDraftResult` against its originating
  * `RuntimeLLMDraftAdapterInput`.
+ *
+ * Accepts both the mock adapter result (Phase 8.2G-1) and the live sandbox
+ * draft candidate result (Phase 8.2G-5 / 8.2G-5A). Path is determined from
+ * `result.adapterMode` and `result.liveLLMCalled`.
  *
  * Returns a `RuntimeLLMOutputContractValidationResult` with:
  * - a top-level `verdict`
@@ -224,7 +224,7 @@ function resolveVerdict(
  * - confirmed forbidden move and required constraint coverage
  * - `acceptedForWordingGate: true` only when verdict is `accepted_for_next_gate`
  * - `acceptedForUserVisibleAssembly: false` — always
- * - `liveLLMCalled: false` — always
+ * - `liveLLMCalled: boolean` — true only on accepted live sandbox path
  * - `userVisibleOutputAllowed: false` — always
  *
  * Pure function — no side effects, no external calls, no persistence.
@@ -234,30 +234,100 @@ export function validateRuntimeLLMOutputContract({
   result,
 }: {
   input: RuntimeLLMDraftAdapterInput;
-  result: RuntimeLLMDraftAdapterResult;
+  result: RuntimeLLMOutputContractDraftResult;
 }): RuntimeLLMOutputContractValidationResult {
   const resultViolations: RuntimeLLMOutputContractViolationCode[] = [];
   const resultNotes: string[] = [];
 
-  // Rule: forbidden adapter mode (Case 4 — future_live_llm is forbidden in this gate)
-  if (input.adapterMode === "future_live_llm") {
+  // ── A. Determine draft source path ────────────────────────────────────────
+
+  const adapterModeValue = result.adapterMode;
+  const liveLLMCalledValue = unsafeReadField<unknown>(result, "liveLLMCalled");
+
+  const isMockPath = adapterModeValue === "mock";
+  const isLiveSandboxAttempt =
+    adapterModeValue === "future_live_llm" && liveLLMCalledValue === true;
+  const isForbiddenFutureLLM =
+    adapterModeValue === "future_live_llm" && liveLLMCalledValue !== true;
+  const isUnrecognized = !isMockPath && !isLiveSandboxAttempt && !isForbiddenFutureLLM;
+
+  // Track whether the live path accepted with a valid proof
+  let liveSandboxProofAccepted = false;
+
+  // ── B. Mock path checks ───────────────────────────────────────────────────
+
+  if (isMockPath) {
+    // Rule 1 — liveLLMCalled must be false on mock path (defensive runtime check)
+    if (liveLLMCalledValue !== false) {
+      resultViolations.push("llm_output_live_llm_called");
+      resultNotes.push(
+        "result.liveLLMCalled is not false on the mock path. Critical visibility invariant violation.",
+      );
+    }
+  }
+
+  // ── C. Live sandbox path checks ───────────────────────────────────────────
+
+  if (isLiveSandboxAttempt) {
+    const sandboxGuardProof = unsafeReadField<RuntimeLiveSandboxGuardProof | undefined>(
+      result,
+      "sandboxGuardProof",
+    );
+    const proofValidation = validateRuntimeLiveSandboxGuardProof(
+      sandboxGuardProof ?? null,
+    );
+
+    if (!proofValidation.valid) {
+      if (proofValidation.status === "missing") {
+        resultViolations.push("llm_output_live_sandbox_proof_missing");
+        resultNotes.push(
+          "Live sandbox path attempted but no sandboxGuardProof present.",
+        );
+      } else {
+        resultViolations.push("llm_output_live_sandbox_proof_invalid");
+        resultNotes.push(
+          "Live sandbox guard proof failed validation. Diagnostics: " +
+            proofValidation.diagnostics.join(", "),
+        );
+      }
+    } else {
+      // Proof valid — additional check: outputShapeValidated
+      if (
+        unsafeReadField<unknown>(sandboxGuardProof!, "outputShapeValidated") !== true
+      ) {
+        resultViolations.push("llm_output_live_sandbox_shape_not_attested");
+        resultNotes.push(
+          "Live sandbox proof present but outputShapeValidated is not true.",
+        );
+      } else {
+        liveSandboxProofAccepted = true;
+      }
+    }
+  }
+
+  // ── D. Forbidden future_live_llm (mock adapter blocked live mode) ─────────
+
+  if (isForbiddenFutureLLM) {
     resultViolations.push("llm_output_forbidden_adapter_mode");
     resultNotes.push(
-      "input.adapterMode is 'future_live_llm'. This mode is forbidden in Phase 8.2G-2. " +
-        "Live LLM integration is not permitted until Phase 8.2G-5.",
+      "result.adapterMode is 'future_live_llm' but result.liveLLMCalled is not true. " +
+        "This is the mock-blocked live mode. No valid live sandbox proof context present.",
     );
   }
 
-  // Rule 1 — liveLLMCalled invariant (defensive runtime check)
-  const liveLLMCalledValue = unsafeReadField<unknown>(result, "liveLLMCalled");
-  if (liveLLMCalledValue !== false) {
-    resultViolations.push("llm_output_live_llm_called");
+  // ── E. Unrecognized source ────────────────────────────────────────────────
+
+  if (isUnrecognized) {
+    resultViolations.push("llm_output_unrecognized_draft_source");
     resultNotes.push(
-      "result.liveLLMCalled is not false. This is a critical visibility invariant violation.",
+      `Unrecognized adapterMode/liveLLMCalled combination: ` +
+        `adapterMode=${String(adapterModeValue)}, liveLLMCalled=${String(liveLLMCalledValue)}.`,
     );
   }
 
-  // Rule 2 — userVisibleOutputAllowed invariant (defensive runtime check)
+  // ── F. Shared visibility invariants (both paths) ──────────────────────────
+
+  // Rule — userVisibleOutputAllowed (defensive runtime check)
   const userVisibleOutputAllowedValue = unsafeReadField<unknown>(
     result,
     "userVisibleOutputAllowed",
@@ -265,26 +335,37 @@ export function validateRuntimeLLMOutputContract({
   if (userVisibleOutputAllowedValue !== false) {
     resultViolations.push("llm_output_user_visible_enabled");
     resultNotes.push(
-      "result.userVisibleOutputAllowed is not false. This is a critical visibility invariant violation.",
+      "result.userVisibleOutputAllowed is not false. Critical visibility invariant violation.",
     );
   }
 
-  // Rule 3 — result neverUserVisible invariant (defensive runtime check)
+  // Rule — result neverUserVisible (defensive runtime check)
   const resultNeverUserVisible = unsafeReadField<unknown>(result, "neverUserVisible");
   if (resultNeverUserVisible !== true) {
     resultViolations.push("llm_output_result_not_never_user_visible");
     resultNotes.push(
-      "result.neverUserVisible is not true. This is a critical visibility invariant violation.",
+      "result.neverUserVisible is not true. Critical visibility invariant violation.",
     );
   }
 
-  // Rules 4–10 — per-section validation
+  // ── G. Per-section validation ─────────────────────────────────────────────
+
+  // Determine which prefix to enforce based on resolved path
+  const draftPrefix = liveSandboxProofAccepted
+    ? LIVE_SANDBOX_DRAFT_PREFIX
+    : MOCK_DRAFT_PREFIX;
+  const prefixViolationCode: RuntimeLLMOutputContractViolationCode =
+    liveSandboxProofAccepted
+      ? "llm_output_live_sandbox_prefix_missing"
+      : "llm_output_missing_mock_prefix";
+
   const sectionResults: RuntimeLLMOutputSectionValidationResult[] =
     result.sectionCandidates.map((section) =>
-      validateSection(section, input.allowedSectionTypes),
+      validateSection(section, input.allowedSectionTypes, draftPrefix, prefixViolationCode),
     );
 
-  // Rule 7 — forbidden move coverage
+  // ── H. Forbidden move coverage ────────────────────────────────────────────
+
   const missingForbiddenMoves: string[] = [];
   for (const move of input.activeForbiddenMoves) {
     if (!result.appliedForbiddenMoves.includes(move)) {
@@ -298,7 +379,8 @@ export function validateRuntimeLLMOutputContract({
     );
   }
 
-  // Rule 8 — required constraint coverage
+  // ── I. Required constraint coverage ──────────────────────────────────────
+
   const missingRequiredConstraints: string[] = [];
   for (const constraint of input.activeRequiredConstraints) {
     if (!result.appliedRequiredConstraints.includes(constraint)) {
@@ -312,7 +394,8 @@ export function validateRuntimeLLMOutputContract({
     );
   }
 
-  // Compute validated coverage sets
+  // ── J. Coverage sets ──────────────────────────────────────────────────────
+
   const validatedForbiddenMoves = input.activeForbiddenMoves.filter((move) =>
     result.appliedForbiddenMoves.includes(move),
   );
@@ -320,19 +403,25 @@ export function validateRuntimeLLMOutputContract({
     (constraint) => result.appliedRequiredConstraints.includes(constraint),
   );
 
-  // Resolve verdict
+  // ── K. Verdict ────────────────────────────────────────────────────────────
+
   const verdict = resolveVerdict(resultViolations, sectionResults);
   const acceptedForWordingGate = verdict === "accepted_for_next_gate";
 
+  // liveLLMCalled in the result: true only when the live sandbox path accepted with proof
+  const liveLLMCalledResult: boolean = liveSandboxProofAccepted && acceptedForWordingGate;
+
   resultNotes.push(
     `Validator version: ${RUNTIME_LLM_OUTPUT_CONTRACT_VALIDATOR_VERSION}. ` +
-      `Verdict: ${verdict}. Sections validated: ${sectionResults.length}. ` +
+      `Verdict: ${verdict}. ` +
+      `Path: ${isMockPath ? "mock" : isLiveSandboxAttempt ? "live_sandbox" : isForbiddenFutureLLM ? "forbidden_future_llm" : "unrecognized"}. ` +
+      `Sections: ${sectionResults.length}. ` +
       `Result violations: ${resultViolations.length}. ` +
-      `Total section violations: ${sectionResults.reduce((n, sr) => n + sr.violations.length, 0)}.`,
+      `Section violations: ${sectionResults.reduce((n, sr) => n + sr.violations.length, 0)}.`,
   );
   resultNotes.push(
-    "acceptedForUserVisibleAssembly: false — this validator never authorises " +
-      "user-visible output. liveLLMCalled: false. userVisibleOutputAllowed: false.",
+    "acceptedForUserVisibleAssembly: false — this validator never authorises user-visible output. " +
+      `liveLLMCalled: ${String(liveLLMCalledResult)}. userVisibleOutputAllowed: false.`,
   );
 
   return {
@@ -343,7 +432,7 @@ export function validateRuntimeLLMOutputContract({
     violations: resultViolations,
     validatedForbiddenMoves,
     validatedRequiredConstraints,
-    liveLLMCalled: false,
+    liveLLMCalled: liveLLMCalledResult,
     userVisibleOutputAllowed: false,
     neverUserVisible: true,
     notes: resultNotes,

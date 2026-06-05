@@ -44,6 +44,7 @@ import type {
   RuntimeLiveLLMSandboxDisposition,
   RuntimeLiveLLMSandboxDraftCandidateResult,
 } from "./runtime-live-llm-sandbox-types";
+import type { RuntimeLiveSandboxGuardProof } from "./runtime-live-path-type-extension-types";
 import type {
   RuntimeLLMDraftAdapterResult,
   RuntimeLLMDraftAdapterDiagnosticCode,
@@ -494,6 +495,29 @@ export async function runRuntimeLiveLLMSandboxAdapter(
       diagnostics.push("live_sandbox_output_shape_validated");
       diagnostics.push("live_sandbox_ready_for_output_contract_validation");
 
+      // Build guard proof — attests that all 6 sandbox guards passed.
+      const sandboxGuardProof: RuntimeLiveSandboxGuardProof = {
+        proofKind: "live_llm_sandbox_guard_proof",
+        status: "proven",
+        sandboxRunId: input.sandboxRunId,
+        fixtureId: input.fixture.fixtureId,
+        provider: "openai",
+        disposition: "completed_live_sandbox_call",
+        allowLiveCall: true,
+        syntheticOnly: true,
+        neverContainsRealPii: true,
+        outputShapeValidated: true,
+        promptContractBuilt: true,
+        userVisibleOutputAllowed: false,
+        persistenceUsed: false,
+        realUserInputUsed: false,
+        neverUserVisible: true,
+        notes: [
+          "Guard proof built by runRuntimeLiveLLMSandboxAdapter on successful live call.",
+          "Validated by validateRuntimeLiveSandboxGuardProof before output contract validation.",
+        ],
+      };
+
       return {
         sandboxRunId: input.sandboxRunId,
         provider: input.provider,
@@ -507,10 +531,10 @@ export async function runRuntimeLiveLLMSandboxAdapter(
         persistenceUsed: false,
         realUserInputUsed: false,
         neverUserVisible: true,
+        sandboxGuardProof,
         notes: [
           "Live sandbox call completed successfully. Output shape validated.",
-          "Candidates must pass validateRuntimeLLMOutputContract before any further use.",
-          "Modeling gap: liveLLMCalled:true cannot be fed into Phase 8.2G-2 validator without Phase 8.2G-5A type extension.",
+          "Guard proof attached. Candidates may now be validated by Phase 8.2G-5A output contract validator.",
         ],
       };
     } catch (err: unknown) {
@@ -627,6 +651,17 @@ export function convertLiveSandboxResultToDraftAdapterResult(params: {
  *
  * Pure function — no side effects.
  */
+/**
+ * Wraps a live-called sandbox result into a `RuntimeLiveLLMSandboxDraftCandidateResult`.
+ *
+ * Requires both `liveLLMCalled === true` AND `sandboxGuardProof` to be present.
+ * Returns `null` if either condition is not met.
+ *
+ * Phase 8.2G-5A: this result can now be accepted by the output contract validator
+ * (Phase 8.2G-2) when `validateRuntimeLiveSandboxGuardProof(sandboxGuardProof).valid`.
+ *
+ * Pure function — no side effects.
+ */
 export function buildLiveSandboxDraftCandidateResult(params: {
   sandboxResult: RuntimeLiveLLMSandboxResult;
   fixture: RuntimeLiveLLMSandboxFixture;
@@ -634,6 +669,10 @@ export function buildLiveSandboxDraftCandidateResult(params: {
   const { sandboxResult, fixture } = params;
 
   if (sandboxResult.liveLLMCalled !== true) {
+    return null;
+  }
+
+  if (!sandboxResult.sandboxGuardProof) {
     return null;
   }
 
@@ -648,13 +687,14 @@ export function buildLiveSandboxDraftCandidateResult(params: {
     liveLLMCalled: true,
     userVisibleOutputAllowed: false,
     neverUserVisible: true,
+    sandboxGuardProof: sandboxResult.sandboxGuardProof,
     modelingGapNote:
-      "Phase 8.2G-5A required: RuntimeLLMDraftAdapterResult.liveLLMCalled:false literal " +
-      "prevents this result from being fed into validateRuntimeLLMOutputContract (8.2G-2) " +
-      "without a type extension. adapterMode 'future_live_llm' is also currently rejected " +
-      "by the validator. Resolve in Phase 8.2G-5A.",
+      "Phase 8.2G-5A: RuntimeLiveLLMSandboxDraftCandidateResult carries a validated " +
+      "RuntimeLiveSandboxGuardProof. The output contract validator (8.2G-2) now accepts " +
+      "this result on the live sandbox path when proof.valid === true.",
     notes: [
-      "Live sandbox draft candidate. liveLLMCalled:true. Not compatible with 8.2G-2 yet.",
+      "Live sandbox draft candidate. liveLLMCalled:true. Guard proof attached.",
+      "Compatible with Phase 8.2G-5A output contract validator live path.",
       `Fixture: ${fixture.fixtureId}. Provider: ${sandboxResult.provider}.`,
     ],
   };

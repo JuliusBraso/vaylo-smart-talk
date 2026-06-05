@@ -44,6 +44,9 @@ import type {
   RuntimeLLMAdapterAccessTier,
   RuntimeLLMDraftSectionCandidate,
 } from "./runtime-llm-draft-adapter-types";
+import type { RuntimeLiveSandboxGuardProof } from "./runtime-live-path-type-extension-types";
+
+export type { RuntimeLiveSandboxGuardProof };
 
 export type {
   RuntimeLLMDraftSectionType,
@@ -259,6 +262,11 @@ export interface RuntimeLiveLLMSandboxSectionCandidate {
  * `persistenceUsed`       — always literal `false`.
  * `realUserInputUsed`     — always literal `false`.
  * `neverUserVisible`      — compile-time invariant.
+ * `sandboxGuardProof`     — present only when `disposition` is
+ *                           `completed_live_sandbox_call` and `liveLLMCalled === true`.
+ *                           Carries evidence that all 6 sandbox guards passed.
+ *                           Required by the output contract validator (8.2G-2) to
+ *                           accept live-called results on the live path (Phase 8.2G-5A).
  * `notes`                 — optional never-user-visible governance notes.
  */
 export interface RuntimeLiveLLMSandboxResult {
@@ -274,6 +282,7 @@ export interface RuntimeLiveLLMSandboxResult {
   readonly persistenceUsed: false;
   readonly realUserInputUsed: false;
   readonly neverUserVisible: true;
+  readonly sandboxGuardProof?: RuntimeLiveSandboxGuardProof;
   readonly notes?: readonly string[];
 }
 
@@ -297,7 +306,11 @@ export interface RuntimeLiveLLMSandboxResult {
  * `adapterMode: "future_live_llm"` — literal; marks this as a live-path result.
  * `userVisibleOutputAllowed: false`— literal false; output must not reach users.
  * `neverUserVisible: true`      — invariant; always internal.
- * `modelingGapNote`             — documents the 8.2G-5A resolution requirement.
+ * `sandboxGuardProof`           — required; carries proof that all 6 guards passed.
+ *                                 Validated by `validateRuntimeLiveSandboxGuardProof`
+ *                                 (Phase 8.2G-5A) before the output contract validator
+ *                                 accepts this result on the live path.
+ * `modelingGapNote`             — documents the resolution achieved in Phase 8.2G-5A.
  */
 export interface RuntimeLiveLLMSandboxDraftCandidateResult {
   readonly sandboxRunId: string;
@@ -310,6 +323,7 @@ export interface RuntimeLiveLLMSandboxDraftCandidateResult {
   readonly liveLLMCalled: true;
   readonly userVisibleOutputAllowed: false;
   readonly neverUserVisible: true;
+  readonly sandboxGuardProof: RuntimeLiveSandboxGuardProof;
   readonly modelingGapNote: string;
   readonly notes?: readonly string[];
 }
