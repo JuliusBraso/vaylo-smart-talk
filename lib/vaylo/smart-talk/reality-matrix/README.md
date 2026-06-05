@@ -1849,7 +1849,18 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 - Normal Smart Talk behavior entirely unchanged when guard fields absent
 - Wrong/missing guard → HTTP 403
 
-**Next phase: 8.2G-10 — Smart Talk Runtime Delivery Wiring, Authenticated Internal Mode**
+---
+
+**PHASE 8.2G-10 — Authenticated Internal Mode** ✓ completed
+
+**State:**
+- Hardens guarded branch: requires `VAYLO_INTERNAL_RUNTIME_SECRET` env var
+- Caller must supply `x-vaylo-internal-runtime-secret` header matching the env secret
+- Missing/empty env secret disables guarded runtime entirely (HTTP 403)
+- Missing/wrong header → HTTP 403; normal Smart Talk unchanged
+- No live LLM, no persistence, no DNA/offline save
+
+**Next phase: 8.2G-11 — Corpus-Guided Scenario Coverage**
 
 ---
 

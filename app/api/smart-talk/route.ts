@@ -10,6 +10,7 @@ import type {
   SmartTalkLocale,
 } from "@/lib/vaylo/smart-talk/build-smart-talk-prompt";
 import { runRuntimeGuardedDelivery } from "@/lib/vaylo/smart-talk/reality-matrix/run-runtime-guarded-delivery";
+import { runRuntimeInternalAuthGuard } from "@/lib/vaylo/smart-talk/reality-matrix/runtime-internal-auth-guard";
 
 function isSmartTalkInputType(v: unknown): v is SmartTalkInputType {
   return v === "text" || v === "question";
@@ -87,13 +88,30 @@ export async function POST(req: Request) {
 
   const o = body as Record<string, unknown>;
 
-  // ── Guarded internal delivery branch (Phase 8.2G-9) ──────────────────────
+  // ── Guarded internal delivery branch (Phase 8.2G-9 / 8.2G-10) ──────────
   // Activates ONLY when internalRuntimeMode or internalRuntimeGuard are
   // present. Normal Smart Talk requests never include these fields.
   if (
     o.internalRuntimeMode !== undefined ||
     o.internalRuntimeGuard !== undefined
   ) {
+    // Phase 8.2G-10 — server-side secret header guard (must pass before delivery)
+    const internalAuth = runRuntimeInternalAuthGuard({
+      providedSecret: req.headers.get("x-vaylo-internal-runtime-secret"),
+      expectedSecret: process.env.VAYLO_INTERNAL_RUNTIME_SECRET,
+    });
+
+    if (!internalAuth.authorised) {
+      return NextResponse.json(
+        {
+          error: "Internal guarded runtime unauthorised",
+          code: internalAuth.verdict,
+          diagnostics: internalAuth.diagnostics,
+        },
+        { status: 403 },
+      );
+    }
+
     const deliveryResult = runRuntimeGuardedDelivery({
       internalRuntimeMode: o.internalRuntimeMode,
       internalRuntimeGuard: o.internalRuntimeGuard,
