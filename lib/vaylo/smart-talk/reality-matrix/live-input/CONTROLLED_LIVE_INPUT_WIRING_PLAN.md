@@ -213,4 +213,16 @@ Phase 8.2H-3 delivered `ControlledLiveTextAdapterInput`, `ControlledLiveTextAdap
 
 Phase 8.2H-4 delivered `ControlledLiveTextE2EHarnessInput`, `ControlledLiveTextE2EHarnessResult`, and `runControlledLiveTextE2EHarness()`. The harness exercises all 12 fixture modes — three success paths and nine blocking paths — using synthetic inputs only. It does not call the 8.2G output contract validator or modify any API route. All nested layer invariants (`liveLLMCalled: false`, `persistenceUsed: false`, etc.) are verified inside the harness before returning the result.
 
-**Next: Phase 8.2H-5 — Guarded Internal Live Text API Mode**
+---
+
+## 8.2H-5 Status (completed)
+
+Phase 8.2H-5 delivered `GuardedLiveTextRuntimePipelineInput`, `GuardedLiveTextRuntimePipelineResult`, and `runGuardedLiveTextRuntimePipeline()`. The pipeline connects the 8.2H adapter candidate to the full 8.2G governance chain via a temporary mock-shaped bridge. `emittedToUserNow: false` is a literal invariant. A guarded API branch was added to `route.ts` activating only on `internalRuntimeMode === "controlled_live_text_guarded"` + secret + guard phrase.
+
+---
+
+## 8.2H-6 Status (completed) — 8.2H epoch: CLOSED WITH WARNINGS
+
+Phase 8.2H-6 formally closes the 8.2H epoch. All 8 required layers are present. E2E harness and guarded runtime pipeline pass live checks. `readyForControlledRealTextForwardingTo8_2G: false` — temporary mock-bridge debt (8.2H-DEBT-001/002) must be resolved in Phase 8.2I-0 before real redacted text flows into 8.2G. `readyForPublicLaunch: false` always.
+
+**Next: Phase 8.2I-0 — Controlled Live Text Output Contract Compatibility Plan**

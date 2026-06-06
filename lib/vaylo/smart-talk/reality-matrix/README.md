@@ -1948,7 +1948,18 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 - `completed_authorised_internal_packet` on success; `emittedToUserNow: false` always; no live LLM, no persistence
 - Optional guarded API branch added: `internalRuntimeMode: "controlled_live_text_guarded"` + secret + guard phrase; uses `safe_real_text` fixture only
 
-**Next phase: 8.2H-6 — Controlled Live Input Closure Audit**
+---
+
+**PHASE 8.2H-6 — Controlled Live Input Closure Audit** ✓ completed
+
+**State — 8.2H epoch: CLOSED WITH WARNINGS**
+- Verifies all 8 required layers present; E2E harness + guarded runtime pipeline both pass live checks
+- `readyForControlledRealTextForwardingTo8_2G: false` — temporary mock-bridge debt unresolved
+- `readyForPublicLaunch: false` — public launch blocked until full 8.2I path proven
+- 7 open items recorded (none block epoch closure; all block public launch)
+- No live LLM, no persistence, no API/UI changes in audit
+
+**Next phase: 8.2I-0 — Controlled Live Text Output Contract Compatibility Plan**
 
 ---
 
