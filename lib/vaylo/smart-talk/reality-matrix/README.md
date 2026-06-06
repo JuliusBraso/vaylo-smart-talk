@@ -1871,7 +1871,19 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 - No API/UI, no live LLM, no persistence
 - Regression scaffold extended to 13 cases
 
-**Next phase: 8.2G-12 — Runtime Closure Audit**
+---
+
+**PHASE 8.2G-12 — Runtime Closure Audit** ✓ completed
+
+**State:**
+- Closes 8.2G runtime integration epoch via `runRuntimeClosureAudit()`
+- Verifies all 13 required layers, synthetic E2E harness, corpus-guided coverage
+- Confirms guarded delivery (8.2G-9) and authenticated internal mode (8.2G-10) present
+- No live LLM, no API/UI touch, no persistence during audit
+- `readyForPublicLaunch: false` (literal); 8 open future items recorded
+- `readyForControlledLiveInputWiring: true` when verdict is `closed_runtime_epoch`
+
+**8.2G epoch: CLOSED. Next epoch: 8.2H — Controlled Live Input Wiring**
 
 ---
 

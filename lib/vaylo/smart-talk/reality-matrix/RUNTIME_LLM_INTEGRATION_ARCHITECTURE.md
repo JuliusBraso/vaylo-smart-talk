@@ -459,7 +459,11 @@ Wording gate live path extension resolved. `RuntimeWordingGateInput.draftResult`
 
 End-to-end synthetic harness established. `runRuntimeSyntheticE2EHarness` orchestrates the full 8.2G-1→8.2G-7 pipeline using deterministic synthetic fixtures. 6 fixture modes; 12 regression cases. All invariants (`emittedToUserNow: false`, `liveLLMCalled: false`, `apiRouteTouched: false`, `persistenceUsed: false`) verified on all paths. No API/UI wiring. Proves pipeline readiness before Phase 8.2G-9 delivery wiring.
 
-**Next phase: 8.2G-9 — Smart Talk Runtime Delivery Wiring (first API/UI connection).**
+## Phase 8.2G-12 — Epoch Closure Status
+
+8.2G is formally closed when `runRuntimeClosureAudit()` returns `closed_runtime_epoch` or `closed_with_warnings`. The 13-layer inventory, synthetic E2E evidence, and corpus coverage must all pass. Runtime currently supports guarded synthetic API delivery only (`internalRuntimeMode: "synthetic_e2e_guarded"` + secret header + feature flag). Real user live-input wiring is epoch 8.2H. Public production launch remains blocked (`readyForPublicLaunch: false`).
+
+**Next epoch: 8.2H-0 — Controlled Live Input Wiring Plan.**
 
 ---
 
