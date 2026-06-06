@@ -1938,7 +1938,17 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 - `acceptedForLLM: false`, `acceptedForRuntimePipeline: false` remain locked; nested layer invariants verified
 - No API/UI, no live LLM, no persistence
 
-**Next phase: 8.2H-5 — Guarded Internal Live Text API Mode**
+---
+
+**PHASE 8.2H-5 — Guarded Internal Live Text Runtime Pipeline** ✓ completed
+
+**State:**
+- Connects 8.2H adapter candidate to full 8.2G governance chain (output contract → wording gate → assembler → authorisation)
+- Temporary mock-bridge maps controlled live text candidate to mock-shaped draft for validator compatibility (no redacted text forwarded)
+- `completed_authorised_internal_packet` on success; `emittedToUserNow: false` always; no live LLM, no persistence
+- Optional guarded API branch added: `internalRuntimeMode: "controlled_live_text_guarded"` + secret + guard phrase; uses `safe_real_text` fixture only
+
+**Next phase: 8.2H-6 — Controlled Live Input Closure Audit**
 
 ---
 

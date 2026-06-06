@@ -11,6 +11,7 @@ import type {
 } from "@/lib/vaylo/smart-talk/build-smart-talk-prompt";
 import { runRuntimeGuardedDelivery } from "@/lib/vaylo/smart-talk/reality-matrix/run-runtime-guarded-delivery";
 import { runRuntimeInternalAuthGuard } from "@/lib/vaylo/smart-talk/reality-matrix/runtime-internal-auth-guard";
+import { runGuardedLiveTextRuntimePipeline } from "@/lib/vaylo/smart-talk/reality-matrix/live-input/run-guarded-live-text-runtime-pipeline";
 
 function isSmartTalkInputType(v: unknown): v is SmartTalkInputType {
   return v === "text" || v === "question";
@@ -111,6 +112,32 @@ export async function POST(req: Request) {
         { status: 403 },
       );
     }
+
+    // ── Phase 8.2H-5 — controlled live text guarded branch ────────────────
+    // Activates ONLY when mode + guard phrase match exactly. Uses only the
+    // safe_real_text synthetic fixture; no real user text is forwarded.
+    if (
+      o.internalRuntimeMode === "controlled_live_text_guarded" &&
+      o.internalRuntimeGuard === "I_UNDERSTAND_THIS_IS_CONTROLLED_LIVE_TEXT_INTERNAL_ONLY"
+    ) {
+      const pipelineResult = runGuardedLiveTextRuntimePipeline({
+        pipelineRunId: `smart-talk-controlled-live-text-${Date.now().toString()}`,
+        fixtureMode: "safe_real_text",
+        neverUserVisible: true,
+      });
+      return NextResponse.json(
+        {
+          mode: "controlled_live_text_guarded",
+          verdict: pipelineResult.verdict,
+          diagnostics: pipelineResult.diagnostics,
+          packetCreated: pipelineResult.packetCreated,
+          acceptedForUserVisibleAssembly: pipelineResult.acceptedForUserVisibleAssembly,
+          userVisibleOutputAllowedForFuture: pipelineResult.userVisibleOutputAllowedForFuture,
+        },
+        { status: pipelineResult.verdict === "completed_authorised_internal_packet" ? 200 : 403 },
+      );
+    }
+    // ── End Phase 8.2H-5 controlled live text guarded branch ──────────────
 
     const deliveryResult = runRuntimeGuardedDelivery({
       internalRuntimeMode: o.internalRuntimeMode,
