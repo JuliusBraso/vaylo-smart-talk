@@ -207,4 +207,10 @@ Phase 8.2H-2 delivered `RealTextRedactionBoundaryInput`, `RealTextRedactionBound
 
 Phase 8.2H-3 delivered `ControlledLiveTextAdapterInput`, `ControlledLiveTextAdapterResult`, and `runControlledLiveTextAdapter()`. The adapter wraps redacted text only — it does not answer, summarise, translate, or generate prose. `adaptedForOutputContractValidation: true` on success; `acceptedForLLM: false` and `acceptedForRuntimePipeline: false` remain locked. A post-build invariant check enforces the `[CONTROLLED_LIVE_TEXT_DRAFT_NEVER_USER_VISIBLE]` prefix on all section candidates. Not yet wired to output contract validation or API.
 
-**Next: Phase 8.2H-4 — Controlled Live Text E2E Harness**
+---
+
+## 8.2H-4 Status (completed)
+
+Phase 8.2H-4 delivered `ControlledLiveTextE2EHarnessInput`, `ControlledLiveTextE2EHarnessResult`, and `runControlledLiveTextE2EHarness()`. The harness exercises all 12 fixture modes — three success paths and nine blocking paths — using synthetic inputs only. It does not call the 8.2G output contract validator or modify any API route. All nested layer invariants (`liveLLMCalled: false`, `persistenceUsed: false`, etc.) are verified inside the harness before returning the result.
+
+**Next: Phase 8.2H-5 — Guarded Internal Live Text API Mode**

@@ -1927,7 +1927,18 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 - `adaptedForOutputContractValidation: true` on success; `acceptedForLLM: false`, `acceptedForRuntimePipeline: false`
 - No API/UI, no live LLM, no persistence
 
-**Next phase: 8.2H-4 — Controlled Live Text E2E Harness**
+---
+
+**PHASE 8.2H-4 — Controlled Live Text E2E Harness** ✓ completed
+
+**State:**
+- Runs input contract → redaction boundary → controlled live text adapter using 12 synthetic fixtures
+- Covers: success (text + question + PII), input rejection (too short, too long, bad mode, OCR, persistence, legal), redaction rejection (high-risk, empty), adapter rejection (null redaction)
+- Does not connect to 8.2G output contract validator or Smart Talk API
+- `acceptedForLLM: false`, `acceptedForRuntimePipeline: false` remain locked; nested layer invariants verified
+- No API/UI, no live LLM, no persistence
+
+**Next phase: 8.2H-5 — Guarded Internal Live Text API Mode**
 
 ---
 
