@@ -189,4 +189,10 @@ All result objects must carry `persistenceUsed: false` as a literal type through
 - [x] No live LLM called
 - [x] No persistence added
 
-**Next: Phase 8.2H-1 — Real Text Input Contract Types**
+---
+
+## 8.2H-1 Status (completed)
+
+Phase 8.2H-1 delivered `RealTextInputContractInput`, `RealTextInputContractValidationResult`, and `runRealTextInputContractValidation()`. Valid text exits with `acceptedForRedactionBoundary: true`. It carries `acceptedForLLM: false` and `acceptedForRuntimePipeline: false` — downstream phases (8.2H-2+) unlock those gates when their own guards are in place. No text is logged, persisted, or passed to LLM in 8.2H-1.
+
+**Next: Phase 8.2H-2 — Redaction and Input Guard Boundary**

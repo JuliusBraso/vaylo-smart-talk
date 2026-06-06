@@ -1894,7 +1894,17 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 - No API/UI changes, no live LLM, no persistence
 - `readyForPublicLaunch: false` (literal); `readyForImplementationPhase: phase_8_2h_1`
 
-**Next phase: 8.2H-1 — Real Text Input Contract Types**
+---
+
+**PHASE 8.2H-1 — Real Text Input Contract Types** ✓ completed
+
+**State:**
+- Defines `RealTextInputContractInput` and `runRealTextInputContractValidation()`
+- Validates mode, length [8–12 000], OCR/file exclusion, persistence/save/deadline/legal-conclusion requests
+- Valid text accepted only for future redaction boundary; `acceptedForLLM: false`, `acceptedForRuntimePipeline: false`
+- No API/UI, no live LLM, no persistence
+
+**Next phase: 8.2H-2 — Redaction and Input Guard Boundary**
 
 ---
 
