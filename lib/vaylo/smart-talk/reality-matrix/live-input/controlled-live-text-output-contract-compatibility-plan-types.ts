@@ -87,7 +87,7 @@ export type ControlledLiveTextOutputContractRequiredChange =
 export type ControlledLiveTextOutputContractBlockedUntil =
   | "validator_accepts_controlled_live_text_source"
   | "validator_accepts_controlled_live_text_prefix"
-  | "controlled_live_text_result_has_guard_proof_or_adapter_proof"
+  | "controlled_live_text_has_guard_proof_or_adapter_proof"
   | "temporary_mock_bridge_removed"
   | "real_redacted_text_forwarding_regression_passes";
 
@@ -205,7 +205,7 @@ export const CONTROLLED_LIVE_TEXT_OUTPUT_CONTRACT_COMPATIBILITY_PLAN_V1: Control
     blockedUntil: [
       "validator_accepts_controlled_live_text_source",
       "validator_accepts_controlled_live_text_prefix",
-      "controlled_live_text_result_has_guard_proof_or_adapter_proof",
+      "controlled_live_text_has_guard_proof_or_adapter_proof",
       "temporary_mock_bridge_removed",
       "real_redacted_text_forwarding_regression_passes",
     ],

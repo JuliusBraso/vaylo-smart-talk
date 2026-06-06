@@ -80,12 +80,12 @@ export type RuntimeLLMOutputContractVerdict =
  *
  * - `mock_adapter_result`          — `adapterMode === "mock"` and `liveLLMCalled === false`.
  * - `live_sandbox_result`          — `adapterMode === "future_live_llm"` and `liveLLMCalled === true`.
- * - `controlled_live_text_result`  — `adapterMode === "controlled_live_text"` (Phase 8.2I-2).
+ * - `controlled_live_text`  — `adapterMode === "controlled_live_text"` (Phase 8.2I-2, aligned 8.2I-3A).
  */
 export type RuntimeLLMOutputContractDraftSourceKind =
   | "mock_adapter_result"
   | "live_sandbox_result"
-  | "controlled_live_text_result";
+  | "controlled_live_text";
 
 // ── Draft result union (Phase 8.2G-5A, extended 8.2I-2) ─────────────────────
 
