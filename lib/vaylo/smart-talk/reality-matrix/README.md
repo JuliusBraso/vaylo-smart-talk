@@ -1959,7 +1959,18 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 - 7 open items recorded (none block epoch closure; all block public launch)
 - No live LLM, no persistence, no API/UI changes in audit
 
-**Next phase: 8.2I-0 — Controlled Live Text Output Contract Compatibility Plan**
+---
+
+**PHASE 8.2I-0 — Controlled Live Text Output Contract Compatibility Plan** ✓ completed
+
+**State:**
+- Planning only; starts post-8.2H compatibility epoch
+- Defines how to remove temporary mock-shaped bridge and add `[CONTROLLED_LIVE_TEXT_DRAFT_NEVER_USER_VISIBLE]` as a recognised source kind/prefix in the 8.2G output contract validator
+- `readyForControlledRealTextForwardingTo8_2G: false` — blocked until 8.2I-1 through 8.2I-4 complete
+- 5 ordered implementation phases defined (8.2I-1 through 8.2I-5); no validator code changed here
+- No API/UI, no live LLM, no persistence
+
+**Next phase: 8.2I-1 — Controlled Live Text Draft Result Types**
 
 ---
 

@@ -225,4 +225,10 @@ Phase 8.2H-5 delivered `GuardedLiveTextRuntimePipelineInput`, `GuardedLiveTextRu
 
 Phase 8.2H-6 formally closes the 8.2H epoch. All 8 required layers are present. E2E harness and guarded runtime pipeline pass live checks. `readyForControlledRealTextForwardingTo8_2G: false` — temporary mock-bridge debt (8.2H-DEBT-001/002) must be resolved in Phase 8.2I-0 before real redacted text flows into 8.2G. `readyForPublicLaunch: false` always.
 
-**Next: Phase 8.2I-0 — Controlled Live Text Output Contract Compatibility Plan**
+---
+
+## 8.2I-0 Status (completed — planning only)
+
+Phase 8.2I-0 defines the compatibility model for adding `[CONTROLLED_LIVE_TEXT_DRAFT_NEVER_USER_VISIBLE]` as a formally recognised prefix/source kind in the 8.2G output contract validator. The temporary mock bridge remains present. Real redacted text forwarding remains blocked (`realRedactedTextForwardingTo8_2GAllowed: false`). Five implementation phases (8.2I-1 through 8.2I-5) will resolve the 8.2H-DEBT-001/002 items. See `CONTROLLED_LIVE_TEXT_OUTPUT_CONTRACT_COMPATIBILITY_PLAN.md` for details.
+
+**Next: Phase 8.2I-1 — Controlled Live Text Draft Result Types**
