@@ -463,7 +463,11 @@ End-to-end synthetic harness established. `runRuntimeSyntheticE2EHarness` orches
 
 8.2G is formally closed when `runRuntimeClosureAudit()` returns `closed_runtime_epoch` or `closed_with_warnings`. The 13-layer inventory, synthetic E2E evidence, and corpus coverage must all pass. Runtime currently supports guarded synthetic API delivery only (`internalRuntimeMode: "synthetic_e2e_guarded"` + secret header + feature flag). Real user live-input wiring is epoch 8.2H. Public production launch remains blocked (`readyForPublicLaunch: false`).
 
-**Next epoch: 8.2H-0 — Controlled Live Input Wiring Plan.**
+## Epoch 8.2H — Controlled Live Input Wiring
+
+8.2G closed the governance core. 8.2H introduces controlled real text input — guarded, non-public, non-persistent. 8.2H-0 is planning only; 8.2H-1 through 8.2H-6 implement the input contract, redaction boundary, live text adapter, harness, guarded API mode, and closure audit. Public launch remains blocked throughout 8.2H. `readyForPublicLaunch: false` (literal) on all result types.
+
+**Active phase: 8.2H-1 — Real Text Input Contract Types.**
 
 ---
 

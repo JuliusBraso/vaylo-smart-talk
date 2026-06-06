@@ -1883,7 +1883,18 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 - `readyForPublicLaunch: false` (literal); 8 open future items recorded
 - `readyForControlledLiveInputWiring: true` when verdict is `closed_runtime_epoch`
 
-**8.2G epoch: CLOSED. Next epoch: 8.2H — Controlled Live Input Wiring**
+---
+
+**PHASE 8.2H-0 — Controlled Live Input Wiring Plan** ✓ completed
+
+**State:**
+- Planning only; zero runtime implementation
+- Defines 12 required guards, 11 blocked capabilities, 3 input modes, 6 next phases
+- `real_text_guarded` and `real_question_guarded` allowed later; OCR/public runtime blocked
+- No API/UI changes, no live LLM, no persistence
+- `readyForPublicLaunch: false` (literal); `readyForImplementationPhase: phase_8_2h_1`
+
+**Next phase: 8.2H-1 — Real Text Input Contract Types**
 
 ---
 
