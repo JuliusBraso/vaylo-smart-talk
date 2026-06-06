@@ -204,3 +204,15 @@ Phase 8.2I-0 is complete when:
 - `status: "ready_for_phase_8_2i_1"`.
 - TypeScript and ESLint pass.
 - No runtime changes made.
+
+---
+
+## 16. Phase 8.2I-1 Status
+
+**Status: COMPLETED**
+
+- `ControlledLiveTextDraftResult` and `ControlledLiveTextRedactionProof` defined in `controlled-live-text-draft-result-types.ts`.
+- `validateControlledLiveTextRedactionProof`, `buildControlledLiveTextRedactionProof`, `buildControlledLiveTextDraftResult` exported.
+- Output contract validator NOT modified; temporary mock bridge remains in `run-guarded-live-text-runtime-pipeline.ts` until Phase 8.2I-3.
+- Real redacted text forwarding to 8.2G chain remains blocked.
+- Next: Phase 8.2I-2 — Output Contract Validator Extension.

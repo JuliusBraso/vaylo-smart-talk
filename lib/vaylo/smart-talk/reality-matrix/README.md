@@ -1974,6 +1974,20 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.2I-1 — Controlled Live Text Draft Result Types** ✓ completed
+
+**State:**
+- Adds `ControlledLiveTextDraftResult` and `ControlledLiveTextRedactionProof`
+- Defines `controlled_live_text` source kind and `CONTROLLED_LIVE_TEXT_DRAFT_PREFIX` constant
+- Proof stores only match metadata — never raw or redacted text
+- Output contract validator not modified yet; temporary mock bridge remains
+- Real redacted text forwarding remains blocked (`readyForControlledRealTextForwardingTo8_2G: false`)
+- No API/UI, no live LLM, no persistence
+
+**Next phase: 8.2I-2 — Output Contract Validator Extension**
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
