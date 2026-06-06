@@ -26,6 +26,7 @@ import {
   runRuntimeSyntheticE2EHarness,
   RUNTIME_SYNTHETIC_E2E_HARNESS_VERSION,
 } from "./run-runtime-synthetic-e2e-harness";
+import { runRuntimeCorpusGuidedScenarioCoverage } from "./run-runtime-corpus-guided-scenario-coverage";
 import type {
   RuntimeSyntheticE2EHarnessResult,
   RuntimeSyntheticE2EHarnessVerdict,
@@ -401,10 +402,47 @@ function case12_neverUserVisible(): E2ECaseResult {
   };
 }
 
+// Case 13: corpus-guided coverage runs and all 6 base scenarios pass (Phase 8.2G-11)
+function case13_corpusGuidedCoverage(): E2ECaseResult {
+  const failures: string[] = [];
+
+  const coverage = runRuntimeCorpusGuidedScenarioCoverage({
+    coverageRunId: "8.2g-8-scaffold-case13",
+    neverUserVisible: true,
+  });
+
+  if (coverage.verdict !== "completed_all_passed") {
+    fail(`corpus coverage verdict: expected completed_all_passed, got ${coverage.verdict}`, failures);
+  }
+  if (coverage.totalScenarios < 6) {
+    fail(`totalScenarios: expected >= 6, got ${String(coverage.totalScenarios)}`, failures);
+  }
+  if (coverage.passedScenarios !== coverage.totalScenarios) {
+    fail(`passedScenarios: expected ${String(coverage.totalScenarios)}, got ${String(coverage.passedScenarios)}`, failures);
+  }
+  if (coverage.liveLLMCalled !== false) {
+    fail("liveLLMCalled should be false", failures);
+  }
+  if (coverage.persistenceUsed !== false) {
+    fail("persistenceUsed should be false", failures);
+  }
+  if (coverage.neverUserVisible !== true) {
+    fail("neverUserVisible should be true", failures);
+  }
+
+  return {
+    caseNumber: 13,
+    caseName: "corpus-guided scenario coverage: completed_all_passed on 6 base scenarios",
+    passed: failures.length === 0,
+    failures,
+    notes: ["Phase 8.2G-11 coverage runner exercising all 6 governance outcome paths."],
+  };
+}
+
 // ── Scaffold ──────────────────────────────────────────────────────────────────
 
 /**
- * Runs all 12 regression cases for Phase 8.2G-8.
+ * Runs all 13 regression cases for Phases 8.2G-8 and 8.2G-11.
  *
  * No persistence. No logging. No live LLM call. No API key.
  */
@@ -422,6 +460,7 @@ export function runSyntheticE2EHarnessRegressionScaffold(): E2EScaffoldResult {
     case10_allowedFutureOnlyOnSuccess(),
     case11_diagnosticChain(),
     case12_neverUserVisible(),
+    case13_corpusGuidedCoverage(),
   ];
 
   const passCount = caseResults.filter((c) => c.passed).length;
@@ -435,11 +474,11 @@ export function runSyntheticE2EHarnessRegressionScaffold(): E2EScaffoldResult {
     failCount,
     caseResults,
     notes: [
-      `Phase 8.2G-8 — Synthetic E2E Harness regression scaffold.`,
+      `Phase 8.2G-8/8.2G-11 — Synthetic E2E Harness + Corpus Coverage regression scaffold.`,
       `Harness version: ${RUNTIME_SYNTHETIC_E2E_HARNESS_VERSION}.`,
-      "12 cases: all fixture modes, all invariants, diagnostic chain, gating behavior.",
+      "13 cases: all fixture modes, all invariants, diagnostic chain, gating behavior, corpus coverage.",
       "No Jest, no Vitest, no CI hook. No live LLM call. No API key required.",
-      "Proves full 8.2G-1 → 8.2G-7 pipeline produces authorised internal packet.",
+      "Proves full 8.2G-1 → 8.2G-11 pipeline produces authorised internal packet and corpus all-pass.",
       `All cases passed: ${String(allPassed)} (${String(passCount)}/${String(caseResults.length)}).`,
     ],
   };

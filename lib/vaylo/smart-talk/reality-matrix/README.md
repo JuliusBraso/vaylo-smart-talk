@@ -1860,7 +1860,18 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 - Missing/wrong header → HTTP 403; normal Smart Talk unchanged
 - No live LLM, no persistence, no DNA/offline save
 
-**Next phase: 8.2G-11 — Corpus-Guided Scenario Coverage**
+---
+
+**PHASE 8.2G-11 — Corpus-Guided Scenario Coverage** ✓ completed
+
+**State:**
+- Runs 6 base scenarios (+ 6 optional) through the internal E2E harness
+- Covers: authorised packet, output contract block, wording block, human review block, metadata leak, missing sections
+- Traces scenarios back to controlled corpus IDs (cc-8-2e-0001 … 0020) for audit
+- No API/UI, no live LLM, no persistence
+- Regression scaffold extended to 13 cases
+
+**Next phase: 8.2G-12 — Runtime Closure Audit**
 
 ---
 
