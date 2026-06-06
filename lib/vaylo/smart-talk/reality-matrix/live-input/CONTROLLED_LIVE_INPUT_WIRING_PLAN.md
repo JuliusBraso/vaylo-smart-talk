@@ -201,4 +201,10 @@ Phase 8.2H-1 delivered `RealTextInputContractInput`, `RealTextInputContractValid
 
 Phase 8.2H-2 delivered `RealTextRedactionBoundaryInput`, `RealTextRedactionBoundaryResult`, and `runRealTextRedactionBoundary()`. Redacted text exits with `acceptedForControlledLiveAdapter: true`; `acceptedForLLM: false` and `acceptedForRuntimePipeline: false` remain locked. Match audit records store kind, risk level, and placeholder only — raw matched values are never stored. A post-redaction invariant check confirms email and IBAN patterns are absent from the redacted output before acceptance.
 
-**Next: Phase 8.2H-3 — Controlled Live Text Adapter**
+---
+
+## 8.2H-3 Status (completed)
+
+Phase 8.2H-3 delivered `ControlledLiveTextAdapterInput`, `ControlledLiveTextAdapterResult`, and `runControlledLiveTextAdapter()`. The adapter wraps redacted text only — it does not answer, summarise, translate, or generate prose. `adaptedForOutputContractValidation: true` on success; `acceptedForLLM: false` and `acceptedForRuntimePipeline: false` remain locked. A post-build invariant check enforces the `[CONTROLLED_LIVE_TEXT_DRAFT_NEVER_USER_VISIBLE]` prefix on all section candidates. Not yet wired to output contract validation or API.
+
+**Next: Phase 8.2H-4 — Controlled Live Text E2E Harness**

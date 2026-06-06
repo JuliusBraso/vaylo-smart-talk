@@ -1915,7 +1915,19 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 - Accepted only for controlled live adapter; `acceptedForLLM: false`, `acceptedForRuntimePipeline: false`
 - No API/UI, no live LLM, no persistence
 
-**Next phase: 8.2H-3 — Controlled Live Text Adapter**
+---
+
+**PHASE 8.2H-3 — Controlled Live Text Adapter** ✓ completed
+
+**State:**
+- Adds pure adapter from redacted real text to controlled governance draft candidate
+- Uses only redacted text — never raw input; no answer, summary, translation, or generation
+- Section candidates prefixed `[CONTROLLED_LIVE_TEXT_DRAFT_NEVER_USER_VISIBLE]`; post-build invariant enforced
+- `real_text_guarded` → `guarded_real_text`; `real_question_guarded` → `guarded_real_question`
+- `adaptedForOutputContractValidation: true` on success; `acceptedForLLM: false`, `acceptedForRuntimePipeline: false`
+- No API/UI, no live LLM, no persistence
+
+**Next phase: 8.2H-4 — Controlled Live Text E2E Harness**
 
 ---
 
