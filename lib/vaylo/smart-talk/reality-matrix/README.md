@@ -2028,6 +2028,19 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.2I-5 — Guarded Real Text Pipeline Closure Audit** ✓ completed
+
+**State:**
+- closes 8.2I epoch; verifies mock bridge removal, sourceKind alignment, `controlled_live_text` output contract path
+- runs `runRealRedactedTextForwardingHarness` across all 11 fixtures; confirms success/blocking outcomes
+- confirms `readyForControlledRealTextForwardingTo8_2G: true`; raw value leak checks pass
+- `readyForPublicLaunch: false` — public launch blocked until 8.2J pilot readiness
+- no API/UI, no live LLM, no persistence; 7 open future items recorded (none block epoch closure)
+
+**Next phase: 8.2J-0 — Controlled Text Pilot Readiness Plan**
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
