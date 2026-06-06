@@ -2002,6 +2002,19 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.2I-3 — Remove Temporary Mock Bridge** ✓ completed
+
+**State:**
+- Removes mock-shaped bridge from `run-guarded-live-text-runtime-pipeline.ts`
+- Builds `ControlledLiveTextDraftResult` from 8.2H chain; passes directly to output contract validator
+- `temporaryMockBridgeUsed: false`, `realRedactedTextForwardedToOutputContract: true` on success
+- Closure audit: `readyForControlledRealTextForwardingTo8_2G: true`; `readyForPublicLaunch: false`
+- No API/UI, no live LLM, no persistence; `emittedToUserNow: false` always
+
+**Next phase: 8.2I-4 — Real Redacted Text Forwarding Harness**
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).

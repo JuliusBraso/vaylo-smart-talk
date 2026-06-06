@@ -1,5 +1,5 @@
 /**
- * Guarded Live Text Runtime Pipeline types (Phase 8.2H-5).
+ * Guarded Live Text Runtime Pipeline types (Phase 8.2H-5, updated 8.2I-3).
  *
  * Defines the type model for the internal guarded pipeline that connects the
  * 8.2H controlled live input chain to the existing 8.2G governance gates:
@@ -11,13 +11,12 @@
  *   → user-visible authorisation  (8.2G-7)
  *   → internal UserVisibleResponsePacket candidate
  *
- * The pipeline is synthetic/guarded:
- * - Uses fixture inputs only; no real user text enters the 8.2G chain.
- * - The mock-bridge mapping (CONTROLLED_LIVE_TEXT → MOCK prefix) is
- *   documented as a temporary compatibility bridge for this phase.
- * - No live LLM is called.
- * - No public runtime is enabled.
- * - emittedToUserNow remains literal `false` in the pure pipeline.
+ * Phase 8.2I-3 update:
+ *   The temporary mock-bridge that mapped CONTROLLED_LIVE_TEXT → MOCK prefix
+ *   has been removed. The pipeline now builds a `ControlledLiveTextDraftResult`
+ *   via `buildControlledLiveTextDraftResult()` and passes it directly to
+ *   `validateRuntimeLLMOutputContract()` (now formally accepted in 8.2I-2).
+ *   `temporaryMockBridgeUsed` is now a literal `false` field on the result.
  *
  * Safety invariants (literal types on the result):
  * - emittedToUserNow: false
@@ -27,6 +26,7 @@
  * - persistenceUsed: false
  * - dnaSavePerformed: false
  * - offlineSavePerformed: false
+ * - temporaryMockBridgeUsed: false  ← NEW: bridge removed in 8.2I-3
  * - neverUserVisible: true
  */
 
@@ -163,6 +163,13 @@ export interface GuardedLiveTextRuntimePipelineResult {
   readonly acceptedForUserVisibleAssembly: boolean;
   readonly userVisibleOutputAllowedForFuture: boolean;
   readonly emittedToUserNow: false;
+
+  /** Phase 8.2I-3: always literal false — temporary mock bridge removed. */
+  readonly temporaryMockBridgeUsed: false;
+  /** Phase 8.2I-3: true when ControlledLiveTextDraftResult was built and passed to validator. */
+  readonly controlledLiveTextDraftUsed: boolean;
+  /** Phase 8.2I-3: true when real redacted text (via 8.2H chain) reached the output contract. */
+  readonly realRedactedTextForwardedToOutputContract: boolean;
 
   readonly liveLLMCalled: false;
   readonly apiRouteTouched: false;

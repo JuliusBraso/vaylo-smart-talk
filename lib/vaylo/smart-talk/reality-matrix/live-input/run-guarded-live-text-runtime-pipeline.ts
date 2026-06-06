@@ -1,41 +1,42 @@
 /**
- * Guarded Live Text Runtime Pipeline (Phase 8.2H-5).
+ * Guarded Live Text Runtime Pipeline (Phase 8.2H-5, updated 8.2I-3).
  *
  * Implements `runGuardedLiveTextRuntimePipeline` — a pure internal pipeline that
  * connects the 8.2H controlled live input chain to the existing 8.2G governance
  * gates without opening public runtime.
  *
+ * Phase 8.2I-3 update:
+ *   The temporary mock-shaped bridge introduced in 8.2H-5 has been removed.
+ *   The pipeline now:
+ *     1. Runs the 8.2H chain directly (input contract → redaction → adapter).
+ *     2. Builds a `ControlledLiveTextRedactionProof` from the redaction result.
+ *     3. Builds a `ControlledLiveTextDraftResult` via `buildControlledLiveTextDraftResult()`.
+ *     4. Passes the `ControlledLiveTextDraftResult` directly to `validateRuntimeLLMOutputContract()`
+ *        (now formally accepted since Phase 8.2I-2).
+ *   The mock prefix `[MOCK_DRAFT_NEVER_USER_VISIBLE]` is no longer used on this path.
+ *   `temporaryMockBridgeUsed: false` is now a literal type on the result.
+ *   `realRedactedTextForwardedToOutputContract: true` on all success paths.
+ *
  * Pipeline stages:
- *   1. runControlledLiveTextE2EHarness()       — 8.2H-1/2/3 chain
- *   2. validateRuntimeLLMOutputContract()      — 8.2G-2
- *   3. runRuntimeWordingGovernanceGate()       — 8.2G-3
- *   4. runRuntimeResponseAssemblerBridge()     — 8.2G-6
- *   5. runRuntimeUserVisibleAuthorisationGate()— 8.2G-7
+ *   1. runRealTextInputContractValidation()  — 8.2H-1
+ *   2. runRealTextRedactionBoundary()        — 8.2H-2
+ *   3. runControlledLiveTextAdapter()        — 8.2H-3
+ *   4. buildControlledLiveTextRedactionProof()  — 8.2I-1
+ *   5. buildControlledLiveTextDraftResult()     — 8.2I-1
+ *   6. validateRuntimeLLMOutputContract()    — 8.2G-2 (now accepts controlled_live_text)
+ *   7. runRuntimeWordingGovernanceGate()     — 8.2G-3
+ *   8. runRuntimeResponseAssemblerBridge()   — 8.2G-6
+ *   9. runRuntimeUserVisibleAuthorisationGate()— 8.2G-7
  *
- * Output contract compatibility bridge (temporary for 8.2H-5):
- *   The 8.2G output contract validator recognises two prefixes:
- *     [MOCK_DRAFT_NEVER_USER_VISIBLE]          (mock path)
- *     [LIVE_SANDBOX_DRAFT_NEVER_USER_VISIBLE]  (live sandbox path)
- *   The 8.2H adapter produces [CONTROLLED_LIVE_TEXT_DRAFT_NEVER_USER_VISIBLE].
- *   Rather than modifying the validator, a local bridge wraps the adapter
- *   candidate into a mock-shaped `RuntimeLLMOutputContractDraftResult` using
- *   a deterministic safe fixture section. This bridge:
- *   - keeps adapterMode: "mock"
- *   - keeps liveLLMCalled: false
- *   - uses a fixed safe section text (not the redacted user text)
- *   - keeps neverUserVisible: true throughout
- *   This is documented here and in the result notes. Phase 8.2H-6+ may introduce
- *   a dedicated controlled-live-text prefix in the validator.
- *
- * Fixture mode → 8.2H harness fixture → wording score report:
- *   safe_real_text          → safe_real_text          → BASE_SAFE_SCORE_REPORT
- *   safe_real_question      → safe_real_question      → BASE_SAFE_SCORE_REPORT
- *   pii_redaction_applied   → pii_redaction_applied   → BASE_SAFE_SCORE_REPORT
- *   input_contract_blocked  → too_short_text          → (harness blocks; 8.2G chain not reached)
- *   redaction_blocked       → high_risk_rejected      → (harness blocks; 8.2G chain not reached)
- *   adapter_blocked         → adapter_rejects_...     → (harness blocks; 8.2G chain not reached)
- *   wording_hard_fail       → safe_real_text          → BASE_HARD_FAIL_LEGAL_ADVICE_SCORE_REPORT
- *   human_review            → safe_real_question      → BASE_HUMAN_REVIEW_SCORE_REPORT
+ * Fixture mode → input text / harness variant:
+ *   safe_real_text          → "Bitte erklären Sie diesen Brief."
+ *   safe_real_question      → "Was bedeutet das für mich?"
+ *   pii_redaction_applied   → text with embedded PII markers
+ *   input_contract_blocked  → "" (too short; blocked at input contract)
+ *   redaction_blocked       → text triggering high-risk redaction rejection
+ *   adapter_blocked         → bypassed redaction (null accepted input)
+ *   wording_hard_fail       → safe_real_text + hard-fail score report
+ *   human_review            → safe_real_question + human-review score report
  *
  * Safety invariants (literal types on the result):
  * - emittedToUserNow: false
@@ -45,12 +46,12 @@
  * - persistenceUsed: false
  * - dnaSavePerformed: false
  * - offlineSavePerformed: false
+ * - temporaryMockBridgeUsed: false
  * - neverUserVisible: true
  *
  * Pure function — no external calls, no logging, no persistence.
  */
 
-import { runControlledLiveTextE2EHarness } from "./run-controlled-live-text-e2e-harness";
 import { validateRuntimeLLMOutputContract } from "../validate-runtime-llm-output-contract";
 import { runRuntimeWordingGovernanceGate } from "../run-runtime-wording-governance-gate";
 import { runRuntimeResponseAssemblerBridge } from "../run-runtime-response-assembler-bridge";
@@ -69,35 +70,29 @@ import type {
 } from "./guarded-live-text-runtime-pipeline-types";
 import type { RuntimeLLMDraftAdapterInput } from "../runtime-llm-draft-adapter-types";
 import type { RuntimeLLMOutputContractDraftResult } from "../runtime-llm-output-contract-validator-types";
-import type { ControlledLiveTextE2EHarnessFixtureMode } from "./controlled-live-text-e2e-harness-types";
+import { runRealTextInputContractValidation } from "./run-real-text-input-contract-validation";
+import { runRealTextRedactionBoundary } from "./run-real-text-redaction-boundary";
+import { runControlledLiveTextAdapter } from "./run-controlled-live-text-adapter";
+import {
+  buildControlledLiveTextDraftResult,
+  buildControlledLiveTextRedactionProof,
+} from "./controlled-live-text-draft-result-types";
 
 export const GUARDED_LIVE_TEXT_RUNTIME_PIPELINE_VERSION =
-  "8.2h-5-guarded-live-text-runtime-pipeline-v1";
+  "8.2h-5-guarded-live-text-runtime-pipeline-v2-8.2i-3";
 
-/**
- * Prefix required for sections on the mock path through the output contract validator.
- * Used by the temporary compatibility bridge in this phase.
- */
-const MOCK_DRAFT_PREFIX = "[MOCK_DRAFT_NEVER_USER_VISIBLE]";
+// ── Fixture input texts ───────────────────────────────────────────────────────
 
-// ── Fixture mode mappings ─────────────────────────────────────────────────────
+const SAFE_REAL_TEXT_FIXTURE = "Bitte erklären Sie diesen Brief.";
+const SAFE_REAL_QUESTION_FIXTURE = "Was bedeutet das für mich?";
+const PII_REDACTION_FIXTURE =
+  "Bitte prüfen Sie: muster@beispiel.de oder +49 170 1234567.";
+// Fixture text known to trigger high-risk rejection (IBAN pattern)
+const HIGH_RISK_FIXTURE = "Meine IBAN lautet DE89370400440532013000.";
+
+// ── Fixture mode helpers ──────────────────────────────────────────────────────
 
 type ScoreReport = Parameters<typeof runRuntimeWordingGovernanceGate>[0]["scoreReport"];
-
-function mapToHarnessFixture(
-  mode: GuardedLiveTextRuntimePipelineFixtureMode,
-): ControlledLiveTextE2EHarnessFixtureMode {
-  switch (mode) {
-    case "safe_real_text":      return "safe_real_text";
-    case "safe_real_question":  return "safe_real_question";
-    case "pii_redaction_applied": return "pii_redaction_applied";
-    case "input_contract_blocked": return "too_short_text";
-    case "redaction_blocked":   return "high_risk_rejected";
-    case "adapter_blocked":     return "adapter_rejects_missing_redaction";
-    case "wording_hard_fail":   return "safe_real_text";
-    case "human_review":        return "safe_real_question";
-  }
-}
 
 function mapToScoreReport(mode: GuardedLiveTextRuntimePipelineFixtureMode): ScoreReport {
   switch (mode) {
@@ -118,6 +113,8 @@ function makeBlocked(
   wordingGateVerdict: string,
   responseAssemblerVerdict: string,
   authorisationVerdict: string,
+  controlledLiveTextDraftUsed: boolean,
+  realRedactedTextForwardedToOutputContract: boolean,
   notes?: string[],
 ): GuardedLiveTextRuntimePipelineResult {
   return {
@@ -133,6 +130,9 @@ function makeBlocked(
     acceptedForUserVisibleAssembly: false,
     userVisibleOutputAllowedForFuture: false,
     emittedToUserNow: false,
+    temporaryMockBridgeUsed: false,
+    controlledLiveTextDraftUsed,
+    realRedactedTextForwardedToOutputContract,
     liveLLMCalled: false,
     apiRouteTouched: false,
     uiTouched: false,
@@ -150,8 +150,8 @@ function makeBlocked(
  * Runs the complete guarded live text → 8.2G governance pipeline using a
  * synthetic fixture.
  *
- * Uses the temporary mock-bridge to satisfy the 8.2G output contract validator's
- * prefix requirement without modifying the validator itself.
+ * Phase 8.2I-3: no mock bridge. ControlledLiveTextDraftResult is built from
+ * the real 8.2H chain output and passed directly to validateRuntimeLLMOutputContract().
  *
  * Pure function — no external calls, no logging, no persistence.
  */
@@ -169,105 +169,281 @@ export function runGuardedLiveTextRuntimePipeline(
     "guarded_live_text_pipeline_no_offline_save_confirmed",
   ];
 
-  // ── Stage 1 — 8.2H live text E2E harness ─────────────────────────────────
+  // ── Stage 1 — Input contract validation (8.2H-1) ──────────────────────────
 
-  const harnessFixture = mapToHarnessFixture(fixtureMode);
-  const useHighRisk = fixtureMode === "redaction_blocked";
+  // Modes that block at the input contract stage
+  if (fixtureMode === "input_contract_blocked") {
+    const contractResult = runRealTextInputContractValidation({
+      inputMode: "real_text_guarded",
+      text: "",          // empty → rejected by input contract
+      sourceKind: "typed_text",
+      validationRunId: `${pipelineRunId}:input-contract`,
+      neverUserVisible: true,
+    });
+    diagnostics.push("guarded_live_text_pipeline_live_text_harness_completed");
+    diagnostics.push("guarded_live_text_pipeline_blocked_live_text_harness");
+    return makeBlocked(
+      pipelineRunId,
+      "blocked_live_text_harness",
+      diagnostics,
+      contractResult.verdict,
+      "", "", "", "",
+      false, false,
+      [`Input contract blocked: ${contractResult.verdict}.`],
+    );
+  }
 
-  const harnessResult = runControlledLiveTextE2EHarness({
-    harnessRunId: `${pipelineRunId}:live-text-harness`,
-    fixtureMode: harnessFixture,
-    rejectHighRiskPatterns: useHighRisk,
+  // Modes that block at the redaction stage (high-risk patterns)
+  if (fixtureMode === "redaction_blocked") {
+    const contractResult = runRealTextInputContractValidation({
+      inputMode: "real_text_guarded",
+      text: HIGH_RISK_FIXTURE,
+      sourceKind: "typed_text",
+      validationRunId: `${pipelineRunId}:input-contract`,
+      neverUserVisible: true,
+    });
+    if (
+      contractResult.verdict !== "accepted_for_redaction_boundary" ||
+      !contractResult.accepted
+    ) {
+      diagnostics.push("guarded_live_text_pipeline_live_text_harness_completed");
+      diagnostics.push("guarded_live_text_pipeline_blocked_live_text_harness");
+      return makeBlocked(
+        pipelineRunId,
+        "blocked_live_text_harness",
+        diagnostics,
+        contractResult.verdict,
+        "", "", "", "",
+        false, false,
+        [`Input contract blocked for high-risk fixture: ${contractResult.verdict}.`],
+      );
+    }
+    const redactionResult = runRealTextRedactionBoundary({
+      acceptedInput: contractResult.accepted,
+      redactionRunId: `${pipelineRunId}:redaction`,
+      rejectHighRiskPatterns: true,
+      neverUserVisible: true,
+    });
+    diagnostics.push("guarded_live_text_pipeline_live_text_harness_completed");
+    diagnostics.push("guarded_live_text_pipeline_blocked_live_text_harness");
+    return makeBlocked(
+      pipelineRunId,
+      "blocked_live_text_harness",
+      diagnostics,
+      redactionResult.verdict,
+      "", "", "", "",
+      false, false,
+      [`Redaction blocked: ${redactionResult.verdict}.`],
+    );
+  }
+
+  // Mode that blocks at the adapter stage
+  if (fixtureMode === "adapter_blocked") {
+    // Simulate adapter receiving null/invalid redaction accepted by calling adapter directly
+    // with a null-equivalent: use a failed input contract scenario and bypass redaction
+    const adapterResult = runControlledLiveTextAdapter({
+      // Pass a null redactionAccepted to trigger adapter rejection
+      redactionAccepted: null as never,
+      sourceInputMode: "real_text_guarded",
+      adapterRunId: `${pipelineRunId}:adapter`,
+      neverUserVisible: true,
+    });
+    diagnostics.push("guarded_live_text_pipeline_live_text_harness_completed");
+    diagnostics.push("guarded_live_text_pipeline_blocked_live_text_harness");
+    return makeBlocked(
+      pipelineRunId,
+      "blocked_live_text_harness",
+      diagnostics,
+      adapterResult.verdict,
+      "", "", "", "",
+      false, false,
+      [`Adapter blocked: ${adapterResult.verdict}.`],
+    );
+  }
+
+  // ── Stages 1–3 — Full 8.2H chain for all reaching-8.2G modes ─────────────
+
+  // Select fixture text and source mode based on pipeline mode
+  const isQuestion =
+    fixtureMode === "safe_real_question" || fixtureMode === "human_review";
+  const isPII = fixtureMode === "pii_redaction_applied";
+
+  const fixtureText = isQuestion
+    ? SAFE_REAL_QUESTION_FIXTURE
+    : isPII
+    ? PII_REDACTION_FIXTURE
+    : SAFE_REAL_TEXT_FIXTURE;
+
+  const sourceMode = isQuestion ? "real_question_guarded" : "real_text_guarded";
+
+  // Stage 1 — Input contract
+  const inputContractResult = runRealTextInputContractValidation({
+    inputMode: sourceMode,
+    text: fixtureText,
+    sourceKind: "typed_text",
+    validationRunId: `${pipelineRunId}:input-contract`,
     neverUserVisible: true,
   });
-  diagnostics.push("guarded_live_text_pipeline_live_text_harness_completed");
 
-  // Invariant check on harness result
   if (
-    harnessResult.liveLLMCalled !== false ||
-    harnessResult.persistenceUsed !== false ||
-    harnessResult.dnaSavePerformed !== false ||
-    harnessResult.offlineSavePerformed !== false ||
-    harnessResult.uiTouched !== false
+    inputContractResult.verdict !== "accepted_for_redaction_boundary" ||
+    !inputContractResult.accepted
+  ) {
+    diagnostics.push("guarded_live_text_pipeline_live_text_harness_completed");
+    diagnostics.push("guarded_live_text_pipeline_blocked_live_text_harness");
+    return makeBlocked(
+      pipelineRunId,
+      "blocked_live_text_harness",
+      diagnostics,
+      inputContractResult.verdict,
+      "", "", "", "",
+      false, false,
+      [`Input contract rejected for fixture "${fixtureMode}": ${inputContractResult.verdict}.`],
+    );
+  }
+
+  // Stage 2 — Redaction boundary
+  const redactionResult = runRealTextRedactionBoundary({
+    acceptedInput: inputContractResult.accepted,
+    redactionRunId: `${pipelineRunId}:redaction`,
+    neverUserVisible: true,
+  });
+
+  if (
+    redactionResult.verdict !== "accepted_for_controlled_live_adapter" ||
+    !redactionResult.accepted
+  ) {
+    diagnostics.push("guarded_live_text_pipeline_live_text_harness_completed");
+    diagnostics.push("guarded_live_text_pipeline_blocked_live_text_harness");
+    return makeBlocked(
+      pipelineRunId,
+      "blocked_live_text_harness",
+      diagnostics,
+      redactionResult.verdict,
+      "", "", "", "",
+      false, false,
+      [`Redaction blocked for fixture "${fixtureMode}": ${redactionResult.verdict}.`],
+    );
+  }
+
+  // Stage 3 — Controlled live text adapter
+  const adapterResult = runControlledLiveTextAdapter({
+    redactionAccepted: redactionResult.accepted,
+    sourceInputMode: sourceMode,
+    adapterRunId: `${pipelineRunId}:adapter`,
+    neverUserVisible: true,
+  });
+
+  // Invariant checks on harness sub-layers
+  if (
+    adapterResult.liveLLMCalled !== false ||
+    adapterResult.persistenceUsed !== false ||
+    adapterResult.dnaSavePerformed !== false ||
+    adapterResult.offlineSavePerformed !== false ||
+    adapterResult.uiTouched !== false
   ) {
     diagnostics.push("guarded_live_text_pipeline_failed_invariant_violation");
     return makeBlocked(
       pipelineRunId,
       "failed_invariant_violation",
       diagnostics,
-      harnessResult.verdict,
+      adapterResult.verdict,
       "", "", "", "",
-      ["Live text harness result violated safety invariants."],
+      false, false,
+      ["Adapter result violated safety invariants."],
     );
   }
 
-  if (harnessResult.verdict !== "completed_adapter_candidate") {
+  if (adapterResult.verdict !== "adapted_for_output_contract_validation") {
+    diagnostics.push("guarded_live_text_pipeline_live_text_harness_completed");
     diagnostics.push("guarded_live_text_pipeline_blocked_live_text_harness");
     return makeBlocked(
       pipelineRunId,
       "blocked_live_text_harness",
       diagnostics,
-      harnessResult.verdict,
+      adapterResult.verdict,
       "", "", "", "",
-      [`Live text harness blocked with verdict: ${harnessResult.verdict}.`],
+      false, false,
+      [`Adapter rejected for fixture "${fixtureMode}": ${adapterResult.verdict}.`],
     );
   }
+
+  diagnostics.push("guarded_live_text_pipeline_live_text_harness_completed");
   diagnostics.push("guarded_live_text_pipeline_adapter_candidate_confirmed");
 
-  // ── Stage 2 — Build mock-bridge draft (temporary compatibility bridge) ────
-  //
-  // The 8.2G output contract validator only accepts [MOCK_DRAFT_NEVER_USER_VISIBLE]
-  // or [LIVE_SANDBOX_DRAFT_NEVER_USER_VISIBLE] prefixes. The 8.2H adapter uses
-  // [CONTROLLED_LIVE_TEXT_DRAFT_NEVER_USER_VISIBLE]. To avoid modifying the
-  // validator, we construct a mock-shaped draft here using a fixed safe fixture
-  // section text (not the redacted user text). This bridge is internal, guarded,
-  // and labelled as temporary — Phase 8.2H-6+ may add a dedicated prefix.
+  // ── Stage 4 — Build ControlledLiveTextRedactionProof (8.2I-1) ────────────
 
-  const bridgeAdapterInput: RuntimeLLMDraftAdapterInput = {
+  const redactionProof = buildControlledLiveTextRedactionProof({
+    redactionAccepted: redactionResult.accepted,
+    adapterResult,
+    redactionRunId: `${pipelineRunId}:redaction`,
+    adapterRunId: `${pipelineRunId}:adapter`,
+    notes: [
+      `Pipeline fixture mode: ${fixtureMode}.`,
+      "Bridge removed in 8.2I-3. Real redacted text forwarded.",
+    ],
+  });
+
+  // ── Stage 5 — Build ControlledLiveTextDraftResult (8.2I-1) ───────────────
+
+  const controlledLiveTextDraftResult = buildControlledLiveTextDraftResult({
+    draftId: `${pipelineRunId}:controlled-live-text-draft`,
+    adapterResult,
+    redactionProof,
+    appliedForbiddenMoves: [],
+    appliedRequiredConstraints: [],
+    diagnostics: ["controlled_live_text_draft_built"],
+    auditTraceParentIds: [`${pipelineRunId}:adapter`],
+    notes: [
+      `Built from 8.2H chain: input contract → redaction → adapter.`,
+      `Fixture mode: ${fixtureMode}.`,
+      "temporaryMockBridgeUsed: false — bridge removed in Phase 8.2I-3.",
+    ],
+  });
+
+  if (!controlledLiveTextDraftResult) {
+    diagnostics.push("guarded_live_text_pipeline_rejected_missing_adapter_candidate");
+    return makeBlocked(
+      pipelineRunId,
+      "rejected_missing_adapter_candidate",
+      diagnostics,
+      adapterResult.verdict,
+      "", "", "", "",
+      false, false,
+      ["buildControlledLiveTextDraftResult returned null — proof or prefix invariant failed."],
+    );
+  }
+
+  // ── Stage 6 — Output contract validator (8.2G-2) ──────────────────────────
+
+  // The adapter input for the validator context (describes allowed sections / moves)
+  const contractAdapterInput: RuntimeLLMDraftAdapterInput = {
     adapterMode: "mock",
     accessTier: "free_preview",
-    contractRef: `${pipelineRunId}-bridge-contract`,
-    allowedSectionTypes: ["what_this_means"],
+    contractRef: `${pipelineRunId}-controlled-live-text-contract`,
+    allowedSectionTypes: [
+      "what_this_means",
+      "document_type_signal",
+      "attention_points",
+      "next_steps_safe",
+      "uncertainty_notice",
+      "review_recommendation",
+      "blocked_content_notice",
+    ],
     activeForbiddenMoves: [],
     activeRequiredConstraints: [],
     uncertaintyRequired: false,
     humanReviewRequired: false,
-    auditTraceParentIds: [`${pipelineRunId}:live-text-harness`],
+    auditTraceParentIds: [`${pipelineRunId}:adapter`],
     neverUserVisible: true,
     notes: [
-      "Temporary 8.2H-5 mock-bridge: maps controlled live text adapter candidate to mock-path shape.",
-      "Does not expose redacted user text. Uses fixed safe fixture section text.",
+      "Adapter input context for output contract validator on controlled live text path.",
     ],
   };
-
-  const bridgeDraftResult: RuntimeLLMOutputContractDraftResult = {
-    adapterMode: "mock",
-    accessTier: "free_preview",
-    sectionCandidates: [
-      {
-        sectionType: "what_this_means",
-        draftText: `${MOCK_DRAFT_PREFIX} Synthetic controlled live text pipeline fixture for 8.2H-5. Fixture: ${fixtureMode}.`,
-        safetyFlags: [],
-        sourceBound: true,
-        neverUserVisible: true,
-        notes: [
-          "8.2H-5 mock-bridge section: fixed safe text, not user content.",
-          "sourceBound: true — derived from controlled live text chain (not a free mock generation).",
-        ],
-      },
-    ],
-    appliedForbiddenMoves: [],
-    appliedRequiredConstraints: [],
-    liveLLMCalled: false,
-    userVisibleOutputAllowed: false,
-    neverUserVisible: true,
-  };
-
-  // ── Stage 3 — Output contract validator ──────────────────────────────────
 
   const contractResult = validateRuntimeLLMOutputContract({
-    input: bridgeAdapterInput,
-    result: bridgeDraftResult,
+    input: contractAdapterInput,
+    result: controlledLiveTextDraftResult as unknown as RuntimeLLMOutputContractDraftResult,
   });
   diagnostics.push("guarded_live_text_pipeline_output_contract_completed");
 
@@ -281,9 +457,10 @@ export function runGuardedLiveTextRuntimePipeline(
       pipelineRunId,
       "failed_invariant_violation",
       diagnostics,
-      harnessResult.verdict,
+      adapterResult.verdict,
       contractResult.verdict,
       "", "", "",
+      true, true,
       ["Output contract result violated safety invariants."],
     );
   }
@@ -294,19 +471,20 @@ export function runGuardedLiveTextRuntimePipeline(
       pipelineRunId,
       "blocked_output_contract",
       diagnostics,
-      harnessResult.verdict,
+      adapterResult.verdict,
       contractResult.verdict,
       "", "", "",
+      true, true,
       [`Output contract rejected: ${contractResult.verdict}.`],
     );
   }
 
-  // ── Stage 4 — Wording governance gate ────────────────────────────────────
+  // ── Stage 7 — Wording governance gate (8.2G-3) ────────────────────────────
 
   const scoreReport = mapToScoreReport(fixtureMode);
 
   const wordingResult = runRuntimeWordingGovernanceGate({
-    draftResult: bridgeDraftResult,
+    draftResult: controlledLiveTextDraftResult as unknown as RuntimeLLMOutputContractDraftResult,
     outputContractValidation: contractResult,
     scoreReport,
     neverUserVisible: true,
@@ -323,30 +501,30 @@ export function runGuardedLiveTextRuntimePipeline(
       pipelineRunId,
       "failed_invariant_violation",
       diagnostics,
-      harnessResult.verdict,
+      adapterResult.verdict,
       contractResult.verdict,
       wordingResult.verdict,
       "", "",
+      true, true,
       ["Wording gate result violated safety invariants."],
     );
   }
 
-  // Hard fail → stop immediately
   if (wordingResult.verdict === "hard_fail_wording_violation") {
     diagnostics.push("guarded_live_text_pipeline_blocked_wording_gate");
     return makeBlocked(
       pipelineRunId,
       "blocked_wording_gate",
       diagnostics,
-      harnessResult.verdict,
+      adapterResult.verdict,
       contractResult.verdict,
       wordingResult.verdict,
       "", "",
+      true, true,
       ["Wording gate hard fail — pipeline stopped."],
     );
   }
 
-  // Other rejections (missing/invalid score report, previous gate failed) → stop
   if (
     wordingResult.verdict !== "accepted_for_audit_dry_run" &&
     wordingResult.verdict !== "human_review_required"
@@ -356,18 +534,19 @@ export function runGuardedLiveTextRuntimePipeline(
       pipelineRunId,
       "blocked_wording_gate",
       diagnostics,
-      harnessResult.verdict,
+      adapterResult.verdict,
       contractResult.verdict,
       wordingResult.verdict,
       "", "",
+      true, true,
       [`Wording gate rejected: ${wordingResult.verdict}.`],
     );
   }
 
-  // ── Stage 5 — Response assembler bridge ──────────────────────────────────
+  // ── Stage 8 — Response assembler bridge (8.2G-6) ─────────────────────────
 
   const assemblerResult = runRuntimeResponseAssemblerBridge({
-    draftResult: bridgeDraftResult,
+    draftResult: controlledLiveTextDraftResult as unknown as RuntimeLLMOutputContractDraftResult,
     outputContractValidation: contractResult,
     wordingGateResult: wordingResult,
     auditTraceValid: true,
@@ -389,11 +568,12 @@ export function runGuardedLiveTextRuntimePipeline(
       pipelineRunId,
       "failed_invariant_violation",
       diagnostics,
-      harnessResult.verdict,
+      adapterResult.verdict,
       contractResult.verdict,
       wordingResult.verdict,
       assemblerResult.verdict,
       "",
+      true, true,
       ["Assembler result violated safety invariants."],
     );
   }
@@ -407,16 +587,17 @@ export function runGuardedLiveTextRuntimePipeline(
       pipelineRunId,
       "blocked_response_assembler",
       diagnostics,
-      harnessResult.verdict,
+      adapterResult.verdict,
       contractResult.verdict,
       wordingResult.verdict,
       assemblerResult.verdict,
       "",
+      true, true,
       [`Assembler rejected: ${assemblerResult.verdict}.`],
     );
   }
 
-  // ── Stage 6 — User-visible authorisation gate ─────────────────────────────
+  // ── Stage 9 — User-visible authorisation gate (8.2G-7) ───────────────────
 
   const authorisationResult = runRuntimeUserVisibleAuthorisationGate({
     assemblerResult,
@@ -436,11 +617,12 @@ export function runGuardedLiveTextRuntimePipeline(
       pipelineRunId,
       "failed_invariant_violation",
       diagnostics,
-      harnessResult.verdict,
+      adapterResult.verdict,
       contractResult.verdict,
       wordingResult.verdict,
       assemblerResult.verdict,
       authorisationResult.verdict,
+      true, true,
       ["Authorisation result violated safety invariants."],
     );
   }
@@ -451,11 +633,12 @@ export function runGuardedLiveTextRuntimePipeline(
       pipelineRunId,
       "blocked_user_visible_authorisation",
       diagnostics,
-      harnessResult.verdict,
+      adapterResult.verdict,
       contractResult.verdict,
       wordingResult.verdict,
       assemblerResult.verdict,
       authorisationResult.verdict,
+      true, true,
       [`Authorisation rejected: ${authorisationResult.verdict}.`],
     );
   }
@@ -468,7 +651,7 @@ export function runGuardedLiveTextRuntimePipeline(
     pipelineRunId,
     verdict: "completed_authorised_internal_packet",
     diagnostics,
-    liveTextHarnessVerdict: harnessResult.verdict,
+    liveTextHarnessVerdict: adapterResult.verdict,
     outputContractVerdict: contractResult.verdict,
     wordingGateVerdict: wordingResult.verdict,
     responseAssemblerVerdict: assemblerResult.verdict,
@@ -477,6 +660,9 @@ export function runGuardedLiveTextRuntimePipeline(
     acceptedForUserVisibleAssembly: authorisationResult.acceptedForUserVisibleAssembly,
     userVisibleOutputAllowedForFuture: authorisationResult.userVisibleOutputAllowedForFuture,
     emittedToUserNow: false,
+    temporaryMockBridgeUsed: false,
+    controlledLiveTextDraftUsed: true,
+    realRedactedTextForwardedToOutputContract: true,
     liveLLMCalled: false,
     apiRouteTouched: false,
     uiTouched: false,
@@ -488,10 +674,10 @@ export function runGuardedLiveTextRuntimePipeline(
       `Pipeline version: ${GUARDED_LIVE_TEXT_RUNTIME_PIPELINE_VERSION}.`,
       `Pipeline run ID: ${pipelineRunId}.`,
       `Fixture mode: ${fixtureMode}.`,
-      "TEMPORARY BRIDGE: controlled live text adapter candidate mapped to mock-shaped draft for output contract validator compatibility.",
-      "Bridge uses fixed safe fixture text only — redacted user text is not forwarded to the 8.2G chain in 8.2H-5.",
+      "temporaryMockBridgeUsed: false — mock bridge removed in Phase 8.2I-3.",
+      "controlledLiveTextDraftUsed: true — ControlledLiveTextDraftResult built and validated.",
+      "realRedactedTextForwardedToOutputContract: true — 8.2H chain output reached 8.2G validator.",
       "emittedToUserNow: false — packet is for internal governance use only.",
-      "Next: 8.2H-6 Controlled Live Input Closure Audit.",
     ],
   };
 }

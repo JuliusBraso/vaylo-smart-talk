@@ -1,5 +1,5 @@
 /**
- * Controlled Live Input Closure Audit (Phase 8.2H-6).
+ * Controlled Live Input Closure Audit (Phase 8.2H-6, updated 8.2I-3).
  *
  * Implements `runControlledLiveInputClosureAudit` — a pure audit function that
  * formally closes the 8.2H Controlled Live Input epoch.
@@ -7,15 +7,21 @@
  * The audit:
  *   1. Records a static required layer inventory (all 8 required layers).
  *   2. Runs a live E2E harness check (8.2H-4) to confirm `completed_adapter_candidate`.
- *   3. Runs a live guarded runtime pipeline check (8.2H-5) to confirm
+ *   3. Runs a live guarded runtime pipeline check (8.2H-5/8.2I-3) to confirm
  *      `completed_authorised_internal_packet`.
  *   4. Verifies invariants on nested results.
  *   5. Records open technical debt items.
  *   6. Determines the final epoch verdict.
  *
- * Expected result: `closed_with_warnings` because the temporary mock-bridge
- * debt (open item 001/002) is non-blocking for epoch closure but blocks
- * public launch and real redacted text forwarding.
+ * Phase 8.2I-3 update:
+ *   The temporary mock-bridge debt items (8.2H-DEBT-001 and 8.2H-DEBT-002)
+ *   have been resolved by removing the bridge and enabling direct
+ *   `ControlledLiveTextDraftResult` forwarding in 8.2I-3.
+ *   `readyForControlledRealTextForwardingTo8_2G` can now be `true` when the
+ *   pipeline confirms `temporaryMockBridgeUsed: false`,
+ *   `controlledLiveTextDraftUsed: true`, and
+ *   `realRedactedTextForwardedToOutputContract: true`.
+ *   `readyForPublicLaunch` remains `false`.
  *
  * Safety invariants (literal types on the result):
  * - readyForPublicLaunch: false
@@ -44,7 +50,7 @@ import type {
 } from "./controlled-live-input-closure-audit-types";
 
 export const CONTROLLED_LIVE_INPUT_CLOSURE_AUDIT_VERSION =
-  "8.2h-6-controlled-live-input-closure-audit-v1";
+  "8.2h-6-controlled-live-input-closure-audit-v2-8.2i-3";
 
 // ── Static required layer inventory ──────────────────────────────────────────
 
@@ -146,26 +152,8 @@ const REQUIRED_LAYER_INVENTORY: readonly ControlledLiveInputLayerCheck[] = [
 // ── Open technical debt items ─────────────────────────────────────────────────
 
 const OPEN_ITEMS: readonly ControlledLiveInputOpenItem[] = [
-  {
-    itemId: "8.2H-DEBT-001",
-    severity: "warning",
-    title: "Temporary mock-shaped bridge to 8.2G output contract validator",
-    recommendation:
-      "Add formal controlled-live-text draft source kind / prefix support in the 8.2G output contract validator before forwarding real redacted text. Propose in Phase 8.2I-0.",
-    blocksEpochClosure: false,
-    blocksPublicLaunch: true,
-    neverUserVisible: true,
-  },
-  {
-    itemId: "8.2H-DEBT-002",
-    severity: "blocker",
-    title: "Real redacted text is not yet forwarded into the 8.2G pipeline",
-    recommendation:
-      "Implement dedicated controlled live text output contract compatibility (8.2I-0) before real user traffic can flow through the 8.2G governance chain.",
-    blocksEpochClosure: false,
-    blocksPublicLaunch: true,
-    neverUserVisible: true,
-  },
+  // 8.2H-DEBT-001 (temporary mock bridge) — RESOLVED in Phase 8.2I-3.
+  // 8.2H-DEBT-002 (real redacted text forwarding blocked) — RESOLVED in Phase 8.2I-3.
   {
     itemId: "8.2H-DEBT-003",
     severity: "blocker",
@@ -248,7 +236,7 @@ export function runControlledLiveInputClosureAudit(
     "controlled_live_input_closure_persistence_still_blocked",
     "controlled_live_input_closure_dna_save_still_blocked",
     "controlled_live_input_closure_offline_save_still_blocked",
-    "controlled_live_input_closure_real_text_forwarding_still_blocked",
+    // Phase 8.2I-3: real text forwarding is now enabled via ControlledLiveTextDraftResult
   ];
 
   // ── Layer inventory ───────────────────────────────────────────────────────
@@ -365,6 +353,11 @@ export function runControlledLiveInputClosureAudit(
     pipelineResult.dnaSavePerformed === false &&
     pipelineResult.offlineSavePerformed === false;
 
+  // Phase 8.2I-3: verify bridge-removal proof fields
+  const mockBridgeRemoved = pipelineResult.temporaryMockBridgeUsed === false;
+  const controlledDraftUsed = pipelineResult.controlledLiveTextDraftUsed === true;
+  const realTextForwarded = pipelineResult.realRedactedTextForwardedToOutputContract === true;
+
   if (!runtimePipelinePassed) {
     diagnostics.push("controlled_live_input_closure_blocked_runtime_pipeline_failure");
     return buildResult(
@@ -381,7 +374,8 @@ export function runControlledLiveInputClosureAudit(
 
   // ── Open items — determine if epoch closure is blocked ───────────────────
 
-  diagnostics.push("controlled_live_input_closure_temporary_mock_bridge_recorded");
+  // 8.2H-DEBT-001 and 8.2H-DEBT-002 are now resolved (Phase 8.2I-3).
+  // Remaining open items (003–007) are future-epoch work; none block epoch closure.
 
   const anyBlocksEpochClosure = OPEN_ITEMS.some((item) => item.blocksEpochClosure);
 
@@ -393,6 +387,18 @@ export function runControlledLiveInputClosureAudit(
 
   diagnostics.push("controlled_live_input_closure_epoch_closed");
 
+  // readyForControlledRealTextForwardingTo8_2G: true only when all proof flags confirmed
+  const readyForRealTextForwarding =
+    runtimePipelinePassed &&
+    mockBridgeRemoved &&
+    controlledDraftUsed &&
+    realTextForwarded &&
+    pipelineResult.emittedToUserNow === false &&
+    pipelineResult.liveLLMCalled === false &&
+    pipelineResult.persistenceUsed === false &&
+    pipelineResult.dnaSavePerformed === false &&
+    pipelineResult.offlineSavePerformed === false;
+
   return {
     auditRunId,
     verdict,
@@ -403,8 +409,7 @@ export function runControlledLiveInputClosureAudit(
     runtimePipelinePassed: true,
     guardedApiBranchPresent: true,
     authenticatedInternalAccessPresent: true,
-    // Real text forwarding blocked until mock-bridge debt resolved (8.2I-0)
-    readyForControlledRealTextForwardingTo8_2G: false,
+    readyForControlledRealTextForwardingTo8_2G: readyForRealTextForwarding,
     readyForPublicLaunch: false,
     liveLLMCalled: false,
     apiRouteModifiedByAudit: false,
@@ -414,15 +419,17 @@ export function runControlledLiveInputClosureAudit(
     offlineSavePerformed: false,
     neverUserVisible: true,
     nextRecommendedPhase:
-      "8.2I-0 — Controlled Live Text Output Contract Compatibility Plan",
+      readyForRealTextForwarding
+        ? "8.2I-4 — Real Redacted Text Forwarding Harness"
+        : "Investigate: readyForControlledRealTextForwardingTo8_2G proof flags failed.",
     notes: [
       `Audit version: ${CONTROLLED_LIVE_INPUT_CLOSURE_AUDIT_VERSION}.`,
       `Audit run ID: ${auditRunId}.`,
       `Verdict: ${verdict}. Open items: ${String(OPEN_ITEMS.length)} (none block epoch closure).`,
-      "8.2H epoch: CLOSED WITH WARNINGS.",
-      "Temporary mock-bridge (8.2H-DEBT-001/002) must be resolved in 8.2I-0 before real redacted text flows into 8.2G.",
-      "readyForControlledRealTextForwardingTo8_2G: false — mock-bridge debt unresolved.",
-      "readyForPublicLaunch: false — public launch blocked until full 8.2I path proven.",
+      "8.2H-DEBT-001 (temporary mock bridge): RESOLVED in Phase 8.2I-3.",
+      "8.2H-DEBT-002 (real redacted text forwarding): RESOLVED in Phase 8.2I-3.",
+      `readyForControlledRealTextForwardingTo8_2G: ${String(readyForRealTextForwarding)}.`,
+      "readyForPublicLaunch: false — public launch remains blocked.",
     ],
   };
 }
@@ -457,8 +464,7 @@ function buildResult(
     dnaSavePerformed: false,
     offlineSavePerformed: false,
     neverUserVisible: true,
-    nextRecommendedPhase:
-      "8.2I-0 — Controlled Live Text Output Contract Compatibility Plan",
+    nextRecommendedPhase: "8.2I-4 — Real Redacted Text Forwarding Harness",
     notes,
   };
 }
