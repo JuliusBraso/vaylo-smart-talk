@@ -2015,6 +2015,19 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.2I-4 — Real Redacted Text Forwarding Harness** ✓ completed
+
+**State:**
+- proves synthetic real-text fixtures with PII flow through redaction and `controlled_live_text` output contract path
+- verifies raw-value leak checks (no raw email/IBAN/phone in section draft texts)
+- confirms `ControlledLiveTextDraftResult` reaches 8.2G gates without mock bridge
+- covers: 4 success paths, redaction block, 2 input contract blocks, 2 tamper blocks, human review, wording hard fail
+- no API/UI, no live LLM, no persistence; public launch remains blocked
+
+**Next phase: 8.2I-5 — Guarded Real Text Pipeline Closure Audit**
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
