@@ -1988,6 +1988,20 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.2I-2 — Output Contract Validator Extension** ✓ completed
+
+**State:**
+- Adds `controlled_live_text` dispatch branch to `validateRuntimeLLMOutputContract`
+- Recognises `CONTROLLED_LIVE_TEXT_DRAFT_PREFIX`; requires `ControlledLiveTextRedactionProof`
+- Rejects missing/invalid proof, missing prefix, `liveLLMCalled: true`, persistence flags
+- Preserves mock and live sandbox paths unchanged; `acceptedForUserVisibleAssembly` always `false`
+- Temporary mock bridge in `run-guarded-live-text-runtime-pipeline.ts` NOT removed yet
+- No API/UI, no live LLM, no persistence
+
+**Next phase: 8.2I-3 — Remove Temporary Mock Bridge**
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).

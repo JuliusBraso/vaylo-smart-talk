@@ -1,10 +1,11 @@
 /**
- * Runtime LLM Output Contract Validator (Phase 8.2G-2, extended 8.2G-5A).
+ * Runtime LLM Output Contract Validator (Phase 8.2G-2, extended 8.2G-5A, 8.2I-2).
  *
  * Implements `validateRuntimeLLMOutputContract` — a pure safety gate that
  * checks a draft result (from Phase 8.2G-1 mock adapter OR Phase 8.2G-5 live
- * sandbox adapter) against the originating `RuntimeLLMDraftAdapterInput` before
- * the draft can proceed to the wording governance gate (Phase 8.2G-3).
+ * sandbox adapter OR Phase 8.2I-1 controlled live text) against the originating
+ * `RuntimeLLMDraftAdapterInput` before the draft can proceed to the wording
+ * governance gate (Phase 8.2G-3).
  *
  * Phase 8.2G-5A extension:
  *   The `result` parameter now accepts `RuntimeLLMOutputContractDraftResult`, a
@@ -17,6 +18,17 @@
  *     Forbidden    — result.adapterMode === "future_live_llm" AND
  *                    result.liveLLMCalled !== true (mock adapter blocked live mode)
  *     Unrecognized — any other combination
+ *
+ * Phase 8.2I-2 extension:
+ *   Controlled live text path — result.adapterMode === "controlled_live_text".
+ *   Acceptance requires:
+ *     - result.redactionProof present and valid per validateControlledLiveTextRedactionProof.
+ *     - result.sourceKind === "controlled_live_text".
+ *     - result.liveLLMCalled === false.
+ *     - persistenceUsed/dnaSavePerformed/offlineSavePerformed all false (if present).
+ *     - every draftText starts with [CONTROLLED_LIVE_TEXT_DRAFT_NEVER_USER_VISIBLE].
+ *   On this path liveLLMCalled remains false in the validation result.
+ *   Mock and live sandbox paths are unchanged.
  *
  * Mock path behaviour (unchanged from Phase 8.2G-2):
  *   - liveLLMCalled must be false.
@@ -62,9 +74,14 @@ import {
   validateRuntimeLiveSandboxGuardProof,
 } from "./runtime-live-path-type-extension-types";
 import type { RuntimeLiveSandboxGuardProof } from "./runtime-live-path-type-extension-types";
+import {
+  CONTROLLED_LIVE_TEXT_DRAFT_PREFIX,
+  validateControlledLiveTextRedactionProof,
+} from "./live-input/controlled-live-text-draft-result-types";
+import type { ControlledLiveTextRedactionProof } from "./live-input/controlled-live-text-draft-result-types";
 
 export const RUNTIME_LLM_OUTPUT_CONTRACT_VALIDATOR_VERSION =
-  "8.2g-2-runtime-llm-output-contract-validator-v2-8.2g-5a";
+  "8.2g-2-runtime-llm-output-contract-validator-v2-8.2g-5a-8.2i-2";
 
 // ── Prefix constants ───────────────────────────────────────────────────────────
 
@@ -164,12 +181,16 @@ function resolveVerdict(
     "llm_output_result_not_never_user_visible",
     "llm_output_missing_mock_prefix",
     "llm_output_live_sandbox_prefix_missing",
+    // Phase 8.2I-2: controlled live text visibility violations (result-level)
+    "llm_output_controlled_live_text_visibility_violation",
   ];
 
   const SECTION_VISIBILITY_VIOLATIONS: readonly RuntimeLLMOutputContractViolationCode[] = [
     "llm_output_section_not_never_user_visible",
     "llm_output_missing_mock_prefix",
     "llm_output_live_sandbox_prefix_missing",
+    // Phase 8.2I-2: controlled live text prefix violation (section-level)
+    "llm_output_controlled_live_text_prefix_missing",
   ];
 
   const UNSAFE_VIOLATIONS: readonly RuntimeLLMOutputContractViolationCode[] = [
@@ -249,10 +270,14 @@ export function validateRuntimeLLMOutputContract({
     adapterModeValue === "future_live_llm" && liveLLMCalledValue === true;
   const isForbiddenFutureLLM =
     adapterModeValue === "future_live_llm" && liveLLMCalledValue !== true;
-  const isUnrecognized = !isMockPath && !isLiveSandboxAttempt && !isForbiddenFutureLLM;
+  // Phase 8.2I-2: controlled live text path
+  const isControlledLiveTextPath = adapterModeValue === "controlled_live_text";
+  const isUnrecognized =
+    !isMockPath && !isLiveSandboxAttempt && !isForbiddenFutureLLM && !isControlledLiveTextPath;
 
-  // Track whether the live path accepted with a valid proof
+  // Track whether each guarded path accepted with a valid proof
   let liveSandboxProofAccepted = false;
+  let controlledLiveTextProofAccepted = false;
 
   // ── B. Mock path checks ───────────────────────────────────────────────────
 
@@ -305,6 +330,72 @@ export function validateRuntimeLLMOutputContract({
     }
   }
 
+  // ── D-new. Controlled live text path checks (Phase 8.2I-2) ──────────────
+
+  if (isControlledLiveTextPath) {
+    // Rule — sourceKind must be "controlled_live_text"
+    const sourceKindValue = unsafeReadField<unknown>(result, "sourceKind");
+    if (sourceKindValue !== "controlled_live_text") {
+      resultViolations.push("llm_output_controlled_live_text_source_invalid");
+      resultNotes.push(
+        `result.sourceKind must be "controlled_live_text" on controlled live text path; got "${String(sourceKindValue)}".`,
+      );
+    }
+
+    // Rule — liveLLMCalled must be false on this path
+    if (liveLLMCalledValue !== false) {
+      resultViolations.push("llm_output_controlled_live_text_visibility_violation");
+      resultNotes.push(
+        "result.liveLLMCalled must be false on controlled live text path. Visibility invariant violation.",
+      );
+    }
+
+    // Rule — persistenceUsed must be false if present
+    const persistenceUsedValue = unsafeReadField<unknown>(result, "persistenceUsed");
+    if (persistenceUsedValue !== undefined && persistenceUsedValue !== false) {
+      resultViolations.push("llm_output_controlled_live_text_persistence_violation");
+      resultNotes.push("result.persistenceUsed is not false on controlled live text path.");
+    }
+
+    // Rule — dnaSavePerformed must be false if present
+    const dnaSavePerformedValue = unsafeReadField<unknown>(result, "dnaSavePerformed");
+    if (dnaSavePerformedValue !== undefined && dnaSavePerformedValue !== false) {
+      resultViolations.push("llm_output_controlled_live_text_persistence_violation");
+      resultNotes.push("result.dnaSavePerformed is not false on controlled live text path.");
+    }
+
+    // Rule — offlineSavePerformed must be false if present
+    const offlineSavePerformedValue = unsafeReadField<unknown>(result, "offlineSavePerformed");
+    if (offlineSavePerformedValue !== undefined && offlineSavePerformedValue !== false) {
+      resultViolations.push("llm_output_controlled_live_text_persistence_violation");
+      resultNotes.push("result.offlineSavePerformed is not false on controlled live text path.");
+    }
+
+    // Rule — redactionProof must be present
+    const redactionProofValue = unsafeReadField<ControlledLiveTextRedactionProof | undefined>(
+      result,
+      "redactionProof",
+    );
+    if (redactionProofValue === null || redactionProofValue === undefined) {
+      resultViolations.push("llm_output_controlled_live_text_proof_missing");
+      resultNotes.push(
+        "Controlled live text path requires redactionProof, but none present.",
+      );
+    } else {
+      // Rule — redactionProof must pass validateControlledLiveTextRedactionProof
+      const proofValidation = validateControlledLiveTextRedactionProof(redactionProofValue);
+      if (!proofValidation.valid) {
+        resultViolations.push("llm_output_controlled_live_text_proof_invalid");
+        resultNotes.push(
+          "Controlled live text redaction proof failed validation. Diagnostics: " +
+            proofValidation.diagnostics.join(", "),
+        );
+      } else {
+        controlledLiveTextProofAccepted = true;
+      }
+    }
+  }
+
   // ── D. Forbidden future_live_llm (mock adapter blocked live mode) ─────────
 
   if (isForbiddenFutureLLM) {
@@ -350,13 +441,19 @@ export function validateRuntimeLLMOutputContract({
 
   // ── G. Per-section validation ─────────────────────────────────────────────
 
-  // Determine which prefix to enforce based on resolved path
+  // Determine which prefix to enforce based on resolved path.
+  // Controlled live text uses its own prefix regardless of proof outcome
+  // (so prefix violations are still captured even when proof fails).
   const draftPrefix = liveSandboxProofAccepted
     ? LIVE_SANDBOX_DRAFT_PREFIX
+    : isControlledLiveTextPath
+    ? CONTROLLED_LIVE_TEXT_DRAFT_PREFIX
     : MOCK_DRAFT_PREFIX;
   const prefixViolationCode: RuntimeLLMOutputContractViolationCode =
     liveSandboxProofAccepted
       ? "llm_output_live_sandbox_prefix_missing"
+      : isControlledLiveTextPath
+      ? "llm_output_controlled_live_text_prefix_missing"
       : "llm_output_missing_mock_prefix";
 
   const sectionResults: RuntimeLLMOutputSectionValidationResult[] =
@@ -408,13 +505,24 @@ export function validateRuntimeLLMOutputContract({
   const verdict = resolveVerdict(resultViolations, sectionResults);
   const acceptedForWordingGate = verdict === "accepted_for_next_gate";
 
-  // liveLLMCalled in the result: true only when the live sandbox path accepted with proof
+  // liveLLMCalled in the result: true only when the live sandbox path accepted with proof.
+  // Controlled live text path always yields false (no LLM involved).
   const liveLLMCalledResult: boolean = liveSandboxProofAccepted && acceptedForWordingGate;
+
+  const pathLabel = isMockPath
+    ? "mock"
+    : isLiveSandboxAttempt
+    ? `live_sandbox(proofAccepted=${String(liveSandboxProofAccepted)})`
+    : isControlledLiveTextPath
+    ? `controlled_live_text(proofAccepted=${String(controlledLiveTextProofAccepted)})`
+    : isForbiddenFutureLLM
+    ? "forbidden_future_llm"
+    : "unrecognized";
 
   resultNotes.push(
     `Validator version: ${RUNTIME_LLM_OUTPUT_CONTRACT_VALIDATOR_VERSION}. ` +
       `Verdict: ${verdict}. ` +
-      `Path: ${isMockPath ? "mock" : isLiveSandboxAttempt ? "live_sandbox" : isForbiddenFutureLLM ? "forbidden_future_llm" : "unrecognized"}. ` +
+      `Path: ${pathLabel}. ` +
       `Sections: ${sectionResults.length}. ` +
       `Result violations: ${resultViolations.length}. ` +
       `Section violations: ${sectionResults.reduce((n, sr) => n + sr.violations.length, 0)}.`,
