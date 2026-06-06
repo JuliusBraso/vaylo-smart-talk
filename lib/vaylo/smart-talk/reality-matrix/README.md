@@ -1904,7 +1904,18 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 - Valid text accepted only for future redaction boundary; `acceptedForLLM: false`, `acceptedForRuntimePipeline: false`
 - No API/UI, no live LLM, no persistence
 
-**Next phase: 8.2H-2 — Redaction and Input Guard Boundary**
+---
+
+**PHASE 8.2H-2 — Redaction and Input Guard Boundary** ✓ completed
+
+**State:**
+- Adds pure deterministic redaction to accepted real text (email, phone, IBAN, tax ID, reference, address, date, amount, name)
+- Match audit records store kind/risk/placeholder only — never raw PII values
+- Post-redaction invariant check verifies email/IBAN patterns absent
+- Accepted only for controlled live adapter; `acceptedForLLM: false`, `acceptedForRuntimePipeline: false`
+- No API/UI, no live LLM, no persistence
+
+**Next phase: 8.2H-3 — Controlled Live Text Adapter**
 
 ---
 

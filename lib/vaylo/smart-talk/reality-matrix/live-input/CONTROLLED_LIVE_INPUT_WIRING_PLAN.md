@@ -195,4 +195,10 @@ All result objects must carry `persistenceUsed: false` as a literal type through
 
 Phase 8.2H-1 delivered `RealTextInputContractInput`, `RealTextInputContractValidationResult`, and `runRealTextInputContractValidation()`. Valid text exits with `acceptedForRedactionBoundary: true`. It carries `acceptedForLLM: false` and `acceptedForRuntimePipeline: false` — downstream phases (8.2H-2+) unlock those gates when their own guards are in place. No text is logged, persisted, or passed to LLM in 8.2H-1.
 
-**Next: Phase 8.2H-2 — Redaction and Input Guard Boundary**
+---
+
+## 8.2H-2 Status (completed)
+
+Phase 8.2H-2 delivered `RealTextRedactionBoundaryInput`, `RealTextRedactionBoundaryResult`, and `runRealTextRedactionBoundary()`. Redacted text exits with `acceptedForControlledLiveAdapter: true`; `acceptedForLLM: false` and `acceptedForRuntimePipeline: false` remain locked. Match audit records store kind, risk level, and placeholder only — raw matched values are never stored. A post-redaction invariant check confirms email and IBAN patterns are absent from the redacted output before acceptance.
+
+**Next: Phase 8.2H-3 — Controlled Live Text Adapter**

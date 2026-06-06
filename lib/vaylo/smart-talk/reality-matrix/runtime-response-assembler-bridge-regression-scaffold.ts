@@ -34,8 +34,6 @@ import {
 } from "./runtime-wording-governance-gate-regression-scaffold";
 import {
   runRuntimeResponseAssemblerBridge,
-  stripKnownInternalDraftPrefix,
-  detectInternalMetadataLeak,
   RUNTIME_RESPONSE_ASSEMBLER_BRIDGE_VERSION,
 } from "./run-runtime-response-assembler-bridge";
 import type {
@@ -554,7 +552,7 @@ function case9_internalMetadataLeakRejected(): AssemblerRegressionCaseResult {
     allowedSectionTypes: ["document_type_signal", "uncertainty_notice"],
   });
   const draftResult = runRuntimeLLMDraftMockAdapter(draftInput);
-  const contractValidation = validateRuntimeLLMOutputContract({
+  validateRuntimeLLMOutputContract({
     input: draftInput,
     result: draftResult,
   });
