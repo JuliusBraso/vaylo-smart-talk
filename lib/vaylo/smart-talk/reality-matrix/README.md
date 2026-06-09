@@ -2087,6 +2087,17 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.2J-4 — Pilot Evidence Record Model** ✓ completed
+
+**State:**
+- defines safe `PilotEvidenceRecord` type + pure `validatePilotEvidenceRecord` validator
+- prohibits rawInputText, redactedText, fullDraftText, userPii, screenshotWithPii, apiKey, internalSecret, rawModelOutput
+- 18-case regression scaffold: all safety invariants confirmed
+- `readyForPersistence: false`; `readyForPublicLaunch: false`; no API/UI, no live LLM, no persistence
+- next phase: 8.2J-5 Controlled Text Pilot Readiness Closure Audit
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).

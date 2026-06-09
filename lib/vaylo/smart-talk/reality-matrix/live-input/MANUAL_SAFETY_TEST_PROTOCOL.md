@@ -283,4 +283,14 @@ Define the exact structure of a pilot run evidence record that a reviewer may sa
 
 ---
 
+---
+
+## Update — Phase 8.2J-4
+
+Phase 8.2J-4 defines the safe pilot evidence record model (`PilotEvidenceRecord`) and the pure `validatePilotEvidenceRecord` validator that enforces all allowed/prohibited field boundaries from this protocol.  
+Evidence records are still not persisted: `readyForPersistence: false`.  
+Closure audit (8.2J-5) is the next step to formally close the 8.2J epoch.
+
+---
+
 *This protocol is a governance planning artefact only. It does not enable, authorise, or implement any runtime feature.*
