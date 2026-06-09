@@ -220,4 +220,14 @@ This planning phase is complete when:
 
 ---
 
+---
+
+## Update — Phase 8.2J-2
+
+Phase 8.2J-2 defines the guarded internal pilot runtime switch model (feature flags, guard phrase, allowlist, kill switch, failure verdicts, 16 activation rules).  
+Runtime implementation remains disabled: `readyForPilotRuntimeImplementation: false`.  
+Manual safety protocol (8.2J-3) is the next step before any switch is wired.
+
+---
+
 *This plan is a governance planning artefact only. It does not enable, authorise, or implement any runtime feature.*

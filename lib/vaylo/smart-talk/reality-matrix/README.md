@@ -2065,6 +2065,16 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.2J-2 — Guarded Internal Pilot Runtime Switch Plan** ✓ completed
+
+**State:**
+- defines internal pilot runtime switch model (16 activation rules, guard phrase, allowlist, kill switch, failure verdicts)
+- planning only — no switch wired, no API/UI/LLM/persistence touched
+- `readyForPilotRuntimeImplementation: false`; `readyForManualSafetyProtocol: true`; `readyForPublicLaunch: false`
+- next phase: 8.2J-3 Manual Safety Test Protocol
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
