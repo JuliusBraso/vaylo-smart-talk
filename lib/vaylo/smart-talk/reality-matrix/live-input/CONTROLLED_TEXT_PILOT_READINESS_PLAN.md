@@ -222,6 +222,14 @@ This planning phase is complete when:
 
 ---
 
+## Update — Phase 8.2J-3
+
+Phase 8.2J-3 defines the manual safety test protocol: 24-item reviewer checklist, 5 test phases, 5 verdicts, 14 escalation reasons, prohibited evidence fields (raw text, PII, secrets), and sign-off requirements.  
+Runtime execution remains disabled: `readyForRuntimeExecution: false`.  
+Pilot evidence record model (8.2J-4) is the next step.
+
+---
+
 ## Update — Phase 8.2J-2
 
 Phase 8.2J-2 defines the guarded internal pilot runtime switch model (feature flags, guard phrase, allowlist, kill switch, failure verdicts, 16 activation rules).  

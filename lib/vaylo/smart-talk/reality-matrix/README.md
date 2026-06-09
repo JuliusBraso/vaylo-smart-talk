@@ -2075,6 +2075,18 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.2J-3 — Manual Safety Test Protocol** ✓ completed
+
+**State:**
+- defines reviewer checklist (24 items) and sign-off protocol across 5 test phases
+- covers pre-run, scenario execution, output review, escalation review, and final sign-off
+- prohibits raw text / PII / secrets in all evidence records
+- `readyForPilotEvidenceRecordModel: true`; `readyForRuntimeExecution: false`; `readyForPublicLaunch: false`
+- no runtime implementation, no API/UI, no live LLM, no persistence
+- next phase: 8.2J-4 Pilot Evidence Record Model
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
