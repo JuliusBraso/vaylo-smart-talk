@@ -2053,6 +2053,18 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.2J-1 — Pilot Scenario Set and Acceptance Criteria** ✓ completed
+
+**State:**
+- defines 12 synthetic controlled pilot scenarios: invoice, payment reminder, Jobcenter, health insurance, tax, immigration, bureaucracy question, noisy fragment, deadline request, legal conclusion, persistence request, PII-heavy
+- pass: 2 · warning: 4 · human_review: 3 · block: 3 — failure categories and required checks per scenario
+- `readyForRuntimeExecution: false`; `readyForManualReviewProtocol: true`; `readyForPublicLaunch: false`
+- no API/UI, no live LLM, no persistence
+
+**Next phase: 8.2J-2 — Guarded Internal Pilot Runtime Switch Plan**
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
