@@ -222,6 +222,14 @@ This planning phase is complete when:
 
 ---
 
+## Update — Phase 8.2J-5
+
+Phase 8.2J-5 closes the controlled text pilot readiness epoch (`closed_with_warnings`). All six required layers (8.2J-0 through 8.2J-4) are verified; 7 open items recorded, none blocking epoch closure.  
+Runtime implementation remains disabled: `readyForRuntimeExecution: false`, `readyForPublicLaunch: false`.  
+Next epoch: 8.2K-0 — Guarded Internal Pilot Runtime Implementation Plan.
+
+---
+
 ## Update — Phase 8.2J-3
 
 Phase 8.2J-3 defines the manual safety test protocol: 24-item reviewer checklist, 5 test phases, 5 verdicts, 14 escalation reasons, prohibited evidence fields (raw text, PII, secrets), and sign-off requirements.  

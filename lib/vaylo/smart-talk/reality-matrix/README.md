@@ -2098,6 +2098,16 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.2J-5 — Controlled Text Pilot Readiness Closure Audit** ✓ completed
+
+**State:**
+- closes 8.2J epoch: verifies readiness plan, scenario set, switch plan, manual protocol, evidence model, and regression scaffold (18 cases)
+- verdict: `closed_with_warnings` — 7 open items recorded; none block epoch closure
+- `readyForControlledTextPilotPlanningClosure: true`; `readyForRuntimeExecution: false`; `readyForPublicLaunch: false`
+- no API/UI, no live LLM, no persistence; next epoch: 8.2K-0 Guarded Internal Pilot Runtime Implementation Plan
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
