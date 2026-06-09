@@ -2041,6 +2041,18 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.2J-0 — Controlled Text Pilot Readiness Plan** ✓ completed
+
+**State:**
+- starts controlled text pilot readiness epoch (planning only — no runtime implementation)
+- defines pilot scope (internal/text-only/guarded), 12 blocked capabilities, 12 readiness areas, 12 acceptance criteria, 10 failure policies
+- `readyForGuardedManualPilotPlanning: true`; `readyForInternalPilotImplementation: false`; `readyForPublicLaunch: false`
+- no API/UI, no live LLM, no persistence; public launch remains blocked
+
+**Next phase: 8.2J-1 — Pilot Scenario Set and Acceptance Criteria**
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
