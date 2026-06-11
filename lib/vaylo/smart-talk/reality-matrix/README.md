@@ -2108,6 +2108,17 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.2K-0 — Guarded Internal Pilot Runtime Implementation Plan** ✓ completed
+
+**State:**
+- starts 8.2K epoch; planning only — no runtime wired, no API/UI/LLM/persistence touched
+- defines 12 implementation scope items, 7 required contracts, 16 required guards, 11 blocked capabilities
+- `readyForRuntimeImplementation: false`; `readyForApiRouteModification: false`; `readyForPublicLaunch: false`
+- ordered 5-phase roadmap: 8.2K-1 contract types → 8.2K-2 API branch → 8.2K-3 E2E harness → 8.2K-4 evidence integration → 8.2K-5 closure
+- next phase: 8.2K-1 Pilot Runtime Guard Contract Types
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).

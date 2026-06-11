@@ -230,6 +230,14 @@ Next epoch: 8.2K-0 — Guarded Internal Pilot Runtime Implementation Plan.
 
 ---
 
+## Update — Phase 8.2K-0
+
+Phase 8.2K-0 begins the guarded internal pilot runtime implementation epoch with a planning-only phase. It defines 12 implementation scope items, 7 required contracts, 16 required guards, 11 blocked capabilities, and a 5-phase ordered roadmap (8.2K-1 through 8.2K-5).  
+Runtime execution remains disabled: `readyForRuntimeImplementation: false`, `readyForApiRouteModification: false`.  
+Next: 8.2K-1 Pilot Runtime Guard Contract Types.
+
+---
+
 ## Update — Phase 8.2J-3
 
 Phase 8.2J-3 defines the manual safety test protocol: 24-item reviewer checklist, 5 test phases, 5 verdicts, 14 escalation reasons, prohibited evidence fields (raw text, PII, secrets), and sign-off requirements.  
