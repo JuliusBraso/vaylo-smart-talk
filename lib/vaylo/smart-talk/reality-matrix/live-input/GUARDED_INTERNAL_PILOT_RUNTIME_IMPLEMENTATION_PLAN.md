@@ -303,4 +303,12 @@ Runtime execution remains internal-only and non-user-visible; `readyForPublicLau
 
 ---
 
+## Update — Phase 8.2K-4
+
+Phase 8.2K-4 adds evidence validation integration (`run-pilot-evidence-validation-integration.ts`): proves a pilot runtime response can be safely mapped into a `PilotEvidenceRecord` input and validated by `validatePilotEvidenceRecord()`.  
+Covers 4 valid response-kind paths and 9 tamper rejection paths; all 13 cases run `validatePilotEvidenceRecord()` directly.  
+API route logic remains unchanged; no persistence, no live LLM, no user-visible output.
+
+---
+
 *This plan is a governance planning artefact only. It does not enable, authorise, or implement any runtime feature.*

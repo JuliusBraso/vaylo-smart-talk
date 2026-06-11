@@ -2152,6 +2152,19 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.2K-4 — Pilot Evidence Validation Integration** ✓ completed
+
+**State:**
+- proves guarded pilot runtime response can be mapped into `PilotEvidenceRecord` validation input and validated by `validatePilotEvidenceRecord()` (8.2J-4)
+- 4 valid response-kind paths (authorised, blocked, human-review, invalid-request) → accepted by validator
+- 9 tamper rejection paths (raw text, redacted text, secret, PII, persistence, public runtime, emitted-to-user, missing signoff, missing escalation reason) → each rejected by correct validator step
+- per-case leak checks: no injected raw/redacted text, no secret, no PII in validation result JSON
+- 8.2K-3 harness re-verified; `allPassed` requires both 8.2K-3 and 8.2K-4 cases to pass
+- no API route modification, no live LLM, no persistence, no user-visible output
+- next phase: 8.2K-5 Guarded Pilot Runtime Closure Audit
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
