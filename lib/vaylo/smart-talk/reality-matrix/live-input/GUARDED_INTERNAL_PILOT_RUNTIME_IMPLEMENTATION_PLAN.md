@@ -311,4 +311,12 @@ API route logic remains unchanged; no persistence, no live LLM, no user-visible 
 
 ---
 
+## Update — Phase 8.2K-5
+
+Phase 8.2K-5 formally closes the 8.2K epoch via `runGuardedPilotRuntimeClosureAudit()`.  
+Closure verdict is `closed_with_warnings` if all 5 layers pass; `readyForControlledPilotExecution` is set to `true` only on success.  
+Closure does not enable public launch, live LLM runtime, or persistence — it only prepares the next guarded internal controlled pilot execution epoch.
+
+---
+
 *This plan is a governance planning artefact only. It does not enable, authorise, or implement any runtime feature.*

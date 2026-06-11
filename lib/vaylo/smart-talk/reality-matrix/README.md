@@ -2165,6 +2165,18 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.2K-5 — Guarded Pilot Runtime Closure Audit** ✓ completed
+
+**State:**
+- closes 8.2K epoch with `closed_with_warnings` verdict if all 5 layers pass
+- audits 8.2K-0 plan, 8.2K-1 guard contracts, 8.2K-2 API branch (static metadata), 8.2K-3 harness, 8.2K-4 evidence integration
+- sets `readyForControlledPilotExecution: true` on success
+- keeps `readyForPublicLaunch: false`, `readyForLiveLLMRuntime: false`, `readyForPersistence: false`
+- no API route modification; no live LLM; no persistence; no user-visible output
+- prepares next guarded internal controlled pilot execution epoch
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
