@@ -287,4 +287,20 @@ Runtime execution remains disabled: `readyForRuntimeExecution: false`.
 
 ---
 
+## Update — Phase 8.2K-2
+
+Phase 8.2K-2 wires the first guarded internal-only pilot branch in `app/api/smart-talk/route.ts` behind all 16 guards.  
+Success returns `responseKind: "authorised_internal_packet"` with guard summary — no input text, no model output.  
+No live LLM, no persistence, no user-visible output; existing public Smart Talk behavior unchanged.
+
+---
+
+## Update — Phase 8.2K-3
+
+Phase 8.2K-3 adds a synthetic E2E harness (`run-pilot-runtime-e2e-harness.ts`) covering 23 fixtures: success path, all 16 guard failure paths, 2 contract violation paths, 2 tamper/leak checks.  
+API route logic is not modified in this phase; `app/api/smart-talk/route.ts` is unchanged.  
+Runtime execution remains internal-only and non-user-visible; `readyForPublicLaunch: false`.
+
+---
+
 *This plan is a governance planning artefact only. It does not enable, authorise, or implement any runtime feature.*

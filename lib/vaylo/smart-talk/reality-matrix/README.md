@@ -2141,6 +2141,17 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.2K-3 — Pilot Runtime E2E Harness** ✓ completed
+
+**State:**
+- adds pure synthetic harness for guarded pilot API branch behavior (`run-pilot-runtime-e2e-harness.ts`)
+- covers success path, all 16 guard failure paths, 2 contract violation paths, 2 tamper/leak paths (23 fixtures total)
+- per-case checks: HTTP status, authorised flag, responseKind, failureVerdict, failedGuard, raw text leak, secret leak, userVisibleOutputAllowed, persistence flags, liveLLMCalled, publicRuntimeEnabled
+- no API route modification, no HTTP calls, no live LLM, no persistence, no user-visible output
+- next phase: 8.2K-4 Pilot Evidence Validation Integration
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
