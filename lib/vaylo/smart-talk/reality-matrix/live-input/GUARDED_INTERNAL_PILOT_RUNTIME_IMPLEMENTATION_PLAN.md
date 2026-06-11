@@ -277,4 +277,14 @@ This phase is complete when:
 
 ---
 
+---
+
+## Update — Phase 8.2K-1
+
+Phase 8.2K-1 defines the typed runtime guard contracts: `PilotRuntimeRequest`, `PilotRuntimeGuardInput`, `PilotRuntimeGuardResult`, `PilotRuntimeFailureResult`, `PilotRuntimeResponse`, `PilotNoPersistenceResult`, and `PilotRuntimeClosureAuditResult`.  
+API route implementation remains blocked until 8.2K-2: `readyForApiRouteModification: false`.  
+Runtime execution remains disabled: `readyForRuntimeExecution: false`.
+
+---
+
 *This plan is a governance planning artefact only. It does not enable, authorise, or implement any runtime feature.*

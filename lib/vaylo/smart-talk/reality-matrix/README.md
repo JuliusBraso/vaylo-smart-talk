@@ -2119,6 +2119,17 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.2K-1 — Pilot Runtime Guard Contract Types** ✓ completed
+
+**State:**
+- defines `PilotRuntimeRequest`, `PilotRuntimeGuardInput/Success/FailureResult/GuardResult`, `PilotRuntimeResponse`, `PilotNoPersistenceResult`, `PilotRuntimeClosureAuditResult`
+- request contract blocks OCR/upload/payment/persistence/DNA/offline/public/live-LLM via literal-false flags
+- 10-case static regression scaffold: all shape and invariant checks confirmed
+- types only — no API/UI/LLM/persistence; runtime execution remains disabled
+- next phase: 8.2K-2 Guarded Internal Pilot API Branch
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
