@@ -2177,6 +2177,18 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.2L-0 — Guarded Internal Controlled Pilot Execution Plan** ✓ completed
+
+**State:**
+- starts guarded internal controlled pilot execution epoch; planning only
+- depends on 8.2K-5 `readyForControlledPilotExecution: true`
+- defines operator checklist (17 items), env verification (6 vars), abort criteria (16), and post-execution audit requirements
+- 5 ordered next phases: 8.2L-1 operator env verification → 8.2L-2 single-run harness → 8.2L-3 manual review capture → 8.2L-4 post-execution audit → 8.2L-5 closure
+- `readyForPilotRunNow: false`; no public runtime; no live LLM; no persistence
+- next phase: 8.2L-1 Operator Environment Verification Contract
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).

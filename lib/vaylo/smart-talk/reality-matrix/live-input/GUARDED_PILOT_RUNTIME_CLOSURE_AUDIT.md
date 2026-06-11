@@ -242,3 +242,13 @@ This phase may only begin once:
 - 8.2K-5 closure audit has been run and returns `readyForControlledPilotExecution: true`.
 - All required environment variables have been set by an operator.
 - A formal execution plan document has been reviewed.
+
+---
+
+## Update — Phase 8.2L
+
+8.2L begins after 8.2K closure. Phase 8.2L-0 plans the guarded internal
+controlled pilot execution: operator checklist, env verification requirements,
+abort criteria, and a 5-phase ordered roadmap (8.2L-1 through 8.2L-5).
+Actual environment verification belongs to 8.2L-1; pilot execution belongs
+to 8.2L-2. No pilot run, no live LLM, and no persistence occurs in 8.2L-0.
