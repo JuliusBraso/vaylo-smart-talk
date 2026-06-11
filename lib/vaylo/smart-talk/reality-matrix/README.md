@@ -2130,6 +2130,17 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.2K-2 — Guarded Internal Pilot API Branch** ✓ completed
+
+**State:**
+- first guarded internal-only pilot branch wired in `app/api/smart-talk/route.ts`
+- fail-closed behind all 16 guards: feature flag, pilot flag, kill switch, secret, guard phrase, allowlist, scenario allowlist, input mode, no-OCR/upload/payment/persistence/DNA/offline/public/live-LLM, neverUserVisible
+- success response: `responseKind: "authorised_internal_packet"` with full guard summary — no input text, no model output
+- no live LLM, no persistence, no user-visible output; existing public Smart Talk behavior unchanged
+- next phase: 8.2K-3 Pilot Runtime E2E Harness
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).

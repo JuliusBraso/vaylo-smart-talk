@@ -12,6 +12,10 @@ import type {
 import { runRuntimeGuardedDelivery } from "@/lib/vaylo/smart-talk/reality-matrix/run-runtime-guarded-delivery";
 import { runRuntimeInternalAuthGuard } from "@/lib/vaylo/smart-talk/reality-matrix/runtime-internal-auth-guard";
 import { runGuardedLiveTextRuntimePipeline } from "@/lib/vaylo/smart-talk/reality-matrix/live-input/run-guarded-live-text-runtime-pipeline";
+import {
+  PILOT_RUNTIME_REQUIRED_GUARD_PHRASE,
+  PILOT_RUNTIME_REQUIRED_GUARDS,
+} from "@/lib/vaylo/smart-talk/reality-matrix/live-input/pilot-runtime-guard-contract-types";
 
 function isSmartTalkInputType(v: unknown): v is SmartTalkInputType {
   return v === "text" || v === "question";
@@ -70,6 +74,78 @@ function badRequest(message: string) {
   return NextResponse.json({ ok: false, error: message }, { status: 400 });
 }
 
+// ── Phase 8.2K-2 — Pilot branch helpers ──────────────────────────────────────
+// Pure, local, no side effects, no sensitive value logging.
+
+function parsePilotCsvEnvList(value: string | undefined): readonly string[] {
+  if (!value) return [];
+  return value
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function getPilotStringField(
+  rec: Record<string, unknown>,
+  key: string,
+): string | null {
+  const v = rec[key];
+  return typeof v === "string" && v.trim() !== "" ? v.trim() : null;
+}
+
+function buildPilotNoPersistenceResult() {
+  return {
+    persistenceAllowed: false,
+    persistenceUsed: false,
+    dnaSaveAllowed: false,
+    dnaSavePerformed: false,
+    offlineSaveAllowed: false,
+    offlineSavePerformed: false,
+    evidencePersistenceAllowed: false,
+    evidencePersistencePerformed: false,
+    neverUserVisible: true,
+  } as const;
+}
+
+/**
+ * Builds a fail-closed pilot guard failure response.
+ * Never includes raw request content, the internal secret, or model output.
+ */
+function buildPilotFailureResponse(
+  verdict: string,
+  addDiagnostic: string,
+  failedGuard: string | null,
+  httpStatus: 403 | 400,
+  internalReason: string,
+  priorDiagnostics: readonly string[],
+): ReturnType<typeof NextResponse.json> {
+  return NextResponse.json(
+    {
+      ok: false,
+      runtime: "controlled_text_pilot_guarded",
+      result: {
+        authorised: false,
+        verdict,
+        diagnostics: [...priorDiagnostics, addDiagnostic],
+        failedGuard,
+        httpStatus,
+        publicMessage: "Internal pilot runtime request rejected.",
+        internalReason,
+        liveLLMCalled: false,
+        apiRouteModified: true,
+        uiTouched: false,
+        persistenceUsed: false,
+        dnaSavePerformed: false,
+        offlineSavePerformed: false,
+        emittedToUserNow: false,
+        neverUserVisible: true,
+      },
+    },
+    { status: httpStatus },
+  );
+}
+// ── End Phase 8.2K-2 pilot branch helpers ────────────────────────────────────
+
 export async function POST(req: Request) {
   const ip = getClientIp(req);
   if (!takeRateSlot(ip)) {
@@ -88,6 +164,338 @@ export async function POST(req: Request) {
   }
 
   const o = body as Record<string, unknown>;
+
+  // ── Phase 8.2K-2 — Guarded internal controlled text pilot branch ──────────
+  // Activates ONLY when internalRuntimeMode === "controlled_text_pilot_guarded".
+  // Fail-closed: any guard failure returns an opaque rejection with no raw content.
+  // Does not call live LLM, does not persist, does not emit user-visible output.
+  // Governance chain connection comes in 8.2K-3.
+  if (o.internalRuntimeMode === "controlled_text_pilot_guarded") {
+    const d: string[] = ["pilot_runtime_contract_started"];
+
+    // Guard 1 — feature_flag_enabled
+    if (process.env.VAYLO_ENABLE_INTERNAL_SMART_TALK_RUNTIME !== "true") {
+      return buildPilotFailureResponse(
+        "rejected_feature_flag_disabled",
+        "pilot_runtime_rejected_feature_flag_disabled",
+        "feature_flag_enabled",
+        403,
+        "Feature flag disabled.",
+        d,
+      );
+    }
+    d.push("pilot_runtime_feature_flag_confirmed");
+
+    // Guard 2 — controlled_text_pilot_flag_enabled
+    if (process.env.VAYLO_ENABLE_CONTROLLED_TEXT_PILOT !== "true") {
+      return buildPilotFailureResponse(
+        "rejected_controlled_text_pilot_flag_disabled",
+        "pilot_runtime_rejected_controlled_text_pilot_flag_disabled",
+        "controlled_text_pilot_flag_enabled",
+        403,
+        "Controlled text pilot flag disabled.",
+        d,
+      );
+    }
+    d.push("pilot_runtime_controlled_text_pilot_flag_confirmed");
+
+    // Guard 3 — kill_switch_disabled
+    if (process.env.VAYLO_CONTROLLED_TEXT_PILOT_KILL_SWITCH === "true") {
+      return buildPilotFailureResponse(
+        "rejected_kill_switch_enabled",
+        "pilot_runtime_rejected_kill_switch_enabled",
+        "kill_switch_disabled",
+        403,
+        "Kill switch active.",
+        d,
+      );
+    }
+    d.push("pilot_runtime_kill_switch_confirmed_disabled");
+
+    // Guard 4 — internal_runtime_secret_valid
+    const configuredSecret = process.env.VAYLO_INTERNAL_RUNTIME_SECRET;
+    const providedSecret = req.headers.get("x-vaylo-internal-runtime-secret");
+    if (!configuredSecret || !providedSecret) {
+      return buildPilotFailureResponse(
+        "rejected_missing_internal_secret",
+        "pilot_runtime_rejected_missing_internal_secret",
+        "internal_runtime_secret_valid",
+        403,
+        "Internal runtime secret not configured or not provided.",
+        d,
+      );
+    }
+    if (providedSecret !== configuredSecret) {
+      return buildPilotFailureResponse(
+        "rejected_invalid_internal_secret",
+        "pilot_runtime_rejected_invalid_internal_secret",
+        "internal_runtime_secret_valid",
+        403,
+        "Internal runtime secret invalid.",
+        d,
+      );
+    }
+    d.push("pilot_runtime_internal_secret_present");
+    d.push("pilot_runtime_internal_secret_valid");
+
+    // Guard 5 — internal_guard_phrase_valid
+    if (
+      o.internalRuntimeGuard === undefined ||
+      o.internalRuntimeGuard === null
+    ) {
+      return buildPilotFailureResponse(
+        "rejected_missing_guard_phrase",
+        "pilot_runtime_rejected_missing_guard_phrase",
+        "internal_guard_phrase_valid",
+        403,
+        "Guard phrase missing.",
+        d,
+      );
+    }
+    if (o.internalRuntimeGuard !== PILOT_RUNTIME_REQUIRED_GUARD_PHRASE) {
+      return buildPilotFailureResponse(
+        "rejected_invalid_guard_phrase",
+        "pilot_runtime_rejected_invalid_guard_phrase",
+        "internal_guard_phrase_valid",
+        403,
+        "Guard phrase invalid.",
+        d,
+      );
+    }
+    d.push("pilot_runtime_guard_phrase_present");
+    d.push("pilot_runtime_guard_phrase_valid");
+
+    // Guard 6 — internal_account_allowlisted
+    const pilotReviewerId = getPilotStringField(o, "pilotReviewerId");
+    const allowedReviewerIds = parsePilotCsvEnvList(
+      process.env.VAYLO_CONTROLLED_TEXT_PILOT_ALLOWLIST,
+    );
+    if (
+      !pilotReviewerId ||
+      allowedReviewerIds.length === 0 ||
+      !allowedReviewerIds.includes(pilotReviewerId)
+    ) {
+      return buildPilotFailureResponse(
+        "rejected_not_allowlisted",
+        "pilot_runtime_rejected_not_allowlisted",
+        "internal_account_allowlisted",
+        403,
+        "Requester not allowlisted.",
+        d,
+      );
+    }
+    d.push("pilot_runtime_account_allowlisted");
+
+    // Guard 7 — pilot_scenario_allowed
+    const pilotScenarioId = getPilotStringField(o, "pilotScenarioId");
+    const allowedScenarioIds = parsePilotCsvEnvList(
+      process.env.VAYLO_CONTROLLED_TEXT_PILOT_SCENARIO_ALLOWLIST,
+    );
+    if (
+      !pilotScenarioId ||
+      allowedScenarioIds.length === 0 ||
+      !allowedScenarioIds.includes(pilotScenarioId)
+    ) {
+      return buildPilotFailureResponse(
+        "rejected_unknown_pilot_scenario",
+        "pilot_runtime_rejected_unknown_pilot_scenario",
+        "pilot_scenario_allowed",
+        403,
+        "Pilot scenario not in allowlist.",
+        d,
+      );
+    }
+    d.push("pilot_runtime_scenario_allowed");
+
+    // Guard 8 — pilot_input_mode_supported
+    const rawInputMode = o.pilotInputMode;
+    if (
+      rawInputMode !== "real_text_guarded" &&
+      rawInputMode !== "real_question_guarded"
+    ) {
+      return buildPilotFailureResponse(
+        "rejected_unsupported_input_mode",
+        "pilot_runtime_rejected_unsupported_input_mode",
+        "pilot_input_mode_supported",
+        400,
+        "Unsupported pilot input mode.",
+        d,
+      );
+    }
+    const pilotInputMode = rawInputMode as
+      | "real_text_guarded"
+      | "real_question_guarded";
+    d.push("pilot_runtime_input_mode_supported");
+
+    // Guard 9 — no_ocr_or_upload_requested
+    if (o.requestedOcr !== false || o.requestedFileUpload !== false) {
+      return buildPilotFailureResponse(
+        "rejected_ocr_or_upload_attempt",
+        "pilot_runtime_rejected_ocr_or_upload_attempt",
+        "no_ocr_or_upload_requested",
+        400,
+        "OCR or file upload not permitted.",
+        d,
+      );
+    }
+    d.push("pilot_runtime_no_ocr_or_upload_confirmed");
+
+    // Guard 10 — no_payment_requested
+    if (o.requestedPayment !== false) {
+      return buildPilotFailureResponse(
+        "rejected_payment_attempt",
+        "pilot_runtime_rejected_payment_attempt",
+        "no_payment_requested",
+        400,
+        "Payment not permitted.",
+        d,
+      );
+    }
+    d.push("pilot_runtime_no_payment_confirmed");
+
+    // Guard 11 — no_persistence_requested
+    if (o.requestedPersistence !== false) {
+      return buildPilotFailureResponse(
+        "rejected_persistence_attempt",
+        "pilot_runtime_rejected_persistence_attempt",
+        "no_persistence_requested",
+        400,
+        "Persistence not permitted.",
+        d,
+      );
+    }
+    d.push("pilot_runtime_no_persistence_confirmed");
+
+    // Guard 12 — no_dna_save_requested
+    if (o.requestedDnaSave !== false) {
+      return buildPilotFailureResponse(
+        "rejected_dna_save_attempt",
+        "pilot_runtime_rejected_dna_save_attempt",
+        "no_dna_save_requested",
+        400,
+        "DNA save not permitted.",
+        d,
+      );
+    }
+    d.push("pilot_runtime_no_dna_save_confirmed");
+
+    // Guard 13 — no_offline_save_requested
+    if (o.requestedOfflineSave !== false) {
+      return buildPilotFailureResponse(
+        "rejected_offline_save_attempt",
+        "pilot_runtime_rejected_offline_save_attempt",
+        "no_offline_save_requested",
+        400,
+        "Offline save not permitted.",
+        d,
+      );
+    }
+    d.push("pilot_runtime_no_offline_save_confirmed");
+
+    // Guard 14 — public_runtime_not_requested
+    if (o.requestedPublicRuntime !== false) {
+      return buildPilotFailureResponse(
+        "rejected_public_runtime_attempt",
+        "pilot_runtime_rejected_public_runtime_attempt",
+        "public_runtime_not_requested",
+        400,
+        "Public runtime not permitted.",
+        d,
+      );
+    }
+    d.push("pilot_runtime_no_public_runtime_confirmed");
+
+    // Guard 15 — live_llm_not_allowed
+    if (o.requestedLiveLLM !== false) {
+      return buildPilotFailureResponse(
+        "rejected_live_llm_not_allowed",
+        "pilot_runtime_rejected_live_llm_not_allowed",
+        "live_llm_not_allowed",
+        400,
+        "Live LLM not permitted.",
+        d,
+      );
+    }
+    d.push("pilot_runtime_no_live_llm_confirmed");
+
+    // Guard 16 — manual_review_required_for_warning_or_high_risk
+    // 8.2K-2: satisfied by confirming neverUserVisible === true on request.
+    if (o.neverUserVisible !== true) {
+      return buildPilotFailureResponse(
+        "rejected_manual_review_required",
+        "pilot_runtime_rejected_manual_review_required",
+        "manual_review_required_for_warning_or_high_risk",
+        403,
+        "neverUserVisible must be true.",
+        d,
+      );
+    }
+    d.push("pilot_runtime_manual_review_boundary_confirmed");
+
+    // Basic contract shape — pilotRunId and text must be present
+    const pilotRunId = getPilotStringField(o, "pilotRunId");
+    if (!pilotRunId) {
+      return buildPilotFailureResponse(
+        "rejected_contract_violation",
+        "pilot_runtime_rejected_contract_violation",
+        null,
+        400,
+        "pilotRunId missing or invalid.",
+        d,
+      );
+    }
+    if (typeof o.text !== "string" || (o.text as string).trim().length === 0) {
+      return buildPilotFailureResponse(
+        "rejected_contract_violation",
+        "pilot_runtime_rejected_contract_violation",
+        null,
+        400,
+        "text field missing or empty.",
+        d,
+      );
+    }
+
+    d.push("pilot_runtime_all_guards_passed");
+
+    // All 16 guards passed.
+    // Governance chain will be connected in 8.2K-3.
+    // Response contains no input text, no redacted text, no model output.
+    return NextResponse.json(
+      {
+        ok: true,
+        runtime: "controlled_text_pilot_guarded",
+        result: {
+          mode: "controlled_text_pilot_guarded",
+          pilotRunId,
+          pilotScenarioId,
+          pilotInputMode,
+          responseKind: "authorised_internal_packet",
+
+          emittedToUserNow: false,
+          userVisibleOutputAllowed: false,
+          publicRuntimeEnabled: false,
+          readyForPublicLaunch: false,
+
+          noPersistence: buildPilotNoPersistenceResult(),
+
+          guardSummary: {
+            guardsPassed: [...PILOT_RUNTIME_REQUIRED_GUARDS],
+            diagnostics: d,
+          },
+
+          liveLLMCalled: false,
+          apiRouteModified: true,
+          uiTouched: false,
+          persistenceUsed: false,
+          dnaSavePerformed: false,
+          offlineSavePerformed: false,
+          neverUserVisible: true,
+        },
+      },
+      { status: 200 },
+    );
+  }
+  // ── End Phase 8.2K-2 guarded internal controlled text pilot branch ────────
 
   // ── Guarded internal delivery branch (Phase 8.2G-9 / 8.2G-10) ──────────
   // Activates ONLY when internalRuntimeMode or internalRuntimeGuard are
