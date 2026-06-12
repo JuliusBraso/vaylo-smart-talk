@@ -368,3 +368,13 @@ Phase 8.2L-4 adds the post-execution audit (`runPostExecutionAudit()`).
 It audits the synthetic 8.2L chain (8.2L-0 through 8.2L-3) without persisting
 records or executing a real pilot. Passing sets
 `readyForControlledPilotExecutionClosure: true` and prepares 8.2L-5.
+
+---
+
+## Update — Phase 8.2L-5
+
+Phase 8.2L-5 closes the synthetic 8.2L epoch (`runControlledPilotExecutionClosure()`).
+It formally verifies all five 8.2L layers and produces a
+`ControlledPilotExecutionClosureResult` with `verdict: "closed_with_warnings"` on
+success. Closure does not authorize real operator pilot execution by itself.
+It sets `readyForNextEpochPlanning: true` and prepares the next planning epoch.

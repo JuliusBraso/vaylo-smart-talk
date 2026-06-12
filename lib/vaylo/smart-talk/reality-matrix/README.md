@@ -2236,6 +2236,18 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.2L-5 — Controlled Pilot Execution Closure** ✓ completed
+
+**State:**
+- formally closes the synthetic 8.2L guarded controlled pilot execution epoch
+- verifies execution plan, operator env verification, single-run harness, manual review capture, and post-execution audit
+- may set `readyForNextEpochPlanning: true` on success
+- keeps `readyForRealOperatorPilotRun: false` and `readyForPilotRunNow: false` always
+- keeps `readyForPublicLaunch`, `readyForLiveLLMRuntime`, and `readyForPersistence` false always
+- no API route modification, no HTTP/API call, no live LLM, no persistence
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
