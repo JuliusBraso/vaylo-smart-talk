@@ -2260,6 +2260,17 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.2M-1 — Operator and Reviewer Identity Contract** ✓ completed
+
+**State:**
+- adds typed operator/reviewer identity attestation contract; requires named human operator and named human reviewer
+- enforces distinct-person rule (`operator.humanId !== reviewer.humanId`, `operatorAndReviewerAreDistinct: true`)
+- stores safe identity metadata only; rejects secrets, env values, PII, raw/document content, persistence, live LLM, public/user-visible tamper (23 tamper cases)
+- no authentication implementation, no persistence, no real pilot execution
+- may set `readyForRealEnvironmentAttestationContract` and related planning flags `true` on success
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).

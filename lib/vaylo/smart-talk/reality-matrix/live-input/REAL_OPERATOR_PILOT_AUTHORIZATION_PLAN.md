@@ -231,3 +231,14 @@ After 8.2M-1 passes, subsequent phases (8.2M-2+) may define:
 - Post-run audit contract
 
 None of these authorize a public launch or expose live LLM to real users.
+
+---
+
+## Update — Phase 8.2M-1
+
+Phase 8.2M-1 defines typed operator/reviewer identity attestation
+(`runOperatorReviewerIdentityContractCheck()`). It enforces the distinct-person
+rule, rejects forbidden content (secrets, env values, PII, raw text, document
+markers), and validates 23 tamper cases. It does not authenticate or persist
+identities. Passing sets `readyForRealEnvironmentAttestationContract: true`
+and prepares the real environment attestation and abort protocol phases.
