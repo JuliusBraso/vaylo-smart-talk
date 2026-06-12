@@ -2214,6 +2214,18 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.2L-3 — Manual Review Capture Model** ✓ completed
+
+**State:**
+- adds in-memory manual review capture model after synthetic single-run harness
+- validates reviewer ID, verdict, 14-item checklist, escalation reasons, and safe metadata only
+- rejects raw/redacted text, secrets, PII, model output, document content, persistence, live LLM, and public/user-visible output via 15 tamper cases
+- `safeReviewMetadata` stores IDs, verdict, counts, and phase only — no content stored
+- no persistence; no API route modification; no HTTP/API call; no live LLM
+- `readyForPostExecutionAudit: true` on success; prepares 8.2L-4 post-execution audit
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).

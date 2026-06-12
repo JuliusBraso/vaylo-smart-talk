@@ -350,3 +350,12 @@ Phase 8.2L-2 adds a synthetic single-run execution harness
 (`runSingleRunExecutionHarness()`). It chains operator verification, E2E
 harness, and evidence integration in memory — it does not call the API route
 or execute a real pilot. Passing sets `readyForManualReviewCaptureModel: true`.
+
+---
+
+## Update — Phase 8.2L-3
+
+Phase 8.2L-3 adds an in-memory manual review capture model
+(`runManualReviewCaptureModelCheck()`). It stores safe metadata only and
+does not persist review records, raw text, secrets, PII, or model output.
+Passing sets `readyForPostExecutionAudit: true` and prepares 8.2L-4.
