@@ -2202,6 +2202,18 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.2L-2 — Single-Run Execution Harness** ✓ completed
+
+**State:**
+- adds pure synthetic single-run harness for guarded internal controlled pilot flow
+- requires operator env verification contract check; chains 8.2K-3 E2E harness and 8.2K-4 evidence integration
+- synthetic request uses metadata/label only — no raw text, no secrets, no real user input
+- 7 step sequence with 15 blockers; aggregate leak checks on safe result JSON
+- no HTTP/API call, no route import, no live LLM, no persistence, no user-visible output
+- `readyForManualReviewCaptureModel: true` on success; prepares 8.2L-3 manual review capture model
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).

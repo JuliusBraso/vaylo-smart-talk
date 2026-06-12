@@ -341,3 +341,12 @@ Phase 8.2L-1 defines the operator environment verification contract.
 It uses attestations and boolean operator confirmations only — it does not
 read real environment variable values, print secrets, or execute the pilot.
 Passing the synthetic verification sets `readyForSingleRunExecutionHarness: true`.
+
+---
+
+## Update — Phase 8.2L-2
+
+Phase 8.2L-2 adds a synthetic single-run execution harness
+(`runSingleRunExecutionHarness()`). It chains operator verification, E2E
+harness, and evidence integration in memory — it does not call the API route
+or execute a real pilot. Passing sets `readyForManualReviewCaptureModel: true`.
