@@ -359,3 +359,12 @@ Phase 8.2L-3 adds an in-memory manual review capture model
 (`runManualReviewCaptureModelCheck()`). It stores safe metadata only and
 does not persist review records, raw text, secrets, PII, or model output.
 Passing sets `readyForPostExecutionAudit: true` and prepares 8.2L-4.
+
+---
+
+## Update — Phase 8.2L-4
+
+Phase 8.2L-4 adds the post-execution audit (`runPostExecutionAudit()`).
+It audits the synthetic 8.2L chain (8.2L-0 through 8.2L-3) without persisting
+records or executing a real pilot. Passing sets
+`readyForControlledPilotExecutionClosure: true` and prepares 8.2L-5.

@@ -2226,6 +2226,16 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.2L-4 — Post-Execution Audit** ✓ completed
+
+**State:**
+- audits all 4 layers: 8.2L-0 execution plan, 8.2L-1 operator env verification, 8.2L-2 single-run harness, 8.2L-3 manual review capture
+- returns `closed_with_warnings` if all layers pass; `blocked` otherwise (20 blocker variants)
+- 10 open items always acknowledged; no real pilot run, no API route modification, no HTTP/API call, no live LLM, no persistence
+- `readyForControlledPilotExecutionClosure: true` on success; prepares 8.2L-5 controlled pilot execution closure
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
