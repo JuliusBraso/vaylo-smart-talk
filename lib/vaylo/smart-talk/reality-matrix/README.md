@@ -2248,6 +2248,18 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.2M-0 — Real Operator Pilot Authorization Plan** ✓ completed
+
+**State:**
+- begins the next planning epoch after 8.2L closure; verifies `runControlledPilotExecutionClosure()`
+- defines 20 prerequisites, 15 blocked capabilities, and 14 open items for future real operator pilot authorization
+- blocks real pilot execution now — `readyForRealOperatorPilotRun: false` always
+- blocks public launch, live LLM, persistence, OCR, file upload, and payment always
+- may set `readyForOperatorIdentityContract` and related planning flags `true` on clean 8.2L closure
+- no API route modification, no HTTP/API call, no live LLM, no persistence
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).

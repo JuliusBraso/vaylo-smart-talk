@@ -378,3 +378,12 @@ It formally verifies all five 8.2L layers and produces a
 `ControlledPilotExecutionClosureResult` with `verdict: "closed_with_warnings"` on
 success. Closure does not authorize real operator pilot execution by itself.
 It sets `readyForNextEpochPlanning: true` and prepares the next planning epoch.
+
+---
+
+## Update — Phase 8.2M-0
+
+8.2M-0 begins the real operator pilot authorization planning epoch
+(`runRealOperatorPilotAuthorizationPlanCheck()`). It does not authorize real pilot
+execution. It defines 20 prerequisites, 15 blocked capabilities, and 14 open items
+required before the first real operator pilot run can be authorized in 8.2M-1+.
