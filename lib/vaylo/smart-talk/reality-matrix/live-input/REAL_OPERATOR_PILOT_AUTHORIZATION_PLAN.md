@@ -242,3 +242,13 @@ rule, rejects forbidden content (secrets, env values, PII, raw text, document
 markers), and validates 23 tamper cases. It does not authenticate or persist
 identities. Passing sets `readyForRealEnvironmentAttestationContract: true`
 and prepares the real environment attestation and abort protocol phases.
+
+---
+
+## Update — Phase 8.2M-2
+
+Phase 8.2M-2 defines attestation-only real environment readiness
+(`runRealEnvironmentAttestationContractCheck()`). It does not read `process.env`
+or expose values. It requires all 8 env var names to be attested and an
+18-item checklist to be confirmed, and validates 26 tamper cases. Passing
+sets `readyForAbortProtocol: true` and prepares the abort protocol phase.

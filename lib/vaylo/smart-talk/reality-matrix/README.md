@@ -2271,6 +2271,17 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.2M-2 — Real Environment Attestation Contract** ✓ completed
+
+**State:**
+- adds attestation-only real environment readiness contract; requires all 8 env variable names to be attested without exposing values
+- enforces 18-item checklist and operator/reviewer attestation statements
+- rejects env value reads/prints/storage, secrets, API keys, PII, raw/document content, persistence, live LLM, public/user-visible tamper (26 tamper cases)
+- no `process.env` reads, no secret storage, no persistence, no real pilot execution
+- may set `readyForAbortProtocol` and related planning flags `true` on success
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
