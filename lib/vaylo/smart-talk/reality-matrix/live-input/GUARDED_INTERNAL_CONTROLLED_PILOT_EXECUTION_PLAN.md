@@ -332,3 +332,12 @@ Phase 8.2L-0 is complete when:
 - No HTTP calls were made
 - No live LLM was called
 - No persistence was added
+
+---
+
+## Update — Phase 8.2L-1
+
+Phase 8.2L-1 defines the operator environment verification contract.
+It uses attestations and boolean operator confirmations only — it does not
+read real environment variable values, print secrets, or execute the pilot.
+Passing the synthetic verification sets `readyForSingleRunExecutionHarness: true`.

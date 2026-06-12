@@ -2189,6 +2189,19 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.2L-1 — Operator Environment Verification Contract** ✓ completed
+
+**State:**
+- defines typed operator env verification contract: `OperatorEnvironmentVerificationInput`, `OperatorEnvironmentVerificationResult`, `OperatorEnvironmentVerificationEnvVarAttestation`
+- uses env var names and operator boolean attestations only — no env values, no secrets
+- 14 validation rules; 20 failure reasons; `validateOperatorEnvironmentVerificationInput()` implemented
+- synthetic check (`runOperatorEnvironmentVerificationContractCheck()`) chains 8.2L-0 plan check
+- `readyForSingleRunExecutionHarness: true` on passing synthetic verification
+- `readyForPilotRunNow: false`; no public runtime; no live LLM; no persistence
+- next phase: 8.2L-2 Single-Run Execution Harness
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
