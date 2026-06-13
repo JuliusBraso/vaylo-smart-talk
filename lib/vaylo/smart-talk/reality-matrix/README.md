@@ -2282,6 +2282,17 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.2M-3 — Abort Protocol Contract** ✓ completed
+
+**State:**
+- adds typed abort protocol contract for future real operator pilot; requires 18 abort triggers, 10 stop actions, 18-item checklist, operator/reviewer acknowledgments, rollback/stop confirmation
+- rejects real abort execution, kill switch modification, runtime hook modification, secrets/env/API keys/PII/raw/document/model content, persistence, live LLM, public/user-visible tamper (29 tamper cases)
+- depends on real environment attestation contract (`readyForAbortProtocol: true` from 8.2M-2)
+- no kill switch modification, no runtime abort hook modification, no persistence, no real pilot execution
+- may set `readyForRealInputPolicy`, `readyForEvidencePolicy`, `readyForPostRunAuditPlanning` `true` on success
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
