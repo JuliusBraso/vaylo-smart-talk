@@ -2293,6 +2293,17 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.2M-4 — Real Input Policy Contract** ✓ completed
+
+**State:**
+- adds typed real input policy contract for future operator-controlled pilot; defines 5 allowed categories, 14 disallowed categories, 18 redaction requirements, 18-item checklist, clearance levels, completeness warning, and legal disclaimer requirements
+- rejects raw input forwarding, real input processing, missing redaction/manual review/completeness/legal gates, high-risk input allowance, secrets/env/API keys/PII/raw/redacted/document/model content, persistence, live LLM, public/user-visible tamper (39 tamper cases)
+- depends on abort protocol contract (`readyForRealInputPolicy: true` from 8.2M-3)
+- no redaction runtime modification, no real input processing, no persistence, no real pilot execution
+- may set `readyForEvidencePolicy`, `readyForPostRunAuditPlanning` `true` on success
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
