@@ -2337,6 +2337,16 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.3A — Connected AI Runtime Authorization Plan** ✓ completed
+
+**State:**
+- starts the 8.3 Connected AI Runtime Authorization epoch after 8.2M closure; verifies 8.2M-7 dependency (23 invariant flags) and defines 11 prerequisites, 12 open items, and 6 sequential next phases
+- plan status: `ready_for_live_llm_boundary_contract` / 0 blockers
+- only allows planning for the Live LLM Boundary Contract (next phase); all downstream contracts remain blocked
+- does not call live LLM, does not authorize live LLM runtime, does not generate AI output, does not process or forward real input, does not authorize public launch or persistence
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
