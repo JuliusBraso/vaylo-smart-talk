@@ -2315,6 +2315,17 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.2M-6 — Post-Run Audit Planning Contract** ✓ completed
+
+**State:**
+- adds typed post-run audit planning contract for future operator-controlled pilot; defines 18-item audit scope, 4 verdict models, 12 linkage requirements, 19-item checklist, 6 signoff requirements, clearance levels, and metadata-only audit rule
+- rejects audit execution/persistence, user content/raw/redacted/model/document/PII/secret/env audit content, evidence persistence, real input processing, persistence, DNA/offline save, live LLM, public/user-visible tamper (55 tamper cases)
+- depends on evidence policy contract (`readyForPostRunAuditPlanning: true` from 8.2M-5)
+- no audit execution, no audit persistence, no DB/storage modification, no real pilot execution
+- may set `readyForRealOperatorPilotAuthorizationClosure` `true` on success
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
