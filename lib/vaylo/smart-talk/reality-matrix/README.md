@@ -2304,6 +2304,17 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.2M-5 — Evidence Policy Contract** ✓ completed
+
+**State:**
+- adds typed metadata-only evidence policy contract for future operator-controlled pilot; defines 16 allowed metadata categories, 21 blocked content categories, 17 retention constraints, 12 audit trail requirements, 17-item checklist, and clearance levels
+- rejects user content evidence, raw/redacted/model/document/OCR/PII/secret/env evidence, persistence, DNA/offline save, live LLM, public/user-visible tamper (54 tamper cases)
+- depends on real input policy contract (`readyForEvidencePolicy: true` from 8.2M-4)
+- no evidence persistence, no DB/storage modification, no user content storage, no real pilot execution
+- may set `readyForPostRunAuditPlanning` `true` on success
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
