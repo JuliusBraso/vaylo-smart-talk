@@ -2347,6 +2347,17 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.3B — Live LLM Boundary Contract** ✓ completed
+
+**State:**
+- defines live LLM boundary for the future governance-controlled AI runtime; explicitly isolates existing public Smart Talk Branch C / run-smart-talk.ts / OCR live runtime from governance tests
+- allows OpenAI only; enforces 4 model policies, 16 preconditions, 10 output-handling requirements, 18-item checklist; 53 tamper cases rejected
+- `publicBranchCAuthorizedForGovernanceChain`, `runSmartTalkAuthorizedForGovernanceChain`, `extractTextFromImageAuthorizedForGovernanceChain` all literal `false`
+- does not call live LLM, does not authorize live LLM runtime, does not generate AI output, does not process or forward real input, does not authorize public launch or persistence
+- sets `readyForRedactedInputForwardingContract: true` on success
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
