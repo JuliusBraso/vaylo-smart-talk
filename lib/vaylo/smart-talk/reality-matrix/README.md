@@ -2369,6 +2369,17 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.3D — AI Output Governance Recheck Contract** ✓ completed
+
+**State:**
+- defines governance recheck policy for future AI output; treats AI output as untrusted by default
+- requires reality/evidence/hallucination/wording/urgency/next-step rechecks; blocks legal certainty and deadline claims without evidence
+- requires uncertainty and partial-input limitation preservation; requires manual review before user-visible output
+- does not generate AI output or call live LLM; does not authorize public launch or persistence
+- sets `readyForManualReviewBeforeUserVisibleOutputContract: true` on success
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
