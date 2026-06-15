@@ -2380,6 +2380,17 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.3E — Manual Review Before User-Visible Output Contract** ✓ completed
+
+**State:**
+- defines mandatory manual review gate before future user-visible authorization; requires operator/reviewer identity, reviewer responsibility, disposition, evidence metadata, and block conditions
+- blocks automatic approval, anonymous review, direct display, unsafe certainty, unsupported deadlines, and unsupported legal claims
+- does not execute review, does not authorize user-visible output, does not generate AI output or call live LLM
+- does not authorize public launch or persistence
+- sets `readyForUserVisibleOutputAuthorizationContract: true` on success
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
