@@ -2326,6 +2326,17 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.2M-7 — Real Operator Pilot Authorization Closure** ✓ completed
+
+**State:**
+- closes 8.2M authorization prerequisites with warnings; verifies operator/reviewer identity, environment attestation, abort protocol, real input policy, evidence policy, and post-run audit planning
+- verdict: `closed_with_warnings` / 0 blockers / 9 open items for future epochs
+- allows next epoch planning for Connected AI Runtime Authorization and real operator pilot runtime execution planning
+- does not execute pilot, does not authorize pilotRunNow, does not authorize live LLM runtime, does not authorize persistence, does not authorize public launch
+- all runtime execution, AI connection, and launch remain in future separate epochs
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
