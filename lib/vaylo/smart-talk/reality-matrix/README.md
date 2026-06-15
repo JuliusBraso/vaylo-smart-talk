@@ -2358,6 +2358,17 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.3C — Redacted Input Forwarding Contract** ✓ completed
+
+**State:**
+- defines redacted-input forwarding policy for future governance-controlled AI adapter
+- requires redaction proof, manual review requirement, blocked raw input, blocked high-risk uncertainty, and existing runtime isolation
+- does not forward input, does not call live LLM, does not authorize run-smart-talk.ts
+- does not call public Branch C or OCR runtime, does not generate AI output
+- does not authorize public launch or persistence; sets `readyForAiOutputGovernanceRecheckContract: true` on success
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
