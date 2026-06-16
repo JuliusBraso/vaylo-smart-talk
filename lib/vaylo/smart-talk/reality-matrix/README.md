@@ -2391,6 +2391,19 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.3F — User-Visible Output Authorization Contract** ✓ completed
+
+**State:**
+- defines scoped authorization policy for one reviewed output in one controlled session
+- requires governance recheck, manual review, evidence metadata, safety language, uncertainty preservation, and scope limits
+- blocks global approval, public runtime, persistence, live LLM runtime, Branch C authorization, unsafe certainty, deadline certainty, input echo, model output dumps, and internal audit dumps
+- does not emit user-visible output
+- does not call live LLM or generate AI output
+- does not authorize public launch or persistence
+- permits next phase: AI-connected synthetic test harness contract
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
