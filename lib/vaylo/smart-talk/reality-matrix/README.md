@@ -2427,6 +2427,19 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.3I — AI-Connected Synthetic Harness Dry Execution** ✓ completed
+
+**State:**
+- executes synthetic harness dry run using deterministic synthetic adapter only
+- uses exactly the planned 8 synthetic case IDs and metadata-only observations
+- does not call live LLM, Branch C, run-smart-talk.ts, or OCR runtime
+- does not process real/OCR/photo/file/public input
+- does not generate or store real AI output
+- does not persist data or emit user-visible output
+- permits next phase: Synthetic Harness Post-Run Audit
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
