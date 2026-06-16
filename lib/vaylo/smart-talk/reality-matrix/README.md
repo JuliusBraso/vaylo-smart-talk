@@ -2452,6 +2452,18 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.3K — Live LLM Synthetic Authorization Planning** ✓ completed
+
+**State:**
+- plans authorization for one future synthetic-only live LLM call
+- does not call live LLM, read env, import SDKs, make HTTP calls, or generate AI output
+- requires provider/model allowlist, one-call limit, kill switch, synthetic case only, post-call governance recheck, and post-call audit
+- blocks real input, OCR/photo/file input, public requests, Branch C, run-smart-talk.ts, OCR runtime, persistence, public runtime, and user-visible output
+- does not authorize general live LLM runtime or public launch
+- permits next phase: Live LLM Synthetic Single-Call Contract
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
