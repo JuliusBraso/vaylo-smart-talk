@@ -2404,6 +2404,18 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.3G — AI-Connected Synthetic Test Harness Contract** ✓ completed
+
+**State:**
+- defines contract for future synthetic-only AI-connected test harness planning
+- allows only synthetic input classes and blocks real user input, OCR/photo/file input, raw/redacted real text, and public requests
+- requires dedicated synthetic adapter and future execution plan
+- keeps Branch C, run-smart-talk.ts, and OCR runtime isolated
+- does not execute harness, call live LLM, generate AI output, persist data, or emit user-visible output
+- does not authorize public launch or live runtime
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
