@@ -2564,6 +2564,17 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.3T — Additional Synthetic Live LLM Case Execution Plan** ✓ completed
+
+**State:**
+- creates preflight execution plan for selected additional synthetic case: synthetic_explicit_payment_deadline
+- verifies contract readiness, provider openai, model gpt_4o_mini, one future call limit, kill switch and counter requirements, prompt component policy, prompt blockers, metadata capture plan, execution gates, and execution blockers
+- does not call live LLM, read env, import SDKs, make HTTP calls, construct final prompt text, inspect model output, process real input, or persist anything
+- keeps Branch C, run-smart-talk.ts, OCR runtime, user-visible output, public runtime, persistence, and real document input blocked
+- permits next phase: Additional Synthetic Live LLM Case Dry-Run Authorization
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
