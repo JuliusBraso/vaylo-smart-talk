@@ -2488,6 +2488,18 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.3N — Live LLM Synthetic Single-Call Dry-Run Authorization** ✓ completed
+
+**State:**
+- authorizes only the next phase to execute one synthetic live LLM call
+- verifies provider openai, model gpt_4o_mini, selected case synthetic_deadline_relative_missing_delivery_date, kill switch armed, single-call counter zero, prompt policy ready, metadata-only capture ready, post-call governance recheck ready, and post-call audit ready
+- does not call live LLM, read env, import SDKs, make HTTP calls, construct prompt text, log prompt text, or log model output
+- blocks real input, OCR/photo/file input, public requests, Branch C, run-smart-talk.ts, OCR runtime, persistence, public runtime, and user-visible output
+- does not authorize general live LLM runtime or public launch
+- permits next phase: Live LLM Synthetic Single-Call Execution
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
