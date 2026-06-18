@@ -2586,6 +2586,19 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.3V — Additional Synthetic Live LLM Case Live Execution** ✓ completed
+
+**State:**
+- executes exactly one synthetic live LLM call for selected case: synthetic_explicit_payment_deadline when OPENAI_API_KEY is present; otherwise blocks safely
+- uses provider openai and model gpt_4o_mini, with synthetic payment deadline prompt built in memory only
+- captures metadata only, marks model output untrusted, and discards model output after receipt check
+- does not log, store, return, display, or persist prompt text or model output
+- blocks real input, OCR/photo/file input, real payment documents, public requests, Branch C, run-smart-talk.ts, OCR runtime, persistence, public runtime, and user-visible output
+- requires post-call governance recheck and post-call audit
+- does not authorize general live LLM runtime or public launch
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
