@@ -2513,6 +2513,19 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.3P — Post-Call Governance Recheck** ✓ completed
+
+**State:**
+- performs metadata-only governance recheck after the synthetic single-call execution; does not inspect model output text (discarded in 8.3O) and does not reconstruct prompt text
+- verifies exactly one call, provider openai, model gpt_4o_mini, selected synthetic case, untrusted model-output marker, prompt/model-output non-logging, and metadata-only capture
+- enforces promptTextAvailableForReview: false and modelOutputAvailableForReview: false as literal invariants
+- does not call live LLM directly, read env, import SDKs, make HTTP calls, or persist anything
+- confirms Branch C, run-smart-talk.ts, OCR runtime, real input, user-visible output, persistence, public runtime, and real pilot remain blocked
+- all dangerous readiness flags (readyForLiveLLMRuntime through readyForPersistence) remain false
+- permits next phase: Post-Call Audit
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
