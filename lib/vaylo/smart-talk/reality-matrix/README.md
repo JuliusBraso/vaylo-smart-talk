@@ -2500,6 +2500,19 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.3O — Live LLM Synthetic Single-Call Execution** ✓ completed
+
+**State:**
+- executes exactly one synthetic live LLM call with provider openai, model gpt_4o_mini, and case synthetic_deadline_relative_missing_delivery_date
+- checks API key presence without logging/returning value; constructs prompt in memory only and does not log, store, or return prompt text
+- discards model output after untrusted receipt metadata and does not log, store, return, or display it; captures metadata only
+- requires post-call governance recheck plus post-call audit
+- blocks real input, OCR/photo/file input, public requests, Branch C, run-smart-talk.ts, OCR runtime, persistence, public runtime, and user-visible output
+- does not authorize general live LLM runtime or public launch; safely blocked if OPENAI_API_KEY is absent
+- permits next phase: Post-Call Governance Recheck
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
