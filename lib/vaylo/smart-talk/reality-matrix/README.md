@@ -2539,6 +2539,18 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.3R — Synthetic Live LLM Pilot Expansion Planning** ✓ completed
+
+**State:**
+- metadata-only planning after post-call audit; does not call live LLM, read env, import SDKs, make HTTP calls, or persist anything
+- plans synthetic-only expansion from one case to a 10-case controlled catalog: relative deadline, explicit payment deadline, high-risk Widerspruch, immigration uncertainty, incomplete document, legal certainty trap, unsafe next-step trap, noisy OCR, multi-authority, and overpayment synthetic cases
+- enforces readyForRealDocumentInput: false and readyForUserVisibleOutput: false as new literal invariants; additionalCaseContractRequired: true guards each future execution
+- all dangerous readiness flags remain false; Branch C, run-smart-talk.ts, OCR runtime, user-visible output, public runtime, persistence, and real document input remain blocked
+- confirms liveLLMCalledAgain: false, additionalLiveLLMCallsExecuted: false, metadataOnlyPlanning: true, syntheticOnlyExpansion: true
+- permits next phase: Additional Synthetic Live LLM Case Contract
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
