@@ -2464,6 +2464,18 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.3L — Live LLM Synthetic Single-Call Contract** ✓ completed
+
+**State:**
+- defines contract for one future synthetic-only live LLM call (provider openai, model gpt_4o_mini, case synthetic_deadline_relative_missing_delivery_date)
+- does not call live LLM, read env, import SDKs, make HTTP calls, or generate AI output
+- requires kill switch, single-call counter, prompt policy, metadata-only capture, post-call governance recheck, and post-call audit
+- blocks real input, OCR/photo/file input, public requests, Branch C, run-smart-talk.ts, OCR runtime, persistence, public runtime, and user-visible output
+- does not authorize general live LLM runtime or public launch
+- permits next phase: Live LLM Synthetic Single-Call Execution Plan
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
