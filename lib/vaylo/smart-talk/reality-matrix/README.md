@@ -2526,6 +2526,19 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.3Q — Post-Call Audit** ✓ completed
+
+**State:**
+- performs metadata-only full-chain post-call audit (8.3A through 8.3P); does not inspect model output text (discarded in 8.3O) and does not reconstruct prompt text
+- verifies exactly one call, no second call, provider openai, model gpt_4o_mini, case, untrusted marker, prompt/model-output non-availability, metadata-only capture, and audit non-persistence (auditPersistenceUsed: false)
+- enforces promptTextAvailableForAudit: false and modelOutputAvailableForAudit: false as literal invariants; confirms fullChainAudit: true and readyForSyntheticLiveLlmPilotExpansionPlanning: true
+- does not call live LLM directly, read env, import SDKs, make HTTP calls, or persist audit records
+- confirms Branch C, run-smart-talk.ts, OCR runtime, real input, user-visible output, persistence, public runtime, and real pilot remain blocked
+- all dangerous readiness flags (readyForLiveLLMRuntime through readyForPersistence) remain false
+- permits next phase: Synthetic Live LLM Pilot Expansion Planning
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
