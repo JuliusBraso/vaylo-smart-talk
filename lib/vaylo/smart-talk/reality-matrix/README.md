@@ -2599,6 +2599,17 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.3W — Additional Synthetic Live LLM Case Post-Call Governance Recheck** ✓ completed
+
+**State:**
+- performs metadata-only post-call governance recheck for selected case: synthetic_explicit_payment_deadline
+- verifies 8.3V execution metadata: exactly one call, provider openai, model gpt_4o_mini, model output received and marked untrusted, prompt/model output/key not exposed, metadata-only capture, governance recheck and audit requirements
+- does not call OpenAI directly, read env, import SDKs, reconstruct prompt text, inspect model output content, process real input, or persist anything
+- keeps Branch C, run-smart-talk.ts, OCR runtime, user-visible output, public runtime, persistence, and real document input blocked
+- permits next phase: Additional Synthetic Live LLM Case Post-Call Audit
+
+---
+
 ## Extension points
 
 - Add `ClaimType` / `RealityType` values via **const arrays** in `types.ts` (versioned PRs).
