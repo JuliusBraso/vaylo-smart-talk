@@ -75,14 +75,21 @@ function containsUnsafeMarker(text: string): boolean {
     "real authority",
     "real person",
     "real address",
-    "real document",
+    // "real document" alone is intentionally excluded because it appears in the
+    // required governance statement "real documents...remain blocked". Specific
+    // dangerous forms ("real document input", "real document payment runtime") are
+    // caught by the entries below and by containsForbiddenString().
+    "real document input",
     "real invoice",
     "real mahnung",
     "real payment notice",
-    "public runtime",
+    // Note: bare "public runtime" and "model output" are intentionally excluded
+    // here because they appear in required governance acknowledgment statements
+    // (e.g. "public runtime...remain blocked", "model output must remain unavailable").
+    // Specific dangerous variants ("public runtime ready", "payment model output",
+    // "model output returned to user") are still caught by containsForbiddenString().
     "live llm call",
     "prompt constructed",
-    "model output",
     "payment execution live",
     "payment prompt constructed",
     "payment model output",
@@ -196,9 +203,9 @@ export function buildAdditionalSyntheticLiveLlmCaseExecutionPlanInput(params?: {
     realOperatorPilotExecuted: false,
 
     operatorExecutionPlanAcknowledgment:
-      REQUIRED_ADDITIONAL_SYNTHETIC_LIVE_LLM_CASE_EXECUTION_PLAN_ACKNOWLEDGMENT_STATEMENTS[0],
+      REQUIRED_ADDITIONAL_SYNTHETIC_LIVE_LLM_CASE_EXECUTION_PLAN_ACKNOWLEDGMENT_STATEMENTS.join(" "),
     reviewerExecutionPlanAcknowledgment:
-      REQUIRED_ADDITIONAL_SYNTHETIC_LIVE_LLM_CASE_EXECUTION_PLAN_ACKNOWLEDGMENT_STATEMENTS[2],
+      REQUIRED_ADDITIONAL_SYNTHETIC_LIVE_LLM_CASE_EXECUTION_PLAN_ACKNOWLEDGMENT_STATEMENTS.join(" "),
 
     notes: [
       "additional synthetic explicit payment deadline execution plan completed without live call",
@@ -488,19 +495,23 @@ export function validateAdditionalSyntheticLiveLlmCaseExecutionPlanInput(
     reasons.push("real_operator_pilot_authorized");
   }
 
-  // 23. Acknowledgments contain all required statements
+  // 23. Each acknowledgment field must independently contain all required statements
+  // (checking both independently prevents a tamper on one from being masked by the other)
   const opAck = typeof input.operatorExecutionPlanAcknowledgment === "string"
     ? input.operatorExecutionPlanAcknowledgment
     : "";
   const revAck = typeof input.reviewerExecutionPlanAcknowledgment === "string"
     ? input.reviewerExecutionPlanAcknowledgment
     : "";
-  const allAcks = [...input.notes, opAck, revAck];
-  const acksMissing =
+  const opAckMissing =
     REQUIRED_ADDITIONAL_SYNTHETIC_LIVE_LLM_CASE_EXECUTION_PLAN_ACKNOWLEDGMENT_STATEMENTS.some(
-      (stmt) => !allAcks.some((a) => a.includes(stmt)),
+      (stmt) => !opAck.includes(stmt),
     );
-  if (acksMissing) {
+  const revAckMissing =
+    REQUIRED_ADDITIONAL_SYNTHETIC_LIVE_LLM_CASE_EXECUTION_PLAN_ACKNOWLEDGMENT_STATEMENTS.some(
+      (stmt) => !revAck.includes(stmt),
+    );
+  if (opAckMissing || revAckMissing) {
     reasons.push("missing_checklist_item");
   }
 

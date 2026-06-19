@@ -68,14 +68,24 @@ function containsUnsafeMarker(text: string): boolean {
     "real authority",
     "real person",
     "real address",
-    "real document",
+    // "real document" alone is intentionally excluded because it appears in the
+    // required governance statement "real documents...remain blocked".
+    // Specific dangerous forms are caught by the entries below.
+    "real document input",
     "real invoice",
     "real mahnung",
     "real payment notice",
-    "public runtime",
-    "live llm call",
+    // "public runtime" and "model output" are intentionally excluded because they appear
+    // in required governance statements ("public runtime...remain blocked",
+    // "model output must remain unavailable"). Specific dangerous variants are caught
+    // by containsForbiddenString().
+    // "live llm call" alone is intentionally excluded because it appears in ack statement 3
+    // ("...one synthetic live LLM call."). Dangerous claims of actual execution are caught
+    // by "live llm call performed" / "live llm call executed" and by FORBIDDEN_STRINGS
+    // entries "live llm executed" and "harness executed with live llm".
+    "live llm call performed",
+    "live llm call executed",
     "prompt constructed",
-    "model output",
     "payment live execution authorized",
     "payment live call executed",
     "payment prompt available",
@@ -188,13 +198,13 @@ export function buildAdditionalSyntheticLiveLlmCaseDryRunAuthorizationInput(para
     realOperatorPilotExecuted: false,
 
     operatorDryRunAuthorizationAcknowledgment:
-      REQUIRED_ADDITIONAL_SYNTHETIC_LIVE_LLM_CASE_DRY_RUN_AUTHORIZATION_ACKNOWLEDGMENT_STATEMENTS[0],
+      REQUIRED_ADDITIONAL_SYNTHETIC_LIVE_LLM_CASE_DRY_RUN_AUTHORIZATION_ACKNOWLEDGMENT_STATEMENTS.join(" "),
     reviewerDryRunAuthorizationAcknowledgment:
-      REQUIRED_ADDITIONAL_SYNTHETIC_LIVE_LLM_CASE_DRY_RUN_AUTHORIZATION_ACKNOWLEDGMENT_STATEMENTS[2],
+      REQUIRED_ADDITIONAL_SYNTHETIC_LIVE_LLM_CASE_DRY_RUN_AUTHORIZATION_ACKNOWLEDGMENT_STATEMENTS.join(" "),
 
     notes: [
       "additional synthetic explicit payment deadline dry-run authorization completed without live call",
-      "next phase may execute exactly one synthetic live LLM call only",
+      "next phase is authorized to execute exactly one synthetic OpenAI API call only",
     ],
 
     containsRealUserInput: false,
@@ -457,7 +467,8 @@ export function validateAdditionalSyntheticLiveLlmCaseDryRunAuthorizationInput(
     reasons.push("real_operator_pilot_authorized");
   }
 
-  // 27. Acknowledgments contain all required statements
+  // 27. Each acknowledgment field must independently contain all required statements
+  // (checking both independently prevents a tamper on one from being masked by the other)
   const opAck =
     typeof input.operatorDryRunAuthorizationAcknowledgment === "string"
       ? input.operatorDryRunAuthorizationAcknowledgment
@@ -466,12 +477,15 @@ export function validateAdditionalSyntheticLiveLlmCaseDryRunAuthorizationInput(
     typeof input.reviewerDryRunAuthorizationAcknowledgment === "string"
       ? input.reviewerDryRunAuthorizationAcknowledgment
       : "";
-  const allAcks = [...input.notes, opAck, revAck];
-  const acksMissing =
+  const opAckMissing =
     REQUIRED_ADDITIONAL_SYNTHETIC_LIVE_LLM_CASE_DRY_RUN_AUTHORIZATION_ACKNOWLEDGMENT_STATEMENTS.some(
-      (stmt) => !allAcks.some((a) => a.includes(stmt)),
+      (stmt) => !opAck.includes(stmt),
     );
-  if (acksMissing) {
+  const revAckMissing =
+    REQUIRED_ADDITIONAL_SYNTHETIC_LIVE_LLM_CASE_DRY_RUN_AUTHORIZATION_ACKNOWLEDGMENT_STATEMENTS.some(
+      (stmt) => !revAck.includes(stmt),
+    );
+  if (opAckMissing || revAckMissing) {
     reasons.push("missing_checklist_item");
   }
 

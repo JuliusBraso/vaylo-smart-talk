@@ -72,13 +72,18 @@ function containsUnsafeMarker(text: string): boolean {
     "real authority",
     "real person",
     "real address",
-    "real document",
+    // "real document" alone is intentionally excluded because it appears in a tamper
+    // note as "real document input ready" (caught by FORBIDDEN_STRINGS) and would
+    // false-positive on governance context. Specific form below is used instead.
+    "real document input",
     "real invoice",
     "real mahnung",
     "real payment notice",
-    "public runtime",
-    "model output",
-    "prompt text",
+    // "public runtime", "model output", "prompt text" are intentionally excluded because
+    // they appear in REQUIRED acknowledgment statements 3, 4 and 5. All specific dangerous
+    // variants (e.g. "model output logged", "prompt text logged", "public runtime ready",
+    // "authorized public runtime") are already in FORBIDDEN_STRINGS and caught by
+    // containsForbiddenString().
     "api key",
     "payment execution persisted",
     "payment output displayed",
@@ -305,13 +310,13 @@ export function buildAdditionalSyntheticLiveLlmCaseLiveExecutionInput(params?: {
     realOperatorPilotExecuted: false,
 
     operatorLiveExecutionAcknowledgment:
-      REQUIRED_ADDITIONAL_SYNTHETIC_LIVE_LLM_CASE_LIVE_EXECUTION_ACKNOWLEDGMENT_STATEMENTS[0],
+      REQUIRED_ADDITIONAL_SYNTHETIC_LIVE_LLM_CASE_LIVE_EXECUTION_ACKNOWLEDGMENT_STATEMENTS.join(" "),
     reviewerLiveExecutionAcknowledgment:
-      REQUIRED_ADDITIONAL_SYNTHETIC_LIVE_LLM_CASE_LIVE_EXECUTION_ACKNOWLEDGMENT_STATEMENTS[2],
+      REQUIRED_ADDITIONAL_SYNTHETIC_LIVE_LLM_CASE_LIVE_EXECUTION_ACKNOWLEDGMENT_STATEMENTS.join(" "),
 
     notes: [
       "additional synthetic explicit payment deadline live execution metadata captured",
-      "model output discarded after untrusted receipt marker",
+      "untrusted receipt marker set; raw LLM output discarded after metadata capture",
     ],
 
     containsRealUserInput: false,
@@ -461,9 +466,9 @@ export function validateAdditionalSyntheticLiveLlmCaseLiveExecutionInput(
     if (r["singleCallCounterAfter"] !== 1) {
       reasons.push("single_call_counter_not_one_after_call");
     }
-    // Call count: flag as unsafe only if > 1
+    // Call count must be exactly 1 when the live call was performed
     const callCount = r["callCount"] as number;
-    if (typeof callCount !== "number" || callCount > 1) {
+    if (typeof callCount !== "number" || callCount !== 1) {
       reasons.push("more_than_one_call_attempted");
     }
     // Model output
@@ -569,7 +574,8 @@ export function validateAdditionalSyntheticLiveLlmCaseLiveExecutionInput(
     reasons.push("real_operator_pilot_attempted");
   }
 
-  // 22. Acknowledgments
+  // 22. Each acknowledgment field must independently contain all required statements
+  // (checking both independently prevents a tamper on one from being masked by the other)
   const opAck =
     typeof input.operatorLiveExecutionAcknowledgment === "string"
       ? input.operatorLiveExecutionAcknowledgment
@@ -578,12 +584,15 @@ export function validateAdditionalSyntheticLiveLlmCaseLiveExecutionInput(
     typeof input.reviewerLiveExecutionAcknowledgment === "string"
       ? input.reviewerLiveExecutionAcknowledgment
       : "";
-  const allAcks = [...input.notes, opAck, revAck];
-  const acksMissing =
+  const opAckMissing =
     REQUIRED_ADDITIONAL_SYNTHETIC_LIVE_LLM_CASE_LIVE_EXECUTION_ACKNOWLEDGMENT_STATEMENTS.some(
-      (stmt) => !allAcks.some((a) => a.includes(stmt)),
+      (stmt) => !opAck.includes(stmt),
     );
-  if (acksMissing) {
+  const revAckMissing =
+    REQUIRED_ADDITIONAL_SYNTHETIC_LIVE_LLM_CASE_LIVE_EXECUTION_ACKNOWLEDGMENT_STATEMENTS.some(
+      (stmt) => !revAck.includes(stmt),
+    );
+  if (opAckMissing || revAckMissing) {
     reasons.push("missing_checklist_item");
   }
 

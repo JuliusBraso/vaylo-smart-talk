@@ -54,10 +54,10 @@ const VALID_ENV_NAMES: readonly RealEnvironmentName[] = [
 ];
 
 const EMAIL_PATTERN = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/;
-const PHONE_PATTERN = /\+?\d[\d\s\-]{7,}/;
-
-// Patterns that suggest an env assignment (VAR_NAME=value) or raw secret leak.
-const SECRET_LIKE_PATTERNS = ["secret", "token", "password"];
+// Require 7+ consecutive digit characters (spaces allowed but not hyphens).
+// This avoids false positives on ISO 8601 date strings like "2026-06-12" where
+// digits are separated by hyphens, while still catching real phone numbers.
+const PHONE_PATTERN = /\+?\d[ \d]{6,}/;
 
 function containsForbiddenString(value: string): boolean {
   return FORBIDDEN_REAL_ENVIRONMENT_ATTESTATION_STRINGS.some((f) =>
@@ -66,15 +66,19 @@ function containsForbiddenString(value: string): boolean {
 }
 
 function containsEnvAssignment(value: string): boolean {
-  // Detect VAR_NAME= patterns for any required env var name
+  // Detect VAR_NAME= patterns for any required env var name (assignment form only).
   const hasAssignment = REQUIRED_REAL_PILOT_ENV_VAR_NAMES.some((name) =>
     value.includes(`${name}=`),
   );
+  // Detect sk- prefix (OpenAI key prefix).
   const hasSkPrefix = value.includes("sk-");
-  const hasSecretLike = SECRET_LIKE_PATTERNS.some((p) =>
-    value.toLowerCase().includes(p),
-  );
-  return hasAssignment || hasSkPrefix || hasSecretLike;
+  // Detect secret/token/password only in assignment context (e.g. "secret=abc"),
+  // NOT as standalone English words in governance statements.
+  const hasSecretAssignment =
+    value.includes("secret=") ||
+    value.includes("token=") ||
+    value.includes("password=");
+  return hasAssignment || hasSkPrefix || hasSecretAssignment;
 }
 
 function containsPiiPattern(value: string): boolean {
