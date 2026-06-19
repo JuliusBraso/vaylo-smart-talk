@@ -2599,6 +2599,18 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.3X — Additional Synthetic Live LLM Case Post-Call Audit** ✓ completed
+
+**State:**
+- performs metadata-only post-call audit for selected case: synthetic_explicit_payment_deadline
+- verifies 8.3W governance recheck and 8.3V execution metadata: exactly one call, provider openai, model gpt_4o_mini, model output received and marked untrusted, prompt/model output/key not exposed, metadata-only capture, and audit/recheck requirements
+- does not call OpenAI directly, read env, import SDKs, reconstruct prompt text, inspect model output content, process real input, or persist anything
+- keeps Branch C, run-smart-talk.ts, OCR runtime, user-visible output, public runtime, persistence, and real document input blocked
+- tracks broad ESLint debt and future cached-metadata audit pattern debt
+- permits next decision: next high-risk synthetic case planning or controlled real-document authorization planning
+
+---
+
 **PHASE 8.3W — Additional Synthetic Live LLM Case Post-Call Governance Recheck** ✓ completed
 
 **State:**
