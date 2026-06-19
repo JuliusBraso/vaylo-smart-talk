@@ -2599,6 +2599,18 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.3Z — High-Risk Synthetic Legal Deadline Contract** ✓ completed
+
+**State:**
+- creates contract for next high-risk synthetic case: synthetic_high_risk_widerspruch_deadline
+- verifies planning readiness, provider openai, model gpt_4o_mini, delivery/Bekanntgabe date dependency, one future call limit, future execution plan, dry-run authorization, governance recheck, and audit requirements
+- blocks exact deadline calculation, delivery-date invention, final-date invention, legal certainty, coercive legal instructions, real input, user-visible output, persistence, public runtime, and real document input
+- does not call OpenAI, read env, import SDKs, construct final prompt text, inspect model output, process real input, or persist anything
+- tracks broad ESLint debt and future cached-metadata audit pattern debt
+- permits next phase: High-Risk Synthetic Legal Deadline Execution Plan
+
+---
+
 **PHASE 8.3Y — High-Risk Synthetic Legal Deadline Planning** ✓ completed
 
 **State:**
