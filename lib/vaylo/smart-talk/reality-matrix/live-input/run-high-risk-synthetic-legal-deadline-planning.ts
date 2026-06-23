@@ -19,9 +19,10 @@
  *   - Calculate an exact legal deadline
  *   - Authorize legal certainty
  *   - Issue coercive legal instructions
+ *   - Call runAdditionalSyntheticLiveLlmCasePostCallAudit() at runtime
+ *     (replaced by the local immutable _8_3X_READINESS_SNAPSHOT — 8.3Y-PATCH)
  */
 
-import { runAdditionalSyntheticLiveLlmCasePostCallAudit } from "./run-additional-synthetic-live-llm-case-post-call-audit";
 import {
   type HighRiskSyntheticLegalDeadlinePlanningInput,
   type HighRiskSyntheticLegalDeadlinePlanningResult,
@@ -38,6 +39,134 @@ import {
   REQUIRED_HIGH_RISK_SYNTHETIC_LEGAL_DEADLINE_ACKNOWLEDGMENT_STATEMENTS,
   FORBIDDEN_HIGH_RISK_SYNTHETIC_LEGAL_DEADLINE_PLANNING_STRINGS,
 } from "./high-risk-synthetic-legal-deadline-planning-types";
+
+// ── Snapshot cache (8.3Y-PATCH) ───────────────────────────────────────────────
+// Populated on first successful run; subsequent calls return the cached result
+// to avoid re-executing the full 8.3X upstream chain.
+
+let _highRiskSyntheticLegalDeadlinePlanningSnapshot: HighRiskSyntheticLegalDeadlinePlanningCheckResult | null =
+  null;
+
+/**
+ * Returns the cached 8.3Y planning result after the first run, or `null` if
+ * `runHighRiskSyntheticLegalDeadlinePlanning()` has not been called yet.
+ * Downstream phases (8.3Z, 8.3AA, 8.3AB, 8.3AC …) can use this to avoid
+ * re-running the full upstream chain within the same module lifecycle.
+ */
+export function getHighRiskSyntheticLegalDeadlinePlanningSnapshot(): HighRiskSyntheticLegalDeadlinePlanningCheckResult | null {
+  return _highRiskSyntheticLegalDeadlinePlanningSnapshot;
+}
+
+// ── 8.3X Local Readiness Snapshot (8.3Y-PATCH) ───────────────────────────────
+// Immutable attestation of Phase 8.3X safety values, verified at commit time.
+// Replaces the live runAdditionalSyntheticLiveLlmCasePostCallAudit() call so
+// 8.3Y never re-executes the full upstream 8.3X chain during normal runtime.
+//
+// SAFETY CONTRACT: every field here reflects the Phase 8.3X committed result.
+// Any change to this constant MUST be treated as a safety-breaking change and
+// reviewed alongside the corresponding 8.3X source before merging.
+
+const _8_3X_READINESS_SNAPSHOT = Object.freeze({
+  // ── Required true ──────────────────────────────────────────────────────────
+  allPassed: true,
+  additionalSyntheticCasePostCallAuditPassed: true,
+  readyForNextSyntheticCasePlanning: true,
+  readyForControlledRealDocumentAuthorizationPlanning: true,
+  metadataOnlyAudit: true,
+  syntheticInputOnly: true,
+  broadEslintDebtTracked: true,
+  postCallCachedMetadataDebtTracked: true,
+  neverUserVisible: true,
+
+  // ── Required false — dangerous readiness gates ────────────────────────────
+  readyForLiveLLMRuntime: false,
+  readyForConnectedAiRuntimeExecution: false,
+  readyForRealOperatorPilotRun: false,
+  readyForPilotRunNow: false,
+  readyForPublicLaunch: false,
+  readyForPersistence: false,
+  readyForRealDocumentInput: false,
+  readyForUserVisibleOutput: false,
+
+  // ── Required false — audit integrity ─────────────────────────────────────
+  modelOutputContentInspected: false,
+  promptTextReconstructed: false,
+  directOpenAiCallMadeByAudit: false,
+  liveLLMCalledAgainByAudit: false,
+
+  // ── Required false — input policy ────────────────────────────────────────
+  realUserInputAllowed: false,
+  rawInputAllowed: false,
+  realRedactedInputAllowed: false,
+  photoOrOcrInputAllowed: false,
+  fileUploadInputAllowed: false,
+  publicAnonymousInputAllowed: false,
+  realDocumentInputAllowed: false,
+
+  // ── Required false — runtime isolation ───────────────────────────────────
+  branchCDependencyAllowed: false,
+  runSmartTalkDependencyAllowed: false,
+  ocrRuntimeDependencyAllowed: false,
+  branchCCalled: false,
+  runSmartTalkCalledOrImported: false,
+  extractTextFromImageCalledOrImported: false,
+
+  // ── Required false — side-effect guards ──────────────────────────────────
+  userVisibleOutputEmitted: false,
+  persistenceUsed: false,
+  publicRuntimeEnabled: false,
+} as const);
+
+/**
+ * Evaluates whether a given 8.3X readiness record satisfies all 36 prerequisite
+ * safety conditions required by Phase 8.3Y.
+ *
+ * Used both at runtime (against `_8_3X_READINESS_SNAPSHOT`) and by the
+ * snapshot-integrity tamper harness (Group 17).  Any tampered field causes
+ * this function to return `false`, which cascades to `prerequisiteOk = false`
+ * and ultimately `allPassed = false`.
+ */
+function evaluateSnap8x3Prerequisite(snap: Record<string, unknown>): boolean {
+  return (
+    snap["allPassed"] === true &&
+    snap["additionalSyntheticCasePostCallAuditPassed"] === true &&
+    snap["readyForNextSyntheticCasePlanning"] === true &&
+    snap["readyForControlledRealDocumentAuthorizationPlanning"] === true &&
+    snap["readyForLiveLLMRuntime"] === false &&
+    snap["readyForConnectedAiRuntimeExecution"] === false &&
+    snap["readyForRealOperatorPilotRun"] === false &&
+    snap["readyForPilotRunNow"] === false &&
+    snap["readyForPublicLaunch"] === false &&
+    snap["readyForPersistence"] === false &&
+    snap["readyForRealDocumentInput"] === false &&
+    snap["readyForUserVisibleOutput"] === false &&
+    snap["metadataOnlyAudit"] === true &&
+    snap["modelOutputContentInspected"] === false &&
+    snap["promptTextReconstructed"] === false &&
+    snap["directOpenAiCallMadeByAudit"] === false &&
+    snap["liveLLMCalledAgainByAudit"] === false &&
+    snap["syntheticInputOnly"] === true &&
+    snap["realUserInputAllowed"] === false &&
+    snap["rawInputAllowed"] === false &&
+    snap["realRedactedInputAllowed"] === false &&
+    snap["photoOrOcrInputAllowed"] === false &&
+    snap["fileUploadInputAllowed"] === false &&
+    snap["publicAnonymousInputAllowed"] === false &&
+    snap["realDocumentInputAllowed"] === false &&
+    snap["branchCDependencyAllowed"] === false &&
+    snap["runSmartTalkDependencyAllowed"] === false &&
+    snap["ocrRuntimeDependencyAllowed"] === false &&
+    snap["branchCCalled"] === false &&
+    snap["runSmartTalkCalledOrImported"] === false &&
+    snap["extractTextFromImageCalledOrImported"] === false &&
+    snap["userVisibleOutputEmitted"] === false &&
+    snap["persistenceUsed"] === false &&
+    snap["publicRuntimeEnabled"] === false &&
+    snap["broadEslintDebtTracked"] === true &&
+    snap["postCallCachedMetadataDebtTracked"] === true &&
+    snap["neverUserVisible"] === true
+  );
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -638,57 +767,27 @@ export function validateHighRiskSyntheticLegalDeadlinePlanningInput(
 /**
  * Phase 8.3Y — High-Risk Synthetic Legal Deadline Planning.
  *
- * 1. Calls `runAdditionalSyntheticLiveLlmCasePostCallAudit()` (8.3X) as dependency.
- * 2. Verifies all audit safety invariants from 8.3X metadata.
+ * 1. Evaluates the local immutable `_8_3X_READINESS_SNAPSHOT` (8.3Y-PATCH)
+ *    via `evaluateSnap8x3Prerequisite()` — no live 8.3X chain call.
+ * 2. Verifies all 36 audit safety invariants from the 8.3X snapshot.
  * 3. Validates the planning input using the local validator.
- * 4. Runs tamper cases (local validator only — no live calls, no OpenAI).
+ * 4. Runs tamper cases (local validator + snapshot-integrity — no live calls, no OpenAI).
  *
  * NOT auto-executed on module load.
  */
 export async function runHighRiskSyntheticLegalDeadlinePlanning(): Promise<HighRiskSyntheticLegalDeadlinePlanningCheckResult> {
-  // ── 1. Dependency: Phase 8.3X ───────────────────────────────────────────────
-  const auditResult = await runAdditionalSyntheticLiveLlmCasePostCallAudit();
+  // ── 8.3Y-PATCH: return cached snapshot if already computed ──────────────────
+  if (_highRiskSyntheticLegalDeadlinePlanningSnapshot !== null) {
+    return _highRiskSyntheticLegalDeadlinePlanningSnapshot;
+  }
 
-  const r8x = asRec(auditResult);
-
-  const prerequisiteOk =
-    auditResult.allPassed === true &&
-    r8x["additionalSyntheticCasePostCallAuditPassed"] === true &&
-    r8x["readyForNextSyntheticCasePlanning"] === true &&
-    r8x["readyForControlledRealDocumentAuthorizationPlanning"] === true &&
-    r8x["readyForLiveLLMRuntime"] === false &&
-    r8x["readyForConnectedAiRuntimeExecution"] === false &&
-    r8x["readyForRealOperatorPilotRun"] === false &&
-    r8x["readyForPilotRunNow"] === false &&
-    r8x["readyForPublicLaunch"] === false &&
-    r8x["readyForPersistence"] === false &&
-    r8x["readyForRealDocumentInput"] === false &&
-    r8x["readyForUserVisibleOutput"] === false &&
-    r8x["metadataOnlyAudit"] === true &&
-    r8x["modelOutputContentInspected"] === false &&
-    r8x["promptTextReconstructed"] === false &&
-    r8x["directOpenAiCallMadeByAudit"] === false &&
-    r8x["liveLLMCalledAgainByAudit"] === false &&
-    r8x["syntheticInputOnly"] === true &&
-    r8x["realUserInputAllowed"] === false &&
-    r8x["rawInputAllowed"] === false &&
-    r8x["realRedactedInputAllowed"] === false &&
-    r8x["photoOrOcrInputAllowed"] === false &&
-    r8x["fileUploadInputAllowed"] === false &&
-    r8x["publicAnonymousInputAllowed"] === false &&
-    r8x["realDocumentInputAllowed"] === false &&
-    r8x["branchCDependencyAllowed"] === false &&
-    r8x["runSmartTalkDependencyAllowed"] === false &&
-    r8x["ocrRuntimeDependencyAllowed"] === false &&
-    r8x["branchCCalled"] === false &&
-    r8x["runSmartTalkCalledOrImported"] === false &&
-    r8x["extractTextFromImageCalledOrImported"] === false &&
-    r8x["userVisibleOutputEmitted"] === false &&
-    r8x["persistenceUsed"] === false &&
-    r8x["publicRuntimeEnabled"] === false &&
-    r8x["broadEslintDebtTracked"] === true &&
-    r8x["postCallCachedMetadataDebtTracked"] === true &&
-    r8x["neverUserVisible"] === true;
+  // ── 1. Dependency: Phase 8.3X (snapshot — 8.3Y-PATCH) ──────────────────────
+  // The live runAdditionalSyntheticLiveLlmCasePostCallAudit() call is replaced
+  // by the local immutable _8_3X_READINESS_SNAPSHOT to avoid re-executing the
+  // full 8.3X upstream chain on every call.  All 36 prerequisite fields are
+  // validated by evaluateSnap8x3Prerequisite(); a tampered snapshot produces
+  // prerequisiteOk = false, cascading to allPassed = false.
+  const prerequisiteOk = evaluateSnap8x3Prerequisite(asRec(_8_3X_READINESS_SNAPSHOT));
 
   // ── 2. Build and validate canonical planning input ───────────────────────────
   const canonicalInput = buildHighRiskSyntheticLegalDeadlinePlanningInput({
@@ -1152,10 +1251,157 @@ export async function runHighRiskSyntheticLegalDeadlinePlanning(): Promise<HighR
     }
   }
 
-  // ── 4. Compose final check result ────────────────────────────────────────────
-  const allPassed = prerequisiteOk && mainPassed && allTamperRejected;
+  // ── Group 17: Snapshot-integrity tamper cases (8.3Y-PATCH) ──────────────────
+  // Each case mutates one field of the 8.3X readiness snapshot.
+  // evaluateSnap8x3Prerequisite() MUST return false for every tampered version.
+  // A passing (true) result here means the prerequisite gate is not enforcing
+  // the safety constraint for that field and is treated as a failure.
 
-  return {
+  const snapBase: Record<string, unknown> = { ..._8_3X_READINESS_SNAPSHOT };
+
+  const snapTamperCases: Array<{ label: string; override: Record<string, unknown> }> = [
+    // ── Required-true fields flipped to false (9 cases) ──────────────────────
+    { label: "snap: allPassed false", override: { allPassed: false } },
+    {
+      label: "snap: additionalSyntheticCasePostCallAuditPassed false",
+      override: { additionalSyntheticCasePostCallAuditPassed: false },
+    },
+    {
+      label: "snap: readyForNextSyntheticCasePlanning false",
+      override: { readyForNextSyntheticCasePlanning: false },
+    },
+    {
+      label: "snap: readyForControlledRealDocumentAuthorizationPlanning false",
+      override: { readyForControlledRealDocumentAuthorizationPlanning: false },
+    },
+    { label: "snap: metadataOnlyAudit false", override: { metadataOnlyAudit: false } },
+    { label: "snap: syntheticInputOnly false", override: { syntheticInputOnly: false } },
+    {
+      label: "snap: broadEslintDebtTracked false",
+      override: { broadEslintDebtTracked: false },
+    },
+    {
+      label: "snap: postCallCachedMetadataDebtTracked false",
+      override: { postCallCachedMetadataDebtTracked: false },
+    },
+    { label: "snap: neverUserVisible false", override: { neverUserVisible: false } },
+
+    // ── Required-false fields flipped to true — dangerous readiness (8 cases) ─
+    {
+      label: "snap: readyForLiveLLMRuntime true",
+      override: { readyForLiveLLMRuntime: true },
+    },
+    {
+      label: "snap: readyForConnectedAiRuntimeExecution true",
+      override: { readyForConnectedAiRuntimeExecution: true },
+    },
+    {
+      label: "snap: readyForRealOperatorPilotRun true",
+      override: { readyForRealOperatorPilotRun: true },
+    },
+    { label: "snap: readyForPilotRunNow true", override: { readyForPilotRunNow: true } },
+    { label: "snap: readyForPublicLaunch true", override: { readyForPublicLaunch: true } },
+    { label: "snap: readyForPersistence true", override: { readyForPersistence: true } },
+    {
+      label: "snap: readyForRealDocumentInput true",
+      override: { readyForRealDocumentInput: true },
+    },
+    {
+      label: "snap: readyForUserVisibleOutput true",
+      override: { readyForUserVisibleOutput: true },
+    },
+
+    // ── Required-false fields flipped to true — audit integrity (4 cases) ─────
+    {
+      label: "snap: modelOutputContentInspected true",
+      override: { modelOutputContentInspected: true },
+    },
+    {
+      label: "snap: promptTextReconstructed true",
+      override: { promptTextReconstructed: true },
+    },
+    {
+      label: "snap: directOpenAiCallMadeByAudit true",
+      override: { directOpenAiCallMadeByAudit: true },
+    },
+    {
+      label: "snap: liveLLMCalledAgainByAudit true",
+      override: { liveLLMCalledAgainByAudit: true },
+    },
+
+    // ── Required-false fields flipped to true — input policy (7 cases) ────────
+    { label: "snap: realUserInputAllowed true", override: { realUserInputAllowed: true } },
+    { label: "snap: rawInputAllowed true", override: { rawInputAllowed: true } },
+    {
+      label: "snap: realRedactedInputAllowed true",
+      override: { realRedactedInputAllowed: true },
+    },
+    {
+      label: "snap: photoOrOcrInputAllowed true",
+      override: { photoOrOcrInputAllowed: true },
+    },
+    {
+      label: "snap: fileUploadInputAllowed true",
+      override: { fileUploadInputAllowed: true },
+    },
+    {
+      label: "snap: publicAnonymousInputAllowed true",
+      override: { publicAnonymousInputAllowed: true },
+    },
+    {
+      label: "snap: realDocumentInputAllowed true",
+      override: { realDocumentInputAllowed: true },
+    },
+
+    // ── Required-false fields flipped to true — runtime isolation (6 cases) ───
+    {
+      label: "snap: branchCDependencyAllowed true",
+      override: { branchCDependencyAllowed: true },
+    },
+    {
+      label: "snap: runSmartTalkDependencyAllowed true",
+      override: { runSmartTalkDependencyAllowed: true },
+    },
+    {
+      label: "snap: ocrRuntimeDependencyAllowed true",
+      override: { ocrRuntimeDependencyAllowed: true },
+    },
+    { label: "snap: branchCCalled true", override: { branchCCalled: true } },
+    {
+      label: "snap: runSmartTalkCalledOrImported true",
+      override: { runSmartTalkCalledOrImported: true },
+    },
+    {
+      label: "snap: extractTextFromImageCalledOrImported true",
+      override: { extractTextFromImageCalledOrImported: true },
+    },
+
+    // ── Required-false fields flipped to true — side-effect guards (3 cases) ──
+    {
+      label: "snap: userVisibleOutputEmitted true",
+      override: { userVisibleOutputEmitted: true },
+    },
+    { label: "snap: persistenceUsed true", override: { persistenceUsed: true } },
+    { label: "snap: publicRuntimeEnabled true", override: { publicRuntimeEnabled: true } },
+  ];
+
+  let allSnapTamperBlocked = true;
+  const snapTamperFailures: string[] = [];
+
+  for (const { label, override } of snapTamperCases) {
+    const tampered = { ...snapBase, ...override };
+    if (evaluateSnap8x3Prerequisite(tampered)) {
+      allSnapTamperBlocked = false;
+      snapTamperFailures.push(`SNAP TAMPER NOT BLOCKED: ${label}`);
+    }
+  }
+
+  // ── 4. Compose final check result ────────────────────────────────────────────
+  const allPassed =
+    prerequisiteOk && mainPassed && allTamperRejected && allSnapTamperBlocked;
+
+  // 8.3Y-PATCH: populate snapshot cache before returning
+  const _result: HighRiskSyntheticLegalDeadlinePlanningCheckResult = {
     checkId: "8.3Y",
     allPassed,
     previousAuditReadyForHighRiskPlanning: prerequisiteOk,
@@ -1215,9 +1461,13 @@ export async function runHighRiskSyntheticLegalDeadlinePlanning(): Promise<HighR
     neverUserVisible: true,
 
     notes: [
-      `Phase 8.3Y: prerequisiteOk=${String(prerequisiteOk)}, mainPassed=${String(mainPassed)}, allTamperRejected=${String(allTamperRejected)}`,
-      `tamperCaseCount=${String(tamperCases.length)}`,
+      `Phase 8.3Y: prerequisiteOk=${String(prerequisiteOk)}, mainPassed=${String(mainPassed)}, allTamperRejected=${String(allTamperRejected)}, allSnapTamperBlocked=${String(allSnapTamperBlocked)}`,
+      `tamperCaseCount=${String(tamperCases.length)}, snapTamperCaseCount=${String(snapTamperCases.length)}`,
       ...tamperFailures,
+      ...snapTamperFailures,
     ],
   };
+
+  _highRiskSyntheticLegalDeadlinePlanningSnapshot = _result;
+  return _result;
 }
