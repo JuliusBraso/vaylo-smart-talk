@@ -2599,6 +2599,18 @@ Changed from literal `false` to `boolean`. It is `true` only when the live sandb
 
 ---
 
+**PHASE 8.3AC — High-Risk Synthetic Legal Deadline Live Execution** ✓ completed
+
+**State:**
+- performs exactly one controlled synthetic live call for high-risk case: synthetic_high_risk_widerspruch_deadline, only when kill switch (HIGH_RISK_SYNTHETIC_LEGAL_DEADLINE_LIVE_EXECUTION_ENABLED=true) is active
+- verifies 8.3AB dry-run authorization, provider openai, model gpt_4o_mini, api model gpt-4o-mini, never-user-visible source kind, one-call counter, metadata-only capture, untrusted model output, governance recheck, and audit requirements
+- constructs synthetic prompt in memory only and never logs/stores/returns prompt or model output
+- blocks exact deadline calculation, delivery-date invention, final-date invention, legal certainty, coercive legal instructions, real input, user-visible output, persistence, public runtime, and real document input
+- does not call Branch C, runSmartTalk, OCR, public routes, DB, storage, or UI
+- permits next phase: High-Risk Synthetic Legal Deadline Post-Call Governance Recheck
+
+---
+
 **PHASE 8.3AB — High-Risk Synthetic Legal Deadline Dry-Run Authorization** ✓ completed
 
 **State:**

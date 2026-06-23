@@ -1,0 +1,36 @@
+﻿node.exe : npm warn Unknown env config "devdir". This will stop working in the next major version of npm.
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (npm warn Unknow...version of npm.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+C:\Users\jceas\Desktop\Willkommen-app\moja-app\lib\vaylo\smart-talk\reality-matrix\live-input\run-high-risk-synthetic-legal-deadline-live-execution.ts
+  961:5  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-non-null-assertion')
+
+C:\Users\jceas\Desktop\Willkommen-app\moja-app\lib\vaylo\smart-talk\reality-matrix\live-input\run-manual-review-capture-model-check.ts
+  504:7  warning  'tamperFailed' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\jceas\Desktop\Willkommen-app\moja-app\scripts\sync-i18n.ts
+  873:9   error  'scope' is never reassigned. Use 'const' instead                prefer-const
+  873:16  error  'json' is never reassigned. Use 'const' instead                 prefer-const
+  873:27  error  'empty' is never reassigned. Use 'const' instead                prefer-const
+  873:34  error  'ci' is never reassigned. Use 'const' instead                   prefer-const
+  873:38  error  'ciStrict' is never reassigned. Use 'const' instead             prefer-const
+  873:48  error  'generateBaseline' is never reassigned. Use 'const' instead     prefer-const
+  873:66  error  'generateBaselineAll' is never reassigned. Use 'const' instead  prefer-const
+
+C:\Users\jceas\Desktop\Willkommen-app\moja-app\scripts\verify-db-schema.ts
+  234:3  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+  239:3  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+  246:5  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+  285:5  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+  294:5  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+  374:5  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+  381:5  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+  386:3  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+
+Ôťľ 17 problems (7 errors, 10 warnings)
+  0 errors and 9 warnings potentially fixable with the `--fix` option.
+
