@@ -55,6 +55,8 @@ function containsPiiPattern(text: string): boolean {
   if (/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/.test(text)) return true;
   if (/\+\d{10,}/.test(text)) return true;
   if (/\b\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\b/.test(text)) return true;
+  if (/\bTelefon\b/i.test(text)) return true;
+  if (/\bSehr\s+geehrte/i.test(text)) return true;
   return false;
 }
 
