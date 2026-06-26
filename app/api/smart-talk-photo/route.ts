@@ -20,6 +20,10 @@ import { runSmartTalk } from "@/lib/vaylo/smart-talk/run-smart-talk";
 
 export const runtime = "nodejs";
 
+// Phase 8.5H — Photo OCR route is quarantined until a future explicit runtime authorization chain.
+// Set to false only after the authorized runtime design chain (8.5I+) is completed and approved.
+const PHOTO_OCR_ROUTE_RUNTIME_QUARANTINED = true as const;
+
 const MAX_BYTES = 4 * 1024 * 1024;
 /** Max prepared pages per request (Smart Talk photo MVP). */
 const MAX_PAGES = 3;
@@ -137,6 +141,20 @@ function isExtractedUsable(text: string): boolean {
 }
 
 export async function POST(req: Request) {
+  if (PHOTO_OCR_ROUTE_RUNTIME_QUARANTINED) {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "photo_ocr_runtime_quarantined",
+        message:
+          "Photo document analysis is temporarily unavailable while we complete safety checks.",
+        nextStep:
+          "Please use text question mode for general questions. Do not upload personal documents here yet.",
+      },
+      { status: 503 },
+    );
+  }
+
   const ip = getClientIp(req);
   if (!takePhotoRateSlot(ip)) {
     return NextResponse.json(
