@@ -74,6 +74,36 @@ function badRequest(message: string) {
   return NextResponse.json({ ok: false, error: message }, { status: 400 });
 }
 
+// ── Phase 8.5N — Text Document Bypass Guard helper ────────────────────────
+// Deterministic multi-signal scoring. Pure, local.
+// No I/O · no fetch · no OpenAI · no env reads · no SDK.
+function detectTextDocumentBypassRequired(text: string): boolean {
+  let score = 0;
+  // Signal 1 — length threshold
+  if (text.length > 300) score += 1;
+  // Signal 2 — salutation / closing markers
+  if (/sehr geehrte|mit freundlichen gr/i.test(text)) score += 2;
+  // Signal 3 — German authority markers
+  if (/jobcenter|finanzamt|ausländerbehörde|krankenkasse|familienkasse|bundesagentur/i.test(text)) score += 1;
+  // Signal 4 — Bescheid / Widerspruch / Rechtsmittel markers
+  if (/bescheid|widerspruch|rechtsbehelfsbelehrung/i.test(text)) score += 2;
+  // Signal 5 — invoice / Mahnung markers
+  if (/mahnung|rechnung|zahlungsfrist/i.test(text)) score += 1;
+  // Signal 6 — deadline / legal consequence markers
+  if (/\bfrist\b|innerhalb von|bis zum|vollstreckung/i.test(text)) score += 1;
+  // Signal 7 — personal data / reference markers
+  if (/kundennummer|versicherungsnummer|steueridentifikationsnummer|beitragsnummer|aktenzeichen/i.test(text)) score += 2;
+  // Signal 8 — reference number pattern
+  if (/\b\d{4,}[\/-]\d+\b/.test(text)) score += 1;
+  // Signal 9 — official document field markers
+  if (/\bdatum\s*:/i.test(text) || /\bunterschrift\b/i.test(text) || /\btelefon\s*:/i.test(text)) score += 1;
+  // Signal 10 — field-value line structure (key: value ≥ 3 lines)
+  const fieldLines = (text.match(/^[A-ZÄÖÜa-zäöü][^\n:]{1,30}:\s*\S/gm) ?? []).length;
+  if (fieldLines >= 3) score += 2;
+  return score >= 3;
+}
+// ── End Phase 8.5N helper ─────────────────────────────────────────────────
+
 // ── Phase 8.2K-2 — Pilot branch helpers ──────────────────────────────────────
 // Pure, local, no side effects, no sensitive value logging.
 
@@ -599,6 +629,23 @@ export async function POST(req: Request) {
   if (!hasLetter(text) || isOnlyUrls(text)) {
     return badRequest("invalid_text");
   }
+
+  // ── Phase 8.5N — Text Document Bypass Guard ─────────────────────────────
+  // After JSON parse · before runSmartTalk · before prompt build · before model call.
+  if (detectTextDocumentBypassRequired(text)) {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "document_mode_required",
+        message:
+          "This looks like a letter, email, invoice, authority notice, or other document. Please use Document Mode for document explanations.",
+        nextStep:
+          "You can ask a general question here, but do not paste personal documents into Free Q&A.",
+      },
+      { status: 402 },
+    );
+  }
+  // ── End Phase 8.5N ───────────────────────────────────────────────────────
 
   let locale: SmartTalkLocale = "sk";
   if (o.locale !== undefined && o.locale !== null) {
