@@ -104,6 +104,48 @@ function detectTextDocumentBypassRequired(text: string): boolean {
 }
 // ── End Phase 8.5N helper ─────────────────────────────────────────────────
 
+// ── Phase 8.5U — Client-side Paid Document Mode activation detector ────────
+// Inspects ONLY request body control fields (NOT user text content).
+// Deny-by-default: no entitlement runtime · no payment · no document processing.
+// No I/O · no fetch · no OpenAI · no env reads · no SDK.
+const PAID_DOC_MODE_FIELDS = [
+  "documentMode", "document_mode", "paidDocumentMode", "paid_document_mode",
+  "mode", "lane", "feature", "product",
+];
+const ENTITLEMENT_FIELDS = [
+  "entitlement", "entitlementId", "entitlement_id",
+  "paid", "isPaid", "is_paid", "hasEntitlement", "has_entitlement",
+];
+const PAID_DOC_ACTIVATING_STRINGS = new Set([
+  "true", "1", "yes", "paid", "document", "document_mode",
+  "paid_document", "paid_document_mode", "documentMode", "paidDocumentMode",
+]);
+
+function detectClientPaidDocumentModeActivation(body: Record<string, unknown>): boolean {
+  for (const field of PAID_DOC_MODE_FIELDS) {
+    const v = body[field];
+    if (v === true) return true;
+    if (typeof v === "string") {
+      const lower = v.toLowerCase();
+      if (PAID_DOC_ACTIVATING_STRINGS.has(lower)) return true;
+      if (lower.includes("document") || lower.includes("paid") || lower.includes("entitlement")) return true;
+    }
+  }
+  for (const field of ENTITLEMENT_FIELDS) {
+    const v = body[field];
+    if (v === true) return true;
+    if (typeof v === "string") {
+      const lower = v.toLowerCase();
+      if (PAID_DOC_ACTIVATING_STRINGS.has(lower)) return true;
+      if (lower.includes("document") || lower.includes("paid") || lower.includes("entitlement")) return true;
+    }
+    if (v !== null && typeof v === "object" && !Array.isArray(v) && Object.keys(v as object).length > 0) return true;
+    if (Array.isArray(v) && v.length > 0) return true;
+  }
+  return false;
+}
+// ── End Phase 8.5U detector ────────────────────────────────────────────────
+
 // ── Phase 8.2K-2 — Pilot branch helpers ──────────────────────────────────────
 // Pure, local, no side effects, no sensitive value logging.
 
@@ -646,6 +688,32 @@ export async function POST(req: Request) {
     );
   }
   // ── End Phase 8.5N ───────────────────────────────────────────────────────
+
+  // ── Phase 8.5U — Paid Document Mode boundary: deny-by-default ────────────
+  // Rejects client-side paid/document/entitlement activation signals.
+  // After JSON parse · after text validation · after 8.5N bypass guard.
+  // Before runSmartTalk · before prompt build · before model call.
+  // No entitlement runtime · no payment runtime · no document processing.
+  if (detectClientPaidDocumentModeActivation(o)) {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "document_mode_required",
+        reason:
+          "Document Mode requires server-side entitlement verification and is not available in this request.",
+        urgency: "unknown",
+        summary: "",
+        meaning: "",
+        nextSteps: [],
+        warnings: [
+          "Document Mode is not enabled by client-side flags.",
+          "Server-side entitlement verification is required before document processing.",
+        ],
+      },
+      { status: 402 },
+    );
+  }
+  // ── End Phase 8.5U ───────────────────────────────────────────────────────
 
   let locale: SmartTalkLocale = "sk";
   if (o.locale !== undefined && o.locale !== null) {
