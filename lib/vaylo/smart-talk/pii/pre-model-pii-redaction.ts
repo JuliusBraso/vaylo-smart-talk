@@ -1,21 +1,24 @@
 /**
- * PHASE 8.6G-1 — Pre-Model PII Redaction Surgical Utility Skeleton
+ * PHASE 8.6G-1 / 8.6G-2 — Pre-Model PII Redaction Utility
  *
- * TD-004 Status: Skeleton only. Not model-facing. Not route-wired. Not user-visible.
- * Not production-authorized. Not pilot-authorized. Not real-document-authorized.
+ * 8.6G-1: Surgical utility skeleton (committed e58646b)
+ * 8.6G-2: Input validation guard layer added
+ *
+ * TD-004 Status: Input validation guard applied. Not model-facing. Not route-wired.
+ * Not user-visible. Not production-authorized. Not pilot-authorized.
+ * Not real-document-authorized.
  *
  * Constraints enforced by this file:
- *   - No imports (zero-import policy for this phase)
+ *   - No imports (zero-import policy)
  *   - No OpenAI / fetch / process.env / SDK usage
  *   - No route patching or route wiring
  *   - No real document, OCR, photo, or user-visible output
  *   - No database or storage writes
  *   - No audit persistence
- *   - safeForModel / safeForEvidenceGates / safeForUserVisibleOutput always false in this phase
+ *   - safeForModel / safeForEvidenceGates / safeForUserVisibleOutput always false
  *   - rawMapReturned always false — raw PII values never exposed in output
  *
  * Still required before production (TD-004 open items):
- *   - Input validation guard
  *   - Detector patterns
  *   - Redaction engine
  *   - Synthetic validation and tamper coverage expansion
@@ -99,12 +102,12 @@ export interface PreModelPiiRedactionResult {
   /** Overall disposition of this redaction pass. */
   status: PreModelPiiRedactionStatus;
   /**
-   * In this skeleton phase, equals input text (no real redaction yet).
+   * In this phase, equals input text (no real redaction yet).
    * Must not be used for model input, evidence gates, or user-visible output
    * until safeForModel / safeForEvidenceGates / safeForUserVisibleOutput are true.
    */
   redactedText: string;
-  /** Map of placeholder token → occurrence count. Empty in skeleton phase. */
+  /** Map of placeholder token → occurrence count. Empty until redaction engine is implemented. */
   placeholderCounts: Record<string, number>;
   /** Ordered list of distinct categories for which placeholders were inserted. */
   placeholderCategories: PreModelPiiRedactionCategory[];
@@ -118,17 +121,17 @@ export interface PreModelPiiRedactionResult {
   blockingReasons: string[];
   /**
    * Whether the redactedText is safe to forward to an LLM.
-   * Always false in this skeleton phase.
+   * Always false until detector patterns and redaction engine are implemented.
    */
   safeForModel: false;
   /**
    * Whether the redactedText is safe to use as input to evidence gates.
-   * Always false in this skeleton phase.
+   * Always false until detector patterns and redaction engine are implemented.
    */
   safeForEvidenceGates: false;
   /**
    * Whether the redactedText is safe for user-visible output.
-   * Always false in this skeleton phase.
+   * Always false in this phase.
    */
   safeForUserVisibleOutput: false;
   /**
@@ -136,7 +139,7 @@ export interface PreModelPiiRedactionResult {
    * Always false — raw values are never exposed.
    */
   rawMapReturned: false;
-  /** Individual detector hits (empty in skeleton phase). */
+  /** Individual detector hits (empty until detector patterns are implemented). */
   detectorHits: PreModelPiiRedactionDetectorHit[];
   /** Informational notes (must not include raw input text). */
   notes: string[];
@@ -144,13 +147,13 @@ export interface PreModelPiiRedactionResult {
 
 export interface PreModelPiiRedactionValidationResult {
   /** Phase identifier. */
-  checkId: "8.6G-1";
+  checkId: "8.6G-2";
   allPassed: boolean;
-  skeletonOnly: true;
-  isolatedUtilityFileCreated: true;
+  inputValidationGuardOnly: true;
+  isolatedUtilityFileStillOnlyFileTouched: true;
   noImportsUsed: true;
-  exportedTypesDefined: true;
-  exportedFunctionsDefined: true;
+  exportedTypesStillDefined: true;
+  exportedFunctionsStillDefined: true;
   routePatchPerformed: false;
   routeWiringPerformed: false;
   smartTalkRouteModified: false;
@@ -158,6 +161,18 @@ export interface PreModelPiiRedactionValidationResult {
   productionDetectorPatternsImplemented: false;
   productionRedactionEngineImplemented: false;
   productionPiiUtilitySkeletonImplemented: true;
+  inputValidationGuardImplemented: true;
+  emptyInputBlockingConfirmed: true;
+  whitespaceInputBlockingConfirmed: true;
+  maxLengthBlockingConfirmed: true;
+  unsupportedLaneBlockingConfirmed: true;
+  documentLikeTextLaneGuardConfirmed: true;
+  sourceKindDoesNotAuthorizeEntitlementConfirmed: true;
+  sourceKindDoesNotBypassLaneGuardConfirmed: true;
+  safeForModelAlwaysFalseInThisPhaseConfirmed: true;
+  safeForEvidenceGatesAlwaysFalseInThisPhaseConfirmed: true;
+  safeForUserVisibleOutputAlwaysFalseConfirmed: true;
+  rawMapNotReturnedConfirmed: true;
   realDocumentInputAuthorizedNow: false;
   userVisibleOutputAuthorizedNow: false;
   publicRuntimeAuthorizedNow: false;
@@ -171,8 +186,6 @@ export interface PreModelPiiRedactionValidationResult {
   pilotAuthorizationGranted: false;
   productionAuthorizationGranted: false;
   goLiveAuthorizationGranted: false;
-  safeForUserVisibleOutputAlwaysFalseConfirmed: true;
-  rawMapNotReturnedConfirmed: true;
   noOpenAiCall: true;
   noFetchCall: true;
   noProcessEnvRead: true;
@@ -187,8 +200,7 @@ export interface PreModelPiiRedactionValidationResult {
   noModelCall: true;
   noRunSmartTalkCall: true;
   no8x3AcRerun: true;
-  td004PreModelPiiRedactionSurgicalUtilitySkeletonApplied: true;
-  td004PreModelPiiRedactionStillRequiresInputValidationGuard: true;
+  td004PreModelPiiRedactionInputValidationGuardApplied: true;
   td004PreModelPiiRedactionStillRequiresDetectorPatterns: true;
   td004PreModelPiiRedactionStillRequiresRedactionEngine: true;
   td004PreModelPiiRedactionStillRequiresSyntheticValidationAndTamperCoverage: true;
@@ -197,7 +209,7 @@ export interface PreModelPiiRedactionValidationResult {
   td004PreModelPiiRedactionStillMissingProductionRouteWiring: true;
   td004PreModelPiiRedactionStillNotUserVisible: true;
   td002EvidenceGatesNotWiredIntoProductionRunSmartTalk: true;
-  readyFor8x6G2PreModelPiiRedactionInputValidationGuard: true;
+  readyFor8x6G3PreModelPiiRedactionDetectorPatterns: true;
   readyForRealDocumentInput: false;
   readyForUserVisibleOutput: false;
   readyForPublicRuntime: false;
@@ -211,13 +223,19 @@ export interface PreModelPiiRedactionValidationResult {
 /**
  * Pre-model PII redaction entry point.
  *
- * SKELETON PHASE (8.6G-1):
- *   - No real detection patterns implemented.
- *   - No real redaction engine implemented.
- *   - safeForModel / safeForEvidenceGates / safeForUserVisibleOutput are always false.
- *   - rawMapReturned is always false.
- *   - Returns "blocked" for empty/whitespace-only text, exceeded maxLength, or unsupported lane.
- *   - Returns "needs_review" for all other inputs.
+ * 8.6G-2 adds the input validation guard layer:
+ *   - Default maxLength: 12 000 characters.
+ *   - Empty input → blocked / INPUT_EMPTY.
+ *   - Whitespace-only input → blocked / INPUT_WHITESPACE_ONLY.
+ *   - Text above maxLength → blocked / INPUT_TOO_LONG.
+ *   - Unsupported lane (runtime defensive) → blocked / UNSUPPORTED_LANE.
+ *   - Document-like text outside controlled_document_text lane →
+ *       blocked / DOCUMENT_LIKE_TEXT_REQUIRES_CONTROLLED_DOCUMENT_LANE.
+ *   - sourceKind never changes authorization.
+ *
+ * safeForModel / safeForEvidenceGates / safeForUserVisibleOutput remain always false.
+ * rawMapReturned remains always false.
+ * Detector patterns and redaction engine are not yet implemented.
  */
 export function redactPreModelPii(
   input: PreModelPiiRedactionInput
@@ -227,26 +245,51 @@ export function redactPreModelPii(
     "synthetic_governance_test",
   ];
 
-  const DEFAULT_MAX_LENGTH = 100_000;
+  // 8.6G-2: default max length is 12 000 characters.
+  const DEFAULT_MAX_LENGTH = 12_000;
 
-  // ── Guard: empty or whitespace-only text ────────────────────────────────────
-  if (!input.text || input.text.trim().length === 0) {
+  // ── Guard: empty text ────────────────────────────────────────────────────────
+  if (!input.text || input.text.length === 0) {
     return {
       status: "blocked",
       redactedText: "",
       placeholderCounts: {},
       placeholderCategories: [],
-      detectorSummary: "blocked: empty or whitespace-only input",
+      detectorSummary: "blocked: empty input",
       coverageSummary: "no coverage — input blocked before detection",
       unresolvedRiskFlags: [],
-      blockingReasons: ["input_text_empty_or_whitespace"],
+      blockingReasons: ["INPUT_EMPTY"],
       safeForModel: false,
       safeForEvidenceGates: false,
       safeForUserVisibleOutput: false,
       rawMapReturned: false,
       detectorHits: [],
       notes: [
-        "8.6G-1 skeleton: blocked due to empty or whitespace-only input",
+        "8.6G-2: blocked due to empty input",
+        "detector patterns not yet implemented",
+        "redaction engine not yet implemented",
+      ],
+    };
+  }
+
+  // ── Guard: whitespace-only text ──────────────────────────────────────────────
+  if (input.text.trim().length === 0) {
+    return {
+      status: "blocked",
+      redactedText: "",
+      placeholderCounts: {},
+      placeholderCategories: [],
+      detectorSummary: "blocked: whitespace-only input",
+      coverageSummary: "no coverage — input blocked before detection",
+      unresolvedRiskFlags: [],
+      blockingReasons: ["INPUT_WHITESPACE_ONLY"],
+      safeForModel: false,
+      safeForEvidenceGates: false,
+      safeForUserVisibleOutput: false,
+      rawMapReturned: false,
+      detectorHits: [],
+      notes: [
+        "8.6G-2: blocked due to whitespace-only input",
         "detector patterns not yet implemented",
         "redaction engine not yet implemented",
       ],
@@ -268,21 +311,21 @@ export function redactPreModelPii(
       detectorSummary: "blocked: input exceeds maxLength",
       coverageSummary: "no coverage — input blocked before detection",
       unresolvedRiskFlags: [],
-      blockingReasons: ["input_text_exceeds_max_length"],
+      blockingReasons: ["INPUT_TOO_LONG"],
       safeForModel: false,
       safeForEvidenceGates: false,
       safeForUserVisibleOutput: false,
       rawMapReturned: false,
       detectorHits: [],
       notes: [
-        "8.6G-1 skeleton: blocked due to input exceeding maxLength",
+        "8.6G-2: blocked due to input exceeding maxLength",
         "detector patterns not yet implemented",
         "redaction engine not yet implemented",
       ],
     };
   }
 
-  // ── Guard: unsupported lane ──────────────────────────────────────────────────
+  // ── Guard: unsupported lane (runtime defensive) ──────────────────────────────
   if (!ALLOWED_LANES.includes(input.lane)) {
     return {
       status: "blocked",
@@ -292,34 +335,63 @@ export function redactPreModelPii(
       detectorSummary: "blocked: unsupported lane",
       coverageSummary: "no coverage — input blocked before detection",
       unresolvedRiskFlags: [],
-      blockingReasons: ["unsupported_lane"],
+      blockingReasons: ["UNSUPPORTED_LANE"],
       safeForModel: false,
       safeForEvidenceGates: false,
       safeForUserVisibleOutput: false,
       rawMapReturned: false,
       detectorHits: [],
       notes: [
-        "8.6G-1 skeleton: blocked due to unsupported lane",
+        "8.6G-2: blocked due to unsupported lane",
         "detector patterns not yet implemented",
         "redaction engine not yet implemented",
       ],
     };
   }
 
-  // ── Skeleton result: no real detection or redaction yet ─────────────────────
+  // ── Guard: document-like text outside controlled_document_text lane ──────────
+  // sourceKind is intentionally not used for authorization — it is a label only.
+  // Any sourceKind value (including "paid", "entitled", "premium", "stripe",
+  // "checkout", "server_entitled") must not change this outcome.
+  if (
+    _isDocumentLikeText(input.text) &&
+    input.lane !== "controlled_document_text"
+  ) {
+    return {
+      status: "blocked",
+      redactedText: "",
+      placeholderCounts: {},
+      placeholderCategories: [],
+      detectorSummary: "blocked: document-like text requires controlled_document_text lane",
+      coverageSummary: "no coverage — input blocked before detection",
+      unresolvedRiskFlags: [],
+      blockingReasons: ["DOCUMENT_LIKE_TEXT_REQUIRES_CONTROLLED_DOCUMENT_LANE"],
+      safeForModel: false,
+      safeForEvidenceGates: false,
+      safeForUserVisibleOutput: false,
+      rawMapReturned: false,
+      detectorHits: [],
+      notes: [
+        "8.6G-2: blocked — document-like text must use controlled_document_text lane",
+        "detector patterns not yet implemented",
+        "redaction engine not yet implemented",
+      ],
+    };
+  }
+
+  // ── Skeleton result: input guards passed, no real detection or redaction yet ─
+  // redactedText equals input text in this phase.
+  // Must NOT be forwarded to any model, evidence gate, or user-visible output
+  // until safeForModel / safeForEvidenceGates / safeForUserVisibleOutput are true.
   return {
     status: "needs_review",
-    // In skeleton phase, redactedText equals input text.
-    // Must NOT be forwarded to any model, evidence gate, or user-visible output
-    // until safeForModel / safeForEvidenceGates / safeForUserVisibleOutput become true
-    // in a future phase after real detector patterns and redaction engine are implemented.
     redactedText: input.text,
     placeholderCounts: {},
     placeholderCategories: [],
     detectorSummary:
-      "skeleton-only: no detector patterns implemented in 8.6G-1",
+      "skeleton-only: no detector patterns implemented (8.6G-2)",
     coverageSummary:
-      "skeleton-only: no coverage analysis available in 8.6G-1",
+      "skeleton-only: no coverage analysis available (8.6G-2)",
     unresolvedRiskFlags: [
       "SKELETON_ONLY__DETECTOR_NOT_YET_IMPLEMENTED",
       "SKELETON_ONLY__REDACTION_ENGINE_NOT_YET_IMPLEMENTED",
@@ -334,29 +406,64 @@ export function redactPreModelPii(
     rawMapReturned: false,
     detectorHits: [],
     notes: [
-      "8.6G-1 skeleton phase: no real detection or redaction performed",
+      "8.6G-2: input validation guards passed; no real detection or redaction performed",
       "redactedText currently equals input text — not safe to forward",
       "detector patterns not yet implemented",
       "redaction engine not yet implemented",
-      "await 8.6G-2 input validation guard before any downstream use",
+      "await 8.6G-3 detector patterns before any downstream use",
     ],
   };
 }
 
 // ─── Internal helpers (not exported) ─────────────────────────────────────────
 
-/** Check that a validation result matches the canonical shape exactly. */
+/**
+ * Conservative document-like text heuristic.
+ * Returns true if the text contains any cue that indicates it may be a
+ * German authority or administrative document.
+ * Case-sensitive to minimise false positives on casual chat.
+ * Unexported — for internal guard use only.
+ */
+function _isDocumentLikeText(text: string): boolean {
+  const cues: string[] = [
+    "Sehr geehrte",
+    "Sehr geehrter",
+    "Aktenzeichen",
+    "Kundennummer",
+    "Versicherungsnummer",
+    "Steuernummer",
+    "Steuer-ID",
+    "Jobcenter",
+    "Familienkasse",
+    "Ausländerbehörde",
+    "Finanzamt",
+    "Bescheid",
+    "Mahnung",
+    "Rechnung",
+    "Frist",
+    "Widerspruch",
+    "Vorgangsnummer",
+  ];
+  for (let i = 0; i < cues.length; i++) {
+    if (text.indexOf(cues[i]) !== -1) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Check that a validation result matches the canonical 8.6G-2 shape exactly. */
 function _isCanonicalValidationResult(
   r: PreModelPiiRedactionValidationResult
 ): boolean {
   return (
-    r.checkId === "8.6G-1" &&
+    r.checkId === "8.6G-2" &&
     r.allPassed === true &&
-    r.skeletonOnly === true &&
-    r.isolatedUtilityFileCreated === true &&
+    r.inputValidationGuardOnly === true &&
+    r.isolatedUtilityFileStillOnlyFileTouched === true &&
     r.noImportsUsed === true &&
-    r.exportedTypesDefined === true &&
-    r.exportedFunctionsDefined === true &&
+    r.exportedTypesStillDefined === true &&
+    r.exportedFunctionsStillDefined === true &&
     r.routePatchPerformed === false &&
     r.routeWiringPerformed === false &&
     r.smartTalkRouteModified === false &&
@@ -364,6 +471,18 @@ function _isCanonicalValidationResult(
     r.productionDetectorPatternsImplemented === false &&
     r.productionRedactionEngineImplemented === false &&
     r.productionPiiUtilitySkeletonImplemented === true &&
+    r.inputValidationGuardImplemented === true &&
+    r.emptyInputBlockingConfirmed === true &&
+    r.whitespaceInputBlockingConfirmed === true &&
+    r.maxLengthBlockingConfirmed === true &&
+    r.unsupportedLaneBlockingConfirmed === true &&
+    r.documentLikeTextLaneGuardConfirmed === true &&
+    r.sourceKindDoesNotAuthorizeEntitlementConfirmed === true &&
+    r.sourceKindDoesNotBypassLaneGuardConfirmed === true &&
+    r.safeForModelAlwaysFalseInThisPhaseConfirmed === true &&
+    r.safeForEvidenceGatesAlwaysFalseInThisPhaseConfirmed === true &&
+    r.safeForUserVisibleOutputAlwaysFalseConfirmed === true &&
+    r.rawMapNotReturnedConfirmed === true &&
     r.realDocumentInputAuthorizedNow === false &&
     r.userVisibleOutputAuthorizedNow === false &&
     r.publicRuntimeAuthorizedNow === false &&
@@ -377,8 +496,6 @@ function _isCanonicalValidationResult(
     r.pilotAuthorizationGranted === false &&
     r.productionAuthorizationGranted === false &&
     r.goLiveAuthorizationGranted === false &&
-    r.safeForUserVisibleOutputAlwaysFalseConfirmed === true &&
-    r.rawMapNotReturnedConfirmed === true &&
     r.noOpenAiCall === true &&
     r.noFetchCall === true &&
     r.noProcessEnvRead === true &&
@@ -393,8 +510,7 @@ function _isCanonicalValidationResult(
     r.noModelCall === true &&
     r.noRunSmartTalkCall === true &&
     r.no8x3AcRerun === true &&
-    r.td004PreModelPiiRedactionSurgicalUtilitySkeletonApplied === true &&
-    r.td004PreModelPiiRedactionStillRequiresInputValidationGuard === true &&
+    r.td004PreModelPiiRedactionInputValidationGuardApplied === true &&
     r.td004PreModelPiiRedactionStillRequiresDetectorPatterns === true &&
     r.td004PreModelPiiRedactionStillRequiresRedactionEngine === true &&
     r.td004PreModelPiiRedactionStillRequiresSyntheticValidationAndTamperCoverage === true &&
@@ -403,7 +519,7 @@ function _isCanonicalValidationResult(
     r.td004PreModelPiiRedactionStillMissingProductionRouteWiring === true &&
     r.td004PreModelPiiRedactionStillNotUserVisible === true &&
     r.td002EvidenceGatesNotWiredIntoProductionRunSmartTalk === true &&
-    r.readyFor8x6G2PreModelPiiRedactionInputValidationGuard === true &&
+    r.readyFor8x6G3PreModelPiiRedactionDetectorPatterns === true &&
     r.readyForRealDocumentInput === false &&
     r.readyForUserVisibleOutput === false &&
     r.readyForPublicRuntime === false
@@ -417,7 +533,7 @@ function _isCanonicalValidationResult(
 function _runSyntheticCases(): { passed: boolean; failures: string[] } {
   const failures: string[] = [];
 
-  // Case 1: clean synthetic text → needs_review, not blocked
+  // Case 1: clean synthetic non-document text → needs_review, all safe flags false
   const case1 = redactPreModelPii({
     text: "Synthetic test input without personal data.",
     lane: "synthetic_governance_test",
@@ -439,7 +555,7 @@ function _runSyntheticCases(): { passed: boolean; failures: string[] } {
     failures.push("case1: rawMapReturned must be false");
   }
 
-  // Case 2: empty input → blocked
+  // Case 2: empty input → blocked / INPUT_EMPTY
   const case2 = redactPreModelPii({
     text: "",
     lane: "synthetic_governance_test",
@@ -448,8 +564,11 @@ function _runSyntheticCases(): { passed: boolean; failures: string[] } {
   if (case2.status !== "blocked") {
     failures.push("case2: empty input should return blocked");
   }
+  if (!case2.blockingReasons.includes("INPUT_EMPTY")) {
+    failures.push("case2: blockingReasons must include INPUT_EMPTY");
+  }
 
-  // Case 3: whitespace-only input → blocked
+  // Case 3: whitespace-only input → blocked / INPUT_WHITESPACE_ONLY
   const case3 = redactPreModelPii({
     text: "   \t\n  ",
     lane: "synthetic_governance_test",
@@ -458,8 +577,11 @@ function _runSyntheticCases(): { passed: boolean; failures: string[] } {
   if (case3.status !== "blocked") {
     failures.push("case3: whitespace-only input should return blocked");
   }
+  if (!case3.blockingReasons.includes("INPUT_WHITESPACE_ONLY")) {
+    failures.push("case3: blockingReasons must include INPUT_WHITESPACE_ONLY");
+  }
 
-  // Case 4: maxLength exceeded → blocked
+  // Case 4: maxLength exceeded → blocked / INPUT_TOO_LONG
   const case4 = redactPreModelPii({
     text: "A".repeat(51),
     lane: "synthetic_governance_test",
@@ -469,8 +591,11 @@ function _runSyntheticCases(): { passed: boolean; failures: string[] } {
   if (case4.status !== "blocked") {
     failures.push("case4: maxLength exceeded should return blocked");
   }
+  if (!case4.blockingReasons.includes("INPUT_TOO_LONG")) {
+    failures.push("case4: blockingReasons must include INPUT_TOO_LONG");
+  }
 
-  // Case 5: unsupported lane → blocked
+  // Case 5: unsupported lane → blocked / UNSUPPORTED_LANE
   const case5 = redactPreModelPii({
     text: "Synthetic text for lane guard test.",
     lane: "unsupported_lane_xyz" as PreModelPiiRedactionLane,
@@ -479,26 +604,143 @@ function _runSyntheticCases(): { passed: boolean; failures: string[] } {
   if (case5.status !== "blocked") {
     failures.push("case5: unsupported lane should return blocked");
   }
+  if (!case5.blockingReasons.includes("UNSUPPORTED_LANE")) {
+    failures.push("case5: blockingReasons must include UNSUPPORTED_LANE");
+  }
 
-  // Case 6: safeForUserVisibleOutput always false (needs_review path)
+  // Case 6: document-like text in synthetic_governance_test lane → blocked
   const case6 = redactPreModelPii({
-    text: "Another synthetic clean input.",
+    text: "Sehr geehrte Frau Mustermann, Ihr Aktenzeichen lautet 12345.",
+    lane: "synthetic_governance_test",
+    sourceKind: "synthetic_test",
+  });
+  if (case6.status !== "blocked") {
+    failures.push(
+      "case6: document-like text in synthetic_governance_test should return blocked"
+    );
+  }
+  if (
+    !case6.blockingReasons.includes(
+      "DOCUMENT_LIKE_TEXT_REQUIRES_CONTROLLED_DOCUMENT_LANE"
+    )
+  ) {
+    failures.push(
+      "case6: blockingReasons must include DOCUMENT_LIKE_TEXT_REQUIRES_CONTROLLED_DOCUMENT_LANE"
+    );
+  }
+
+  // Case 7: document-like text in controlled_document_text lane → NOT blocked by lane guard
+  const case7 = redactPreModelPii({
+    text: "Sehr geehrte Frau Mustermann, Ihr Aktenzeichen lautet 12345.",
     lane: "controlled_document_text",
     sourceKind: "synthetic_test",
   });
-  if (case6.safeForUserVisibleOutput !== false) {
-    failures.push("case6: safeForUserVisibleOutput must always be false");
+  if (case7.status === "blocked") {
+    failures.push(
+      "case7: document-like text in controlled_document_text lane must not be blocked by lane guard"
+    );
+  }
+  if (case7.status !== "needs_review") {
+    failures.push(
+      "case7: document-like text in controlled_document_text lane should return needs_review"
+    );
+  }
+  // Still not safe for model/evidence/user-visible
+  if (case7.safeForModel !== false) {
+    failures.push("case7: safeForModel must be false");
+  }
+  if (case7.safeForEvidenceGates !== false) {
+    failures.push("case7: safeForEvidenceGates must be false");
+  }
+  if (case7.safeForUserVisibleOutput !== false) {
+    failures.push("case7: safeForUserVisibleOutput must be false");
   }
 
-  // Case 7: rawMapReturned always false (needs_review path)
-  if (case6.rawMapReturned !== false) {
-    failures.push("case7: rawMapReturned must always be false");
+  // Cases 8–11: sourceKind spoofs must not change authorization
+  const spoofedSourceKinds = ["paid", "entitled", "stripe", "server_entitled"];
+  for (let i = 0; i < spoofedSourceKinds.length; i++) {
+    const sk = spoofedSourceKinds[i];
+    const spoofResult = redactPreModelPii({
+      text: "Synthetic non-document text for sourceKind spoof test.",
+      lane: "synthetic_governance_test",
+      sourceKind: sk,
+    });
+    if (spoofResult.safeForModel !== false) {
+      failures.push(
+        `sourceKind spoof "${sk}": safeForModel must remain false`
+      );
+    }
+    if (spoofResult.safeForEvidenceGates !== false) {
+      failures.push(
+        `sourceKind spoof "${sk}": safeForEvidenceGates must remain false`
+      );
+    }
+    if (spoofResult.safeForUserVisibleOutput !== false) {
+      failures.push(
+        `sourceKind spoof "${sk}": safeForUserVisibleOutput must remain false`
+      );
+    }
+    if (spoofResult.rawMapReturned !== false) {
+      failures.push(
+        `sourceKind spoof "${sk}": rawMapReturned must remain false`
+      );
+    }
+  }
+
+  // Case 12: document-like text + sourceKind "paid" in synthetic_governance_test lane → still blocked
+  const case12 = redactPreModelPii({
+    text: "Sehr geehrte Frau Mustermann, Bescheid über Ihre Rechnung.",
+    lane: "synthetic_governance_test",
+    sourceKind: "paid",
+  });
+  if (case12.status !== "blocked") {
+    failures.push(
+      "case12: sourceKind paid must not bypass document-like lane guard"
+    );
+  }
+
+  // Case 13: safeForUserVisibleOutput always false on needs_review path
+  const case13 = redactPreModelPii({
+    text: "Another synthetic clean non-document input.",
+    lane: "controlled_document_text",
+    sourceKind: "synthetic_test",
+  });
+  if (case13.safeForUserVisibleOutput !== false) {
+    failures.push("case13: safeForUserVisibleOutput must always be false");
+  }
+
+  // Case 14: rawMapReturned always false on needs_review path
+  if (case13.rawMapReturned !== false) {
+    failures.push("case14: rawMapReturned must always be false");
+  }
+
+  // Case 15: default maxLength 12 000 — text at exactly 12 000 chars passes
+  const case15 = redactPreModelPii({
+    text: "X".repeat(12_000),
+    lane: "synthetic_governance_test",
+    sourceKind: "synthetic_test",
+  });
+  if (case15.status !== "needs_review") {
+    failures.push("case15: text at exactly 12000 chars should not be blocked by default maxLength");
+  }
+
+  // Case 16: default maxLength 12 000 — text at 12 001 chars is blocked
+  const case16 = redactPreModelPii({
+    text: "X".repeat(12_001),
+    lane: "synthetic_governance_test",
+    sourceKind: "synthetic_test",
+  });
+  if (case16.status !== "blocked") {
+    failures.push("case16: text at 12001 chars should be blocked by default maxLength");
+  }
+  if (!case16.blockingReasons.includes("INPUT_TOO_LONG")) {
+    failures.push("case16: blockingReasons must include INPUT_TOO_LONG");
   }
 
   return { passed: failures.length === 0, failures };
 }
 
-/** Build the canonical validation result (allPassed determined at call time). */
+/** Build the canonical 8.6G-2 validation result. */
 function _buildCanonicalResult(
   allPassed: boolean,
   tamperCasesRejected: number,
@@ -506,13 +748,13 @@ function _buildCanonicalResult(
   extraNotes: string[]
 ): PreModelPiiRedactionValidationResult {
   return {
-    checkId: "8.6G-1",
+    checkId: "8.6G-2",
     allPassed,
-    skeletonOnly: true,
-    isolatedUtilityFileCreated: true,
+    inputValidationGuardOnly: true,
+    isolatedUtilityFileStillOnlyFileTouched: true,
     noImportsUsed: true,
-    exportedTypesDefined: true,
-    exportedFunctionsDefined: true,
+    exportedTypesStillDefined: true,
+    exportedFunctionsStillDefined: true,
     routePatchPerformed: false,
     routeWiringPerformed: false,
     smartTalkRouteModified: false,
@@ -520,6 +762,18 @@ function _buildCanonicalResult(
     productionDetectorPatternsImplemented: false,
     productionRedactionEngineImplemented: false,
     productionPiiUtilitySkeletonImplemented: true,
+    inputValidationGuardImplemented: true,
+    emptyInputBlockingConfirmed: true,
+    whitespaceInputBlockingConfirmed: true,
+    maxLengthBlockingConfirmed: true,
+    unsupportedLaneBlockingConfirmed: true,
+    documentLikeTextLaneGuardConfirmed: true,
+    sourceKindDoesNotAuthorizeEntitlementConfirmed: true,
+    sourceKindDoesNotBypassLaneGuardConfirmed: true,
+    safeForModelAlwaysFalseInThisPhaseConfirmed: true,
+    safeForEvidenceGatesAlwaysFalseInThisPhaseConfirmed: true,
+    safeForUserVisibleOutputAlwaysFalseConfirmed: true,
+    rawMapNotReturnedConfirmed: true,
     realDocumentInputAuthorizedNow: false,
     userVisibleOutputAuthorizedNow: false,
     publicRuntimeAuthorizedNow: false,
@@ -533,8 +787,6 @@ function _buildCanonicalResult(
     pilotAuthorizationGranted: false,
     productionAuthorizationGranted: false,
     goLiveAuthorizationGranted: false,
-    safeForUserVisibleOutputAlwaysFalseConfirmed: true,
-    rawMapNotReturnedConfirmed: true,
     noOpenAiCall: true,
     noFetchCall: true,
     noProcessEnvRead: true,
@@ -549,8 +801,7 @@ function _buildCanonicalResult(
     noModelCall: true,
     noRunSmartTalkCall: true,
     no8x3AcRerun: true,
-    td004PreModelPiiRedactionSurgicalUtilitySkeletonApplied: true,
-    td004PreModelPiiRedactionStillRequiresInputValidationGuard: true,
+    td004PreModelPiiRedactionInputValidationGuardApplied: true,
     td004PreModelPiiRedactionStillRequiresDetectorPatterns: true,
     td004PreModelPiiRedactionStillRequiresRedactionEngine: true,
     td004PreModelPiiRedactionStillRequiresSyntheticValidationAndTamperCoverage: true,
@@ -559,7 +810,7 @@ function _buildCanonicalResult(
     td004PreModelPiiRedactionStillMissingProductionRouteWiring: true,
     td004PreModelPiiRedactionStillNotUserVisible: true,
     td002EvidenceGatesNotWiredIntoProductionRunSmartTalk: true,
-    readyFor8x6G2PreModelPiiRedactionInputValidationGuard: true,
+    readyFor8x6G3PreModelPiiRedactionDetectorPatterns: true,
     readyForRealDocumentInput: false,
     readyForUserVisibleOutput: false,
     readyForPublicRuntime: false,
@@ -581,13 +832,13 @@ interface TamperCase {
 }
 
 const TAMPER_CASES: TamperCase[] = [
-  { label: "checkId wrong", mutate: (r) => ({ ...r, checkId: "8.6G-0" as "8.6G-1" }) },
+  { label: "checkId wrong", mutate: (r) => ({ ...r, checkId: "8.6G-1" as "8.6G-2" }) },
   { label: "allPassed false", mutate: (r) => ({ ...r, allPassed: false }) },
-  { label: "skeletonOnly false", mutate: (r) => ({ ...r, skeletonOnly: false as true }) },
-  { label: "isolatedUtilityFileCreated false", mutate: (r) => ({ ...r, isolatedUtilityFileCreated: false as true }) },
+  { label: "inputValidationGuardOnly false", mutate: (r) => ({ ...r, inputValidationGuardOnly: false as true }) },
+  { label: "isolatedUtilityFileStillOnlyFileTouched false", mutate: (r) => ({ ...r, isolatedUtilityFileStillOnlyFileTouched: false as true }) },
   { label: "noImportsUsed false", mutate: (r) => ({ ...r, noImportsUsed: false as true }) },
-  { label: "exportedTypesDefined false", mutate: (r) => ({ ...r, exportedTypesDefined: false as true }) },
-  { label: "exportedFunctionsDefined false", mutate: (r) => ({ ...r, exportedFunctionsDefined: false as true }) },
+  { label: "exportedTypesStillDefined false", mutate: (r) => ({ ...r, exportedTypesStillDefined: false as true }) },
+  { label: "exportedFunctionsStillDefined false", mutate: (r) => ({ ...r, exportedFunctionsStillDefined: false as true }) },
   { label: "routePatchPerformed true", mutate: (r) => ({ ...r, routePatchPerformed: true as false }) },
   { label: "routeWiringPerformed true", mutate: (r) => ({ ...r, routeWiringPerformed: true as false }) },
   { label: "smartTalkRouteModified true", mutate: (r) => ({ ...r, smartTalkRouteModified: true as false }) },
@@ -595,6 +846,18 @@ const TAMPER_CASES: TamperCase[] = [
   { label: "productionDetectorPatternsImplemented true", mutate: (r) => ({ ...r, productionDetectorPatternsImplemented: true as false }) },
   { label: "productionRedactionEngineImplemented true", mutate: (r) => ({ ...r, productionRedactionEngineImplemented: true as false }) },
   { label: "productionPiiUtilitySkeletonImplemented false", mutate: (r) => ({ ...r, productionPiiUtilitySkeletonImplemented: false as true }) },
+  { label: "inputValidationGuardImplemented false", mutate: (r) => ({ ...r, inputValidationGuardImplemented: false as true }) },
+  { label: "emptyInputBlockingConfirmed false", mutate: (r) => ({ ...r, emptyInputBlockingConfirmed: false as true }) },
+  { label: "whitespaceInputBlockingConfirmed false", mutate: (r) => ({ ...r, whitespaceInputBlockingConfirmed: false as true }) },
+  { label: "maxLengthBlockingConfirmed false", mutate: (r) => ({ ...r, maxLengthBlockingConfirmed: false as true }) },
+  { label: "unsupportedLaneBlockingConfirmed false", mutate: (r) => ({ ...r, unsupportedLaneBlockingConfirmed: false as true }) },
+  { label: "documentLikeTextLaneGuardConfirmed false", mutate: (r) => ({ ...r, documentLikeTextLaneGuardConfirmed: false as true }) },
+  { label: "sourceKindDoesNotAuthorizeEntitlementConfirmed false", mutate: (r) => ({ ...r, sourceKindDoesNotAuthorizeEntitlementConfirmed: false as true }) },
+  { label: "sourceKindDoesNotBypassLaneGuardConfirmed false", mutate: (r) => ({ ...r, sourceKindDoesNotBypassLaneGuardConfirmed: false as true }) },
+  { label: "safeForModelAlwaysFalseInThisPhaseConfirmed false", mutate: (r) => ({ ...r, safeForModelAlwaysFalseInThisPhaseConfirmed: false as true }) },
+  { label: "safeForEvidenceGatesAlwaysFalseInThisPhaseConfirmed false", mutate: (r) => ({ ...r, safeForEvidenceGatesAlwaysFalseInThisPhaseConfirmed: false as true }) },
+  { label: "safeForUserVisibleOutputAlwaysFalseConfirmed false", mutate: (r) => ({ ...r, safeForUserVisibleOutputAlwaysFalseConfirmed: false as true }) },
+  { label: "rawMapNotReturnedConfirmed false", mutate: (r) => ({ ...r, rawMapNotReturnedConfirmed: false as true }) },
   { label: "realDocumentInputAuthorizedNow true", mutate: (r) => ({ ...r, realDocumentInputAuthorizedNow: true as false }) },
   { label: "userVisibleOutputAuthorizedNow true", mutate: (r) => ({ ...r, userVisibleOutputAuthorizedNow: true as false }) },
   { label: "publicRuntimeAuthorizedNow true", mutate: (r) => ({ ...r, publicRuntimeAuthorizedNow: true as false }) },
@@ -608,8 +871,6 @@ const TAMPER_CASES: TamperCase[] = [
   { label: "pilotAuthorizationGranted true", mutate: (r) => ({ ...r, pilotAuthorizationGranted: true as false }) },
   { label: "productionAuthorizationGranted true", mutate: (r) => ({ ...r, productionAuthorizationGranted: true as false }) },
   { label: "goLiveAuthorizationGranted true", mutate: (r) => ({ ...r, goLiveAuthorizationGranted: true as false }) },
-  { label: "safeForUserVisibleOutputAlwaysFalseConfirmed false", mutate: (r) => ({ ...r, safeForUserVisibleOutputAlwaysFalseConfirmed: false as true }) },
-  { label: "rawMapNotReturnedConfirmed false", mutate: (r) => ({ ...r, rawMapNotReturnedConfirmed: false as true }) },
   { label: "noOpenAiCall false", mutate: (r) => ({ ...r, noOpenAiCall: false as true }) },
   { label: "noFetchCall false", mutate: (r) => ({ ...r, noFetchCall: false as true }) },
   { label: "noProcessEnvRead false", mutate: (r) => ({ ...r, noProcessEnvRead: false as true }) },
@@ -624,8 +885,7 @@ const TAMPER_CASES: TamperCase[] = [
   { label: "noModelCall false", mutate: (r) => ({ ...r, noModelCall: false as true }) },
   { label: "noRunSmartTalkCall false", mutate: (r) => ({ ...r, noRunSmartTalkCall: false as true }) },
   { label: "no8x3AcRerun false", mutate: (r) => ({ ...r, no8x3AcRerun: false as true }) },
-  { label: "td004PreModelPiiRedactionSurgicalUtilitySkeletonApplied false", mutate: (r) => ({ ...r, td004PreModelPiiRedactionSurgicalUtilitySkeletonApplied: false as true }) },
-  { label: "td004PreModelPiiRedactionStillRequiresInputValidationGuard false", mutate: (r) => ({ ...r, td004PreModelPiiRedactionStillRequiresInputValidationGuard: false as true }) },
+  { label: "td004PreModelPiiRedactionInputValidationGuardApplied false", mutate: (r) => ({ ...r, td004PreModelPiiRedactionInputValidationGuardApplied: false as true }) },
   { label: "td004PreModelPiiRedactionStillRequiresDetectorPatterns false", mutate: (r) => ({ ...r, td004PreModelPiiRedactionStillRequiresDetectorPatterns: false as true }) },
   { label: "td004PreModelPiiRedactionStillRequiresRedactionEngine false", mutate: (r) => ({ ...r, td004PreModelPiiRedactionStillRequiresRedactionEngine: false as true }) },
   { label: "td004PreModelPiiRedactionStillRequiresSyntheticValidationAndTamperCoverage false", mutate: (r) => ({ ...r, td004PreModelPiiRedactionStillRequiresSyntheticValidationAndTamperCoverage: false as true }) },
@@ -634,16 +894,17 @@ const TAMPER_CASES: TamperCase[] = [
   { label: "td004PreModelPiiRedactionStillMissingProductionRouteWiring false", mutate: (r) => ({ ...r, td004PreModelPiiRedactionStillMissingProductionRouteWiring: false as true }) },
   { label: "td004PreModelPiiRedactionStillNotUserVisible false", mutate: (r) => ({ ...r, td004PreModelPiiRedactionStillNotUserVisible: false as true }) },
   { label: "td002EvidenceGatesNotWiredIntoProductionRunSmartTalk false", mutate: (r) => ({ ...r, td002EvidenceGatesNotWiredIntoProductionRunSmartTalk: false as true }) },
-  { label: "readyFor8x6G2PreModelPiiRedactionInputValidationGuard false", mutate: (r) => ({ ...r, readyFor8x6G2PreModelPiiRedactionInputValidationGuard: false as true }) },
+  { label: "readyFor8x6G3PreModelPiiRedactionDetectorPatterns false", mutate: (r) => ({ ...r, readyFor8x6G3PreModelPiiRedactionDetectorPatterns: false as true }) },
   { label: "readyForRealDocumentInput true", mutate: (r) => ({ ...r, readyForRealDocumentInput: true as false }) },
   { label: "readyForUserVisibleOutput true", mutate: (r) => ({ ...r, readyForUserVisibleOutput: true as false }) },
   { label: "readyForPublicRuntime true", mutate: (r) => ({ ...r, readyForPublicRuntime: true as false }) },
 ];
 
 /**
- * Self-contained surgical utility patch validation.
+ * Self-contained surgical utility patch validation for 8.6G-2.
  * Runs synthetic behavioral cases and tamper resistance checks.
  * Uses no imports, calls no routes, processes no real documents.
+ * Does not import or call 8.6F or any prior governance file.
  */
 export function runPreModelPiiRedactionSurgicalUtilityPatchValidation(): PreModelPiiRedactionValidationResult {
   const allFailures: string[] = [];
@@ -676,17 +937,14 @@ export function runPreModelPiiRedactionSurgicalUtilityPatchValidation(): PreMode
   let tamperCasesRejected = 0;
   const tamperFailures: string[] = [];
 
-  for (const tc of TAMPER_CASES) {
+  for (let i = 0; i < TAMPER_CASES.length; i++) {
+    const tc = TAMPER_CASES[i];
     const tampered = tc.mutate(provisionalCanonical);
     const tamperPassed = _isCanonicalValidationResult(tampered);
     if (!tamperPassed) {
-      // Tamper was correctly rejected
       tamperCasesRejected++;
     } else {
-      // Tamper was NOT rejected — this is a failure
-      tamperFailures.push(
-        `tamper case not rejected: "${tc.label}"`
-      );
+      tamperFailures.push(`tamper case not rejected: "${tc.label}"`);
     }
   }
 
@@ -699,7 +957,7 @@ export function runPreModelPiiRedactionSurgicalUtilityPatchValidation(): PreMode
     allFailures.length === 0 && tamperCasesRejected === tamperCaseCount;
 
   const notes: string[] = [
-    "8.6G-1 skeleton phase validation complete",
+    "8.6G-2 input validation guard phase validation complete",
     `synthetic cases: ${syntheticPassed ? "all passed" : `${syntheticFailures.length} failed`}`,
     `tamper cases: ${tamperCasesRejected}/${tamperCaseCount} correctly rejected`,
     "no real document input was processed",
@@ -707,7 +965,10 @@ export function runPreModelPiiRedactionSurgicalUtilityPatchValidation(): PreMode
     "no model call, prompt build, or runSmartTalk was executed",
     "safeForModel / safeForEvidenceGates / safeForUserVisibleOutput confirmed always false",
     "rawMapReturned confirmed always false",
-    "readyFor8x6G2PreModelPiiRedactionInputValidationGuard: readiness signal only — not route wiring, not real-document authorization",
+    "sourceKind spoof cases confirmed: paid / entitled / stripe / server_entitled do not change authorization",
+    "document-like text lane guard confirmed: requires controlled_document_text lane",
+    "default maxLength confirmed: 12000 characters",
+    "readyFor8x6G3PreModelPiiRedactionDetectorPatterns: readiness signal only — not route wiring, not real-document authorization",
     ...(allFailures.length > 0
       ? [`FAILURES (${allFailures.length}):`, ...allFailures]
       : []),
