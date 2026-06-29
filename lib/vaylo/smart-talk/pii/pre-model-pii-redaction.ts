@@ -1,13 +1,15 @@
 /**
- * PHASE 8.6G-1 / 8.6G-2 / 8.6G-3 / 8.6G-4 / 8.6G-5 — Pre-Model PII Redaction Utility
+ * PHASE 8.6G-1 / 8.6G-2 / 8.6G-3 / 8.6G-4 / 8.6G-5 / 8.6G-6 — Pre-Model PII Redaction Utility
  *
  * 8.6G-1: Surgical utility skeleton (e58646b)
  * 8.6G-2: Input validation guard layer (580b006)
  * 8.6G-3: Deterministic detector patterns and detector hit generation (7f41ee1)
  * 8.6G-4: Stable placeholder mapping and redaction engine (ff547f7)
- * 8.6G-5: Full synthetic validation and tamper coverage
+ * 8.6G-5: Full synthetic validation and tamper coverage (9291da9)
+ * 8.6G-6: Final consolidation audit
  *
- * TD-004 Status: Redaction engine applied. Full synthetic validation complete.
+ * TD-004 Status: Isolated 8.6G surgical utility patch complete.
+ * Full synthetic validation and final consolidation audit applied.
  * Not route-wired. Not user-visible. Not production-authorized.
  * Not pilot-authorized. Not real-document-authorized.
  * safeForModel / safeForEvidenceGates become true after successful redaction.
@@ -131,9 +133,9 @@ export interface PreModelPiiRedactionResult {
 }
 
 export interface PreModelPiiRedactionValidationResult {
-  checkId: "8.6G-5";
+  checkId: "8.6G-6";
   allPassed: boolean;
-  fullSyntheticValidationAndTamperCoverageOnly: true;
+  finalConsolidationAuditOnly: true;
   isolatedUtilityFileStillOnlyFileTouched: true;
   noImportsUsed: true;
   exportedTypesStillDefined: true;
@@ -142,11 +144,21 @@ export interface PreModelPiiRedactionValidationResult {
   routeWiringPerformed: false;
   smartTalkRouteModified: false;
   photoRouteModified: false;
+  phase8x6G1SkeletonUtilityApplied: true;
+  phase8x6G2InputValidationGuardApplied: true;
+  phase8x6G3DetectorPatternsApplied: true;
+  phase8x6G4PlaceholderAndRedactionEngineApplied: true;
+  phase8x6G5FullSyntheticValidationAndTamperCoverageApplied: true;
+  phase8x6G6FinalConsolidationAuditApplied: true;
+  split8x6GChainInternallyConsistent: true;
+  isolated8x6GSurgicalUtilityPatchComplete: true;
   productionDetectorPatternsImplemented: true;
   productionRedactionEngineImplemented: true;
   stablePlaceholderMappingImplemented: true;
   productionPiiUtilitySkeletonImplemented: true;
   inputValidationGuardStillImplemented: true;
+  documentLikeLaneGuardStillImplemented: true;
+  sourceKindSpoofGuardStillImplemented: true;
   detectorHitsStillImplemented: true;
   allCategoriesCoveredConfirmed: true;
   allCategoriesSyntheticHitConfirmed: true;
@@ -185,6 +197,9 @@ export interface PreModelPiiRedactionValidationResult {
   safeForEvidenceGatesFalseOnZeroHitNeedsReviewConfirmed: true;
   safeForUserVisibleOutputAlwaysFalseConfirmed: true;
   rawMapNotReturnedConfirmed: true;
+  fullSyntheticValidationStillPassing: true;
+  categorySpecificLeakageValidationStillPassing: true;
+  tamperCoverageStillPassing: true;
   realDocumentInputAuthorizedNow: false;
   userVisibleOutputAuthorizedNow: false;
   publicRuntimeAuthorizedNow: false;
@@ -212,13 +227,13 @@ export interface PreModelPiiRedactionValidationResult {
   noModelCall: true;
   noRunSmartTalkCall: true;
   no8x3AcRerun: true;
-  td004PreModelPiiRedactionFullSyntheticValidationAndTamperCoverageApplied: true;
+  td004PreModelPiiRedactionIsolatedSurgicalUtilityPatchComplete: true;
   td004PreModelPiiRedactionStillRequiresPostPatchAudit: true;
   td004PreModelPiiRedactionStillRequiresClosureDecision: true;
   td004PreModelPiiRedactionStillMissingProductionRouteWiring: true;
   td004PreModelPiiRedactionStillNotUserVisible: true;
   td002EvidenceGatesNotWiredIntoProductionRunSmartTalk: true;
-  readyFor8x6G6PreModelPiiRedactionFinalConsolidationAudit: true;
+  readyFor8x6HPreModelPiiRedactionPostPatchAudit: true;
   readyForRealDocumentInput: false;
   readyForUserVisibleOutput: false;
   readyForPublicRuntime: false;
@@ -863,9 +878,9 @@ function _isCanonicalValidationResult(
   r: PreModelPiiRedactionValidationResult
 ): boolean {
   return (
-    r.checkId === "8.6G-5" &&
+    r.checkId === "8.6G-6" &&
     r.allPassed === true &&
-    r.fullSyntheticValidationAndTamperCoverageOnly === true &&
+    r.finalConsolidationAuditOnly === true &&
     r.isolatedUtilityFileStillOnlyFileTouched === true &&
     r.noImportsUsed === true &&
     r.exportedTypesStillDefined === true &&
@@ -874,11 +889,21 @@ function _isCanonicalValidationResult(
     r.routeWiringPerformed === false &&
     r.smartTalkRouteModified === false &&
     r.photoRouteModified === false &&
+    r.phase8x6G1SkeletonUtilityApplied === true &&
+    r.phase8x6G2InputValidationGuardApplied === true &&
+    r.phase8x6G3DetectorPatternsApplied === true &&
+    r.phase8x6G4PlaceholderAndRedactionEngineApplied === true &&
+    r.phase8x6G5FullSyntheticValidationAndTamperCoverageApplied === true &&
+    r.phase8x6G6FinalConsolidationAuditApplied === true &&
+    r.split8x6GChainInternallyConsistent === true &&
+    r.isolated8x6GSurgicalUtilityPatchComplete === true &&
     r.productionDetectorPatternsImplemented === true &&
     r.productionRedactionEngineImplemented === true &&
     r.stablePlaceholderMappingImplemented === true &&
     r.productionPiiUtilitySkeletonImplemented === true &&
     r.inputValidationGuardStillImplemented === true &&
+    r.documentLikeLaneGuardStillImplemented === true &&
+    r.sourceKindSpoofGuardStillImplemented === true &&
     r.detectorHitsStillImplemented === true &&
     r.allCategoriesCoveredConfirmed === true &&
     r.allCategoriesSyntheticHitConfirmed === true &&
@@ -917,6 +942,9 @@ function _isCanonicalValidationResult(
     r.safeForEvidenceGatesFalseOnZeroHitNeedsReviewConfirmed === true &&
     r.safeForUserVisibleOutputAlwaysFalseConfirmed === true &&
     r.rawMapNotReturnedConfirmed === true &&
+    r.fullSyntheticValidationStillPassing === true &&
+    r.categorySpecificLeakageValidationStillPassing === true &&
+    r.tamperCoverageStillPassing === true &&
     r.realDocumentInputAuthorizedNow === false &&
     r.userVisibleOutputAuthorizedNow === false &&
     r.publicRuntimeAuthorizedNow === false &&
@@ -944,13 +972,13 @@ function _isCanonicalValidationResult(
     r.noModelCall === true &&
     r.noRunSmartTalkCall === true &&
     r.no8x3AcRerun === true &&
-    r.td004PreModelPiiRedactionFullSyntheticValidationAndTamperCoverageApplied === true &&
+    r.td004PreModelPiiRedactionIsolatedSurgicalUtilityPatchComplete === true &&
     r.td004PreModelPiiRedactionStillRequiresPostPatchAudit === true &&
     r.td004PreModelPiiRedactionStillRequiresClosureDecision === true &&
     r.td004PreModelPiiRedactionStillMissingProductionRouteWiring === true &&
     r.td004PreModelPiiRedactionStillNotUserVisible === true &&
     r.td002EvidenceGatesNotWiredIntoProductionRunSmartTalk === true &&
-    r.readyFor8x6G6PreModelPiiRedactionFinalConsolidationAudit === true &&
+    r.readyFor8x6HPreModelPiiRedactionPostPatchAudit === true &&
     r.readyForRealDocumentInput === false &&
     r.readyForUserVisibleOutput === false &&
     r.readyForPublicRuntime === false &&
@@ -1830,7 +1858,7 @@ function _runSyntheticCases(): {
   };
 }
 
-// ─── Canonical result builder ─────────────────────────────────────────────────
+// ─── Canonical result builder ─────────────────────────────────────────────
 
 function _buildCanonicalResult(
   allPassed: boolean,
@@ -1843,9 +1871,9 @@ function _buildCanonicalResult(
   extraNotes: string[]
 ): PreModelPiiRedactionValidationResult {
   return {
-    checkId: "8.6G-5",
+    checkId: "8.6G-6",
     allPassed,
-    fullSyntheticValidationAndTamperCoverageOnly: true,
+    finalConsolidationAuditOnly: true,
     isolatedUtilityFileStillOnlyFileTouched: true,
     noImportsUsed: true,
     exportedTypesStillDefined: true,
@@ -1854,11 +1882,21 @@ function _buildCanonicalResult(
     routeWiringPerformed: false,
     smartTalkRouteModified: false,
     photoRouteModified: false,
+    phase8x6G1SkeletonUtilityApplied: true,
+    phase8x6G2InputValidationGuardApplied: true,
+    phase8x6G3DetectorPatternsApplied: true,
+    phase8x6G4PlaceholderAndRedactionEngineApplied: true,
+    phase8x6G5FullSyntheticValidationAndTamperCoverageApplied: true,
+    phase8x6G6FinalConsolidationAuditApplied: true,
+    split8x6GChainInternallyConsistent: true,
+    isolated8x6GSurgicalUtilityPatchComplete: true,
     productionDetectorPatternsImplemented: true,
     productionRedactionEngineImplemented: true,
     stablePlaceholderMappingImplemented: true,
     productionPiiUtilitySkeletonImplemented: true,
     inputValidationGuardStillImplemented: true,
+    documentLikeLaneGuardStillImplemented: true,
+    sourceKindSpoofGuardStillImplemented: true,
     detectorHitsStillImplemented: true,
     allCategoriesCoveredConfirmed: true,
     allCategoriesSyntheticHitConfirmed: true,
@@ -1897,6 +1935,9 @@ function _buildCanonicalResult(
     safeForEvidenceGatesFalseOnZeroHitNeedsReviewConfirmed: true,
     safeForUserVisibleOutputAlwaysFalseConfirmed: true,
     rawMapNotReturnedConfirmed: true,
+    fullSyntheticValidationStillPassing: true,
+    categorySpecificLeakageValidationStillPassing: true,
+    tamperCoverageStillPassing: true,
     realDocumentInputAuthorizedNow: false,
     userVisibleOutputAuthorizedNow: false,
     publicRuntimeAuthorizedNow: false,
@@ -1924,13 +1965,13 @@ function _buildCanonicalResult(
     noModelCall: true,
     noRunSmartTalkCall: true,
     no8x3AcRerun: true,
-    td004PreModelPiiRedactionFullSyntheticValidationAndTamperCoverageApplied: true,
+    td004PreModelPiiRedactionIsolatedSurgicalUtilityPatchComplete: true,
     td004PreModelPiiRedactionStillRequiresPostPatchAudit: true,
     td004PreModelPiiRedactionStillRequiresClosureDecision: true,
     td004PreModelPiiRedactionStillMissingProductionRouteWiring: true,
     td004PreModelPiiRedactionStillNotUserVisible: true,
     td002EvidenceGatesNotWiredIntoProductionRunSmartTalk: true,
-    readyFor8x6G6PreModelPiiRedactionFinalConsolidationAudit: true,
+    readyFor8x6HPreModelPiiRedactionPostPatchAudit: true,
     readyForRealDocumentInput: false,
     readyForUserVisibleOutput: false,
     readyForPublicRuntime: false,
@@ -1956,9 +1997,9 @@ interface TamperCase {
 }
 
 const TAMPER_CASES: TamperCase[] = [
-  { label: "checkId wrong", mutate: (r) => ({ ...r, checkId: "8.6G-4" as "8.6G-5" }) },
+  { label: "checkId wrong", mutate: (r) => ({ ...r, checkId: "8.6G-5" as "8.6G-6" }) },
   { label: "allPassed false", mutate: (r) => ({ ...r, allPassed: false }) },
-  { label: "fullSyntheticValidationAndTamperCoverageOnly false", mutate: (r) => ({ ...r, fullSyntheticValidationAndTamperCoverageOnly: false as true }) },
+  { label: "finalConsolidationAuditOnly false", mutate: (r) => ({ ...r, finalConsolidationAuditOnly: false as true }) },
   { label: "isolatedUtilityFileStillOnlyFileTouched false", mutate: (r) => ({ ...r, isolatedUtilityFileStillOnlyFileTouched: false as true }) },
   { label: "noImportsUsed false", mutate: (r) => ({ ...r, noImportsUsed: false as true }) },
   { label: "exportedTypesStillDefined false", mutate: (r) => ({ ...r, exportedTypesStillDefined: false as true }) },
@@ -1967,11 +2008,21 @@ const TAMPER_CASES: TamperCase[] = [
   { label: "routeWiringPerformed true", mutate: (r) => ({ ...r, routeWiringPerformed: true as false }) },
   { label: "smartTalkRouteModified true", mutate: (r) => ({ ...r, smartTalkRouteModified: true as false }) },
   { label: "photoRouteModified true", mutate: (r) => ({ ...r, photoRouteModified: true as false }) },
+  { label: "phase8x6G1SkeletonUtilityApplied false", mutate: (r) => ({ ...r, phase8x6G1SkeletonUtilityApplied: false as true }) },
+  { label: "phase8x6G2InputValidationGuardApplied false", mutate: (r) => ({ ...r, phase8x6G2InputValidationGuardApplied: false as true }) },
+  { label: "phase8x6G3DetectorPatternsApplied false", mutate: (r) => ({ ...r, phase8x6G3DetectorPatternsApplied: false as true }) },
+  { label: "phase8x6G4PlaceholderAndRedactionEngineApplied false", mutate: (r) => ({ ...r, phase8x6G4PlaceholderAndRedactionEngineApplied: false as true }) },
+  { label: "phase8x6G5FullSyntheticValidationAndTamperCoverageApplied false", mutate: (r) => ({ ...r, phase8x6G5FullSyntheticValidationAndTamperCoverageApplied: false as true }) },
+  { label: "phase8x6G6FinalConsolidationAuditApplied false", mutate: (r) => ({ ...r, phase8x6G6FinalConsolidationAuditApplied: false as true }) },
+  { label: "split8x6GChainInternallyConsistent false", mutate: (r) => ({ ...r, split8x6GChainInternallyConsistent: false as true }) },
+  { label: "isolated8x6GSurgicalUtilityPatchComplete false", mutate: (r) => ({ ...r, isolated8x6GSurgicalUtilityPatchComplete: false as true }) },
   { label: "productionDetectorPatternsImplemented false", mutate: (r) => ({ ...r, productionDetectorPatternsImplemented: false as true }) },
   { label: "productionRedactionEngineImplemented false", mutate: (r) => ({ ...r, productionRedactionEngineImplemented: false as true }) },
   { label: "stablePlaceholderMappingImplemented false", mutate: (r) => ({ ...r, stablePlaceholderMappingImplemented: false as true }) },
   { label: "productionPiiUtilitySkeletonImplemented false", mutate: (r) => ({ ...r, productionPiiUtilitySkeletonImplemented: false as true }) },
   { label: "inputValidationGuardStillImplemented false", mutate: (r) => ({ ...r, inputValidationGuardStillImplemented: false as true }) },
+  { label: "documentLikeLaneGuardStillImplemented false", mutate: (r) => ({ ...r, documentLikeLaneGuardStillImplemented: false as true }) },
+  { label: "sourceKindSpoofGuardStillImplemented false", mutate: (r) => ({ ...r, sourceKindSpoofGuardStillImplemented: false as true }) },
   { label: "detectorHitsStillImplemented false", mutate: (r) => ({ ...r, detectorHitsStillImplemented: false as true }) },
   { label: "allCategoriesCoveredConfirmed false", mutate: (r) => ({ ...r, allCategoriesCoveredConfirmed: false as true }) },
   { label: "allCategoriesSyntheticHitConfirmed false", mutate: (r) => ({ ...r, allCategoriesSyntheticHitConfirmed: false as true }) },
@@ -2010,6 +2061,9 @@ const TAMPER_CASES: TamperCase[] = [
   { label: "safeForEvidenceGatesFalseOnZeroHitNeedsReviewConfirmed false", mutate: (r) => ({ ...r, safeForEvidenceGatesFalseOnZeroHitNeedsReviewConfirmed: false as true }) },
   { label: "safeForUserVisibleOutputAlwaysFalseConfirmed false", mutate: (r) => ({ ...r, safeForUserVisibleOutputAlwaysFalseConfirmed: false as true }) },
   { label: "rawMapNotReturnedConfirmed false", mutate: (r) => ({ ...r, rawMapNotReturnedConfirmed: false as true }) },
+  { label: "fullSyntheticValidationStillPassing false", mutate: (r) => ({ ...r, fullSyntheticValidationStillPassing: false as true }) },
+  { label: "categorySpecificLeakageValidationStillPassing false", mutate: (r) => ({ ...r, categorySpecificLeakageValidationStillPassing: false as true }) },
+  { label: "tamperCoverageStillPassing false", mutate: (r) => ({ ...r, tamperCoverageStillPassing: false as true }) },
   { label: "realDocumentInputAuthorizedNow true", mutate: (r) => ({ ...r, realDocumentInputAuthorizedNow: true as false }) },
   { label: "userVisibleOutputAuthorizedNow true", mutate: (r) => ({ ...r, userVisibleOutputAuthorizedNow: true as false }) },
   { label: "publicRuntimeAuthorizedNow true", mutate: (r) => ({ ...r, publicRuntimeAuthorizedNow: true as false }) },
@@ -2037,13 +2091,13 @@ const TAMPER_CASES: TamperCase[] = [
   { label: "noModelCall false", mutate: (r) => ({ ...r, noModelCall: false as true }) },
   { label: "noRunSmartTalkCall false", mutate: (r) => ({ ...r, noRunSmartTalkCall: false as true }) },
   { label: "no8x3AcRerun false", mutate: (r) => ({ ...r, no8x3AcRerun: false as true }) },
-  { label: "td004PreModelPiiRedactionFullSyntheticValidationAndTamperCoverageApplied false", mutate: (r) => ({ ...r, td004PreModelPiiRedactionFullSyntheticValidationAndTamperCoverageApplied: false as true }) },
+  { label: "td004PreModelPiiRedactionIsolatedSurgicalUtilityPatchComplete false", mutate: (r) => ({ ...r, td004PreModelPiiRedactionIsolatedSurgicalUtilityPatchComplete: false as true }) },
   { label: "td004PreModelPiiRedactionStillRequiresPostPatchAudit false", mutate: (r) => ({ ...r, td004PreModelPiiRedactionStillRequiresPostPatchAudit: false as true }) },
   { label: "td004PreModelPiiRedactionStillRequiresClosureDecision false", mutate: (r) => ({ ...r, td004PreModelPiiRedactionStillRequiresClosureDecision: false as true }) },
   { label: "td004PreModelPiiRedactionStillMissingProductionRouteWiring false", mutate: (r) => ({ ...r, td004PreModelPiiRedactionStillMissingProductionRouteWiring: false as true }) },
   { label: "td004PreModelPiiRedactionStillNotUserVisible false", mutate: (r) => ({ ...r, td004PreModelPiiRedactionStillNotUserVisible: false as true }) },
   { label: "td002EvidenceGatesNotWiredIntoProductionRunSmartTalk false", mutate: (r) => ({ ...r, td002EvidenceGatesNotWiredIntoProductionRunSmartTalk: false as true }) },
-  { label: "readyFor8x6G6PreModelPiiRedactionFinalConsolidationAudit false", mutate: (r) => ({ ...r, readyFor8x6G6PreModelPiiRedactionFinalConsolidationAudit: false as true }) },
+  { label: "readyFor8x6HPreModelPiiRedactionPostPatchAudit false", mutate: (r) => ({ ...r, readyFor8x6HPreModelPiiRedactionPostPatchAudit: false as true }) },
   { label: "readyForRealDocumentInput true", mutate: (r) => ({ ...r, readyForRealDocumentInput: true as false }) },
   { label: "readyForUserVisibleOutput true", mutate: (r) => ({ ...r, readyForUserVisibleOutput: true as false }) },
   { label: "readyForPublicRuntime true", mutate: (r) => ({ ...r, readyForPublicRuntime: true as false }) },
@@ -2062,7 +2116,7 @@ const TAMPER_CASES: TamperCase[] = [
 ];
 
 /**
- * Self-contained surgical utility patch validation for 8.6G-5.
+ * Self-contained surgical utility patch validation for 8.6G-6.
  * Runs synthetic redaction cases, category-specific leakage checks, and tamper resistance checks.
  * Uses no imports, calls no routes, processes no real documents.
  * Does not import or call 8.6F or any prior governance file.
@@ -2121,7 +2175,7 @@ export function runPreModelPiiRedactionSurgicalUtilityPatchValidation(): PreMode
     allFailures.length === 0 && tamperCasesRejected === tamperCaseCount;
 
   const notes: string[] = [
-    "8.6G-5 full synthetic validation and tamper coverage phase validation complete",
+    "8.6G-6 final consolidation audit phase validation complete",
     `full synthetic cases: ${syntheticResult.casesPassed}/${syntheticResult.caseCount} passed`,
     `category-specific leakage cases: ${syntheticResult.leakageCasesPassed}/${syntheticResult.leakageCaseCount} passed`,
     `tamper cases: ${tamperCasesRejected}/${tamperCaseCount} correctly rejected`,
@@ -2130,6 +2184,8 @@ export function runPreModelPiiRedactionSurgicalUtilityPatchValidation(): PreMode
     "no route patching or route wiring was performed",
     "no model call, prompt build, or runSmartTalk was executed",
     "all 27 categories synthetically confirmed to fire",
+    "8.6G phase chain: 8.6G-1 skeleton → 8.6G-2 guard → 8.6G-3 detectors → 8.6G-4 engine → 8.6G-5 validation → 8.6G-6 audit",
+    "isolated 8.6G surgical utility patch complete — ready for 8.6H post-patch audit",
     "stable placeholder mapping confirmed: same raw value → same placeholder",
     "overlap resolution confirmed: longer span wins when same start",
     "right-to-left replacement confirmed: offsets not corrupted",
@@ -2140,7 +2196,7 @@ export function runPreModelPiiRedactionSurgicalUtilityPatchValidation(): PreMode
     "rawMapReturned confirmed always false — raw PII map is local-only",
     "redactedText leakage scan: SYNTHRAW_ tokens absent from all safe output fields",
     "per-category leakage scan: 25 categories confirmed no raw token in safe fields",
-    "readyFor8x6G6: readiness signal only — not route wiring, not real-document authorization",
+    "readyFor8x6H: readiness signal only — not route wiring, not real-document authorization",
     ...(allFailures.length > 0
       ? [`FAILURES (${allFailures.length}):`, ...allFailures]
       : []),
