@@ -6,6 +6,8 @@ import {
   type SmartTalkReasoningProtocol,
   type SmartTalkTextSource,
 } from "./build-smart-talk-prompt";
+// [TD-002] containment seam import — disabled-by-default — no production authorization
+import { runEvidenceGatesRuntimeAdapterDryRun } from "./reality-matrix/live-input/run-controlled-real-document-evidence-gates-runtime-adapter-dry-run-implementation";
 
 export type { SmartTalkTextSource } from "./build-smart-talk-prompt";
 
@@ -897,6 +899,36 @@ function fallbackInvalidJson(): SmartTalkResult {
 
 export type RunSmartTalkError = { kind: "openai_http"; status: number } | { kind: "openai_empty" };
 
+// [TD-002] post-model/pre-user-visible governance seam — disabled-by-default
+// containment only | no user-visible output | no persistence | no production authorization
+// TD-002 remains subject to post-wiring audit and closure decision
+const EVIDENCE_GATES_SCOPED_DRY_RUN_CONTAINMENT_ENABLED = false;
+
+// Non-exported local helper for the containment seam.
+// Returns a synthetic contract-shaped governance input only.
+// Must not use raw user input, raw model output, raw document text, OCR/photo text, real PII, or user-facing strings.
+function _buildSyntheticGovernanceInputForContainmentSeam(): Parameters<typeof runEvidenceGatesRuntimeAdapterDryRun>[0] {
+  return {
+    sourceKind: "user_text_normalized",
+    lane: "standard_text",
+    normalizedTextOrModelOutput: "SYNTHETIC_GOVERNANCE_PROBE_8x7H_CONTAINMENT_SEAM",
+    preModelSafetyStatus: "safe",
+    piiRedactionStatus: "applied",
+    evidenceCandidateMetadata: { hasStructuredEvidence: false },
+    claimCandidateMetadata: {
+      hasHighRiskClaim: false,
+      hasDocumentDerivedClaim: false,
+      claimAuthorizationStatus: "not_evaluated",
+    },
+    trapCandidateMetadata: { hasStructuredActiveTrap: false },
+    riskContext: { hasKnownRiskSignals: false },
+    authorizationContext: {
+      userVisibleOutputExplicitlyAuthorized: false,
+      realityAuthorizationStatus: "not_evaluated",
+    },
+  };
+}
+
 /**
  * Calls OpenAI with JSON object mode. Requires OPENAI_API_KEY in env.
  * On successful HTTP but unparseable JSON, returns a safe fallback result (no throw).
@@ -965,15 +997,25 @@ export async function runSmartTalk(params: {
 
     const protocol = deriveSmartTalkReasoningProtocol(params);
 
-    return {
-      ok: true,
-      result: normalizeParsedObject(
-        parsed as Record<string, unknown>,
-        params.text,
-        params.locale,
-        protocol,
-      ),
-    };
+    const _smartTalkResult = normalizeParsedObject(
+      parsed as Record<string, unknown>,
+      params.text,
+      params.locale,
+      protocol,
+    );
+
+    // [TD-002] post-model/pre-user-visible governance seam — disabled-by-default
+    // containment only | no user-visible output | no persistence | no production authorization
+    // TD-002 remains subject to post-wiring audit and closure decision
+    if (EVIDENCE_GATES_SCOPED_DRY_RUN_CONTAINMENT_ENABLED) {
+      // This branch is statically disabled (EVIDENCE_GATES_SCOPED_DRY_RUN_CONTAINMENT_ENABLED = false).
+      // Adapter output is not surfaced to users, not persisted, and not returned to the caller.
+      const _syntheticGovernanceInput = _buildSyntheticGovernanceInputForContainmentSeam();
+      const _containmentAdapterOutput = runEvidenceGatesRuntimeAdapterDryRun(_syntheticGovernanceInput);
+      void _containmentAdapterOutput;
+    }
+
+    return { ok: true, result: _smartTalkResult };
   } catch {
     return { ok: false, error: { kind: "openai_http", status: 0 } };
   } finally {
