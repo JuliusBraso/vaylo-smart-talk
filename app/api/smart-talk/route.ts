@@ -16,6 +16,7 @@ import {
   PILOT_RUNTIME_REQUIRED_GUARD_PHRASE,
   PILOT_RUNTIME_REQUIRED_GUARDS,
 } from "@/lib/vaylo/smart-talk/reality-matrix/live-input/pilot-runtime-guard-contract-types";
+import { runFreeQaScopedRuntimePatchAuthorizationDecision } from "@/lib/vaylo/smart-talk/reality-matrix/live-input/run-free-qa-scoped-runtime-patch-authorization-decision";
 
 function isSmartTalkInputType(v: unknown): v is SmartTalkInputType {
   return v === "text" || v === "question";
@@ -30,6 +31,9 @@ const ALLOWED_LOCALES = new Set<SmartTalkLocale>(["sk", "de", "en"]);
 const RATE_WINDOW_MS = 10 * 60 * 1000;
 const RATE_MAX = 5;
 const SMART_TALK_ROUTE_TIMEOUT_MS = 20_000;
+const FREE_QA_INTERNAL_RUNTIME_MODE = "free_qa_internal_scoped_patch";
+const FREE_QA_INTERNAL_RUNTIME_GUARD =
+  "I_UNDERSTAND_THIS_IS_INTERNAL_FREE_QA_SCOPED_PATCH_ONLY";
 
 /** In-memory sliding window: IP → request timestamps (no persistence). */
 const ipHits = new Map<string, number[]>();
@@ -72,6 +76,12 @@ function isOnlyUrls(s: string): boolean {
 
 function badRequest(message: string) {
   return NextResponse.json({ ok: false, error: message }, { status: 400 });
+}
+
+function detectOfficialLetterStyleQuestionText(text: string): boolean {
+  return /sehr geehrte|mit freundlichen gr|aktenzeichen|rechtsbehelfsbelehrung|bescheid|mahnbescheid|rechnung|zahlungserinnerung|fristsetzung/i.test(
+    text,
+  );
 }
 
 // ── Phase 8.5N — Text Document Bypass Guard helper ────────────────────────
@@ -236,6 +246,221 @@ export async function POST(req: Request) {
   }
 
   const o = body as Record<string, unknown>;
+
+  // ── Phase 8.8M — Actual minimal scoped runtime patch (internal-only Free Q&A) ──
+  // Strictly fail-closed. Disabled by default for public requests.
+  const freeQaModeRequested =
+    o.internalRuntimeMode === FREE_QA_INTERNAL_RUNTIME_MODE ||
+    o.internalRuntimeGuard === FREE_QA_INTERNAL_RUNTIME_GUARD ||
+    o.internalFreeQaTestEnabled !== undefined;
+  if (freeQaModeRequested) {
+    const l = runFreeQaScopedRuntimePatchAuthorizationDecision();
+    const eightEightLAuthorizationConfirmed =
+      l.checkId === "8.8L" &&
+      l.allPassed === true &&
+      l.authorizationDecisionStatus ===
+        "authorized_for_next_phase_actual_minimal_scoped_runtime_patch_only" &&
+      l.scopedRuntimePatchAuthorizedForNextPhase === true &&
+      l.authorizedNextPhase === "8.8M_actual_minimal_scoped_runtime_patch" &&
+      l.readyForActualMinimalScopedRuntimePatch === true;
+
+    if (!eightEightLAuthorizationConfirmed) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "free_qa_patch_authorization_failed",
+          actualMinimalScopedRuntimePatchImplemented: false,
+          internalFreeQaOnly: true,
+          anonymousNonDocumentQuestionOnly: true,
+          documentLikeTextBlocked: true,
+          publicRuntimeStillBlocked: true,
+          photoOcrScannerUploadStillBlocked: true,
+          paidDnaStillBlocked: true,
+          persistenceStillBlocked: true,
+          exactLegalDeadlineStillBlocked: true,
+          modelOutputStillUntrusted: true,
+          eightEightLAuthorizationConfirmed: false,
+          eightThreeAcNotRun: true,
+        },
+        { status: 403 },
+      );
+    }
+
+    const internalAuth = runRuntimeInternalAuthGuard({
+      providedSecret: req.headers.get("x-vaylo-internal-runtime-secret"),
+      expectedSecret: process.env.VAYLO_INTERNAL_RUNTIME_SECRET,
+    });
+    if (!internalAuth.authorised) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "free_qa_patch_internal_auth_failed",
+          actualMinimalScopedRuntimePatchImplemented: false,
+          internalFreeQaOnly: true,
+          anonymousNonDocumentQuestionOnly: true,
+          documentLikeTextBlocked: true,
+          publicRuntimeStillBlocked: true,
+          photoOcrScannerUploadStillBlocked: true,
+          paidDnaStillBlocked: true,
+          persistenceStillBlocked: true,
+          exactLegalDeadlineStillBlocked: true,
+          modelOutputStillUntrusted: true,
+          eightEightLAuthorizationConfirmed: true,
+          eightThreeAcNotRun: true,
+        },
+        { status: 403 },
+      );
+    }
+
+    if (
+      o.internalRuntimeMode !== FREE_QA_INTERNAL_RUNTIME_MODE ||
+      o.internalRuntimeGuard !== FREE_QA_INTERNAL_RUNTIME_GUARD ||
+      o.internalFreeQaTestEnabled !== true
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "free_qa_patch_guard_not_satisfied",
+          actualMinimalScopedRuntimePatchImplemented: false,
+          internalFreeQaOnly: true,
+          anonymousNonDocumentQuestionOnly: true,
+          documentLikeTextBlocked: true,
+          publicRuntimeStillBlocked: true,
+          photoOcrScannerUploadStillBlocked: true,
+          paidDnaStillBlocked: true,
+          persistenceStillBlocked: true,
+          exactLegalDeadlineStillBlocked: true,
+          modelOutputStillUntrusted: true,
+          eightEightLAuthorizationConfirmed: true,
+          eightThreeAcNotRun: true,
+        },
+        { status: 403 },
+      );
+    }
+
+    if (o.context !== "anonymous") {
+      return badRequest("invalid_context");
+    }
+    if (o.inputType !== "question") {
+      return badRequest("free_qa_question_only");
+    }
+    if (typeof o.text !== "string") {
+      return badRequest("invalid_text");
+    }
+    const text = o.text.trim();
+    if (text.length < MIN_TEXT) {
+      return badRequest("text_too_short");
+    }
+    if (text.length > MAX_TEXT) {
+      return badRequest("text_too_long");
+    }
+    if (!hasLetter(text) || isOnlyUrls(text)) {
+      return badRequest("invalid_text");
+    }
+    if (
+      o.requestedOcr === true ||
+      o.requestedFileUpload === true ||
+      o.requestedScannerUpload === true ||
+      o.requestedPhoto === true
+    ) {
+      return badRequest("ocr_scanner_upload_not_allowed");
+    }
+    if (
+      o.requestedPayment === true ||
+      o.requestedEntitlement === true ||
+      o.requestedPersistence === true ||
+      o.requestedDnaSave === true ||
+      o.requestedPaidMode === true
+    ) {
+      return badRequest("paid_dna_persistence_not_allowed");
+    }
+
+    if (
+      detectTextDocumentBypassRequired(text) ||
+      detectOfficialLetterStyleQuestionText(text) ||
+      detectClientPaidDocumentModeActivation(o)
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "document_mode_required",
+          message:
+            "This looks like a letter, invoice, authority notice, or document-style request. Free Q&A internal patch accepts non-document questions only.",
+          nextStep:
+            "Use a short anonymous non-document question only. Do not include OCR/photo/scanner/upload content.",
+          actualMinimalScopedRuntimePatchImplemented: true,
+          internalFreeQaOnly: true,
+          anonymousNonDocumentQuestionOnly: true,
+          documentLikeTextBlocked: true,
+          publicRuntimeStillBlocked: true,
+          photoOcrScannerUploadStillBlocked: true,
+          paidDnaStillBlocked: true,
+          persistenceStillBlocked: true,
+          exactLegalDeadlineStillBlocked: true,
+          modelOutputStillUntrusted: true,
+          eightEightLAuthorizationConfirmed: true,
+          eightThreeAcNotRun: true,
+        },
+        { status: 402 },
+      );
+    }
+
+    let locale: SmartTalkLocale = "sk";
+    if (o.locale !== undefined && o.locale !== null) {
+      if (typeof o.locale !== "string" || !ALLOWED_LOCALES.has(o.locale as SmartTalkLocale)) {
+        return badRequest("invalid_locale");
+      }
+      locale = o.locale as SmartTalkLocale;
+    }
+
+    const apiKey = process.env.OPENAI_API_KEY?.trim();
+    if (!apiKey) {
+      return NextResponse.json({ ok: false, error: "smart_talk_unavailable" }, { status: 503 });
+    }
+
+    let out: Awaited<ReturnType<typeof runSmartTalk>>;
+    try {
+      out = await Promise.race([
+        runSmartTalk({ text, locale, inputType: "question" }),
+        new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error("smart_talk_timeout")), SMART_TALK_ROUTE_TIMEOUT_MS);
+        }),
+      ]);
+    } catch {
+      return NextResponse.json({ ok: false, error: "smart_talk_timeout" }, { status: 504 });
+    }
+
+    if (!out.ok) {
+      const requestId = createRequestId();
+      logRouteError("[smart-talk] free-qa internal scoped patch openai failed", requestId, {
+        kind: out.error.kind,
+        status: out.error.kind === "openai_http" ? out.error.status : undefined,
+      });
+      return internalErrorResponse({ requestId, status: 500 });
+    }
+
+    return NextResponse.json({
+      ok: true,
+      mode: "free_qa_internal_scoped_patch",
+      context: "anonymous",
+      result: out.result,
+      patchMeta: {
+        actualMinimalScopedRuntimePatchImplemented: true,
+        internalFreeQaOnly: true,
+        anonymousNonDocumentQuestionOnly: true,
+        documentLikeTextBlocked: true,
+        publicRuntimeStillBlocked: true,
+        photoOcrScannerUploadStillBlocked: true,
+        paidDnaStillBlocked: true,
+        persistenceStillBlocked: true,
+        exactLegalDeadlineStillBlocked: true,
+        modelOutputStillUntrusted: true,
+        eightEightLAuthorizationConfirmed: true,
+        eightThreeAcNotRun: true,
+      },
+    });
+  }
+  // ── End Phase 8.8M minimal scoped runtime patch ─────────────────────────────
 
   // ── Phase 8.2K-2 — Guarded internal controlled text pilot branch ──────────
   // Activates ONLY when internalRuntimeMode === "controlled_text_pilot_guarded".
@@ -587,7 +812,6 @@ export async function POST(req: Request) {
         {
           error: "Internal guarded runtime unauthorised",
           code: internalAuth.verdict,
-          diagnostics: internalAuth.diagnostics,
         },
         { status: 403 },
       );
