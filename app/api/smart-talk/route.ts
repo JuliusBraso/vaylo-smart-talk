@@ -157,6 +157,23 @@ function detectHighRiskCourtPoliceMedicalTaxSignal(text: string): boolean {
 function isDocumentLikeSignalPresent(text: string): boolean {
   return detectTextDocumentBypassRequired(text) || detectOfficialLetterStyleQuestionText(text);
 }
+
+// ── Phase 8.9E-BLOCKER — narrow explicit paid-activation detector ──────────
+// Fixes a false positive where detectClientPaidDocumentModeActivation(o)
+// flagged every Text Document Mode request as paid mode, because it inspects
+// generic body control fields (including "mode") for the substring
+// "document" — and this branch's own mode value ("text_document_controlled_
+// runtime") always contains that substring. This detector instead inspects
+// only the pasted TEXT for explicit, unambiguous paid-activation/payment
+// intent phrases. It intentionally does NOT match ordinary document-like
+// words (document, Dokument, Schreiben, Krankenkasse, Versicherungsstatus,
+// Bescheid, Sehr geehrte, Bitte prüfen, etc.).
+function detectExplicitPaidDocumentModeActivationForTextDocumentMode(text: string): boolean {
+  return /kostenpflichtige[nr]\s+dokumentenmodus\s+aktivieren|\bpaid document mode\b|\bactivate paid document mode\b|aktivova[ťt]\s+platen[ýy]\s+dokumentov[ýy]\s+re[žz]im|chcem zaplati[ťt] za dokumentov[ýy] re[žz]im|ich m[öo]chte bezahlen|i want to pay for document mode/i.test(
+    text,
+  );
+}
+// ── End Phase 8.9E-BLOCKER helper ────────────────────────────────────────────
 // ── End Phase 8.9C helpers ───────────────────────────────────────────────────
 
 // ── Phase 8.5N — Text Document Bypass Guard helper ────────────────────────
@@ -584,7 +601,11 @@ export async function POST(req: Request) {
     if (detectFileUploadRequest(o)) {
       return textDocumentModeBlockedResponse("file_upload_blocked", 402);
     }
-    if (detectClientPaidDocumentModeActivation(o)) {
+    // Phase 8.9E-BLOCKER: use the narrow explicit-activation text detector
+    // here (not detectClientPaidDocumentModeActivation(o)), since the body's
+    // own "mode" field always contains the substring "document" in this
+    // branch and would otherwise always false-positive.
+    if (detectExplicitPaidDocumentModeActivationForTextDocumentMode(text)) {
       return textDocumentModeBlockedResponse("paid_document_mode_blocked", 402);
     }
     if (detectVayloDnaSaveRequest(o)) {
