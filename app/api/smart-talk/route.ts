@@ -34,6 +34,8 @@ const SMART_TALK_ROUTE_TIMEOUT_MS = 20_000;
 const FREE_QA_INTERNAL_RUNTIME_MODE = "free_qa_internal_scoped_patch";
 const FREE_QA_INTERNAL_RUNTIME_GUARD =
   "I_UNDERSTAND_THIS_IS_INTERNAL_FREE_QA_SCOPED_PATCH_ONLY";
+const FREE_QA_PUBLIC_BETA_MODE = "free_qa_public_beta";
+const FREE_QA_PUBLIC_RUNTIME_ENV_FLAG = "SMART_TALK_FREE_QA_PUBLIC_ENABLED";
 
 /** In-memory sliding window: IP → request timestamps (no persistence). */
 const ipHits = new Map<string, number[]>();
@@ -80,6 +82,12 @@ function badRequest(message: string) {
 
 function detectOfficialLetterStyleQuestionText(text: string): boolean {
   return /sehr geehrte|mit freundlichen gr|aktenzeichen|rechtsbehelfsbelehrung|bescheid|mahnbescheid|rechnung|zahlungserinnerung|fristsetzung/i.test(
+    text,
+  );
+}
+
+function detectExactLegalDeadlineRequest(text: string): boolean {
+  return /\b(bis wann|widerspruchsfrist|einspruchsfrist|rechtsmittelfrist|frist endet|genaue frist|exact deadline|deadline exactly|dokedy presne|do kedy presne|presná lehota|presnu lehotu|presnú lehotu|lehota na odvolanie|lehota na odpor|lehota na námietku|lehota na namietku|dokedy musím podať odvolanie|dokedy musim podat odvolanie|dokedy musím podať odpor|dokedy musim podat odpor|dokedy musím podať námietku|dokedy musim podat namietku|do kedy musím podať odvolanie|do kedy musim podat odvolanie)\b/i.test(
     text,
   );
 }
@@ -246,6 +254,188 @@ export async function POST(req: Request) {
   }
 
   const o = body as Record<string, unknown>;
+
+  // ── Phase 8.8T — Public Free Q&A beta branch behind exact env flag ─────────
+  // Disabled by default unless SMART_TALK_FREE_QA_PUBLIC_ENABLED === "true".
+  // Fail-closed: no model call when disabled.
+  if (o.mode === FREE_QA_PUBLIC_BETA_MODE) {
+    const publicFreeQaEnabled = process.env[FREE_QA_PUBLIC_RUNTIME_ENV_FLAG] === "true";
+    if (!publicFreeQaEnabled) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "free_qa_public_beta_disabled",
+          publicFreeQaBetaEnabled: false,
+          publicRuntimeBehindEnvFlag: true,
+          publicRuntimeStillBlocked: true,
+          documentsStillBlocked: true,
+          photoOcrScannerUploadStillBlocked: true,
+          paidDnaStillBlocked: true,
+          persistenceStillBlocked: true,
+          exactLegalDeadlineStillBlocked: true,
+          modelOutputStillUntrusted: true,
+          legalDisclaimerRequired: true,
+          privacyDisclaimerRequired: true,
+          eightThreeAcNotRun: true,
+        },
+        { status: 403 },
+      );
+    }
+
+    if (o.context !== "anonymous") {
+      return badRequest("invalid_context");
+    }
+    if (o.inputType !== "question") {
+      return badRequest("free_qa_question_only");
+    }
+    if (typeof o.text !== "string") {
+      return badRequest("invalid_text");
+    }
+    const text = o.text.trim();
+    if (text.length < MIN_TEXT) {
+      return badRequest("text_too_short");
+    }
+    if (text.length > MAX_TEXT) {
+      return badRequest("text_too_long");
+    }
+    if (!hasLetter(text) || isOnlyUrls(text)) {
+      return badRequest("invalid_text");
+    }
+    if (
+      o.requestedOcr === true ||
+      o.requestedFileUpload === true ||
+      o.requestedScannerUpload === true ||
+      o.requestedPhoto === true
+    ) {
+      return badRequest("ocr_scanner_upload_not_allowed");
+    }
+    if (
+      o.requestedPayment === true ||
+      o.requestedEntitlement === true ||
+      o.requestedPersistence === true ||
+      o.requestedDnaSave === true ||
+      o.requestedPaidMode === true
+    ) {
+      return badRequest("paid_dna_persistence_not_allowed");
+    }
+
+    if (
+      detectTextDocumentBypassRequired(text) ||
+      detectOfficialLetterStyleQuestionText(text) ||
+      detectClientPaidDocumentModeActivation(o)
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "document_mode_required",
+          message:
+            "This looks like a letter, invoice, authority notice, or document-style request. Public Free Q&A beta accepts non-document questions only.",
+          nextStep:
+            "Use a short anonymous non-document question only. Do not include OCR/photo/scanner/upload content.",
+          publicFreeQaBetaEnabled: true,
+          anonymousNonDocumentQuestionOnly: true,
+          documentLikeTextBlocked: true,
+          publicRuntimeBehindEnvFlag: true,
+          documentsStillBlocked: true,
+          photoOcrScannerUploadStillBlocked: true,
+          paidDnaStillBlocked: true,
+          persistenceStillBlocked: true,
+          exactLegalDeadlineStillBlocked: true,
+          modelOutputStillUntrusted: true,
+          legalDisclaimerRequired: true,
+          privacyDisclaimerRequired: true,
+          eightThreeAcNotRun: true,
+        },
+        { status: 402 },
+      );
+    }
+
+    if (detectExactLegalDeadlineRequest(text)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "exact_legal_deadline_calculation_blocked",
+          message:
+            "Public Free Q&A beta cannot calculate exact legal deadlines. Use verified legal support for exact statutory timelines.",
+          publicFreeQaBetaEnabled: true,
+          anonymousNonDocumentQuestionOnly: true,
+          documentLikeTextBlocked: true,
+          publicRuntimeBehindEnvFlag: true,
+          documentsStillBlocked: true,
+          photoOcrScannerUploadStillBlocked: true,
+          paidDnaStillBlocked: true,
+          persistenceStillBlocked: true,
+          exactLegalDeadlineStillBlocked: true,
+          modelOutputStillUntrusted: true,
+          legalDisclaimerRequired: true,
+          privacyDisclaimerRequired: true,
+          eightThreeAcNotRun: true,
+        },
+        { status: 402 },
+      );
+    }
+
+    let locale: SmartTalkLocale = "sk";
+    if (o.locale !== undefined && o.locale !== null) {
+      if (typeof o.locale !== "string" || !ALLOWED_LOCALES.has(o.locale as SmartTalkLocale)) {
+        return badRequest("invalid_locale");
+      }
+      locale = o.locale as SmartTalkLocale;
+    }
+
+    const apiKey = process.env.OPENAI_API_KEY?.trim();
+    if (!apiKey) {
+      return NextResponse.json({ ok: false, error: "smart_talk_unavailable" }, { status: 503 });
+    }
+
+    let out: Awaited<ReturnType<typeof runSmartTalk>>;
+    try {
+      out = await Promise.race([
+        runSmartTalk({ text, locale, inputType: "question" }),
+        new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error("smart_talk_timeout")), SMART_TALK_ROUTE_TIMEOUT_MS);
+        }),
+      ]);
+    } catch {
+      return NextResponse.json({ ok: false, error: "smart_talk_timeout" }, { status: 504 });
+    }
+
+    if (!out.ok) {
+      const requestId = createRequestId();
+      logRouteError("[smart-talk] free-qa public beta openai failed", requestId, {
+        kind: out.error.kind,
+        status: out.error.kind === "openai_http" ? out.error.status : undefined,
+      });
+      return internalErrorResponse({ requestId, status: 500 });
+    }
+
+    return NextResponse.json({
+      ok: true,
+      mode: FREE_QA_PUBLIC_BETA_MODE,
+      context: "anonymous",
+      result: out.result,
+      publicMeta: {
+        publicFreeQaBetaEnabled: true,
+        anonymousNonDocumentQuestionOnly: true,
+        documentLikeTextBlocked: true,
+        publicRuntimeBehindEnvFlag: true,
+        documentsStillBlocked: true,
+        photoOcrScannerUploadStillBlocked: true,
+        paidDnaStillBlocked: true,
+        persistenceStillBlocked: true,
+        exactLegalDeadlineStillBlocked: true,
+        modelOutputStillUntrusted: true,
+        legalDisclaimerRequired: true,
+        privacyDisclaimerRequired: true,
+        legalDisclaimer:
+          "Information is general guidance only and is not legal advice; exact legal deadlines and outcomes require verified legal review.",
+        privacyDisclaimer:
+          "Do not share personal identifiers, account numbers, or full official documents in public Free Q&A beta.",
+        eightThreeAcNotRun: true,
+      },
+    });
+  }
+  // ── End Phase 8.8T public Free Q&A beta branch ─────────────────────────────
 
   // ── Phase 8.8M — Actual minimal scoped runtime patch (internal-only Free Q&A) ──
   // Strictly fail-closed. Disabled by default for public requests.
