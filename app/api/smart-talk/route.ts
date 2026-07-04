@@ -36,6 +36,8 @@ const FREE_QA_INTERNAL_RUNTIME_GUARD =
   "I_UNDERSTAND_THIS_IS_INTERNAL_FREE_QA_SCOPED_PATCH_ONLY";
 const FREE_QA_PUBLIC_BETA_MODE = "free_qa_public_beta";
 const FREE_QA_PUBLIC_RUNTIME_ENV_FLAG = "SMART_TALK_FREE_QA_PUBLIC_ENABLED";
+const TEXT_DOCUMENT_CONTROLLED_RUNTIME_MODE = "text_document_controlled_runtime";
+const TEXT_DOCUMENT_MODE_ENV_FLAG = "SMART_TALK_TEXT_DOCUMENT_MODE_ENABLED";
 
 /** In-memory sliding window: IP → request timestamps (no persistence). */
 const ipHits = new Map<string, number[]>();
@@ -91,6 +93,71 @@ function detectExactLegalDeadlineRequest(text: string): boolean {
     text,
   );
 }
+
+// ── Phase 8.9C — Text Document Mode helpers ─────────────────────────────────
+// Deterministic, local, pure detectors. No I/O · no fetch · no OpenAI · no env
+// reads · no SDK. Used only by the text_document_controlled_runtime branch.
+
+function detectOcrPhotoRequest(body: Record<string, unknown>): boolean {
+  return body.requestedOcr === true || body.requestedPhoto === true;
+}
+
+function detectScannerUploadRequest(body: Record<string, unknown>): boolean {
+  return body.requestedScannerUpload === true;
+}
+
+function detectFileUploadRequest(body: Record<string, unknown>): boolean {
+  return body.requestedFileUpload === true;
+}
+
+function detectVayloDnaSaveRequest(body: Record<string, unknown>): boolean {
+  return body.requestedDnaSave === true;
+}
+
+function detectPersistenceStorageRequest(body: Record<string, unknown>): boolean {
+  return body.requestedPersistence === true || body.requestedEntitlement === true;
+}
+
+function detectCredentialSecretText(text: string): boolean {
+  return /\b(passwort|password|kennwort|api[- ]?key|apikey|secret[- ]?key|token)\b\s*[:=]?\s*\S+|sk-[a-zA-Z0-9]{8,}/i.test(
+    text,
+  );
+}
+
+function detectFinancialAccountOrPaymentAuthorizationText(text: string): boolean {
+  return /\biban\b|\bkontonummer\b|\bbankverbindung\b|\bbank account\b|autorisiere\s+die\s+zahlung|payment authorization|autorisiere\s+diese\s+zahlung/i.test(
+    text,
+  );
+}
+
+function detectIdentityDocumentNumberText(text: string): boolean {
+  return /\b(ausweisnummer|personalausweisnummer|reisepassnummer|passport number|id number|identity document number)\b/i.test(
+    text,
+  );
+}
+
+function detectBindingLegalAdviceRequest(text: string): boolean {
+  return /rechtsverbindlich|bindende rechtliche auslegung|binding legal advice|binding legal interpretation|rechtsverbindliche auskunft|verbindliche rechtsauskunft/i.test(
+    text,
+  );
+}
+
+function detectOfficialFilingGenerationRequest(text: string): boolean {
+  return /schreibe\s+(für mich\s+)?(einen\s+|meinen\s+)?(offiziellen\s+|rechtsverbindlichen\s+)?(widerspruch|einspruch|beschwerde)|write\s+(my\s+|an?\s+)?(official\s+)?(legal\s+)?(objection|appeal|complaint)|verfasse\s+(meinen\s+|einen\s+)?(einspruch|widerspruch)/i.test(
+    text,
+  );
+}
+
+function detectHighRiskCourtPoliceMedicalTaxSignal(text: string): boolean {
+  return /polizei|anklage|straftat|gerichtsladung|gerichtsverfahren|strafverfahren|\bcourt\b|\bpolice\b|criminal charge|lawsuit|diagnose|behandlungsentscheidung|medical diagnosis|treatment decision|steueroptimierung|steuerhinterziehung|tax optimization|binding tax advice/i.test(
+    text,
+  );
+}
+
+function isDocumentLikeSignalPresent(text: string): boolean {
+  return detectTextDocumentBypassRequired(text) || detectOfficialLetterStyleQuestionText(text);
+}
+// ── End Phase 8.9C helpers ───────────────────────────────────────────────────
 
 // ── Phase 8.5N — Text Document Bypass Guard helper ────────────────────────
 // Deterministic multi-signal scoring. Pure, local.
@@ -235,6 +302,47 @@ function buildPilotFailureResponse(
   );
 }
 // ── End Phase 8.2K-2 pilot branch helpers ────────────────────────────────────
+
+// ── Phase 8.9C — Text Document Mode response helpers ────────────────────────
+// Pure, local. Returns only safe, non-sensitive flags. No secrets/env leaked.
+
+function buildTextDocumentModeSafetyFlags(textDocumentModeEnabled: boolean) {
+  return {
+    textDocumentModeEnabled,
+    controlledTextDocumentRuntime: textDocumentModeEnabled,
+    pastedTextOnly: true,
+    photoOcrStillBlocked: true,
+    scannerUploadStillBlocked: true,
+    fileUploadStillBlocked: true,
+    paidDocumentModeStillBlocked: true,
+    vayloDnaStillBlocked: true,
+    persistenceStillBlocked: true,
+    dbStorageStillBlocked: true,
+    exactLegalDeadlineStillBlocked: true,
+    bindingLegalAdviceStillBlocked: true,
+    officialFilingGenerationStillBlocked: true,
+    modelOutputStillUntrusted: true,
+    documentTextTreatedAsSensitive: true,
+    privacyDisclaimerRequired: true,
+    legalDisclaimerRequired: true,
+    eightThreeAcNotRun: true,
+  } as const;
+}
+
+function textDocumentModeBlockedResponse(
+  code: string,
+  status: number,
+): ReturnType<typeof NextResponse.json> {
+  return NextResponse.json(
+    {
+      ok: false,
+      code,
+      textDocumentMeta: buildTextDocumentModeSafetyFlags(false),
+    },
+    { status },
+  );
+}
+// ── End Phase 8.9C response helpers ──────────────────────────────────────────
 
 export async function POST(req: Request) {
   const ip = getClientIp(req);
@@ -436,6 +544,124 @@ export async function POST(req: Request) {
     });
   }
   // ── End Phase 8.8T public Free Q&A beta branch ─────────────────────────────
+
+  // ── Phase 8.9C — Text Document Mode controlled runtime branch ──────────────
+  // Disabled by default unless SMART_TALK_TEXT_DOCUMENT_MODE_ENABLED === "true".
+  // Pasted document text only — no OCR/photo/scanner/upload/paid/DNA/persistence.
+  // Fail-closed: no model call when disabled or when any blocker triggers.
+  if (o.mode === TEXT_DOCUMENT_CONTROLLED_RUNTIME_MODE) {
+    const textDocumentModeEnabled = process.env[TEXT_DOCUMENT_MODE_ENV_FLAG] === "true";
+    if (!textDocumentModeEnabled) {
+      return textDocumentModeBlockedResponse("text_document_mode_disabled", 403);
+    }
+
+    if (o.context !== "anonymous" && o.context !== "controlled_test") {
+      return badRequest("invalid_context");
+    }
+    if (o.inputType !== "text") {
+      return badRequest("text_document_mode_text_input_only");
+    }
+    if (typeof o.text !== "string") {
+      return badRequest("invalid_text");
+    }
+    const text = o.text.trim();
+    if (text.length < MIN_TEXT) {
+      return badRequest("text_too_short");
+    }
+    if (text.length > MAX_TEXT) {
+      return badRequest("text_too_long");
+    }
+    if (!hasLetter(text) || isOnlyUrls(text)) {
+      return badRequest("invalid_text");
+    }
+
+    if (detectOcrPhotoRequest(o)) {
+      return textDocumentModeBlockedResponse("photo_ocr_blocked", 402);
+    }
+    if (detectScannerUploadRequest(o)) {
+      return textDocumentModeBlockedResponse("scanner_upload_blocked", 402);
+    }
+    if (detectFileUploadRequest(o)) {
+      return textDocumentModeBlockedResponse("file_upload_blocked", 402);
+    }
+    if (detectClientPaidDocumentModeActivation(o)) {
+      return textDocumentModeBlockedResponse("paid_document_mode_blocked", 402);
+    }
+    if (detectVayloDnaSaveRequest(o)) {
+      return textDocumentModeBlockedResponse("vaylo_dna_blocked", 402);
+    }
+    if (detectPersistenceStorageRequest(o)) {
+      return textDocumentModeBlockedResponse("persistence_storage_blocked", 402);
+    }
+    if (detectCredentialSecretText(text)) {
+      return textDocumentModeBlockedResponse("sensitive_credential_data_blocked", 402);
+    }
+    if (detectFinancialAccountOrPaymentAuthorizationText(text)) {
+      return textDocumentModeBlockedResponse("sensitive_financial_data_blocked", 402);
+    }
+    if (detectIdentityDocumentNumberText(text)) {
+      return textDocumentModeBlockedResponse("sensitive_identity_data_blocked", 402);
+    }
+    if (detectExactLegalDeadlineRequest(text)) {
+      return textDocumentModeBlockedResponse("exact_legal_deadline_calculation_blocked", 402);
+    }
+    if (detectBindingLegalAdviceRequest(text)) {
+      return textDocumentModeBlockedResponse("binding_legal_advice_blocked", 402);
+    }
+    if (detectOfficialFilingGenerationRequest(text)) {
+      return textDocumentModeBlockedResponse("official_filing_generation_blocked", 402);
+    }
+    if (detectHighRiskCourtPoliceMedicalTaxSignal(text)) {
+      return textDocumentModeBlockedResponse("high_risk_signal_escalation_blocked", 402);
+    }
+    if (!isDocumentLikeSignalPresent(text)) {
+      return textDocumentModeBlockedResponse("no_document_signal_blocked", 400);
+    }
+
+    let locale: SmartTalkLocale = "sk";
+    if (o.locale !== undefined && o.locale !== null) {
+      if (typeof o.locale !== "string" || !ALLOWED_LOCALES.has(o.locale as SmartTalkLocale)) {
+        return badRequest("invalid_locale");
+      }
+      locale = o.locale as SmartTalkLocale;
+    }
+
+    const apiKey = process.env.OPENAI_API_KEY?.trim();
+    if (!apiKey) {
+      return NextResponse.json({ ok: false, error: "smart_talk_unavailable" }, { status: 503 });
+    }
+
+    let out: Awaited<ReturnType<typeof runSmartTalk>>;
+    try {
+      out = await Promise.race([
+        runSmartTalk({ text, locale, inputType: "text" }),
+        new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error("smart_talk_timeout")), SMART_TALK_ROUTE_TIMEOUT_MS);
+        }),
+      ]);
+    } catch {
+      return NextResponse.json({ ok: false, error: "smart_talk_timeout" }, { status: 504 });
+    }
+
+    if (!out.ok) {
+      const requestId = createRequestId();
+      logRouteError("[smart-talk] text document controlled runtime openai failed", requestId, {
+        kind: out.error.kind,
+        status: out.error.kind === "openai_http" ? out.error.status : undefined,
+      });
+      return internalErrorResponse({ requestId, status: 500 });
+    }
+
+    const context = o.context as "anonymous" | "controlled_test";
+    return NextResponse.json({
+      ok: true,
+      mode: TEXT_DOCUMENT_CONTROLLED_RUNTIME_MODE,
+      context,
+      result: out.result,
+      textDocumentMeta: buildTextDocumentModeSafetyFlags(true),
+    });
+  }
+  // ── End Phase 8.9C Text Document Mode controlled runtime branch ────────────
 
   // ── Phase 8.8M — Actual minimal scoped runtime patch (internal-only Free Q&A) ──
   // Strictly fail-closed. Disabled by default for public requests.
