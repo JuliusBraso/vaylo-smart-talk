@@ -833,6 +833,16 @@ export default function SmartTalkClient() {
       ? photoPages.length === 0 || photoOverUploadBudget
       : trimmedLen < 8 || trimmedLen > MAX_TEXT_LENGTH);
 
+  // Phase 8.9K: guarded to mode === "text" only — the control is not even
+  // rendered otherwise (see JSX below), so this is a defense-in-depth guard.
+  const controlledTextDocumentModeDisabled =
+    mode !== "text" ||
+    loading ||
+    photoPreparing ||
+    cameraStarting ||
+    trimmedLen < 8 ||
+    trimmedLen > MAX_TEXT_LENGTH;
+
   const photoReady =
     mode === "photo" &&
     photoPages.length > 0 &&
@@ -889,6 +899,61 @@ export default function SmartTalkClient() {
         body: JSON.stringify({
           context: "anonymous",
           inputType,
+          locale: "sk",
+          text: trimmed,
+        }),
+      });
+
+      let data: unknown = null;
+      try {
+        data = (await res.json()) as unknown;
+      } catch {
+        data = null;
+      }
+
+      if (genAtStart !== generationRef.current) return;
+
+      const okParsed = parseSmartTalkResponse(data);
+      if (res.ok && okParsed) {
+        setResult(okParsed.result);
+        return;
+      }
+
+      setError(messageForStatus(res.status));
+    } catch {
+      if (genAtStart !== generationRef.current) return;
+      setError(MSG.fallback);
+    } finally {
+      busyRef.current = false;
+      setLoading(false);
+    }
+  }, [text, mode]);
+
+  // Phase 8.9K: controlled/internal-only Text Document Mode test action.
+  // Fully additive — does not alter onSubmit/onPhotoSubmit or their branching.
+  // Only operates on pasted text (mode === "text"); never wired to photo/file/
+  // image/OCR/upload. No client-side storage, analytics, or console logging
+  // of the document text. Behind a clearly-labeled, non-default, internal
+  // control only (see JSX below) — internal/local test surface only.
+  const handleControlledTextDocumentModeSubmit = useCallback(async () => {
+    if (mode !== "text") return;
+    const trimmed = text.trim();
+    if (trimmed.length < 8 || trimmed.length > MAX_TEXT_LENGTH || busyRef.current) return;
+    const genAtStart = generationRef.current;
+    busyRef.current = true;
+
+    setLoading(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      const res = await fetch("/api/smart-talk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "text_document_controlled_runtime",
+          context: "anonymous",
+          inputType: "text",
           locale: "sk",
           text: trimmed,
         }),
@@ -1319,6 +1384,42 @@ export default function SmartTalkClient() {
       >
         {SUBMIT_LABEL[mode]}
       </button>
+
+      {mode === "text" ? (
+        <div style={{ display: "grid", gap: 6, marginTop: -4 }}>
+          <button
+            type="button"
+            onClick={() => void handleControlledTextDocumentModeSubmit()}
+            disabled={controlledTextDocumentModeDisabled}
+            aria-busy={loading}
+            style={{
+              width: "100%",
+              height: 40,
+              borderRadius: "var(--r999)",
+              border: "1px dashed rgba(148, 163, 184, 0.6)",
+              background: "rgba(248, 250, 252, 1)",
+              color: "var(--muted)",
+              fontWeight: 700,
+              fontSize: 13,
+              cursor: controlledTextDocumentModeDisabled ? "not-allowed" : "pointer",
+              opacity: controlledTextDocumentModeDisabled ? 0.55 : 1,
+            }}
+          >
+            Interný test: Text Document Mode
+          </button>
+          <p
+            style={{
+              margin: 0,
+              fontSize: 11,
+              lineHeight: 1.4,
+              color: "var(--muted2)",
+              textAlign: "center",
+            }}
+          >
+            Len interný test — kontrolovaný lokálne, nie verejná funkcia.
+          </p>
+        </div>
+      ) : null}
 
       <div
         aria-live="polite"
