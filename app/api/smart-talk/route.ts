@@ -38,6 +38,12 @@ const FREE_QA_PUBLIC_BETA_MODE = "free_qa_public_beta";
 const FREE_QA_PUBLIC_RUNTIME_ENV_FLAG = "SMART_TALK_FREE_QA_PUBLIC_ENABLED";
 const TEXT_DOCUMENT_CONTROLLED_RUNTIME_MODE = "text_document_controlled_runtime";
 const TEXT_DOCUMENT_MODE_ENV_FLAG = "SMART_TALK_TEXT_DOCUMENT_MODE_ENABLED";
+const PHOTO_OCR_CONTROLLED_RUNTIME_MODE = "photo_ocr_controlled_runtime";
+const PHOTO_OCR_ENV_FLAG = "SMART_TALK_PHOTO_OCR_CONTROLLED_RUNTIME_ENABLED";
+const PHOTO_OCR_ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const PHOTO_OCR_MAX_PAGES = 3;
+const PHOTO_OCR_MAX_RAW_BYTES_PER_PAGE = 8 * 1024 * 1024;
+const PHOTO_OCR_MAX_PROCESSED_BYTES_TOTAL = 4 * 1024 * 1024;
 
 /** In-memory sliding window: IP → request timestamps (no persistence). */
 const ipHits = new Map<string, number[]>();
@@ -361,6 +367,171 @@ function textDocumentModeBlockedResponse(
 }
 // ── End Phase 8.9C response helpers ──────────────────────────────────────────
 
+// ── Phase 8.10C — Photo/OCR Controlled Runtime Placeholder helpers ─────────
+// Deterministic, local, pure detectors and response builders. No I/O · no
+// fetch · no OpenAI · no OCR library · no env reads except the single exact
+// enablement check performed inline in the route branch below. These
+// detectors inspect ONLY page metadata (mimeType, sizeBytes) and generic
+// request control fields — they never read, decode, or persist image bytes.
+
+function isPhotoOcrPageArray(v: unknown): v is Record<string, unknown>[] {
+  return Array.isArray(v) && v.every((p) => p !== null && typeof p === "object");
+}
+
+function detectPhotoOcrRemoteUrlMarker(pages: Record<string, unknown>[]): boolean {
+  return pages.some((p) => {
+    const remoteUrl = p.remoteUrl;
+    const url = p.url;
+    return (
+      (typeof remoteUrl === "string" && remoteUrl.trim() !== "") ||
+      (typeof url === "string" && url.trim() !== "")
+    );
+  });
+}
+
+function detectPhotoOcrFilePathMarker(pages: Record<string, unknown>[]): boolean {
+  return pages.some((p) => {
+    const path = p.path;
+    const filePath = p.filePath;
+    return (
+      (typeof path === "string" && path.trim() !== "") ||
+      (typeof filePath === "string" && filePath.trim() !== "")
+    );
+  });
+}
+
+function detectPhotoOcrPdfMarker(pages: Record<string, unknown>[]): boolean {
+  return pages.some((p) => p.mimeType === "application/pdf");
+}
+
+function detectPhotoOcrUnsupportedMimeType(pages: Record<string, unknown>[]): boolean {
+  return pages.some(
+    (p) => typeof p.mimeType !== "string" || !PHOTO_OCR_ALLOWED_MIME_TYPES.has(p.mimeType),
+  );
+}
+
+function detectPhotoOcrOversizedPage(pages: Record<string, unknown>[]): boolean {
+  return pages.some(
+    (p) => typeof p.sizeBytes === "number" && p.sizeBytes > PHOTO_OCR_MAX_RAW_BYTES_PER_PAGE,
+  );
+}
+
+function detectPhotoOcrBackgroundUploadMarker(body: Record<string, unknown>): boolean {
+  return (
+    body.backgroundUpload === true ||
+    body.requestedBackgroundUpload === true ||
+    body.autoUpload === true
+  );
+}
+
+function detectPhotoOcrPersistenceMarker(body: Record<string, unknown>): boolean {
+  return (
+    body.requestedPersistence === true ||
+    body.requestedEntitlement === true ||
+    body.persistImage === true ||
+    body.saveImage === true
+  );
+}
+
+function detectPhotoOcrStorageMarker(body: Record<string, unknown>): boolean {
+  return (
+    body.requestedStorage === true ||
+    body.requestedSupabaseStorage === true ||
+    body.uploadToStorage === true
+  );
+}
+
+function detectPhotoOcrDnaWriteMarker(body: Record<string, unknown>): boolean {
+  return body.requestedDnaSave === true || body.vayloDnaSave === true;
+}
+
+function detectPhotoOcrPaidModeMarker(body: Record<string, unknown>): boolean {
+  return (
+    body.requestedPaidMode === true ||
+    body.requestedPayment === true ||
+    body.paidDocumentMode === true
+  );
+}
+
+function detectPhotoOcrPublicRuntimeMarker(body: Record<string, unknown>): boolean {
+  return (
+    body.requestedPublicRuntime === true ||
+    body.publicRuntime === true ||
+    body.publicLaunch === true
+  );
+}
+
+function detectPhotoOcrProductionMarker(body: Record<string, unknown>): boolean {
+  return body.requestedProduction === true || body.production === true;
+}
+
+function detectPhotoOcrGoLiveMarker(body: Record<string, unknown>): boolean {
+  return body.requestedGoLive === true || body.goLive === true;
+}
+
+function detectPhotoOcrEightThreeAcMarker(body: Record<string, unknown>): boolean {
+  return (
+    body.invokeEightThreeAc === true ||
+    body.run8_3ac === true ||
+    body.eightThreeAcInvocation === true
+  );
+}
+
+/**
+ * Safe, non-sensitive Photo/OCR meta flags. Never includes image bytes,
+ * extracted text, or secrets. `photoOcrControlledRuntime` is the only field
+ * that varies between the disabled and allowed-placeholder paths — every
+ * other flag always states the same fail-closed, no-OCR, no-persistence
+ * posture, whether the branch is disabled or the controlled placeholder path
+ * is returned.
+ */
+function buildPhotoOcrMeta(photoOcrControlledRuntime: boolean) {
+  return {
+    photoOcrControlledRuntime,
+    photoInputOnly: true,
+    placeholderOnly: true,
+    realOcrExtractionPerformed: false,
+    ocrRuntimeStillBlocked: true,
+    modelCallPerformed: false,
+    uploadRuntimeStillBlocked: true,
+    rawImagePersistenceBlocked: true,
+    processedImagePersistenceBlocked: true,
+    extractedTextPersistenceBlocked: true,
+    dbStorageStillBlocked: true,
+    supabaseStorageStillBlocked: true,
+    vayloDnaStillBlocked: true,
+    paidDocumentModeStillBlocked: true,
+    publicRuntimeStillBlocked: true,
+    productionAuthorizedNow: false,
+    goLiveAuthorizedNow: false,
+    modelOutputStillUntrusted: true,
+    ocrOutputStillUntrusted: true,
+    imageContentTreatedAsSensitive: true,
+    extractedTextTreatedAsSensitive: true,
+    privacyDisclaimerRequired: true,
+    legalDisclaimerRequired: true,
+    exactLegalDeadlineStillBlocked: true,
+    bindingLegalAdviceStillBlocked: true,
+    officialFilingGenerationStillBlocked: true,
+    eightThreeAcNotRun: true,
+  } as const;
+}
+
+function photoOcrBlockedResponse(
+  code: string,
+  status: number,
+): ReturnType<typeof NextResponse.json> {
+  return NextResponse.json(
+    {
+      ok: false,
+      code,
+      photoOcrMeta: buildPhotoOcrMeta(false),
+    },
+    { status },
+  );
+}
+// ── End Phase 8.10C Photo/OCR Controlled Runtime Placeholder helpers ───────
+
 export async function POST(req: Request) {
   const ip = getClientIp(req);
   if (!takeRateSlot(ip)) {
@@ -683,6 +854,150 @@ export async function POST(req: Request) {
     });
   }
   // ── End Phase 8.9C Text Document Mode controlled runtime branch ────────────
+
+  // ── Phase 8.10C — Photo/OCR Controlled Runtime Placeholder branch ──────────
+  // Disabled by default unless SMART_TALK_PHOTO_OCR_CONTROLLED_RUNTIME_ENABLED
+  // === "true" (exact lowercase match only; every other value fails closed).
+  // Controlled internal placeholder ONLY — no OCR engine, no OCR dependency,
+  // no model call, no image bytes read (only page metadata: mimeType +
+  // sizeBytes is inspected), no persistence, no DB/storage/DNA write. This
+  // branch is fully isolated from the default question/text flow, the
+  // text_document_controlled_runtime flow, and the existing photo/default
+  // upload flow (/api/smart-talk-photo). Real OCR extraction remains blocked
+  // and deferred to a later, separate, explicitly authorized phase.
+  if (typeof o.mode === "string" && o.mode.startsWith("photo_ocr")) {
+    if (o.mode !== PHOTO_OCR_CONTROLLED_RUNTIME_MODE) {
+      return photoOcrBlockedResponse("photo_ocr_invalid_mode_blocked", 400);
+    }
+
+    const photoOcrEnabled = process.env[PHOTO_OCR_ENV_FLAG] === "true";
+    if (!photoOcrEnabled) {
+      return photoOcrBlockedResponse("photo_ocr_controlled_runtime_disabled", 403);
+    }
+
+    if (o.context !== "anonymous") {
+      return photoOcrBlockedResponse("photo_ocr_invalid_context_blocked", 400);
+    }
+    if (o.inputType !== "photo") {
+      return photoOcrBlockedResponse("photo_ocr_invalid_input_type_blocked", 400);
+    }
+    if (typeof o.text === "string" && o.text.trim().length > 0) {
+      return photoOcrBlockedResponse("photo_ocr_text_payload_mismatch_blocked", 400);
+    }
+
+    const pages = o.photoPages;
+    if (!isPhotoOcrPageArray(pages) || pages.length === 0) {
+      return photoOcrBlockedResponse("photo_ocr_photo_payload_required", 400);
+    }
+    if (pages.length > PHOTO_OCR_MAX_PAGES) {
+      return photoOcrBlockedResponse("photo_ocr_page_count_blocked", 400);
+    }
+    if (detectPhotoOcrPdfMarker(pages)) {
+      return photoOcrBlockedResponse("photo_ocr_pdf_upload_blocked", 400);
+    }
+    if (detectPhotoOcrUnsupportedMimeType(pages)) {
+      return photoOcrBlockedResponse("photo_ocr_unsupported_mime_type_blocked", 400);
+    }
+    if (detectPhotoOcrRemoteUrlMarker(pages)) {
+      return photoOcrBlockedResponse("photo_ocr_remote_url_blocked", 400);
+    }
+    if (detectPhotoOcrFilePathMarker(pages)) {
+      return photoOcrBlockedResponse("photo_ocr_file_path_blocked", 400);
+    }
+    if (detectPhotoOcrOversizedPage(pages)) {
+      return photoOcrBlockedResponse("photo_ocr_image_size_blocked", 400);
+    }
+    if (
+      typeof o.processedPayloadSizeBytes === "number" &&
+      o.processedPayloadSizeBytes > PHOTO_OCR_MAX_PROCESSED_BYTES_TOTAL
+    ) {
+      return photoOcrBlockedResponse("photo_ocr_processed_payload_size_blocked", 400);
+    }
+    if (detectPhotoOcrBackgroundUploadMarker(o)) {
+      return photoOcrBlockedResponse("photo_ocr_background_upload_blocked", 402);
+    }
+    if (detectPhotoOcrPersistenceMarker(o)) {
+      return photoOcrBlockedResponse("photo_ocr_persistence_blocked", 402);
+    }
+    if (detectPhotoOcrStorageMarker(o)) {
+      return photoOcrBlockedResponse("photo_ocr_storage_blocked", 402);
+    }
+    if (detectPhotoOcrDnaWriteMarker(o)) {
+      return photoOcrBlockedResponse("photo_ocr_dna_write_blocked", 402);
+    }
+    if (detectPhotoOcrPaidModeMarker(o)) {
+      return photoOcrBlockedResponse("photo_ocr_paid_mode_blocked", 402);
+    }
+    if (detectPhotoOcrPublicRuntimeMarker(o)) {
+      return photoOcrBlockedResponse("photo_ocr_public_runtime_blocked", 402);
+    }
+    if (detectPhotoOcrProductionMarker(o)) {
+      return photoOcrBlockedResponse("photo_ocr_production_blocked", 402);
+    }
+    if (detectPhotoOcrGoLiveMarker(o)) {
+      return photoOcrBlockedResponse("photo_ocr_go_live_blocked", 402);
+    }
+    if (detectPhotoOcrEightThreeAcMarker(o)) {
+      return photoOcrBlockedResponse("photo_ocr_8_3ac_invocation_blocked", 402);
+    }
+
+    const note = typeof o.note === "string" ? o.note : "";
+    if (note) {
+      if (detectExactLegalDeadlineRequest(note)) {
+        return photoOcrBlockedResponse("photo_ocr_exact_legal_deadline_blocked", 402);
+      }
+      if (detectBindingLegalAdviceRequest(note)) {
+        return photoOcrBlockedResponse("photo_ocr_binding_legal_advice_blocked", 402);
+      }
+      if (detectOfficialFilingGenerationRequest(note)) {
+        return photoOcrBlockedResponse("photo_ocr_official_filing_generation_blocked", 402);
+      }
+      if (detectCredentialSecretText(note)) {
+        return photoOcrBlockedResponse("photo_ocr_sensitive_credential_data_blocked", 402);
+      }
+      if (detectFinancialAccountOrPaymentAuthorizationText(note)) {
+        return photoOcrBlockedResponse("photo_ocr_sensitive_financial_data_blocked", 402);
+      }
+    }
+
+    if (o.locale !== undefined && o.locale !== null) {
+      if (typeof o.locale !== "string" || !ALLOWED_LOCALES.has(o.locale as SmartTalkLocale)) {
+        return badRequest("invalid_locale");
+      }
+    }
+
+    // Controlled placeholder path only. No OCR engine, no OCR dependency, no
+    // model call, no image bytes read (only mimeType/sizeBytes metadata was
+    // inspected above), no persistence. Real OCR extraction is deferred to a
+    // later, separate, explicitly authorized phase (see 8.10B plan).
+    return NextResponse.json({
+      ok: true,
+      mode: PHOTO_OCR_CONTROLLED_RUNTIME_MODE,
+      context: "anonymous",
+      result: {
+        summary:
+          "Obrázok bol prijatý len na kontrolovanú internú validáciu Photo/OCR placeholder cesty.",
+        meaning:
+          "Toto je iba technický test rozhrania. Skutočné rozpoznávanie textu (OCR) z obrázka v tejto fáze ešte nie je aktívne.",
+        urgency: "unknown",
+        nextSteps: [],
+        warnings: [
+          "OCR extrakcia textu z fotografie zatiaľ nie je vykonávaná.",
+          "Toto je interný kontrolovaný placeholder, nie verejná funkcia.",
+        ],
+        confidenceLevel: "low",
+        documentQuality: "unknown",
+        documentKind: "unknown",
+        domain: "unknown",
+        deadlines: [],
+        rights: [],
+        obligations: [],
+        consequences: [],
+      },
+      photoOcrMeta: buildPhotoOcrMeta(true),
+    });
+  }
+  // ── End Phase 8.10C Photo/OCR Controlled Runtime Placeholder branch ────────
 
   // ── Phase 8.8M — Actual minimal scoped runtime patch (internal-only Free Q&A) ──
   // Strictly fail-closed. Disabled by default for public requests.

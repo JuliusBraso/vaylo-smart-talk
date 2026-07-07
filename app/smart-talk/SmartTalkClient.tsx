@@ -984,6 +984,74 @@ export default function SmartTalkClient() {
     }
   }, [text, mode]);
 
+  // Phase 8.10C: controlled/internal-only Photo/OCR placeholder test action.
+  // Fully additive — does not alter onPhotoSubmit or its FormData/upload
+  // flow. Sends ONLY page metadata (mimeType + sizeBytes) to the server;
+  // never sends the actual file bytes, never persists anything client-side,
+  // and never claims OCR is active or that the document was read. The
+  // server-side route branch is the sole authority for enabling this path —
+  // no client-side env flag is used or implied. Internal/local test surface
+  // only.
+  const handleControlledPhotoOcrPlaceholderSubmit = useCallback(async () => {
+    if (mode !== "photo" || photoPages.length === 0 || busyRef.current || photoPreparing) return;
+    const genAtStart = generationRef.current;
+    busyRef.current = true;
+
+    setLoading(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      const res = await fetch("/api/smart-talk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "photo_ocr_controlled_runtime",
+          context: "anonymous",
+          inputType: "photo",
+          locale: "sk",
+          photoPages: photoPages.map((p) => ({
+            mimeType: p.file.type,
+            sizeBytes: p.file.size,
+          })),
+        }),
+      });
+
+      let data: unknown = null;
+      try {
+        data = (await res.json()) as unknown;
+      } catch {
+        data = null;
+      }
+
+      if (genAtStart !== generationRef.current) return;
+
+      const okParsed = parseSmartTalkResponse(data);
+      if (res.ok && okParsed) {
+        setResult(okParsed.result);
+        return;
+      }
+
+      setError(messageForStatus(res.status));
+    } catch {
+      if (genAtStart !== generationRef.current) return;
+      setError(MSG.fallback);
+    } finally {
+      busyRef.current = false;
+      setLoading(false);
+    }
+  }, [mode, photoPages, photoPreparing]);
+
+  // Phase 8.10C: defense-in-depth guard — the control is only rendered when
+  // mode === "photo" (see JSX below), but this mirrors the 8.9K pattern of
+  // also gating the handler/disabled-state on the exact mode.
+  const controlledPhotoOcrPlaceholderDisabled =
+    mode !== "photo" ||
+    loading ||
+    photoPreparing ||
+    cameraStarting ||
+    photoPages.length === 0;
+
   const onPhotoSubmit = useCallback(async () => {
     if (
       photoPages.length === 0 ||
@@ -1417,6 +1485,42 @@ export default function SmartTalkClient() {
             }}
           >
             Len interný test — kontrolovaný lokálne, nie verejná funkcia.
+          </p>
+        </div>
+      ) : null}
+
+      {mode === "photo" ? (
+        <div style={{ display: "grid", gap: 6, marginTop: -4 }}>
+          <button
+            type="button"
+            onClick={() => void handleControlledPhotoOcrPlaceholderSubmit()}
+            disabled={controlledPhotoOcrPlaceholderDisabled}
+            aria-busy={loading}
+            style={{
+              width: "100%",
+              height: 40,
+              borderRadius: "var(--r999)",
+              border: "1px dashed rgba(148, 163, 184, 0.6)",
+              background: "rgba(248, 250, 252, 1)",
+              color: "var(--muted)",
+              fontWeight: 700,
+              fontSize: 13,
+              cursor: controlledPhotoOcrPlaceholderDisabled ? "not-allowed" : "pointer",
+              opacity: controlledPhotoOcrPlaceholderDisabled ? 0.55 : 1,
+            }}
+          >
+            Interný test: Photo/OCR placeholder
+          </button>
+          <p
+            style={{
+              margin: 0,
+              fontSize: 11,
+              lineHeight: 1.4,
+              color: "var(--muted2)",
+              textAlign: "center",
+            }}
+          >
+            Len interný test — OCR zatiaľ nie je aktívne.
           </p>
         </div>
       ) : null}
