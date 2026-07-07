@@ -17,6 +17,7 @@ import {
   PILOT_RUNTIME_REQUIRED_GUARDS,
 } from "@/lib/vaylo/smart-talk/reality-matrix/live-input/pilot-runtime-guard-contract-types";
 import { runFreeQaScopedRuntimePatchAuthorizationDecision } from "@/lib/vaylo/smart-talk/reality-matrix/live-input/run-free-qa-scoped-runtime-patch-authorization-decision";
+import { extractTextFromImageBuffer } from "@/lib/vaylo/smart-talk/ocr/real-ocr-adapter";
 
 function isSmartTalkInputType(v: unknown): v is SmartTalkInputType {
   return v === "text" || v === "question";
@@ -44,6 +45,21 @@ const PHOTO_OCR_ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/
 const PHOTO_OCR_MAX_PAGES = 3;
 const PHOTO_OCR_MAX_RAW_BYTES_PER_PAGE = 8 * 1024 * 1024;
 const PHOTO_OCR_MAX_PROCESSED_BYTES_TOTAL = 4 * 1024 * 1024;
+
+// Phase 8.11C — Real OCR Extraction Controlled Runtime (separate from the
+// 8.10C placeholder above). Disabled by default; this dedicated env flag is
+// the ONLY thing that can enable it. The placeholder flag above
+// (PHOTO_OCR_ENV_FLAG) must never authorize this branch.
+const REAL_OCR_CONTROLLED_RUNTIME_MODE = "photo_ocr_real_extraction_controlled_runtime";
+const REAL_OCR_ENV_FLAG = "SMART_TALK_REAL_OCR_EXTRACTION_ENABLED";
+const REAL_OCR_ALLOWED_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
+const REAL_OCR_MAX_FILE_SIZE_BYTES = 8_388_608; // 8 MiB
+const REAL_OCR_MAX_PAGE_COUNT = 1;
+const REAL_OCR_MIN_TEXT_LENGTH = 8;
+const REAL_OCR_MAX_TEXT_LENGTH = 6000;
+const REAL_OCR_TIMEOUT_MS = 15_000;
+const REAL_OCR_PREVIEW_LENGTH = 240;
+const REAL_OCR_LOW_CONFIDENCE_THRESHOLD = 60; // tesseract.js confidence is 0-100
 
 /** In-memory sliding window: IP → request timestamps (no persistence). */
 const ipHits = new Map<string, number[]>();
@@ -532,11 +548,262 @@ function photoOcrBlockedResponse(
 }
 // ── End Phase 8.10C Photo/OCR Controlled Runtime Placeholder helpers ───────
 
+// ── Phase 8.11C — Real OCR Extraction Controlled Runtime helpers ───────────
+// Disabled by default unless SMART_TALK_REAL_OCR_EXTRACTION_ENABLED === "true"
+// (exact lowercase match only; every other value fails closed). The existing
+// placeholder flag (SMART_TALK_PHOTO_OCR_CONTROLLED_RUNTIME_ENABLED) never
+// authorizes this branch. This branch performs real, local, server-side OCR
+// extraction on a single small image via an internal adapter module. There
+// is no model call during OCR extraction, no persistence of the raw/
+// processed image or the extracted text, no database/cloud-storage/Vaylo
+// DNA write, and no handoff of the extracted text into Smart Talk document
+// reasoning — handoff.allowed is always false in this phase. This branch is
+// fully isolated from the default question/text flow, the
+// text_document_controlled_runtime flow, the 8.10C photo_ocr_controlled_
+// runtime placeholder flow, and the existing default photo upload flow
+// (/api/smart-talk-photo).
+
+function buildRealOcrSafetyMeta(modelCallPerformed: boolean) {
+  return {
+    noPersistence: true,
+    noStorage: true,
+    noDnaWrite: true,
+    rawImagePersistencePerformed: false,
+    processedImagePersistencePerformed: false,
+    extractedTextPersistencePerformed: false,
+    dbStorageWritePerformed: false,
+    supabaseStorageWritePerformed: false,
+    vayloDnaWritePerformed: false,
+    modelCallPerformed,
+    rawImageSentToModel: false,
+    publicRuntimeStillBlocked: true,
+    productionAuthorizedNow: false,
+    goLiveAuthorizedNow: false,
+    paidDocumentModeEnabledNow: false,
+    eightThreeAcNotRun: true,
+  } as const;
+}
+
+function realOcrBlockedResponse(
+  code: string,
+  status: number,
+): ReturnType<typeof NextResponse.json> {
+  return NextResponse.json(
+    {
+      ok: false,
+      code,
+      safety: buildRealOcrSafetyMeta(false),
+    },
+    { status },
+  );
+}
+
+/**
+ * Simple heuristic: a high ratio of characters outside common letters,
+ * digits, whitespace, and basic punctuation suggests a noisy/garbled OCR
+ * result (e.g. scanning artifacts, non-document images). Used only as a
+ * downgrade signal, never as a hard block.
+ */
+function isNoisyExtractedOcrText(text: string): boolean {
+  if (text.length === 0) return false;
+  const weirdMatches = text.match(/[^\p{L}\p{N}\s.,;:!?'"()\-/]/gu);
+  const weirdCount = weirdMatches ? weirdMatches.length : 0;
+  return weirdCount / text.length > 0.3;
+}
+
+interface RealOcrQualityEvaluation {
+  status: "blocked" | "low" | "medium" | "usable";
+  usableForSmartTalk: boolean;
+  blockingReasons: string[];
+  downgradeReasons: string[];
+}
+
+/**
+ * Minimal quality evaluator v0 (Phase 8.11C, contained in this route). Runs
+ * only on already-extracted OCR text; never re-reads image bytes.
+ */
+function evaluateRealOcrQuality(
+  extractedTextRaw: string,
+  confidenceAvailable: boolean,
+  confidence: number | null,
+): RealOcrQualityEvaluation {
+  const blockingReasons: string[] = [];
+  const downgradeReasons: string[] = [];
+
+  if (extractedTextRaw.length === 0) {
+    blockingReasons.push("empty_extraction");
+  } else if (extractedTextRaw.length < REAL_OCR_MIN_TEXT_LENGTH) {
+    blockingReasons.push("extracted_text_too_short");
+  }
+  if (extractedTextRaw.length > REAL_OCR_MAX_TEXT_LENGTH) {
+    blockingReasons.push("extracted_text_too_long");
+  }
+
+  if (!confidenceAvailable) {
+    downgradeReasons.push("confidence_unavailable");
+  } else if (typeof confidence === "number" && confidence < REAL_OCR_LOW_CONFIDENCE_THRESHOLD) {
+    downgradeReasons.push("low_confidence");
+  }
+  if (extractedTextRaw.length > 0 && extractedTextRaw.length < 24) {
+    downgradeReasons.push("very_short_text");
+  }
+  if (isNoisyExtractedOcrText(extractedTextRaw)) {
+    downgradeReasons.push("suspiciously_noisy_text");
+  }
+
+  let status: RealOcrQualityEvaluation["status"];
+  if (blockingReasons.length > 0) {
+    status = "blocked";
+  } else if (downgradeReasons.length >= 2) {
+    status = "low";
+  } else if (downgradeReasons.length === 1) {
+    status = "medium";
+  } else {
+    status = "usable";
+  }
+
+  return {
+    status,
+    usableForSmartTalk: blockingReasons.length === 0,
+    blockingReasons,
+    downgradeReasons,
+  };
+}
+
+/**
+ * Handles the real OCR extraction controlled runtime branch. Only reachable
+ * from POST when the request Content-Type is multipart/form-data (see
+ * dispatch at the top of POST). No other existing mode/branch is affected —
+ * this function is additive and self-contained.
+ */
+async function handleRealOcrExtractionRequest(
+  req: Request,
+): Promise<ReturnType<typeof NextResponse.json>> {
+  const realOcrEnabled = process.env[REAL_OCR_ENV_FLAG] === "true";
+  if (!realOcrEnabled) {
+    return realOcrBlockedResponse("real_ocr_extraction_disabled", 403);
+  }
+
+  let form: FormData;
+  try {
+    form = await req.formData();
+  } catch {
+    return realOcrBlockedResponse("real_ocr_invalid_content_type", 400);
+  }
+
+  const mode = form.get("mode");
+  if (mode !== REAL_OCR_CONTROLLED_RUNTIME_MODE) {
+    return realOcrBlockedResponse("real_ocr_invalid_content_type", 400);
+  }
+
+  const pageCountRaw = form.get("pageCount");
+  if (pageCountRaw !== null) {
+    const pageCount = Number(pageCountRaw);
+    if (!Number.isFinite(pageCount) || pageCount !== REAL_OCR_MAX_PAGE_COUNT) {
+      return realOcrBlockedResponse("real_ocr_multiple_pages_blocked", 400);
+    }
+  }
+
+  const file = form.get("image");
+  if (!(file instanceof File) || file.size === 0) {
+    return realOcrBlockedResponse("real_ocr_missing_image", 400);
+  }
+  if (file.size > REAL_OCR_MAX_FILE_SIZE_BYTES) {
+    return realOcrBlockedResponse("real_ocr_file_too_large", 413);
+  }
+  if (!REAL_OCR_ALLOWED_MIME_TYPES.has(file.type)) {
+    return realOcrBlockedResponse("real_ocr_unsupported_mime", 400);
+  }
+
+  let imageBuffer: Buffer;
+  try {
+    imageBuffer = Buffer.from(await file.arrayBuffer());
+  } catch {
+    return realOcrBlockedResponse("real_ocr_provider_error", 502);
+  }
+
+  const ocrResult = await extractTextFromImageBuffer({
+    imageBuffer,
+    mimeType: file.type as "image/png" | "image/jpeg" | "image/webp",
+    timeoutMs: REAL_OCR_TIMEOUT_MS,
+  });
+
+  if (!ocrResult.ok) {
+    if (ocrResult.errorCode === "ocr_timeout") {
+      return realOcrBlockedResponse("real_ocr_timeout", 504);
+    }
+    if (ocrResult.errorCode === "empty_extraction") {
+      return realOcrBlockedResponse("real_ocr_empty_extraction", 422);
+    }
+    return realOcrBlockedResponse("real_ocr_provider_error", 502);
+  }
+
+  const extractedText = ocrResult.extractedText;
+  const quality = evaluateRealOcrQuality(
+    extractedText,
+    ocrResult.confidenceAvailable,
+    ocrResult.confidence,
+  );
+
+  if (quality.status === "blocked") {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "real_ocr_quality_blocked",
+        quality,
+        safety: buildRealOcrSafetyMeta(false),
+      },
+      { status: 422 },
+    );
+  }
+
+  return NextResponse.json({
+    ok: true,
+    mode: REAL_OCR_CONTROLLED_RUNTIME_MODE,
+    context: "anonymous",
+    ocrResult: {
+      extractedText,
+      extractedTextPreview: extractedText.slice(0, REAL_OCR_PREVIEW_LENGTH),
+      extractedTextLength: extractedText.length,
+      confidenceAvailable: ocrResult.confidenceAvailable,
+      confidence: ocrResult.confidence,
+      provider: "tesseract_js",
+      providerWarnings: ocrResult.providerWarnings,
+    },
+    quality,
+    safety: buildRealOcrSafetyMeta(false),
+    handoff: {
+      allowed: false,
+      reason: "ocr_to_smart_talk_handoff_not_enabled_in_8_11c",
+      sourceMarkedOcrDerived: true,
+      textMarkedUntrusted: true,
+    },
+    disclaimers: {
+      privacyDisclaimerRequired: true,
+      legalDisclaimerRequired: true,
+      ocrMayBeWrongWarningRequired: true,
+      checkOriginalDocumentRequired: true,
+    },
+  });
+}
+// ── End Phase 8.11C Real OCR Extraction Controlled Runtime helpers ─────────
+
 export async function POST(req: Request) {
   const ip = getClientIp(req);
   if (!takeRateSlot(ip)) {
     return NextResponse.json({ ok: false, error: "smart_talk_rate_limited" }, { status: 429 });
   }
+
+  // ── Phase 8.11C — Real OCR Extraction Controlled Runtime dispatch ──────────
+  // This is the only branch that accepts multipart/form-data; every other
+  // existing mode (question/text, Free Q&A, Text Document Mode, Photo/OCR
+  // placeholder) continues to send/receive JSON exactly as before and is
+  // completely unaffected by this dispatch check.
+  const requestContentType = req.headers.get("content-type") || "";
+  if (requestContentType.toLowerCase().startsWith("multipart/form-data")) {
+    return handleRealOcrExtractionRequest(req);
+  }
+  // ── End Phase 8.11C dispatch ────────────────────────────────────────────────
 
   let body: unknown;
   try {
@@ -550,6 +817,17 @@ export async function POST(req: Request) {
   }
 
   const o = body as Record<string, unknown>;
+
+  // ── Phase 8.11C — Real OCR mode requested via non-multipart JSON body ─────
+  // The real OCR extraction branch requires multipart/form-data (handled
+  // above, before JSON parsing). If a caller sends this mode as a JSON body
+  // instead, fail closed here — before it would otherwise reach the 8.10C
+  // placeholder branch below, whose `o.mode.startsWith("photo_ocr")` check
+  // would intercept this mode string too.
+  if (o.mode === REAL_OCR_CONTROLLED_RUNTIME_MODE) {
+    return realOcrBlockedResponse("real_ocr_invalid_content_type", 415);
+  }
+  // ── End Phase 8.11C JSON-body guard ─────────────────────────────────────────
 
   // ── Phase 8.8T — Public Free Q&A beta branch behind exact env flag ─────────
   // Disabled by default unless SMART_TALK_FREE_QA_PUBLIC_ENABLED === "true".

@@ -150,6 +150,96 @@ function isRecord(x: unknown): x is Record<string, unknown> {
   return x !== null && typeof x === "object";
 }
 
+/**
+ * Phase 8.11C: safe display-only shape for the internal Real OCR extraction
+ * test button. Deliberately does NOT carry the full extracted text — only
+ * a capped preview and length, matching what the operator is allowed to see
+ * (see SmartTalkClient result panel below). Never persisted client-side.
+ */
+type RealOcrUiResult = {
+  ok: boolean;
+  code?: string;
+  extractedTextLength?: number;
+  extractedTextPreview?: string;
+  qualityStatus?: "blocked" | "low" | "medium" | "usable";
+  blockingReasons?: string[];
+  downgradeReasons?: string[];
+};
+
+const REAL_OCR_QUALITY_STATUSES = new Set(["blocked", "low", "medium", "usable"]);
+
+function parseRealOcrResponse(data: unknown): RealOcrUiResult | null {
+  if (!isRecord(data)) return null;
+
+  if (data.ok === true) {
+    const ocrResult = isRecord(data.ocrResult) ? data.ocrResult : null;
+    const quality = isRecord(data.quality) ? data.quality : null;
+    if (!ocrResult || !quality) return null;
+
+    const blockingReasons = Array.isArray(quality.blockingReasons)
+      ? quality.blockingReasons.filter((x): x is string => typeof x === "string")
+      : [];
+    const downgradeReasons = Array.isArray(quality.downgradeReasons)
+      ? quality.downgradeReasons.filter((x): x is string => typeof x === "string")
+      : [];
+    const qualityStatusRaw = typeof quality.status === "string" ? quality.status : "blocked";
+    const qualityStatus = (
+      REAL_OCR_QUALITY_STATUSES.has(qualityStatusRaw) ? qualityStatusRaw : "blocked"
+    ) as RealOcrUiResult["qualityStatus"];
+
+    return {
+      ok: true,
+      extractedTextLength:
+        typeof ocrResult.extractedTextLength === "number" ? ocrResult.extractedTextLength : 0,
+      extractedTextPreview:
+        typeof ocrResult.extractedTextPreview === "string" ? ocrResult.extractedTextPreview : "",
+      qualityStatus,
+      blockingReasons,
+      downgradeReasons,
+    };
+  }
+
+  if (data.ok === false) {
+    const code = typeof data.code === "string" ? data.code : "real_ocr_extraction_failed";
+    const quality = isRecord(data.quality) ? data.quality : null;
+    const blockingReasons =
+      quality && Array.isArray(quality.blockingReasons)
+        ? quality.blockingReasons.filter((x): x is string => typeof x === "string")
+        : [];
+    return { ok: false, code, blockingReasons };
+  }
+
+  return null;
+}
+
+/** Slovak UX for the internal Phase 8.11C Real OCR extraction test button. */
+function messageForRealOcrCode(code: string | undefined): string {
+  switch (code) {
+    case "real_ocr_extraction_disabled":
+      return "Reálna OCR extrakcia je momentálne vypnutá (interný kontrolovaný test).";
+    case "real_ocr_unsupported_mime":
+      return "Nepodporovaný typ súboru. Použite JPG, PNG alebo WebP.";
+    case "real_ocr_missing_image":
+      return "Vyberte platný obrázok na test.";
+    case "real_ocr_file_too_large":
+      return "Súbor je príliš veľký. Maximálna veľkosť je 8 MB.";
+    case "real_ocr_multiple_pages_blocked":
+      return "Tento interný test podporuje iba jednu stranu.";
+    case "real_ocr_invalid_content_type":
+      return "Neplatný formát požiadavky pre interný test.";
+    case "real_ocr_timeout":
+      return "Rozpoznávanie textu trvalo príliš dlho. Skúste to znova.";
+    case "real_ocr_provider_error":
+      return "OCR modul zlyhal pri spracovaní obrázka.";
+    case "real_ocr_empty_extraction":
+      return "Z obrázka sa nepodarilo rozpoznať žiadny text.";
+    case "real_ocr_quality_blocked":
+      return "Rozpoznaný text nemá dostatočnú kvalitu na ďalšie spracovanie.";
+    default:
+      return "Interný test Real OCR extraction zlyhal. Skúste to znova.";
+  }
+}
+
 function parseSmartTalkResponse(data: unknown): SmartTalkOkResponse | null {
   if (!isRecord(data) || data.ok !== true) return null;
   if (typeof data.mode !== "string" || typeof data.context !== "string") return null;
@@ -493,6 +583,13 @@ export default function SmartTalkClient() {
   const [cameraStarting, setCameraStarting] = useState(false);
   const [cameraVideoReady, setCameraVideoReady] = useState(false);
   const [photoInfoLine, setPhotoInfoLine] = useState<string | null>(null);
+  // Phase 8.11C: fully separate state for the internal Real OCR extraction
+  // test button. Never shared with the main `result`/`error`/`loading`
+  // state above, since the real OCR response shape is not a SmartTalkResult
+  // and must never be routed into Smart Talk reasoning/explanation display.
+  const [realOcrLoading, setRealOcrLoading] = useState(false);
+  const [realOcrError, setRealOcrError] = useState<string | null>(null);
+  const [realOcrResult, setRealOcrResult] = useState<RealOcrUiResult | null>(null);
 
   const releaseCameraHardware = useCallback(() => {
     const v = videoRef.current;
@@ -1052,6 +1149,77 @@ export default function SmartTalkClient() {
     cameraStarting ||
     photoPages.length === 0;
 
+  // Phase 8.11C: controlled/internal-only Real OCR extraction test action.
+  // Fully additive — separate from the 8.10C Photo/OCR placeholder test
+  // above and from onPhotoSubmit's own upload flow. Performs REAL, local,
+  // server-side OCR extraction (behind its own dedicated server-side env
+  // flag) on a single selected image via a dedicated multipart request. The
+  // returned extracted text is never auto-filled into text mode, never
+  // passed into the existing explanation flow, and never persisted
+  // client-side (no localStorage/sessionStorage, no console logging of the
+  // extracted text). No client-side env flag is used or implied — the
+  // server-side route branch is the sole authority for enabling real OCR.
+  // Internal/local test surface only; selecting the photo tab or choosing an
+  // image never runs OCR by itself — this requires an explicit click.
+  const handleRealOcrExtractionSubmit = useCallback(async () => {
+    if (
+      mode !== "photo" ||
+      photoPages.length !== 1 ||
+      realOcrLoading ||
+      photoPreparing ||
+      busyRef.current
+    )
+      return;
+
+    setRealOcrLoading(true);
+    setRealOcrError(null);
+    setRealOcrResult(null);
+
+    try {
+      const fd = new FormData();
+      fd.append("mode", "photo_ocr_real_extraction_controlled_runtime");
+      fd.append("image", photoPages[0].file);
+      fd.append("pageCount", "1");
+
+      const res = await fetch("/api/smart-talk", {
+        method: "POST",
+        body: fd,
+      });
+
+      let data: unknown = null;
+      try {
+        data = (await res.json()) as unknown;
+      } catch {
+        data = null;
+      }
+
+      const parsed = parseRealOcrResponse(data);
+      if (parsed) {
+        setRealOcrResult(parsed);
+        if (!parsed.ok) {
+          setRealOcrError(messageForRealOcrCode(parsed.code));
+        }
+        return;
+      }
+
+      setRealOcrError(MSG.fallback);
+    } catch {
+      setRealOcrError(MSG.fallback);
+    } finally {
+      setRealOcrLoading(false);
+    }
+  }, [mode, photoPages, realOcrLoading, photoPreparing]);
+
+  // Defense-in-depth guard mirroring controlledPhotoOcrPlaceholderDisabled:
+  // requires exactly one selected image/page and is only ever rendered when
+  // mode === "photo" (see JSX below).
+  const realOcrExtractionDisabled =
+    mode !== "photo" ||
+    realOcrLoading ||
+    photoPreparing ||
+    cameraStarting ||
+    photoPages.length !== 1;
+
   const onPhotoSubmit = useCallback(async () => {
     if (
       photoPages.length === 0 ||
@@ -1522,6 +1690,100 @@ export default function SmartTalkClient() {
           >
             Len interný test — OCR zatiaľ nie je aktívne.
           </p>
+
+          <button
+            type="button"
+            onClick={() => void handleRealOcrExtractionSubmit()}
+            disabled={realOcrExtractionDisabled}
+            aria-busy={realOcrLoading}
+            style={{
+              width: "100%",
+              height: 40,
+              borderRadius: "var(--r999)",
+              border: "1px dashed rgba(148, 163, 184, 0.6)",
+              background: "rgba(248, 250, 252, 1)",
+              color: "var(--muted)",
+              fontWeight: 700,
+              fontSize: 13,
+              cursor: realOcrExtractionDisabled ? "not-allowed" : "pointer",
+              opacity: realOcrExtractionDisabled ? 0.55 : 1,
+            }}
+          >
+            Interný test: Real OCR extraction
+          </button>
+          <p
+            style={{
+              margin: 0,
+              fontSize: 11,
+              lineHeight: 1.4,
+              color: "var(--muted2)",
+              textAlign: "center",
+            }}
+          >
+            Len interný test — vyžaduje presne jednu vybranú stranu. Obrázok ani text sa
+            neukladajú. Nie je to právne poradenstvo.
+          </p>
+
+          {realOcrLoading || realOcrError || realOcrResult ? (
+            <div
+              aria-live="polite"
+              style={{
+                marginTop: 4,
+                padding: "12px 14px",
+                borderRadius: "var(--r12)",
+                border: realOcrError
+                  ? "1px solid rgba(248, 113, 113, 0.45)"
+                  : "1px solid rgba(226, 232, 240, 1)",
+                background: realOcrError ? "rgba(254, 242, 242, 1)" : "rgba(248, 250, 252, 1)",
+                fontSize: 12,
+                lineHeight: 1.5,
+                color: "var(--muted)",
+                display: "grid",
+                gap: 6,
+              }}
+            >
+              {realOcrLoading ? (
+                <p style={{ margin: 0 }}>Prebieha interný test rozpoznávania textu (real OCR)…</p>
+              ) : realOcrError ? (
+                <p style={{ margin: 0, color: "rgba(127, 29, 29, 0.92)" }}>{realOcrError}</p>
+              ) : realOcrResult && realOcrResult.ok ? (
+                <>
+                  <p style={{ margin: 0, fontWeight: 700, color: "var(--text)" }}>
+                    Real OCR extrakcia dokončená (interný test).
+                  </p>
+                  <p style={{ margin: 0 }}>
+                    Dĺžka rozpoznaného textu: {realOcrResult.extractedTextLength ?? 0} znakov.
+                  </p>
+                  {realOcrResult.extractedTextPreview ? (
+                    <p style={{ margin: 0, fontStyle: "italic" }}>
+                      Náhľad: „{realOcrResult.extractedTextPreview}“
+                    </p>
+                  ) : null}
+                  <p style={{ margin: 0 }}>Kvalita: {realOcrResult.qualityStatus ?? "unknown"}</p>
+                  {realOcrResult.downgradeReasons && realOcrResult.downgradeReasons.length > 0 ? (
+                    <p style={{ margin: 0 }}>
+                      Upozornenia kvality: {realOcrResult.downgradeReasons.join(", ")}
+                    </p>
+                  ) : null}
+                  <p style={{ margin: 0 }}>
+                    OCR môže obsahovať chyby a nejde o právne poradenstvo. Vždy skontrolujte
+                    originálny dokument. Obrázok ani text sa štandardne neukladajú.
+                  </p>
+                </>
+              ) : realOcrResult ? (
+                <>
+                  <p style={{ margin: 0, fontWeight: 700, color: "var(--text)" }}>
+                    Real OCR extrakcia zlyhala (interný test).
+                  </p>
+                  {realOcrResult.blockingReasons && realOcrResult.blockingReasons.length > 0 ? (
+                    <p style={{ margin: 0 }}>
+                      Dôvody: {realOcrResult.blockingReasons.join(", ")}
+                    </p>
+                  ) : null}
+                </>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       ) : null}
 

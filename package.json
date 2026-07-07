@@ -14,8 +14,7 @@
     "i18n:baseline:all": "npx -y tsx@4.19.2 scripts/sync-i18n.ts --generate-baseline-all",
     "i18n:post-pr-comment": "npx -y tsx@4.19.2 scripts/post-i18n-comment.ts",
     "verify:dashboard-selection": "npx -y tsx@4.19.2 scripts/verify-dashboard-selection.ts",
-    "verify:dependency-groups": "npx -y tsx@4.19.2 scripts/verify-dependency-groups.ts"
-    ,
+    "verify:dependency-groups": "npx -y tsx@4.19.2 scripts/verify-dependency-groups.ts",
     "docs:worker": "npx -y tsx@4.19.2 scripts/run-document-intelligence-worker.ts --mode worker",
     "docs:requeue-stale": "npx -y tsx@4.19.2 scripts/run-document-intelligence-worker.ts --mode requeue-stale",
     "db:verify": "npx -y tsx@4.19.2 scripts/verify-db-schema.ts",
@@ -29,7 +28,8 @@
     "next": "16.1.6",
     "pdf-parse": "^1.1.1",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
