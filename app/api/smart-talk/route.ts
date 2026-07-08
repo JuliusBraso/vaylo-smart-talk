@@ -61,6 +61,20 @@ const REAL_OCR_TIMEOUT_MS = 15_000;
 const REAL_OCR_PREVIEW_LENGTH = 240;
 const REAL_OCR_LOW_CONFIDENCE_THRESHOLD = 60; // tesseract.js confidence is 0-100
 
+// Phase 8.11I — Minimal OCR-to-Smart-Talk Handoff Runtime Patch. Disabled by
+// default; requires BOTH this exact env flag AND REAL_OCR_ENV_FLAG (above) to
+// be exactly lowercase "true". Builds a handoff envelope proving the gate
+// path (trust/quality metadata preserved) but does NOT call the live model
+// and does NOT invoke Smart Talk reasoning — that remains a separate, later,
+// explicitly authorized phase. Reuses the same MIME/size/page constraints and
+// the same OCR adapter as the 8.11C real OCR branch above; never sends raw
+// image bytes or the original file to a model (no model call happens here at
+// all in this phase).
+const OCR_TO_SMART_TALK_HANDOFF_CONTROLLED_RUNTIME_MODE =
+  "photo_ocr_real_extraction_to_smart_talk_controlled_handoff";
+const OCR_TO_SMART_TALK_HANDOFF_ENV_FLAG = "SMART_TALK_OCR_TO_SMART_TALK_HANDOFF_ENABLED";
+const OCR_TO_SMART_TALK_HANDOFF_REQUIRED_PAGE_COUNT = "1";
+
 /** In-memory sliding window: IP → request timestamps (no persistence). */
 const ipHits = new Map<string, number[]>();
 
@@ -672,9 +686,13 @@ function evaluateRealOcrQuality(
 
 /**
  * Handles the real OCR extraction controlled runtime branch. Only reachable
- * from POST when the request Content-Type is multipart/form-data (see
- * dispatch at the top of POST). No other existing mode/branch is affected —
- * this function is additive and self-contained.
+ * from the shared multipart dispatcher below (see
+ * handleMultipartSmartTalkRequest), which peeks the `mode` field from a
+ * cloned request before routing to this function; this function then parses
+ * the (still-unconsumed) original request body itself, exactly as before
+ * Phase 8.11I introduced the dispatcher. No other existing mode/branch is
+ * affected — this function is additive and self-contained, and its own
+ * behavior, response shapes, and env-gate-first ordering are unchanged.
  */
 async function handleRealOcrExtractionRequest(
   req: Request,
@@ -788,6 +806,340 @@ async function handleRealOcrExtractionRequest(
 }
 // ── End Phase 8.11C Real OCR Extraction Controlled Runtime helpers ─────────
 
+// ── Phase 8.11I — Minimal OCR-to-Smart-Talk Handoff Runtime Patch helpers ──
+// Disabled by default unless BOTH OCR_TO_SMART_TALK_HANDOFF_ENV_FLAG and
+// REAL_OCR_ENV_FLAG are exactly lowercase "true" (every other value fails
+// closed). Builds a handoff envelope proving the gate path — extracted OCR
+// text plus its trust/quality metadata, warnings, and high-risk token flags
+// — but this phase does NOT call the live model and does NOT invoke Smart
+// Talk reasoning (smartTalkResult is always null; handoff.performed is
+// always false). There is no persistence of any kind, no database/cloud-
+// storage/Vaylo DNA write, and no raw image bytes or original document file
+// are ever sent anywhere beyond this route's own local OCR extraction step.
+
+/**
+ * Minimal, self-contained high-risk token detector for the handoff branch.
+ * Deliberately separate from the existing question-text detectors above
+ * (which target user QUESTIONS, e.g. "when is my exact deadline?"), since
+ * this instead scans OCR-DERIVED DOCUMENT TEXT for sensitive/high-risk
+ * categories. Pure, local, synchronous. No I/O, no network, no model call.
+ * Detecting a category never blocks the envelope by itself — it is only
+ * preserved as metadata; the caller still enforces the quality gate above.
+ */
+const OCR_HANDOFF_HIGH_RISK_TOKEN_DETECTORS: Readonly<Record<string, RegExp>> = {
+  deadlines: /\b(frist|fristablauf|deadline|f[äa]llig|lehota|do kedy|termín)\b/i,
+  dates: /\b\d{1,2}[.\/-]\d{1,2}[.\/-]\d{2,4}\b/,
+  amounts: /[€$]\s?\d+[.,]?\d*\b|\b\d+[.,]\d{2}\s?(eur|€|chf|usd)\b/i,
+  ibanOrPaymentReferences: /\b[A-Z]{2}\d{2}[A-Z0-9]{10,30}\b/,
+  caseNumbers: /\b(aktenzeichen|az\.?\s?\d|case\s?no\.?|reference\s?no\.?)\b/i,
+  authorityNames:
+    /\b(finanzamt|jobcenter|ausl[äa]nderbeh[öo]rde|krankenkasse|bundesagentur|gericht|court|police|polizei)\b/i,
+  personalNameSalutations: /\b(herr|frau|mr\.|mrs\.|ms\.)\s+[A-ZÄÖÜ][a-zäöüß]+\b/,
+  addressLikePattern: /\b\d{4,5}\s+[A-ZÄÖÜ][a-zA-ZäöüßÄÖÜ\-]+\b/,
+  credentialsOrApiKeysOrPasswordLikeText:
+    /\b(passwort|password|api[- ]?key|apikey|secret[- ]?key|token)\b\s*[:=]?\s*\S+|sk-[a-zA-Z0-9]{8,}/i,
+  healthOrInsuranceNumbers: /\b(versicherungsnummer|krankenversicherungsnummer|social security number)\b/i,
+  immigrationOrResidencePermitReferences:
+    /\b(aufenthaltstitel|aufenthaltserlaubnis|residence permit|visa number|reisepassnummer)\b/i,
+  taxIds: /\b(steuer-?id|steueridentifikationsnummer|tax id|vat number|ust-?idnr)\b/i,
+};
+
+function detectOcrHighRiskTokens(text: string): string[] {
+  const detected: string[] = [];
+  for (const category of Object.keys(OCR_HANDOFF_HIGH_RISK_TOKEN_DETECTORS)) {
+    if (OCR_HANDOFF_HIGH_RISK_TOKEN_DETECTORS[category].test(text)) {
+      detected.push(category);
+    }
+  }
+  return detected;
+}
+
+/** Human-readable, non-sensitive warnings. Never includes the extracted text itself. */
+function buildOcrToSmartTalkHandoffOcrWarnings(
+  quality: RealOcrQualityEvaluation,
+  highRiskTokensDetected: readonly string[],
+): string[] {
+  const warnings: string[] = [
+    "OCR text may contain misreads; verify against the original document.",
+  ];
+  if (quality.downgradeReasons.length > 0) {
+    warnings.push(`OCR quality signals detected: ${quality.downgradeReasons.join(", ")}.`);
+  }
+  if (highRiskTokensDetected.length > 0) {
+    warnings.push(
+      `Potentially sensitive or high-risk content detected in OCR text (${highRiskTokensDetected.join(", ")}); do not rely on this without checking the original document.`,
+    );
+  }
+  return warnings;
+}
+
+const OCR_TO_SMART_TALK_HANDOFF_BASE_WARNINGS = [
+  "OCR text may be wrong.",
+  "Check the original document.",
+  "This is not legal advice.",
+  "Handoff reasoning is not enabled in 8.11I.",
+] as const;
+
+function buildOcrToSmartTalkHandoffDisclaimers() {
+  return {
+    privacyDisclaimerRequired: true,
+    legalDisclaimerRequired: true,
+    ocrMayBeWrongWarningRequired: true,
+    checkOriginalDocumentRequired: true,
+  } as const;
+}
+
+/**
+ * Safety flags for the 8.11I handoff branch. `envelopeCreated` is the only
+ * field that varies between the success path (envelope built) and every
+ * blocked/failure path (no envelope) — every other flag always states the
+ * same fail-closed, no-model-call, no-persistence posture.
+ */
+function buildOcrToSmartTalkHandoffSafetyMeta(envelopeCreated: boolean) {
+  return {
+    rawImageSentToModel: false,
+    originalDocumentFileSentToModel: false,
+    extractedTextSentToModel: false,
+    modelCallPerformed: false,
+    smartTalkReasoningPerformed: false,
+    ocrToSmartTalkHandoffEnvelopeCreated: envelopeCreated,
+    ocrToSmartTalkHandoffPerformed: false,
+    noPersistence: true,
+    noStorage: true,
+    noDnaWrite: true,
+    rawImagePersistencePerformed: false,
+    processedImagePersistencePerformed: false,
+    extractedTextPersistencePerformed: false,
+    dbStorageWritePerformed: false,
+    supabaseStorageWritePerformed: false,
+    vayloDnaWritePerformed: false,
+    publicRuntimeStillBlocked: true,
+    productionAuthorizedNow: false,
+    goLiveAuthorizedNow: false,
+    paidDocumentModeEnabledNow: false,
+    eightThreeAcNotRun: true,
+  } as const;
+}
+
+function ocrToSmartTalkHandoffBlockedResponse(
+  code: string,
+  status: number,
+): ReturnType<typeof NextResponse.json> {
+  return NextResponse.json(
+    {
+      ok: false,
+      code,
+      safety: buildOcrToSmartTalkHandoffSafetyMeta(false),
+    },
+    { status },
+  );
+}
+
+/**
+ * Handles the minimal OCR-to-Smart-Talk handoff envelope branch. Only
+ * reachable from the shared multipart dispatcher below
+ * (handleMultipartSmartTalkRequest), which peeks the `mode` field from a
+ * cloned request before routing to this function; this function then parses
+ * the (still-unconsumed) original request body itself. Fully additive and
+ * self-contained; does not alter handleRealOcrExtractionRequest's own
+ * behavior or response shape.
+ */
+async function handleOcrToSmartTalkHandoffRequest(
+  req: Request,
+): Promise<ReturnType<typeof NextResponse.json>> {
+  const handoffEnabled = process.env[OCR_TO_SMART_TALK_HANDOFF_ENV_FLAG] === "true";
+  if (!handoffEnabled) {
+    return ocrToSmartTalkHandoffBlockedResponse("ocr_to_smart_talk_handoff_disabled", 403);
+  }
+
+  const realOcrEnabled = process.env[REAL_OCR_ENV_FLAG] === "true";
+  if (!realOcrEnabled) {
+    return ocrToSmartTalkHandoffBlockedResponse("real_ocr_extraction_required_for_handoff", 403);
+  }
+
+  let form: FormData;
+  try {
+    form = await req.formData();
+  } catch {
+    return ocrToSmartTalkHandoffBlockedResponse(
+      "ocr_to_smart_talk_handoff_invalid_content_type",
+      400,
+    );
+  }
+
+  const pageCountRaw = form.get("pageCount");
+  if (pageCountRaw !== OCR_TO_SMART_TALK_HANDOFF_REQUIRED_PAGE_COUNT) {
+    return ocrToSmartTalkHandoffBlockedResponse(
+      "ocr_to_smart_talk_handoff_page_count_required",
+      400,
+    );
+  }
+
+  if (form.getAll("image").length !== 1) {
+    return ocrToSmartTalkHandoffBlockedResponse(
+      "ocr_to_smart_talk_handoff_single_image_required",
+      400,
+    );
+  }
+
+  const file = form.get("image");
+  if (!(file instanceof File) || file.size === 0) {
+    return ocrToSmartTalkHandoffBlockedResponse("ocr_to_smart_talk_handoff_missing_image", 400);
+  }
+  if (file.size > REAL_OCR_MAX_FILE_SIZE_BYTES) {
+    return ocrToSmartTalkHandoffBlockedResponse("ocr_to_smart_talk_handoff_file_too_large", 413);
+  }
+  if (!REAL_OCR_ALLOWED_MIME_TYPES.has(file.type)) {
+    return ocrToSmartTalkHandoffBlockedResponse("ocr_to_smart_talk_handoff_unsupported_mime", 400);
+  }
+
+  let imageBuffer: Buffer;
+  try {
+    imageBuffer = Buffer.from(await file.arrayBuffer());
+  } catch {
+    return ocrToSmartTalkHandoffBlockedResponse("ocr_to_smart_talk_handoff_provider_error", 502);
+  }
+
+  const ocrResult = await extractTextFromImageBuffer({
+    imageBuffer,
+    mimeType: file.type as "image/png" | "image/jpeg" | "image/webp",
+    timeoutMs: REAL_OCR_TIMEOUT_MS,
+  });
+
+  if (!ocrResult.ok) {
+    if (ocrResult.errorCode === "ocr_timeout") {
+      return ocrToSmartTalkHandoffBlockedResponse("ocr_to_smart_talk_handoff_timeout", 504);
+    }
+    if (ocrResult.errorCode === "empty_extraction") {
+      return ocrToSmartTalkHandoffBlockedResponse(
+        "ocr_to_smart_talk_handoff_empty_extraction",
+        422,
+      );
+    }
+    return ocrToSmartTalkHandoffBlockedResponse("ocr_to_smart_talk_handoff_provider_error", 502);
+  }
+
+  const extractedText = ocrResult.extractedText;
+  const quality = evaluateRealOcrQuality(
+    extractedText,
+    ocrResult.confidenceAvailable,
+    ocrResult.confidence,
+  );
+
+  // Usable quality does not mean verified truth — high-risk claims (legal
+  // deadlines, filings, binding advice, DNA writes) remain blocked
+  // regardless of quality status; see handoff.* flags in the response below.
+  if (!quality.usableForSmartTalk) {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "ocr_quality_not_usable_for_handoff",
+        quality,
+        safety: buildOcrToSmartTalkHandoffSafetyMeta(false),
+      },
+      { status: 422 },
+    );
+  }
+
+  const highRiskTokensDetected = detectOcrHighRiskTokens(extractedText);
+  const ocrWarnings = buildOcrToSmartTalkHandoffOcrWarnings(quality, highRiskTokensDetected);
+  const trace = [
+    "real_ocr_extraction_enabled_confirmed",
+    "ocr_to_smart_talk_handoff_env_confirmed",
+    "ocr_extraction_performed",
+    `ocr_quality_status:${quality.status}`,
+    highRiskTokensDetected.length > 0
+      ? "high_risk_tokens_detected"
+      : "no_high_risk_tokens_detected",
+    "handoff_envelope_created",
+    "envelope_ready_for_future_reasoning",
+    "smart_talk_reasoning_not_invoked_in_8_11i",
+    "model_call_not_invoked_in_8_11i",
+  ];
+
+  return NextResponse.json({
+    ok: true,
+    mode: OCR_TO_SMART_TALK_HANDOFF_CONTROLLED_RUNTIME_MODE,
+    context: "anonymous",
+    ocrResult: {
+      extractedText,
+      extractedTextPreview: extractedText.slice(0, REAL_OCR_PREVIEW_LENGTH),
+      extractedTextLength: extractedText.length,
+      confidenceAvailable: ocrResult.confidenceAvailable,
+      confidence: ocrResult.confidence,
+      provider: "tesseract_js",
+      providerWarnings: ocrResult.providerWarnings,
+      quality,
+    },
+    smartTalkResult: null,
+    handoff: {
+      allowed: true,
+      performed: false,
+      reason: "minimal_handoff_envelope_created_but_smart_talk_reasoning_not_enabled_in_8_11i",
+      sourceKind: "ocr_derived_text",
+      sourceMode: REAL_OCR_CONTROLLED_RUNTIME_MODE,
+      trustLevel: "untrusted_derived",
+      sensitivityLevel: "sensitive_user_content",
+      qualityStatus: quality.status,
+      usableForSmartTalk: quality.usableForSmartTalk,
+      blockingReasons: quality.blockingReasons,
+      downgradeReasons: quality.downgradeReasons,
+      ocrWarnings,
+      highRiskTokensDetected,
+      extractedTextLength: extractedText.length,
+      provider: "tesseract_js",
+      confidenceAvailable: ocrResult.confidenceAvailable,
+      confidence: ocrResult.confidence,
+      exactLegalDeadlineStillBlocked: true,
+      bindingLegalAdviceStillBlocked: true,
+      officialFilingStillBlocked: true,
+      dnaWriteBlocked: true,
+      persistenceBlocked: true,
+      publicRuntimeStillBlocked: true,
+      productionAuthorizedNow: false,
+      goLiveAuthorizedNow: false,
+      trace,
+    },
+    safety: buildOcrToSmartTalkHandoffSafetyMeta(true),
+    disclaimers: buildOcrToSmartTalkHandoffDisclaimers(),
+    warnings: [...OCR_TO_SMART_TALK_HANDOFF_BASE_WARNINGS, ...ocrWarnings],
+  });
+}
+
+/**
+ * Shared multipart/form-data entry point (Phase 8.11I). Peeks the `mode`
+ * form field from a *cloned* request (leaving the original request body
+ * unconsumed) to decide which branch should handle the request, then
+ * dispatches to either the new OCR-to-Smart-Talk handoff branch or the
+ * existing (unmodified) 8.11C real OCR extraction branch — each of which
+ * independently parses the original, still-unconsumed request body itself,
+ * exactly as before this dispatcher existed. This replaces the previous
+ * direct call from POST to handleRealOcrExtractionRequest(req) — that
+ * function's own behavior, response shapes, and env-gate-first ordering are
+ * otherwise completely unchanged.
+ */
+async function handleMultipartSmartTalkRequest(
+  req: Request,
+): Promise<ReturnType<typeof NextResponse.json>> {
+  let peekedMode: unknown = null;
+  try {
+    const peekForm = await req.clone().formData();
+    peekedMode = peekForm.get("mode");
+  } catch {
+    // Malformed multipart body — fall through to the real OCR branch below,
+    // whose own req.formData() call on the (still-unconsumed) original
+    // request will surface the same real_ocr_invalid_content_type failure
+    // mode as before this dispatcher existed.
+  }
+
+  if (peekedMode === OCR_TO_SMART_TALK_HANDOFF_CONTROLLED_RUNTIME_MODE) {
+    return handleOcrToSmartTalkHandoffRequest(req);
+  }
+
+  return handleRealOcrExtractionRequest(req);
+}
+// ── End Phase 8.11I Minimal OCR-to-Smart-Talk Handoff Runtime Patch helpers ─
+
 export async function POST(req: Request) {
   const ip = getClientIp(req);
   if (!takeRateSlot(ip)) {
@@ -801,7 +1153,7 @@ export async function POST(req: Request) {
   // completely unaffected by this dispatch check.
   const requestContentType = req.headers.get("content-type") || "";
   if (requestContentType.toLowerCase().startsWith("multipart/form-data")) {
-    return handleRealOcrExtractionRequest(req);
+    return handleMultipartSmartTalkRequest(req);
   }
   // ── End Phase 8.11C dispatch ────────────────────────────────────────────────
 
@@ -828,6 +1180,21 @@ export async function POST(req: Request) {
     return realOcrBlockedResponse("real_ocr_invalid_content_type", 415);
   }
   // ── End Phase 8.11C JSON-body guard ─────────────────────────────────────────
+
+  // ── Phase 8.11I — OCR-to-Smart-Talk handoff mode requested via non-multipart
+  // JSON body ─────────────────────────────────────────────────────────────
+  // The handoff branch requires multipart/form-data (handled above, before
+  // JSON parsing). If a caller sends this mode as a JSON body instead, fail
+  // closed here — before it would otherwise reach the 8.10C placeholder
+  // branch below, whose `o.mode.startsWith("photo_ocr")` check would
+  // intercept this mode string too (it also starts with "photo_ocr").
+  if (o.mode === OCR_TO_SMART_TALK_HANDOFF_CONTROLLED_RUNTIME_MODE) {
+    return ocrToSmartTalkHandoffBlockedResponse(
+      "ocr_to_smart_talk_handoff_invalid_content_type",
+      415,
+    );
+  }
+  // ── End Phase 8.11I JSON-body guard ─────────────────────────────────────────
 
   // ── Phase 8.8T — Public Free Q&A beta branch behind exact env flag ─────────
   // Disabled by default unless SMART_TALK_FREE_QA_PUBLIC_ENABLED === "true".
