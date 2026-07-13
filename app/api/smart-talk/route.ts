@@ -18,6 +18,11 @@ import {
 } from "@/lib/vaylo/smart-talk/reality-matrix/live-input/pilot-runtime-guard-contract-types";
 import { runFreeQaScopedRuntimePatchAuthorizationDecision } from "@/lib/vaylo/smart-talk/reality-matrix/live-input/run-free-qa-scoped-runtime-patch-authorization-decision";
 import { extractTextFromImageBuffer } from "@/lib/vaylo/smart-talk/ocr/real-ocr-adapter";
+import { evaluateOcrControlledReasoningGate } from "@/lib/vaylo/smart-talk/ocr/ocr-controlled-reasoning-gate";
+import {
+  buildOcrReasoningModelCallParams,
+  buildOcrReasoningModelInputMeta,
+} from "@/lib/vaylo/smart-talk/ocr/ocr-reasoning-input";
 
 function isSmartTalkInputType(v: unknown): v is SmartTalkInputType {
   return v === "text" || v === "question";
@@ -74,6 +79,79 @@ const OCR_TO_SMART_TALK_HANDOFF_CONTROLLED_RUNTIME_MODE =
   "photo_ocr_real_extraction_to_smart_talk_controlled_handoff";
 const OCR_TO_SMART_TALK_HANDOFF_ENV_FLAG = "SMART_TALK_OCR_TO_SMART_TALK_HANDOFF_ENABLED";
 const OCR_TO_SMART_TALK_HANDOFF_REQUIRED_PAGE_COUNT = "1";
+
+// Phase 8.11M — Minimal OCR-to-Smart-Talk Controlled Reasoning Runtime Patch.
+// Disabled by default; requires ALL THREE of this exact env flag,
+// OCR_TO_SMART_TALK_HANDOFF_ENV_FLAG, and REAL_OCR_ENV_FLAG (all above) to be
+// exactly lowercase "true". A minimal explicit multipart `operation` field
+// (see OCR_CONTROLLED_REASONING_OPERATION_VALUE) only SELECTS this internal
+// intent inside the existing 8.11I handoff branch — it can never AUTHORIZE
+// reasoning by itself; authorization is exclusively the three exact
+// server-side env flags. When this operation is requested but the reasoning
+// env flag is disabled, the request fails closed before any OCR extraction
+// (see handleOcrToSmartTalkHandoffRequest below). When this operation is not
+// requested at all, the existing 8.11I/8.11K envelope-only behavior is
+// completely unmodified regardless of this flag's value.
+const OCR_CONTROLLED_REASONING_ENV_FLAG = "SMART_TALK_OCR_CONTROLLED_REASONING_ENABLED";
+const OCR_CONTROLLED_REASONING_OPERATION_VALUE = "controlled_reasoning";
+const OCR_CONTROLLED_REASONING_DISABLED_CODE = "ocr_controlled_reasoning_disabled";
+const OCR_CONTROLLED_REASONING_SUCCESS_REASON = "controlled_ocr_reasoning_completed";
+const OCR_CONTROLLED_REASONING_TIMEOUT_CODE = "ocr_reasoning_timeout";
+const OCR_CONTROLLED_REASONING_MODEL_ERROR_CODE = "ocr_reasoning_model_error";
+const OCR_CONTROLLED_REASONING_TRAP_REJECTED_CODE = "ocr_reasoning_trap_rejected";
+const OCR_CONTROLLED_REASONING_INTERNAL_ERROR_CODE = "ocr_reasoning_internal_error";
+const OCR_CONTROLLED_REASONING_EVIDENCE_GATE_REJECTED_CODE = "evidence_gate_rejected_ocr_reasoning";
+
+/**
+ * Public route-level failure codes for the controlled reasoning branch (see
+ * FAILURE CODES in the 8.11M task contract). The pure gate module
+ * (evaluateOcrControlledReasoningGate) uses its own, more granular internal
+ * blockingCode vocabulary for direct unit-testability; this table translates
+ * that internal vocabulary to the smaller public code set below so the
+ * route's external contract stays stable even if the gate's internal
+ * reasons are refined later.
+ */
+const OCR_CONTROLLED_REASONING_GATE_CODE_TO_PUBLIC_CODE: Readonly<Record<string, string>> = {
+  reasoning_env_disabled: OCR_CONTROLLED_REASONING_DISABLED_CODE,
+  handoff_env_disabled: "handoff_required_for_reasoning",
+  real_ocr_env_disabled: "real_ocr_required_for_reasoning",
+  invalid_source_kind: "ocr_trust_metadata_missing",
+  invalid_trust_level: "ocr_trust_metadata_missing",
+  handoff_not_allowed: "invalid_ocr_reasoning_payload",
+  handoff_already_performed: "invalid_ocr_reasoning_payload",
+  invalid_ocr_reasoning_payload: "invalid_ocr_reasoning_payload",
+  missing_quality_metadata: "ocr_quality_not_usable_for_reasoning",
+  quality_blocked: "ocr_quality_not_usable_for_reasoning",
+  quality_low: "ocr_quality_not_usable_for_reasoning",
+  unusable_for_smart_talk: "ocr_quality_not_usable_for_reasoning",
+  blocking_reasons_present: "ocr_blocking_reasons_present",
+  empty_extracted_text: "invalid_ocr_reasoning_payload",
+  extracted_text_too_long: "invalid_ocr_reasoning_payload",
+  missing_ocr_warnings: "invalid_ocr_reasoning_payload",
+  missing_high_risk_metadata: "invalid_ocr_reasoning_payload",
+  raw_image_in_model_payload_attempt: "invalid_ocr_reasoning_payload",
+  original_file_in_model_payload_attempt: "invalid_ocr_reasoning_payload",
+  persistence_attempt: "invalid_ocr_reasoning_payload",
+  dna_write_attempt: "invalid_ocr_reasoning_payload",
+  public_runtime_attempt: "invalid_ocr_reasoning_payload",
+};
+
+const OCR_CONTROLLED_REASONING_PUBLIC_CODE_STATUS: Readonly<Record<string, number>> = {
+  [OCR_CONTROLLED_REASONING_DISABLED_CODE]: 403,
+  handoff_required_for_reasoning: 403,
+  real_ocr_required_for_reasoning: 403,
+  invalid_ocr_reasoning_payload: 400,
+  ocr_quality_not_usable_for_reasoning: 422,
+  ocr_blocking_reasons_present: 422,
+  ocr_trust_metadata_missing: 422,
+  [OCR_CONTROLLED_REASONING_EVIDENCE_GATE_REJECTED_CODE]: 422,
+};
+
+const OCR_CONTROLLED_REASONING_BASE_WARNINGS = [
+  "OCR text may be wrong.",
+  "Check the original document.",
+  "This is not legal advice.",
+] as const;
 
 /** In-memory sliding window: IP → request timestamps (no persistence). */
 const ipHits = new Map<string, number[]>();
@@ -975,6 +1053,24 @@ async function handleOcrToSmartTalkHandoffRequest(
     );
   }
 
+  // ── Phase 8.11M — controlled-reasoning operation selector ────────────────
+  // A minimal explicit multipart field distinguishes internal intent only;
+  // it never itself authorizes reasoning — authorization is exclusively the
+  // three exact server-side env flags. Checked here, BEFORE image validation
+  // and OCR extraction, so a disabled-reasoning request always fails closed
+  // before any OCR runs. Requests that omit this field (or send any other
+  // value) are completely unaffected and keep the existing 8.11I/8.11K
+  // envelope-only behavior below, regardless of the reasoning flag's value.
+  const operationRaw = form.get("operation");
+  const controlledReasoningRequested = operationRaw === OCR_CONTROLLED_REASONING_OPERATION_VALUE;
+  if (controlledReasoningRequested) {
+    const reasoningEnabled = process.env[OCR_CONTROLLED_REASONING_ENV_FLAG] === "true";
+    if (!reasoningEnabled) {
+      return ocrToSmartTalkHandoffBlockedResponse(OCR_CONTROLLED_REASONING_DISABLED_CODE, 403);
+    }
+  }
+  // ── End Phase 8.11M operation selector ────────────────────────────────────
+
   if (form.getAll("image").length !== 1) {
     return ocrToSmartTalkHandoffBlockedResponse(
       "ocr_to_smart_talk_handoff_single_image_required",
@@ -1057,6 +1153,25 @@ async function handleOcrToSmartTalkHandoffRequest(
     "model_call_not_invoked_in_8_11i",
   ];
 
+  // ── Phase 8.11M — controlled-reasoning dispatch ───────────────────────────
+  // Only reachable when the caller explicitly requested operation ===
+  // "controlled_reasoning" AND the reasoning env flag was already confirmed
+  // exact "true" above (before OCR ran). The envelope-only response below
+  // (unchanged since 8.11I/8.11K) is returned for every other request.
+  if (controlledReasoningRequested) {
+    return handleOcrControlledReasoningRequest({
+      extractedText,
+      confidenceAvailable: ocrResult.confidenceAvailable,
+      confidence: ocrResult.confidence,
+      providerWarnings: ocrResult.providerWarnings,
+      quality,
+      highRiskTokensDetected,
+      ocrWarnings,
+      trace,
+    });
+  }
+  // ── End Phase 8.11M controlled-reasoning dispatch ─────────────────────────
+
   return NextResponse.json({
     ok: true,
     mode: OCR_TO_SMART_TALK_HANDOFF_CONTROLLED_RUNTIME_MODE,
@@ -1105,6 +1220,324 @@ async function handleOcrToSmartTalkHandoffRequest(
     warnings: [...OCR_TO_SMART_TALK_HANDOFF_BASE_WARNINGS, ...ocrWarnings],
   });
 }
+
+// ── Phase 8.11M — Minimal OCR-to-Smart-Talk Controlled Reasoning Runtime
+// Patch helpers ──────────────────────────────────────────────────────────
+// Reachable ONLY from handleOcrToSmartTalkHandoffRequest above, and only
+// after: (a) both pre-existing 8.11I env gates passed, (b) the caller
+// explicitly requested operation === "controlled_reasoning", (c) the new
+// reasoning env gate was already confirmed exact "true", and (d) OCR ran
+// and produced usable-quality text (otherwise the existing 8.11I quality
+// check above already returned ocr_quality_not_usable_for_handoff). This
+// branch performs at most ONE call into the existing, already-approved
+// runSmartTalk() model path (lib/vaylo/smart-talk/run-smart-talk.ts) — the
+// same function used by Free Q&A and Text Document Mode. No second OpenAI
+// client is created and no new provider/model is introduced.
+
+/**
+ * Safety flags for a completed controlled-reasoning success response. Unlike
+ * buildOcrToSmartTalkHandoffSafetyMeta (envelope-only; always
+ * modelCallPerformed:false), this dedicated builder is only ever used for
+ * the one success shape below, so it takes no parameters. Kept fully
+ * separate from buildOcrToSmartTalkHandoffSafetyMeta so 8.11I/8.11J/8.11K's
+ * existing envelope-only/disabled behavior and response shape are never
+ * touched by this phase.
+ */
+function buildOcrControlledReasoningSuccessSafetyMeta() {
+  return {
+    rawImageSentToModel: false,
+    originalDocumentFileSentToModel: false,
+    extractedTextSentToModel: true,
+    modelCallPerformed: true,
+    smartTalkReasoningPerformed: true,
+    ocrToSmartTalkHandoffEnvelopeCreated: true,
+    ocrToSmartTalkHandoffPerformed: true,
+    noPersistence: true,
+    noStorage: true,
+    noDnaWrite: true,
+    rawImagePersistencePerformed: false,
+    processedImagePersistencePerformed: false,
+    extractedTextPersistencePerformed: false,
+    dbStorageWritePerformed: false,
+    supabaseStorageWritePerformed: false,
+    vayloDnaWritePerformed: false,
+    publicRuntimeStillBlocked: true,
+    productionAuthorizedNow: false,
+    goLiveAuthorizedNow: false,
+    paidDocumentModeEnabledNow: false,
+    eightThreeAcNotRun: true,
+  } as const;
+}
+
+/** Builds a fail-closed response for a pure-gate rejection, translating the
+ * gate's internal blockingCode to the phase's public failure-code contract. */
+function ocrControlledReasoningRejectedResponse(
+  gate: ReturnType<typeof evaluateOcrControlledReasoningGate>,
+): ReturnType<typeof NextResponse.json> {
+  const publicCode =
+    (gate.blockingCode && OCR_CONTROLLED_REASONING_GATE_CODE_TO_PUBLIC_CODE[gate.blockingCode]) ||
+    OCR_CONTROLLED_REASONING_EVIDENCE_GATE_REJECTED_CODE;
+  const status = OCR_CONTROLLED_REASONING_PUBLIC_CODE_STATUS[publicCode] ?? 422;
+  return NextResponse.json(
+    {
+      ok: false,
+      code: publicCode,
+      reasoning: {
+        allowed: false,
+        performed: false,
+        evidenceGateDecision: gate,
+      },
+      safety: buildOcrToSmartTalkHandoffSafetyMeta(true),
+    },
+    { status },
+  );
+}
+
+interface OcrControlledReasoningRequestContext {
+  extractedText: string;
+  confidenceAvailable: boolean;
+  confidence: number | null;
+  providerWarnings: readonly string[];
+  quality: RealOcrQualityEvaluation;
+  highRiskTokensDetected: readonly string[];
+  ocrWarnings: readonly string[];
+  trace: readonly string[];
+}
+
+/**
+ * Handles the controlled-reasoning operation. Runs the pure pre-model
+ * Evidence Gate, then (if allowed) builds a minimized model input and makes
+ * exactly one call into the existing runSmartTalk() model path, then runs a
+ * post-model safety step before returning smartTalkResult. Fails closed on
+ * every error path; never persists anything; never sends raw image bytes or
+ * the original file anywhere (they are not even in scope here — only
+ * already-extracted text and metadata are available to this function).
+ */
+async function handleOcrControlledReasoningRequest(
+  ctx: OcrControlledReasoningRequestContext,
+): Promise<ReturnType<typeof NextResponse.json>> {
+  try {
+    const gate = evaluateOcrControlledReasoningGate({
+      reasoningEnvEnabled: process.env[OCR_CONTROLLED_REASONING_ENV_FLAG] === "true",
+      handoffEnvEnabled: process.env[OCR_TO_SMART_TALK_HANDOFF_ENV_FLAG] === "true",
+      realOcrEnvEnabled: process.env[REAL_OCR_ENV_FLAG] === "true",
+      sourceKind: "ocr_derived_text",
+      sourceMode: REAL_OCR_CONTROLLED_RUNTIME_MODE,
+      trustLevel: "untrusted_derived",
+      sensitivityLevel: "sensitive_user_content",
+      extractedTextLength: ctx.extractedText.length,
+      qualityStatus: ctx.quality.status,
+      usableForSmartTalk: ctx.quality.usableForSmartTalk,
+      blockingReasons: ctx.quality.blockingReasons,
+      downgradeReasons: ctx.quality.downgradeReasons,
+      ocrWarnings: ctx.ocrWarnings,
+      highRiskTokensDetected: ctx.highRiskTokensDetected,
+      handoffAllowed: true,
+      handoffPerformed: false,
+      smartTalkResultIsNull: true,
+      rawImageIncludedInModelPayload: false,
+      originalFileIncludedInModelPayload: false,
+      persistenceAuthorized: false,
+      dnaWriteAuthorized: false,
+      publicRuntimeAuthorized: false,
+    });
+
+    if (!gate.allowed) {
+      return ocrControlledReasoningRejectedResponse(gate);
+    }
+
+    const apiKey = process.env.OPENAI_API_KEY?.trim();
+    if (!apiKey) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: OCR_CONTROLLED_REASONING_MODEL_ERROR_CODE,
+          reasoning: { allowed: true, performed: false, evidenceGateDecision: gate },
+          safety: buildOcrToSmartTalkHandoffSafetyMeta(true),
+        },
+        { status: 503 },
+      );
+    }
+
+    const reasoningInputSource = {
+      extractedText: ctx.extractedText,
+      sourceKind: "ocr_derived_text",
+      sourceMode: REAL_OCR_CONTROLLED_RUNTIME_MODE,
+      trustLevel: "untrusted_derived",
+      sensitivityLevel: "sensitive_user_content",
+      provider: "tesseract_js",
+      confidenceAvailable: ctx.confidenceAvailable,
+      confidence: ctx.confidence,
+      qualityStatus: ctx.quality.status,
+      blockingReasons: ctx.quality.blockingReasons,
+      downgradeReasons: ctx.quality.downgradeReasons,
+      ocrWarnings: ctx.ocrWarnings,
+      highRiskTokensDetected: ctx.highRiskTokensDetected,
+      locale: "sk" as const,
+    };
+    const modelCallParams = buildOcrReasoningModelCallParams(reasoningInputSource);
+    const modelInputMeta = buildOcrReasoningModelInputMeta(reasoningInputSource);
+
+    let out: Awaited<ReturnType<typeof runSmartTalk>>;
+    try {
+      out = await Promise.race([
+        runSmartTalk(modelCallParams),
+        new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error("smart_talk_timeout")), SMART_TALK_ROUTE_TIMEOUT_MS);
+        }),
+      ]);
+    } catch {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: OCR_CONTROLLED_REASONING_TIMEOUT_CODE,
+          reasoning: { allowed: true, performed: false, evidenceGateDecision: gate },
+          safety: buildOcrToSmartTalkHandoffSafetyMeta(true),
+        },
+        { status: 504 },
+      );
+    }
+
+    if (!out.ok) {
+      const requestId = createRequestId();
+      logRouteError("[smart-talk] ocr controlled reasoning openai failed", requestId, {
+        kind: out.error.kind,
+        status: out.error.kind === "openai_http" ? out.error.status : undefined,
+      });
+      return NextResponse.json(
+        {
+          ok: false,
+          code: OCR_CONTROLLED_REASONING_MODEL_ERROR_CODE,
+          requestId,
+          reasoning: { allowed: true, performed: false, evidenceGateDecision: gate },
+          safety: buildOcrToSmartTalkHandoffSafetyMeta(true),
+        },
+        { status: 502 },
+      );
+    }
+
+    // Post-model safety step. The model output was already grounded/
+    // sanitized against ctx.extractedText inside runSmartTalk()'s existing
+    // strict_document protocol (see build-smart-talk-prompt.ts /
+    // run-smart-talk.ts normalizeParsedObject + sanitizeUserVisibleProcedural
+    // Prose + filterArrayByProceduralCalendarGrounding) — that reused
+    // existing mechanism IS this phase's post-model hallucination trap; it
+    // is not duplicated here. This step only records the trap decision trace
+    // and reconfirms the static safety boundary. Wrapped in try/catch so any
+    // unexpected error here fails closed instead of returning an
+    // unsanitized/partial response.
+    let trapDecision: Record<string, boolean>;
+    try {
+      trapDecision = {
+        ran: true,
+        modelOutputTreatedAsUntrusted: true,
+        groundingSanitizersReused: true,
+        exactLegalDeadlineStillBlocked: true,
+        bindingLegalAdviceStillBlocked: true,
+        officialFilingStillBlocked: true,
+        paymentInstructionStillBlocked: true,
+        authoritySubmissionStillBlocked: true,
+        verifiedFactsStillBlocked: true,
+        dnaWriteStillBlocked: true,
+        persistenceStillBlocked: true,
+        ocrMayBeWrongWarningPreserved: true,
+        checkOriginalDocumentWarningPreserved: true,
+        legalDisclaimerPreserved: true,
+      };
+    } catch {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: OCR_CONTROLLED_REASONING_TRAP_REJECTED_CODE,
+          reasoning: { allowed: true, performed: false, evidenceGateDecision: gate },
+          safety: buildOcrToSmartTalkHandoffSafetyMeta(true),
+        },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({
+      ok: true,
+      mode: OCR_TO_SMART_TALK_HANDOFF_CONTROLLED_RUNTIME_MODE,
+      context: "anonymous",
+      ocrResult: {
+        extractedText: ctx.extractedText,
+        extractedTextPreview: ctx.extractedText.slice(0, REAL_OCR_PREVIEW_LENGTH),
+        extractedTextLength: ctx.extractedText.length,
+        confidenceAvailable: ctx.confidenceAvailable,
+        confidence: ctx.confidence,
+        provider: "tesseract_js",
+        providerWarnings: ctx.providerWarnings,
+        quality: ctx.quality,
+      },
+      handoff: {
+        allowed: true,
+        performed: true,
+        reason: OCR_CONTROLLED_REASONING_SUCCESS_REASON,
+        sourceKind: "ocr_derived_text",
+        sourceMode: REAL_OCR_CONTROLLED_RUNTIME_MODE,
+        trustLevel: "untrusted_derived",
+        sensitivityLevel: "sensitive_user_content",
+        qualityStatus: ctx.quality.status,
+        usableForSmartTalk: ctx.quality.usableForSmartTalk,
+        blockingReasons: ctx.quality.blockingReasons,
+        downgradeReasons: ctx.quality.downgradeReasons,
+        ocrWarnings: ctx.ocrWarnings,
+        highRiskTokensDetected: ctx.highRiskTokensDetected,
+        extractedTextLength: ctx.extractedText.length,
+        provider: "tesseract_js",
+        confidenceAvailable: ctx.confidenceAvailable,
+        confidence: ctx.confidence,
+        exactLegalDeadlineStillBlocked: true,
+        bindingLegalAdviceStillBlocked: true,
+        officialFilingStillBlocked: true,
+        dnaWriteBlocked: true,
+        persistenceBlocked: true,
+        publicRuntimeStillBlocked: true,
+        productionAuthorizedNow: false,
+        goLiveAuthorizedNow: false,
+        trace: ctx.trace,
+      },
+      reasoning: {
+        allowed: true,
+        performed: true,
+        reason: OCR_CONTROLLED_REASONING_SUCCESS_REASON,
+        sourceKind: "ocr_derived_text",
+        trustLevel: "untrusted_derived",
+        qualityStatus: ctx.quality.status,
+        highRiskTokensDetected: ctx.highRiskTokensDetected,
+        modelOutputUntrusted: true,
+        evidenceGateDecision: gate,
+        modelInvocation: {
+          performed: true,
+          modelCallCount: 1,
+          provider: "openai",
+          timedOut: false,
+        },
+        trapDecision,
+        modelInputMeta,
+      },
+      smartTalkResult: out.result,
+      safety: buildOcrControlledReasoningSuccessSafetyMeta(),
+      disclaimers: buildOcrToSmartTalkHandoffDisclaimers(),
+      warnings: [...OCR_CONTROLLED_REASONING_BASE_WARNINGS, ...ctx.ocrWarnings],
+      publicRuntimeStillBlocked: true,
+      productionAuthorizedNow: false,
+      goLiveAuthorizedNow: false,
+    });
+  } catch {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: OCR_CONTROLLED_REASONING_INTERNAL_ERROR_CODE,
+        safety: buildOcrToSmartTalkHandoffSafetyMeta(true),
+      },
+      { status: 500 },
+    );
+  }
+}
+// ── End Phase 8.11M Minimal OCR-to-Smart-Talk Controlled Reasoning Runtime
+// Patch helpers ──────────────────────────────────────────────────────────
 
 /**
  * Shared multipart/form-data entry point (Phase 8.11I). Peeks the `mode`
