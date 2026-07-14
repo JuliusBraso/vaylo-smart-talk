@@ -263,6 +263,19 @@ type OcrHandoffUiResult = {
   highRiskTokensDetected?: string[];
   blockingReasons?: string[];
   downgradeReasons?: string[];
+  /**
+   * Phase 8.11P: present only when the request explicitly selected the
+   * internal controlled-reasoning operation (see
+   * handleOcrToSmartTalkHandoffSubmit below) AND the server performed
+   * reasoning. Never inferred client-side — mirrors exactly what the
+   * committed route reports in `reasoning.performed`/`reasoning.reason`/
+   * `reasoning.modelInvocation.modelCallCount`.
+   */
+  reasoningPerformed?: boolean;
+  reasoningReason?: string;
+  modelCallCount?: number;
+  /** Only non-null when reasoningPerformed is true. */
+  smartTalkResult?: SmartTalkResult | null;
 };
 
 function parseOcrHandoffResponse(data: unknown): OcrHandoffUiResult | null {
@@ -294,6 +307,23 @@ function parseOcrHandoffResponse(data: unknown): OcrHandoffUiResult | null {
       ? handoff.downgradeReasons.filter((x): x is string => typeof x === "string")
       : [];
 
+    // Phase 8.11P: only present when the caller requested the controlled
+    // reasoning operation and the route actually ran it — completely absent
+    // (undefined) for the unmodified 8.11I/8.11K envelope-only response.
+    const reasoning = isRecord(data.reasoning) ? data.reasoning : null;
+    const reasoningPerformed = reasoning?.performed === true;
+    const reasoningReason =
+      reasoning && typeof reasoning.reason === "string" ? reasoning.reason : undefined;
+    const modelInvocation =
+      reasoning && isRecord(reasoning.modelInvocation) ? reasoning.modelInvocation : null;
+    const modelCallCount =
+      modelInvocation && typeof modelInvocation.modelCallCount === "number"
+        ? modelInvocation.modelCallCount
+        : undefined;
+    const smartTalkResult = reasoningPerformed
+      ? parseSmartTalkResultObject(data.smartTalkResult)
+      : null;
+
     return {
       ok: true,
       qualityStatus,
@@ -309,6 +339,10 @@ function parseOcrHandoffResponse(data: unknown): OcrHandoffUiResult | null {
       highRiskTokensDetected,
       blockingReasons,
       downgradeReasons,
+      reasoningPerformed,
+      reasoningReason,
+      modelCallCount,
+      smartTalkResult,
     };
   }
 
@@ -351,15 +385,36 @@ function messageForOcrHandoffCode(code: string | undefined): string {
       return "OCR modul zlyhal pri spracovaní obrázka.";
     case "ocr_to_smart_talk_handoff_empty_extraction":
       return "Z obrázka sa nepodarilo rozpoznať žiadny text.";
+    // Phase 8.11P — internal controlled-reasoning operation failure codes.
+    case "ocr_controlled_reasoning_disabled":
+      return "Interné riadené vysvetlenie (OCR → Smart Talk) je momentálne vypnuté (kontrolovaný test).";
+    case "handoff_required_for_reasoning":
+    case "real_ocr_required_for_reasoning":
+      return "Predpoklady pre riadené vysvetlenie nie sú momentálne splnené (kontrolovaný test).";
+    case "ocr_quality_not_usable_for_reasoning":
+    case "ocr_blocking_reasons_present":
+    case "ocr_trust_metadata_missing":
+    case "evidence_gate_rejected_ocr_reasoning":
+      return "Rozpoznaný text nespĺňa podmienky na riadené vysvetlenie (kontrolovaný test).";
+    case "ocr_reasoning_timeout":
+      return "Riadené vysvetlenie trvalo príliš dlho. Skúste to znova.";
+    case "ocr_reasoning_model_error":
+    case "ocr_reasoning_internal_error":
+    case "ocr_reasoning_trap_rejected":
+      return "Riadené vysvetlenie zlyhalo (kontrolovaný test). Skúste to znova.";
     default:
       return "Interný test OCR → Smart Talk zlyhal. Skúste to znova.";
   }
 }
 
-function parseSmartTalkResponse(data: unknown): SmartTalkOkResponse | null {
-  if (!isRecord(data) || data.ok !== true) return null;
-  if (typeof data.mode !== "string" || typeof data.context !== "string") return null;
-  const result = data.result;
+/**
+ * Phase 8.11P: extracted from parseSmartTalkResponse's inline result-parsing
+ * so the internal controlled-reasoning test button (see below) can reuse the
+ * exact same validated `SmartTalkResult` shape — and, in the JSX, the exact
+ * same result-rendering sections — as the main envelope-only/text/question
+ * flows below, without duplicating either the parsing or the rendering.
+ */
+function parseSmartTalkResultObject(result: unknown): SmartTalkResult | null {
   if (!isRecord(result)) return null;
 
   const summary = typeof result.summary === "string" ? result.summary : "";
@@ -445,7 +500,7 @@ function parseSmartTalkResponse(data: unknown): SmartTalkOkResponse | null {
   const obligations = parseStringListClient(result.obligations, 10, 400);
   const consequences = parseStringListClient(result.consequences, 10, 400);
 
-  const parsedResult: SmartTalkResult = {
+  return {
     summary,
     meaning,
     urgency: urgency as SmartTalkResult["urgency"],
@@ -466,6 +521,13 @@ function parseSmartTalkResponse(data: unknown): SmartTalkOkResponse | null {
     obligations,
     consequences,
   };
+}
+
+function parseSmartTalkResponse(data: unknown): SmartTalkOkResponse | null {
+  if (!isRecord(data) || data.ok !== true) return null;
+  if (typeof data.mode !== "string" || typeof data.context !== "string") return null;
+  const parsedResult = parseSmartTalkResultObject(data.result);
+  if (!parsedResult) return null;
 
   return {
     ok: true,
@@ -677,6 +739,112 @@ function sectionTitleStyle(): CSSProperties {
     letterSpacing: "0.02em",
     textTransform: "uppercase",
   };
+}
+
+/**
+ * Phase 8.11P: the existing Smart Talk structured-result rendering (Summary/
+ * Meaning/Urgency/Next steps/Warnings), extracted so the internal OCR →
+ * controlled reasoning test button below can reuse it verbatim instead of
+ * duplicating this JSX. Used both by the main envelope-only/text/question
+ * result panel and by the internal controlled-reasoning test result panel.
+ */
+function renderSmartTalkResultCards(result: SmartTalkResult) {
+  const urgencyUi = urgencyBadgeFor(result.urgency);
+  return (
+    <div style={{ display: "grid", gap: 12 }}>
+      <section style={RESULT_CARD}>
+        <h2 style={sectionTitleStyle()}>Zhrnutie</h2>
+        <p
+          style={{
+            margin: 0,
+            whiteSpace: "pre-wrap",
+            fontSize: 14,
+            lineHeight: 1.65,
+            color: "var(--text)",
+          }}
+        >
+          {result.summary}
+        </p>
+      </section>
+
+      <section style={RESULT_CARD}>
+        <h2 style={sectionTitleStyle()}>Čo to znamená</h2>
+        <p
+          style={{
+            margin: 0,
+            whiteSpace: "pre-wrap",
+            fontSize: 14,
+            lineHeight: 1.65,
+            color: "var(--text)",
+          }}
+        >
+          {result.meaning}
+        </p>
+      </section>
+
+      <section style={RESULT_CARD}>
+        <h2 style={sectionTitleStyle()}>Naliehavosť</h2>
+        <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+          <span style={urgencyUi.pillStyle}>{urgencyUi.label}</span>
+        </div>
+      </section>
+
+      <section style={RESULT_CARD}>
+        <h2 style={sectionTitleStyle()}>Čo urobiť ďalej</h2>
+        {result.nextSteps.length === 0 ? (
+          <p style={{ margin: 0, fontStyle: "italic", fontSize: 14, color: "var(--muted)" }}>
+            Žiadne konkrétne kroky.
+          </p>
+        ) : (
+          <ol
+            style={{
+              margin: 0,
+              paddingLeft: 22,
+              fontSize: 14,
+              lineHeight: 1.65,
+              color: "var(--text)",
+              display: "grid",
+              gap: 10,
+            }}
+          >
+            {result.nextSteps.map((step, i) => (
+              <li key={i} style={{ paddingLeft: 4 }}>
+                {step}
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
+
+      <section style={RESULT_CARD}>
+        <h2 style={sectionTitleStyle()}>Na čo si dať pozor</h2>
+        {result.warnings.length === 0 ? (
+          <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55, color: "var(--muted)" }}>
+            Žiadne upozornenia.
+          </p>
+        ) : (
+          <ul
+            style={{
+              margin: 0,
+              paddingLeft: 22,
+              fontSize: 14,
+              lineHeight: 1.65,
+              color: "var(--text)",
+              display: "grid",
+              gap: 10,
+              listStyleType: "disc",
+            }}
+          >
+            {result.warnings.map((w, i) => (
+              <li key={i} style={{ paddingLeft: 4, color: "var(--muted)" }}>
+                {w}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
 }
 
 export default function SmartTalkClient() {
@@ -1348,64 +1516,82 @@ export default function SmartTalkClient() {
   // test action. Fully additive — separate from the 8.11C Real OCR
   // extraction test above and from onPhotoSubmit's own upload flow. Calls
   // the new mode "photo_ocr_real_extraction_to_smart_talk_controlled_
-  // handoff" via a dedicated multipart request. Smart Talk reasoning is NOT
-  // invoked by this branch in 8.11I — the server only builds and returns a
-  // handoff envelope proving the gate path. The returned extracted text is
-  // never auto-filled into text mode, never passed into the existing
-  // explanation flow, and never persisted client-side (no localStorage/
-  // sessionStorage, no console logging of the extracted text). No
-  // client-side env flag is used or implied — the server-side route branch
-  // is the sole authority for enabling this handoff envelope. Internal/local
-  // test surface only; selecting the photo tab or choosing an image never
-  // triggers this by itself — this requires an explicit click.
-  const handleOcrToSmartTalkHandoffSubmit = useCallback(async () => {
-    if (
-      mode !== "photo" ||
-      photoPages.length !== 1 ||
-      ocrHandoffLoading ||
-      photoPreparing ||
-      busyRef.current
-    )
-      return;
-
-    setOcrHandoffLoading(true);
-    setOcrHandoffError(null);
-    setOcrHandoffResult(null);
-
-    try {
-      const fd = new FormData();
-      fd.append("mode", "photo_ocr_real_extraction_to_smart_talk_controlled_handoff");
-      fd.append("image", photoPages[0].file);
-      fd.append("pageCount", "1");
-
-      const res = await fetch("/api/smart-talk", {
-        method: "POST",
-        body: fd,
-      });
-
-      let data: unknown = null;
-      try {
-        data = (await res.json()) as unknown;
-      } catch {
-        data = null;
-      }
-
-      const parsed = parseOcrHandoffResponse(data);
-      if (parsed) {
-        setOcrHandoffResult(parsed);
-        if (!parsed.ok) {
-          setOcrHandoffError(messageForOcrHandoffCode(parsed.code));
-        }
+  // handoff" via a dedicated multipart request. The returned extracted text
+  // is never auto-filled into text mode, never passed into the existing
+  // explanation flow (except via the explicit, server-authorized
+  // `smartTalkResult` path added in 8.11P below), and never persisted
+  // client-side (no localStorage/sessionStorage, no console logging of the
+  // extracted text). No client-side env flag is used or implied — the
+  // server-side route branch is the sole authority for enabling this
+  // handoff envelope and, separately, for enabling reasoning. Internal/
+  // local test surface only; selecting the photo tab or choosing an image
+  // never triggers this by itself — this requires an explicit click.
+  //
+  // Phase 8.11P: this one handler now takes an explicit `operation`
+  // argument instead of being duplicated. `"envelope_only"` sends exactly
+  // the same request as 8.11I/8.11K (no `operation` field at all — the
+  // existing internal test button below is unchanged). `"controlled_
+  // reasoning"` additionally sends `operation="controlled_reasoning"`,
+  // which only SELECTS this internal intent server-side — it can never
+  // authorize reasoning by itself (see route.ts's own 8.11M contract);
+  // authorization remains exclusively the three exact server-side env
+  // flags. Both operations share the same loading/error/result state, so
+  // the pending state disables both buttons at once (see ocrHandoffDisabled
+  // below) and a second click cannot fire while a request is in flight.
+  const handleOcrToSmartTalkHandoffSubmit = useCallback(
+    async (operation: "envelope_only" | "controlled_reasoning") => {
+      if (
+        mode !== "photo" ||
+        photoPages.length !== 1 ||
+        ocrHandoffLoading ||
+        photoPreparing ||
+        busyRef.current
+      )
         return;
-      }
 
-      setOcrHandoffError(MSG.fallback);
-    } catch {
-      setOcrHandoffError(MSG.fallback);
-    } finally {
-      setOcrHandoffLoading(false);
-    }
-  }, [mode, photoPages, ocrHandoffLoading, photoPreparing]);
+      setOcrHandoffLoading(true);
+      setOcrHandoffError(null);
+      setOcrHandoffResult(null);
+
+      try {
+        const fd = new FormData();
+        fd.append("mode", "photo_ocr_real_extraction_to_smart_talk_controlled_handoff");
+        fd.append("image", photoPages[0].file);
+        fd.append("pageCount", "1");
+        if (operation === "controlled_reasoning") {
+          fd.append("operation", "controlled_reasoning");
+        }
+
+        const res = await fetch("/api/smart-talk", {
+          method: "POST",
+          body: fd,
+        });
+
+        let data: unknown = null;
+        try {
+          data = (await res.json()) as unknown;
+        } catch {
+          data = null;
+        }
+
+        const parsed = parseOcrHandoffResponse(data);
+        if (parsed) {
+          setOcrHandoffResult(parsed);
+          if (!parsed.ok) {
+            setOcrHandoffError(messageForOcrHandoffCode(parsed.code));
+          }
+          return;
+        }
+
+        setOcrHandoffError(MSG.fallback);
+      } catch {
+        setOcrHandoffError(MSG.fallback);
+      } finally {
+        setOcrHandoffLoading(false);
+      }
+    },
+    [mode, photoPages, ocrHandoffLoading, photoPreparing],
+  );
 
   // Defense-in-depth guard mirroring realOcrExtractionDisabled: requires
   // exactly one selected image/page and is only ever rendered when
@@ -1481,8 +1667,6 @@ export default function SmartTalkClient() {
       setLoading(false);
     }
   }, [photoPages, photoPreparing]);
-
-  const urgencyUi = result ? urgencyBadgeFor(result.urgency) : null;
 
   const modeChip = (m: SmartTalkUiMode, label: string) => {
     const selected = mode === m;
@@ -1984,7 +2168,7 @@ export default function SmartTalkClient() {
 
           <button
             type="button"
-            onClick={() => void handleOcrToSmartTalkHandoffSubmit()}
+            onClick={() => void handleOcrToSmartTalkHandoffSubmit("envelope_only")}
             disabled={ocrHandoffDisabled}
             aria-busy={ocrHandoffLoading}
             style={{
@@ -2013,6 +2197,46 @@ export default function SmartTalkClient() {
           >
             Len interný test — vyžaduje presne jednu vybranú stranu. Smart Talk odpoveď sa v
             tejto fáze ešte nevytvára, iba sa pripraví odovzdanie textu.
+          </p>
+
+          {/* Phase 8.11P: separate internal-only button that explicitly
+              requests controlled reasoning (operation="controlled_reasoning").
+              Shares handleOcrToSmartTalkHandoffSubmit and ocrHandoffDisabled/
+              ocrHandoffLoading with the envelope-only button above, so a
+              pending request disables both and a second click cannot fire.
+              Server-side env gates remain the sole authority — this button
+              only selects intent and never authorizes reasoning itself. */}
+          <button
+            type="button"
+            onClick={() => void handleOcrToSmartTalkHandoffSubmit("controlled_reasoning")}
+            disabled={ocrHandoffDisabled}
+            aria-busy={ocrHandoffLoading}
+            style={{
+              width: "100%",
+              height: 40,
+              borderRadius: "var(--r999)",
+              border: "1px dashed rgba(148, 163, 184, 0.6)",
+              background: "rgba(248, 250, 252, 1)",
+              color: "var(--muted)",
+              fontWeight: 700,
+              fontSize: 13,
+              cursor: ocrHandoffDisabled ? "not-allowed" : "pointer",
+              opacity: ocrHandoffDisabled ? 0.55 : 1,
+            }}
+          >
+            Interný test: OCR → Smart Talk vysvetlenie
+          </button>
+          <p
+            style={{
+              margin: 0,
+              fontSize: 11,
+              lineHeight: 1.4,
+              color: "var(--muted2)",
+              textAlign: "center",
+            }}
+          >
+            Len interný test riadeného vysvetlenia — vyžaduje presne jednu vybranú stranu.
+            Vyžaduje explicitné kliknutie a server-side povolenie; bez neho vráti chybu.
           </p>
 
           {ocrHandoffLoading || ocrHandoffError || ocrHandoffResult ? (
@@ -2072,11 +2296,26 @@ export default function SmartTalkClient() {
                       ))}
                     </ul>
                   ) : null}
-                  <p style={{ margin: 0 }}>
-                    OCR môže obsahovať chyby a nejde o právne poradenstvo. Vždy skontrolujte
-                    originálny dokument. Smart Talk odpoveď sa v tejto fáze (8.11I) ešte
-                    nevytvára. Obrázok ani text sa štandardne neukladajú.
-                  </p>
+
+                  {ocrHandoffResult.smartTalkResult ? (
+                    <div style={{ marginTop: 6, display: "grid", gap: 10 }}>
+                      <p style={{ margin: 0, fontWeight: 700, color: "var(--text)" }}>
+                        Smart Talk vysvetlenie (interný test riadeného vysvetlenia):
+                      </p>
+                      {renderSmartTalkResultCards(ocrHandoffResult.smartTalkResult)}
+                      <p style={{ margin: "4px 0 0" }}>
+                        OCR text môže obsahovať chyby — vždy skontrolujte originálny dokument.
+                        Toto nie je právne poradenstvo. Toto je interný kontrolovaný test, nie
+                        produkčná funkcia. Obrázok ani text sa neukladajú.
+                      </p>
+                    </div>
+                  ) : (
+                    <p style={{ margin: 0 }}>
+                      OCR môže obsahovať chyby a nejde o právne poradenstvo. Vždy skontrolujte
+                      originálny dokument. Smart Talk odpoveď sa v tejto fáze (8.11I) ešte
+                      nevytvára. Obrázok ani text sa štandardne neukladajú.
+                    </p>
+                  )}
                 </>
               ) : ocrHandoffResult ? (
                 <>
@@ -2162,101 +2401,7 @@ export default function SmartTalkClient() {
               </p>
             ) : null}
 
-            <div style={{ display: "grid", gap: 12 }}>
-              <section style={RESULT_CARD}>
-                <h2 style={sectionTitleStyle()}>Zhrnutie</h2>
-                <p
-                  style={{
-                    margin: 0,
-                    whiteSpace: "pre-wrap",
-                    fontSize: 14,
-                    lineHeight: 1.65,
-                    color: "var(--text)",
-                  }}
-                >
-                  {result.summary}
-                </p>
-              </section>
-
-              <section style={RESULT_CARD}>
-                <h2 style={sectionTitleStyle()}>Čo to znamená</h2>
-                <p
-                  style={{
-                    margin: 0,
-                    whiteSpace: "pre-wrap",
-                    fontSize: 14,
-                    lineHeight: 1.65,
-                    color: "var(--text)",
-                  }}
-                >
-                  {result.meaning}
-                </p>
-              </section>
-
-              <section style={RESULT_CARD}>
-                <h2 style={sectionTitleStyle()}>Naliehavosť</h2>
-                <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-                  {urgencyUi ? (
-                    <span style={urgencyUi.pillStyle}>{urgencyUi.label}</span>
-                  ) : null}
-                </div>
-              </section>
-
-              <section style={RESULT_CARD}>
-                <h2 style={sectionTitleStyle()}>Čo urobiť ďalej</h2>
-                {result.nextSteps.length === 0 ? (
-                  <p style={{ margin: 0, fontStyle: "italic", fontSize: 14, color: "var(--muted)" }}>
-                    Žiadne konkrétne kroky.
-                  </p>
-                ) : (
-                  <ol
-                    style={{
-                      margin: 0,
-                      paddingLeft: 22,
-                      fontSize: 14,
-                      lineHeight: 1.65,
-                      color: "var(--text)",
-                      display: "grid",
-                      gap: 10,
-                    }}
-                  >
-                    {result.nextSteps.map((step, i) => (
-                      <li key={i} style={{ paddingLeft: 4 }}>
-                        {step}
-                      </li>
-                    ))}
-                  </ol>
-                )}
-              </section>
-
-              <section style={RESULT_CARD}>
-                <h2 style={sectionTitleStyle()}>Na čo si dať pozor</h2>
-                {result.warnings.length === 0 ? (
-                  <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55, color: "var(--muted)" }}>
-                    Žiadne upozornenia.
-                  </p>
-                ) : (
-                  <ul
-                    style={{
-                      margin: 0,
-                      paddingLeft: 22,
-                      fontSize: 14,
-                      lineHeight: 1.65,
-                      color: "var(--text)",
-                      display: "grid",
-                      gap: 10,
-                      listStyleType: "disc",
-                    }}
-                  >
-                    {result.warnings.map((w, i) => (
-                      <li key={i} style={{ paddingLeft: 4, color: "var(--muted)" }}>
-                        {w}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
-            </div>
+            {renderSmartTalkResultCards(result)}
 
             {process.env.NODE_ENV === "development" ? (
               <details
