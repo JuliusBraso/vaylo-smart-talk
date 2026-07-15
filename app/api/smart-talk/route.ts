@@ -23,6 +23,10 @@ import {
   buildOcrReasoningModelCallParams,
   buildOcrReasoningModelInputMeta,
 } from "@/lib/vaylo/smart-talk/ocr/ocr-reasoning-input";
+import {
+  getRuntimeSmartTalkRateLimiter,
+  resolveSmartTalkRateLimitClientIp,
+} from "@/lib/vaylo/smart-talk/rate-limit/smart-talk-rate-limiter";
 
 function isSmartTalkInputType(v: unknown): v is SmartTalkInputType {
   return v === "text" || v === "question";
@@ -34,8 +38,6 @@ const MAX_TEXT = 12_000;
 const MIN_TEXT = 8;
 const ALLOWED_LOCALES = new Set<SmartTalkLocale>(["sk", "de", "en"]);
 
-const RATE_WINDOW_MS = 10 * 60 * 1000;
-const RATE_MAX = 5;
 const SMART_TALK_ROUTE_TIMEOUT_MS = 20_000;
 const FREE_QA_INTERNAL_RUNTIME_MODE = "free_qa_internal_scoped_patch";
 const FREE_QA_INTERNAL_RUNTIME_GUARD =
@@ -152,34 +154,6 @@ const OCR_CONTROLLED_REASONING_BASE_WARNINGS = [
   "Check the original document.",
   "This is not legal advice.",
 ] as const;
-
-/** In-memory sliding window: IP → request timestamps (no persistence). */
-const ipHits = new Map<string, number[]>();
-
-function getClientIp(req: Request): string {
-  const fwd = req.headers.get("x-forwarded-for");
-  if (fwd) {
-    const first = fwd.split(",")[0]?.trim();
-    if (first) return first;
-  }
-  const real = req.headers.get("x-real-ip")?.trim();
-  if (real) return real;
-  return "unknown";
-}
-
-function takeRateSlot(ip: string): boolean {
-  const now = Date.now();
-  const cutoff = now - RATE_WINDOW_MS;
-  let hits = ipHits.get(ip) ?? [];
-  hits = hits.filter((t) => t > cutoff);
-  if (hits.length >= RATE_MAX) {
-    ipHits.set(ip, hits);
-    return false;
-  }
-  hits.push(now);
-  ipHits.set(ip, hits);
-  return true;
-}
 
 function hasLetter(s: string): boolean {
   return /[\p{L}\p{M}]/u.test(s);
@@ -1574,8 +1548,8 @@ async function handleMultipartSmartTalkRequest(
 // ── End Phase 8.11I Minimal OCR-to-Smart-Talk Handoff Runtime Patch helpers ─
 
 export async function POST(req: Request) {
-  const ip = getClientIp(req);
-  if (!takeRateSlot(ip)) {
+  const ip = resolveSmartTalkRateLimitClientIp(req);
+  if (!getRuntimeSmartTalkRateLimiter().check(ip).allowed) {
     return NextResponse.json({ ok: false, error: "smart_talk_rate_limited" }, { status: 429 });
   }
 

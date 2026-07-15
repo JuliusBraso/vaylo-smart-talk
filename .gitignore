@@ -42,3 +42,16 @@ next-env.d.ts
 
 # optional persisted auto-translations (see I18N_PERSIST_TRANSLATIONS)
 /lib/i18n/generated/*.json
+
+# PHASE 8.11R — narrow, repo-root-anchored guard against the specific
+# accidental Tesseract OCR artifact previously observed being written to the
+# repository root before lib/vaylo/smart-talk/ocr/tesseract-runtime-policy.ts
+# started supplying an explicit OS-temp-directory-based cachePath. Deliberately
+# root-anchored (not a global "eng.traineddata" pattern) and deliberately
+# does NOT ignore "*.traineddata" broadly, so any future intentionally
+# committed/versioned OCR language asset is unaffected without an explicit
+# policy decision. No system-temp-directory or absolute/Windows-specific
+# path is added here — the real cache directory lives entirely outside the
+# repository.
+/eng.traineddata
+*.traineddata.tmp
