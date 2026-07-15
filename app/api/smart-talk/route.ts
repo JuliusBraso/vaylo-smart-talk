@@ -27,6 +27,14 @@ import {
   getRuntimeSmartTalkRateLimiter,
   resolveSmartTalkRateLimitClientIp,
 } from "@/lib/vaylo/smart-talk/rate-limit/smart-talk-rate-limiter";
+import {
+  runFirstContactRuntimeGate,
+  type FirstContactMarket,
+} from "@/lib/vaylo/smart-talk/first-contact/first-contact-runtime-gate";
+import {
+  buildFirstContactPresentation,
+  validateFirstContactPresentation,
+} from "@/lib/vaylo/smart-talk/first-contact/build-first-contact-presentation";
 
 function isSmartTalkInputType(v: unknown): v is SmartTalkInputType {
   return v === "text" || v === "question";
@@ -52,6 +60,8 @@ const PHOTO_OCR_ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/
 const PHOTO_OCR_MAX_PAGES = 3;
 const PHOTO_OCR_MAX_RAW_BYTES_PER_PAGE = 8 * 1024 * 1024;
 const PHOTO_OCR_MAX_PROCESSED_BYTES_TOTAL = 4 * 1024 * 1024;
+const FIRST_CONTACT_CONTROLLED_RUNTIME_MODE = "first_contact_controlled_runtime";
+const FIRST_CONTACT_MODE_ENV_FLAG = "SMART_TALK_FIRST_CONTACT_MODE_ENABLED";
 
 // Phase 8.11C — Real OCR Extraction Controlled Runtime (separate from the
 // 8.10C placeholder above). Disabled by default; this dedicated env flag is
@@ -448,6 +458,37 @@ function textDocumentModeBlockedResponse(
   );
 }
 // ── End Phase 8.9C response helpers ──────────────────────────────────────────
+
+// ── Phase 8.12C — First Contact Controlled Runtime helpers ─────────────────
+function buildFirstContactModeSafetyFlags(firstContactModeEnabled: boolean) {
+  return {
+    firstContactModeEnabled,
+    controlledFirstContactRuntime: firstContactModeEnabled,
+    documentInterpretationStillBlocked: true,
+    photoOcrStillBlocked: true,
+    paidDocumentModeStillBlocked: true,
+    vayloDnaStillBlocked: true,
+    persistenceStillBlocked: true,
+    dbStorageStillBlocked: true,
+    onlyGermanyMarketSupported: true,
+    modelOutputStillUntrusted: true,
+  };
+}
+
+const FIRST_CONTACT_GATE_CODE_STATUS: Readonly<Record<string, number>> = {
+  first_contact_mode_disabled: 403,
+  first_contact_not_explicitly_selected: 400,
+  first_contact_input_too_short: 400,
+  first_contact_input_too_long: 400,
+  first_contact_locale_unsupported: 400,
+  first_contact_market_unsupported: 400,
+  first_contact_scenario_unsupported: 400,
+  first_contact_document_mode_required: 402,
+  first_contact_photo_ocr_mode_required: 402,
+  first_contact_paid_document_boundary: 402,
+  first_contact_persistence_forbidden: 402,
+};
+// ── End Phase 8.12C First Contact Controlled Runtime helpers ───────────────
 
 // ── Phase 8.10C — Photo/OCR Controlled Runtime Placeholder helpers ─────────
 // Deterministic, local, pure detectors and response builders. No I/O · no
@@ -1906,6 +1947,149 @@ export async function POST(req: Request) {
     });
   }
   // ── End Phase 8.9C Text Document Mode controlled runtime branch ────────────
+
+  // ── Phase 8.12C — First Contact Controlled Runtime branch ──────────────────
+  // Disabled by default unless SMART_TALK_FIRST_CONTACT_MODE_ENABLED === "true"
+  // (exact match only — no truthy coercion, no client/header/query/body
+  // bypass, no automatic enablement). General first-time bureaucratic/life
+  // situation orientation only for the Germany (DE) market — no document,
+  // photo, or OCR interpretation, no paid-document-mode bypass, no
+  // persistence/DNA. Reuses the existing runSmartTalk() question path with
+  // source "first_contact" (maximum one model call). Fail-closed: the pure
+  // first-contact-runtime-gate module decides allow/deny before any model
+  // call, and the deterministic presentation mapper + final validator decide
+  // whether a First Contact presentation may be returned at all.
+  if (o.mode === FIRST_CONTACT_CONTROLLED_RUNTIME_MODE) {
+    const firstContactModeEnabled = process.env[FIRST_CONTACT_MODE_ENV_FLAG] === "true";
+
+    const rawText = typeof o.text === "string" ? o.text : "";
+    const rawLocale = typeof o.locale === "string" ? o.locale : "";
+    const rawMarket = typeof o.market === "string" ? o.market : "";
+    const rawScenario =
+      o.scenario === undefined || o.scenario === null
+        ? null
+        : typeof o.scenario === "string"
+          ? o.scenario
+          : "__invalid_scenario__";
+
+    const gate = runFirstContactRuntimeGate({
+      enabled: firstContactModeEnabled,
+      explicitlySelected: true,
+      text: rawText,
+      locale: rawLocale,
+      allowedLocales: [...ALLOWED_LOCALES],
+      minTextLength: MIN_TEXT,
+      maxTextLength: MAX_TEXT,
+      market: rawMarket,
+      scenario: rawScenario,
+      documentInterpretationRequested: isDocumentLikeSignalPresent(rawText),
+      photoOrFilePresent:
+        detectOcrPhotoRequest(o) || detectScannerUploadRequest(o) || detectFileUploadRequest(o),
+      paidDocumentBoundaryTriggered: detectClientPaidDocumentModeActivation(o),
+      persistenceRequested: detectVayloDnaSaveRequest(o) || detectPersistenceStorageRequest(o),
+    });
+
+    if (!gate.allowed) {
+      const status = FIRST_CONTACT_GATE_CODE_STATUS[gate.code] ?? 400;
+      return NextResponse.json(
+        {
+          ok: false,
+          code: gate.code,
+          reason: gate.reason,
+          recommendedMode: gate.recommendedMode,
+          firstContactMeta: buildFirstContactModeSafetyFlags(firstContactModeEnabled),
+        },
+        { status },
+      );
+    }
+
+    const normalizedText = gate.normalizedText ?? "";
+    if (!hasLetter(normalizedText) || isOnlyUrls(normalizedText)) {
+      return badRequest("invalid_text");
+    }
+
+    const locale = gate.normalizedLocale as SmartTalkLocale;
+    const market = gate.normalizedMarket as FirstContactMarket;
+
+    const apiKey = process.env.OPENAI_API_KEY?.trim();
+    if (!apiKey) {
+      return NextResponse.json({ ok: false, error: "smart_talk_unavailable" }, { status: 503 });
+    }
+
+    let out: Awaited<ReturnType<typeof runSmartTalk>>;
+    try {
+      out = await Promise.race([
+        runSmartTalk({ text: normalizedText, locale, inputType: "question", source: "first_contact" }),
+        new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error("smart_talk_timeout")), SMART_TALK_ROUTE_TIMEOUT_MS);
+        }),
+      ]);
+    } catch {
+      return NextResponse.json({ ok: false, error: "smart_talk_timeout" }, { status: 504 });
+    }
+
+    if (!out.ok) {
+      const requestId = createRequestId();
+      logRouteError("[smart-talk] first contact controlled runtime openai failed", requestId, {
+        kind: out.error.kind,
+        status: out.error.kind === "openai_http" ? out.error.status : undefined,
+      });
+      return internalErrorResponse({ requestId, status: 500 });
+    }
+
+    const presentation = buildFirstContactPresentation(out.result, { market });
+    if (!presentation) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "first_contact_presentation_invalid",
+          firstContactMeta: buildFirstContactModeSafetyFlags(true),
+        },
+        { status: 500 },
+      );
+    }
+
+    const validation = validateFirstContactPresentation(out.result, presentation);
+    if (!validation.valid) {
+      const requestId = createRequestId();
+      logRouteError("[smart-talk] first contact presentation failed final validation", requestId, {
+        violations: validation.violations,
+      });
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "first_contact_presentation_invalid",
+          firstContactMeta: buildFirstContactModeSafetyFlags(true),
+        },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({
+      ok: true,
+      mode: FIRST_CONTACT_CONTROLLED_RUNTIME_MODE,
+      context: {
+        locale,
+        market,
+        jurisdictionStatus: "server_bounded" as const,
+        scenario: gate.normalizedScenario,
+      },
+      result: out.result,
+      firstContactMeta: presentation,
+      disclaimers: {
+        legalDisclaimerRequired: true,
+        privacyDisclaimerRequired: true,
+        legalDisclaimer:
+          "Information is general first-time orientation only and is not legal advice; verify specifics with the relevant office.",
+        privacyDisclaimer:
+          "Do not share personal identifiers, account numbers, or full official documents in First Contact mode.",
+        modelOutputStillUntrusted: true,
+        persistenceStillBlocked: true,
+        dnaStillBlocked: true,
+      },
+    });
+  }
+  // ── End Phase 8.12C First Contact Controlled Runtime branch ────────────────
 
   // ── Phase 8.10C — Photo/OCR Controlled Runtime Placeholder branch ──────────
   // Disabled by default unless SMART_TALK_PHOTO_OCR_CONTROLLED_RUNTIME_ENABLED

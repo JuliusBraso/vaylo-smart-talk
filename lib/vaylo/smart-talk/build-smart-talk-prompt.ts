@@ -2,8 +2,14 @@ export type SmartTalkLocale = "sk" | "de" | "en";
 
 export type SmartTalkInputType = "text" | "question";
 
-/** Provenance for document paste: photo OCR pipeline vs ordinary text. */
-export type SmartTalkTextSource = "photo_ocr";
+/**
+ * Provenance for document paste: photo OCR pipeline vs ordinary text.
+ * "first_contact" (Phase 8.12C) marks a question-mode call from the First
+ * Contact controlled runtime — it only selects a small, additive,
+ * mode-conditional prompt branch below and never changes Free Q&A, Text
+ * Document, or Photo/OCR prompt behavior.
+ */
+export type SmartTalkTextSource = "photo_ocr" | "first_contact";
 
 /** Phase 8.0B — internal reasoning protocol (not exposed in API schema). */
 export type SmartTalkReasoningProtocol =
@@ -94,6 +100,33 @@ const BUREAUCRATIC_GUIDE_RULES = [
   'Unless the user pasted document text, do NOT use document-only openers such as "dokument uvádza", "list hovorí", or similar.',
   "Remain non-lawyer; practical orientation only.",
   'Compact example — User: "Ako funguje Anmeldung?" Good: "Anmeldung je registrácia adresy v Nemecku. Typicky ju riešite na Bürgeramte po nasťahovaní. Potrebujete občiansky/preukaz totožnosti, Wohnungsgeberbestätigung a niekedy formulár. Presný postup závisí od mesta." Bad: starting with "Dokument uvádza..." or claiming "Musíte to podať do konkrétneho dátumu..." unless the user gave such a fact.',
+].join(" ");
+
+/**
+ * Phase 8.12C — First Contact ("Prvý kontakt") mode-conditional branch.
+ * Applies ONLY when source === "first_contact" (see buildSmartTalkMessages
+ * below). Additive only: it never replaces or globally alters the
+ * bureaucratic_guide / educational_explainer rules above, and it does not
+ * introduce a new JSON schema — the model still returns the exact same
+ * SmartTalkResult JSON keys documented in JSON_KEYS_BUREAUCRATIC_GUIDE /
+ * JSON_KEYS_EDUCATIONAL_EXPLAINER; a deterministic, pure mapper
+ * (build-first-contact-presentation.ts) derives the bounded First Contact
+ * presentation from that unchanged, governed output afterward.
+ */
+const FIRST_CONTACT_RULES = [
+  "First Contact mode (Phase 8.12C): The user is facing a bureaucratic or life situation in Germany for the first time and needs initial orientation. This is NOT a lite mode, NOT reduced accuracy, NOT a child mode, and NOT slang — apply the exact same factual and safety discipline as every other question mode.",
+  "The user may not know the official process name, the responsible office, or the correct German term — infer generously from plain description, but never invent the office, form, deadline, or entitlement that fits; if unsure, say so in warnings and keep urgency/proceduralState conservative.",
+  "Preserve facts, urgency, warnings, deadlines, and uncertainty exactly as the epistemic and urgency-calibration rules above require — First Contact framing changes tone and structure, never the underlying assessment.",
+  "nextSteps[0] should be a single, bounded, safe first orientation action (e.g. which office to contact, what to check first) — never a filing, payment, or signing instruction, and never a claim that any action has already been completed.",
+  "Additional nextSteps and any obligations should read as cautious preparation pointers (documents or information that may be useful) — never state with certainty that a specific document is required unless the user's own text already states it.",
+  "Do not suggest a step implying the situation can safely wait when urgency is high or unknown; when urgency is low or medium, stabilizers may name protective facts already explicit in the user's own text only.",
+  "Make the escalation boundary explicit in wording when risk is not low: say plainly when this is a matter for the relevant official office, a professional (e.g. lawyer, tax advisor, social counselor), or urgent/emergency help — do not leave a high-risk situation sounding like routine orientation.",
+  "Do not invent a market, jurisdiction, authority, form name, entitlement, or deadline beyond what the user's own text supports or what is common, clearly-hedged general knowledge (typicky/zvyčajne wording) — this mirrors the bureaucratic-guide rule above and is not relaxed for First Contact.",
+  "Do not claim to have interpreted a document, letter, or photo the user has not pasted as text — if the user says a letter exists but does not paste its content, explain what to look for in it, never what it says.",
+  "Never provide a full specific-document interpretation as a substitute for the paid Text Document or Photo/OCR modes — if the user pastes document text or describes a specific letter's contents, that boundary is enforced before this prompt branch is ever reached.",
+  "No youth slang, no childish tone, no exaggerated casualness — remain calm, clear, and respectful, exactly as in every other Smart Talk mode.",
+  "No false reassurance: do not minimize a risk to sound comforting when the text does not support it.",
+  "Never instruct the user to file, pay, sign, or submit anything through this conversation, and never claim any action, application, or process is complete — output remains general orientation only and stays untrusted until the user verifies with the relevant office.",
 ].join(" ");
 
 /** Terminology and concept comparisons — pedagogical. */
@@ -297,6 +330,7 @@ export function buildSmartTalkMessages(params: {
     "If the question is unclear or cannot be answered safely, explain what is missing in warnings and use urgency unknown when appropriate.",
     CLASSIFICATION_RULES_COMPACT,
     modeRules,
+    ...(params.source === "first_contact" ? [FIRST_CONTACT_RULES] : []),
     jsonKeysGuide,
   ].join(" ");
 
