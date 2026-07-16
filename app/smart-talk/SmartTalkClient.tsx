@@ -38,26 +38,37 @@ function sumPhotoPageBytes(pages: SmartTalkPhotoPage[]): number {
   return pages.reduce((sum, p) => sum + p.file.size, 0);
 }
 
-type SmartTalkUiMode = "question" | "text" | "photo";
+// Phase 8.12E: "first_contact" is a UI-only mode value. It is never sent to
+// the API as-is — onFirstContactSubmit below maps it exactly to the route's
+// "first_contact_controlled_runtime" mode literal.
+type SmartTalkUiMode = "question" | "text" | "photo" | "first_contact";
 
 const PLACEHOLDER: Record<SmartTalkUiMode, string> = {
   question: "Opýtajte sa napríklad: Ako požiadam o Kindergeld v Nemecku?",
   text: "Sem vložte text z listu, úradu alebo formulára…",
   photo: "",
+  first_contact:
+    "Napíš napríklad: Prvýkrát som sa presťahoval do Nemecka a neviem, čo mám vybaviť ako prvé.",
 };
 
+// Phase 8.12E: first_contact intentionally has no value here — its heading
+// and supporting text are rendered as a dedicated block (see
+// FIRST_CONTACT_ENTRY_SUPPORTING_TEXT below) instead of reusing this shared
+// guidance paragraph, so the required heading always appears first.
 const GUIDANCE_PRIMARY: Record<SmartTalkUiMode, string> = {
   question:
     "Pýtajte sa na dane, Kindergeld, Anmeldung, zdravotnú poisťovňu, úrady alebo iné nemecké byrokratické kroky.",
   text: "Najlepšie funguje, keď vložíte najdôležitejšiu časť listu alebo formulára.",
   photo:
     "Pridajte až 3 strany dokumentu (poradie zachováme): kamerou alebo viac obrázkov z galérie (JPG/PNG/WebP; max. 8 MB pred úpravou na súbor). Spolu max. 4 MB po úprave. Dobré svetlo zlepší OCR.",
+  first_contact: "",
 };
 
 const SUBMIT_LABEL: Record<SmartTalkUiMode, string> = {
   question: "Opýtať sa Vayla",
   text: "Vysvetliť text",
   photo: "Analyzovať dokument",
+  first_contact: "Zistiť prvý krok",
 };
 
 const CONFIDENCE = new Set(["low", "medium", "high"]);
@@ -538,6 +549,425 @@ function parseSmartTalkResponse(data: unknown): SmartTalkOkResponse | null {
   };
 }
 
+// ── Phase 8.12E — First Contact ("Prvý kontakt") minimal UI types ──────────
+// Deliberately NOT imported from lib/vaylo/smart-talk/first-contact/* — the
+// scenario allowlist and presentation shape are duplicated here as small,
+// bounded, defensively-parsed literals so this client component stays fully
+// decoupled from those server-side modules (mirrors the existing pattern of
+// only ever importing `SmartTalkResult`'s *type* from run-smart-talk.ts).
+// These identifiers/labels must stay in sync with
+// lib/vaylo/smart-talk/first-contact/first-contact-runtime-gate.ts
+// (FIRST_CONTACT_SCENARIOS) — never renamed or translated when sent to the
+// server.
+type FirstContactScenarioId =
+  | "first_job"
+  | "first_housing"
+  | "first_official_letter"
+  | "health_insurance"
+  | "taxes_or_tax_id"
+  | "education_or_training"
+  | "moving_or_registration"
+  | "family_administration"
+  | "residence_or_work"
+  | "other";
+
+const FIRST_CONTACT_SCENARIO_OPTIONS: ReadonlyArray<{
+  id: FirstContactScenarioId;
+  label: string;
+}> = [
+  { id: "first_job", label: "Prvá práca alebo brigáda" },
+  { id: "first_housing", label: "Prvé bývanie alebo nájom" },
+  { id: "first_official_letter", label: "Prvý list od úradu" },
+  { id: "health_insurance", label: "Zdravotné poistenie" },
+  { id: "taxes_or_tax_id", label: "Dane alebo Steuer-ID" },
+  { id: "education_or_training", label: "Škola, Ausbildung alebo BAföG" },
+  { id: "moving_or_registration", label: "Sťahovanie alebo Anmeldung" },
+  { id: "family_administration", label: "Rodina alebo deti" },
+  { id: "residence_or_work", label: "Pobyt alebo práca" },
+  { id: "other", label: "Iná situácia" },
+];
+
+const FIRST_CONTACT_ENTRY_HEADING = "Čo riešiš prvýkrát?";
+const FIRST_CONTACT_ENTRY_SUPPORTING_TEXT =
+  "Opíš situáciu vlastnými slovami. Nemusíš poznať názov úradu ani formulára.";
+
+/** Bounded, defensively-parsed mirror of `FirstContactPresentation` (server-owned shape). */
+type FirstContactPresentationUi = {
+  presentationVersion: string;
+  situationSummary: string;
+  firstStep: { action: string; boundary: string };
+  preparationItems: { label: string; requirementLevel: string }[];
+  canWait: string[] | null;
+  helpBoundary: { level: string; reason: string | null };
+  evidenceLimitations: string[];
+  trustLevel: string;
+};
+
+type FirstContactRecommendedModeUi =
+  | "text_document_controlled_runtime"
+  | "photo_ocr_controlled_runtime"
+  | null;
+
+function isFirstContactRecommendedMode(v: unknown): v is FirstContactRecommendedModeUi {
+  return (
+    v === "text_document_controlled_runtime" || v === "photo_ocr_controlled_runtime" || v === null
+  );
+}
+
+function parseFirstContactPresentation(data: unknown): FirstContactPresentationUi | null {
+  if (!isRecord(data)) return null;
+  if (typeof data.situationSummary !== "string" || !data.situationSummary.trim()) return null;
+
+  const firstStepRaw = isRecord(data.firstStep) ? data.firstStep : null;
+  if (!firstStepRaw || typeof firstStepRaw.action !== "string" || !firstStepRaw.action.trim()) {
+    return null;
+  }
+
+  const helpBoundaryRaw = isRecord(data.helpBoundary) ? data.helpBoundary : null;
+  if (!helpBoundaryRaw || typeof helpBoundaryRaw.level !== "string") return null;
+
+  const preparationItems = Array.isArray(data.preparationItems)
+    ? data.preparationItems
+        .filter(isRecord)
+        .filter((item) => typeof item.label === "string" && item.label.trim().length > 0)
+        .slice(0, 6)
+        .map((item) => ({
+          label: (item.label as string).trim(),
+          requirementLevel:
+            typeof item.requirementLevel === "string" ? item.requirementLevel : "requires_verification",
+        }))
+    : [];
+
+  const canWaitRaw = Array.isArray(data.canWait)
+    ? data.canWait.filter((x): x is string => typeof x === "string" && x.trim().length > 0).slice(0, 4)
+    : null;
+
+  const evidenceLimitations = Array.isArray(data.evidenceLimitations)
+    ? data.evidenceLimitations
+        .filter((x): x is string => typeof x === "string" && x.trim().length > 0)
+        .slice(0, 6)
+    : [];
+
+  return {
+    presentationVersion: typeof data.presentationVersion === "string" ? data.presentationVersion : "v1",
+    situationSummary: data.situationSummary.trim(),
+    firstStep: {
+      action: firstStepRaw.action.trim(),
+      boundary: typeof firstStepRaw.boundary === "string" ? firstStepRaw.boundary : "orientation",
+    },
+    preparationItems,
+    canWait: canWaitRaw && canWaitRaw.length > 0 ? canWaitRaw : null,
+    helpBoundary: {
+      level: helpBoundaryRaw.level,
+      reason:
+        typeof helpBoundaryRaw.reason === "string" && helpBoundaryRaw.reason.trim().length > 0
+          ? helpBoundaryRaw.reason.trim()
+          : null,
+    },
+    evidenceLimitations,
+    trustLevel: typeof data.trustLevel === "string" ? data.trustLevel : "untrusted",
+  };
+}
+
+type FirstContactOkResponse = {
+  ok: true;
+  mode: string;
+  context: { locale: string; market: string; scenario: string | null };
+  result: SmartTalkResult;
+  firstContactMeta: FirstContactPresentationUi;
+};
+
+function parseFirstContactResponse(data: unknown): FirstContactOkResponse | null {
+  if (!isRecord(data) || data.ok !== true) return null;
+  if (typeof data.mode !== "string") return null;
+  const parsedResult = parseSmartTalkResultObject(data.result);
+  if (!parsedResult) return null;
+  const meta = parseFirstContactPresentation(data.firstContactMeta);
+  if (!meta) return null;
+
+  const contextRaw = isRecord(data.context) ? data.context : {};
+  return {
+    ok: true,
+    mode: data.mode,
+    context: {
+      locale: typeof contextRaw.locale === "string" ? contextRaw.locale : "sk",
+      market: typeof contextRaw.market === "string" ? contextRaw.market : "DE",
+      scenario: typeof contextRaw.scenario === "string" ? contextRaw.scenario : null,
+    },
+    result: parsedResult,
+    firstContactMeta: meta,
+  };
+}
+
+function readFirstContactErrorInfo(data: unknown): {
+  code: string | null;
+  recommendedMode: FirstContactRecommendedModeUi;
+} {
+  if (!isRecord(data) || data.ok !== false) return { code: null, recommendedMode: null };
+  const code =
+    typeof data.code === "string" ? data.code : typeof data.error === "string" ? data.error : null;
+  const recommendedMode = isFirstContactRecommendedMode(data.recommendedMode)
+    ? data.recommendedMode
+    : null;
+  return { code, recommendedMode };
+}
+
+/** Slovak UX for First Contact error codes. Never exposes env flag names,
+ * stack traces, filesystem paths, or provider details. */
+function messageForFirstContactCode(code: string | null, status: number): string {
+  switch (code) {
+    case "first_contact_mode_disabled":
+      return "Režim Prvý kontakt momentálne nie je dostupný.";
+    case "first_contact_input_too_short":
+      return "Text je príliš krátky. Opíš situáciu aspoň v jednej krátkej vete.";
+    case "first_contact_input_too_long":
+      return "Text je príliš dlhý. Skráť ho na maximálne 12 000 znakov.";
+    case "first_contact_locale_unsupported":
+      return "Tento jazyk momentálne Prvý kontakt nepodporuje.";
+    case "first_contact_market_unsupported":
+      return "Prvý kontakt momentálne podporuje iba Nemecko.";
+    case "first_contact_scenario_unsupported":
+      return "Vybraná kategória situácie momentálne nie je podporovaná.";
+    case "first_contact_document_mode_required":
+      return "Táto požiadavka sa týka konkrétneho textu dokumentu. Použi režim Vysvetliť text.";
+    case "first_contact_photo_ocr_mode_required":
+      return "Na vysvetlenie fotografie dokumentu použi režim Odfotiť dokument.";
+    case "first_contact_paid_document_boundary":
+      return "Táto požiadavka sa týka konkrétneho dokumentu a nie je súčasťou režimu Prvý kontakt.";
+    case "first_contact_persistence_forbidden":
+      return "Prvý kontakt neukladá dáta. Skús to znova bez požiadavky na uloženie.";
+    case "first_contact_presentation_invalid":
+      return "Odpoveď sa nepodarilo bezpečne pripraviť. Skús to znova.";
+    case "invalid_text":
+      return MSG.badInput;
+    case "smart_talk_rate_limited":
+      return MSG.rateLimited;
+    case "smart_talk_unavailable":
+      return MSG.unavailable;
+    case "smart_talk_timeout":
+      return MSG.timeout;
+    default:
+      return messageForStatus(status);
+  }
+}
+
+function firstContactPreparationLabel(level: string): string {
+  switch (level) {
+    case "likely_helpful":
+      return "Pravdepodobne užitočné";
+    case "may_be_required":
+      return "Môže byť potrebné";
+    case "requires_verification":
+    default:
+      return "Treba overiť";
+  }
+}
+
+function firstContactFirstStepBoundaryLabel(boundary: string): string {
+  switch (boundary) {
+    case "verification":
+      return "Najskôr over";
+    case "official_contact":
+      return "Kontaktuj oficiálne miesto";
+    case "professional_help":
+      return "Vyhľadaj odbornú pomoc";
+    case "emergency_help":
+      return "Vyhľadaj okamžitú pomoc";
+    case "orientation":
+    default:
+      return "Prvý orientačný krok";
+  }
+}
+
+function firstContactHelpBoundaryLabel(level: string): string {
+  switch (level) {
+    case "official":
+      return "Over na úrade alebo oficiálnom mieste";
+    case "professional":
+      return "Vyhľadaj odbornú pomoc";
+    case "emergency":
+      return "Vyhľadaj okamžitú pomoc";
+    case "none":
+    default:
+      return "Bez špecifickej potreby pomoci";
+  }
+}
+
+function firstContactBoundaryIsProminent(boundary: string): boolean {
+  return boundary === "professional_help" || boundary === "emergency_help";
+}
+
+function firstContactHelpLevelIsProminent(level: string): boolean {
+  return level === "professional" || level === "emergency";
+}
+
+const PROMINENT_CARD_STYLE: CSSProperties = {
+  border: "1px solid rgba(251, 191, 36, 0.95)",
+  background: "rgba(255, 247, 237, 1)",
+};
+
+/**
+ * Phase 8.12E: First-Contact-only additive presentation cards. Deliberately
+ * does NOT re-render `result.warnings` (already shown by
+ * `renderSmartTalkResultCards` above it) — only the bounded
+ * `FirstContactPresentation` fields not already covered by the shared
+ * SmartTalkResult cards. `canWait` is never rendered when null; empty
+ * arrays never produce empty cards; the help-boundary card is omitted
+ * entirely when its level is "none" (nothing to show).
+ */
+function renderFirstContactPresentationCards(meta: FirstContactPresentationUi, result: SmartTalkResult) {
+  const highOrUnknownRisk = result.urgency === "high" || result.urgency === "unknown";
+  return (
+    <div style={{ display: "grid", gap: 12 }}>
+      {highOrUnknownRisk ? (
+        <section style={{ ...RESULT_CARD, ...PROMINENT_CARD_STYLE }}>
+          <h2 style={sectionTitleStyle()}>Dôležité upozornenie</h2>
+          <p
+            style={{
+              margin: 0,
+              fontSize: 14,
+              lineHeight: 1.6,
+              fontWeight: 700,
+              color: "rgba(124, 45, 18, 0.94)",
+            }}
+          >
+            {result.warnings.find((w) => w.trim().length > 0) ??
+              meta.helpBoundary.reason ??
+              "Táto situácia môže byť naliehavá alebo neistá. Over ju čo najskôr na oficiálnom mieste."}
+          </p>
+        </section>
+      ) : null}
+
+      <section style={RESULT_CARD}>
+        <h2 style={sectionTitleStyle()}>Čo to pre teba znamená</h2>
+        <p style={{ margin: 0, fontSize: 14, lineHeight: 1.65, color: "var(--text)" }}>
+          {meta.situationSummary}
+        </p>
+      </section>
+
+      <section style={firstContactBoundaryIsProminent(meta.firstStep.boundary) ? { ...RESULT_CARD, ...PROMINENT_CARD_STYLE } : RESULT_CARD}>
+        <h2 style={sectionTitleStyle()}>Čo urob ako prvé</h2>
+        <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 800, color: "var(--muted2)" }}>
+          {firstContactFirstStepBoundaryLabel(meta.firstStep.boundary)}
+        </p>
+        <p style={{ margin: 0, fontSize: 14, lineHeight: 1.65, color: "var(--text)" }}>
+          {meta.firstStep.action}
+        </p>
+      </section>
+
+      {meta.preparationItems.length > 0 ? (
+        <section style={RESULT_CARD}>
+          <h2 style={sectionTitleStyle()}>Čo si priprav</h2>
+          <ul
+            style={{
+              margin: 0,
+              paddingLeft: 0,
+              listStyle: "none",
+              display: "grid",
+              gap: 10,
+            }}
+          >
+            {meta.preparationItems.map((item, i) => (
+              <li key={i} style={{ display: "grid", gap: 4 }}>
+                <span
+                  style={{
+                    ...BADGE_BASE,
+                    width: "fit-content",
+                    fontSize: 11,
+                    border: "1px solid var(--border)",
+                    background: "rgba(248, 250, 252, 1)",
+                    color: "var(--muted2)",
+                  }}
+                >
+                  {firstContactPreparationLabel(item.requirementLevel)}
+                </span>
+                <span style={{ fontSize: 14, lineHeight: 1.55, color: "var(--text)" }}>{item.label}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {meta.canWait !== null ? (
+        <section style={RESULT_CARD}>
+          <h2 style={sectionTitleStyle()}>Čo môže počkať</h2>
+          <ul
+            style={{
+              margin: 0,
+              paddingLeft: 22,
+              fontSize: 14,
+              lineHeight: 1.65,
+              color: "var(--text)",
+              display: "grid",
+              gap: 8,
+              listStyleType: "disc",
+            }}
+          >
+            {meta.canWait.map((item, i) => (
+              <li key={i} style={{ paddingLeft: 4 }}>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {meta.helpBoundary.level !== "none" ? (
+        <section
+          style={
+            firstContactHelpLevelIsProminent(meta.helpBoundary.level)
+              ? { ...RESULT_CARD, ...PROMINENT_CARD_STYLE }
+              : RESULT_CARD
+          }
+        >
+          <h2 style={sectionTitleStyle()}>Kde potrebuješ pomoc</h2>
+          <p style={{ margin: meta.helpBoundary.reason ? "0 0 6px" : 0, fontSize: 14, fontWeight: 800, color: "var(--text)" }}>
+            {firstContactHelpBoundaryLabel(meta.helpBoundary.level)}
+          </p>
+          {meta.helpBoundary.reason ? (
+            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.55, color: "var(--muted)" }}>
+              {meta.helpBoundary.reason}
+            </p>
+          ) : null}
+        </section>
+      ) : null}
+
+      {meta.evidenceLimitations.length > 0 ? (
+        <section style={RESULT_CARD}>
+          <h2 style={sectionTitleStyle()}>Obmedzenia vysvetlenia</h2>
+          <ul
+            style={{
+              margin: 0,
+              paddingLeft: 22,
+              fontSize: 13,
+              lineHeight: 1.6,
+              color: "var(--muted)",
+              display: "grid",
+              gap: 6,
+              listStyleType: "disc",
+            }}
+          >
+            {meta.evidenceLimitations.map((item, i) => (
+              <li key={i} style={{ paddingLeft: 4 }}>
+                {item}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      <section style={{ ...RESULT_CARD, background: "rgba(248, 250, 252, 1)" }}>
+        <p style={{ margin: 0, fontSize: 12, lineHeight: 1.55, color: "var(--muted2)" }}>
+          Toto je len orientačná informácia, nie je to právne poradenstvo a nebolo to overené
+          úradom. Text sa v tomto režime neukladá — vždy si over podrobnosti na oficiálnom mieste
+          alebo skontroluj originálny dokument.
+        </p>
+      </section>
+    </div>
+  );
+}
+// ── End Phase 8.12E First Contact minimal UI types ──────────────────────────
+
 const MSG = {
   badInput:
     "Text je príliš krátky alebo neplatný. Skúste vložiť časť listu alebo formulára.",
@@ -882,6 +1312,19 @@ export default function SmartTalkClient() {
   const [ocrHandoffLoading, setOcrHandoffLoading] = useState(false);
   const [ocrHandoffError, setOcrHandoffError] = useState<string | null>(null);
   const [ocrHandoffResult, setOcrHandoffResult] = useState<OcrHandoffUiResult | null>(null);
+  // Phase 8.12E: minimal First Contact UI state — selected scenario (optional
+  // presentation hint only, never sufficient on its own), the bounded
+  // presentation returned alongside the shared SmartTalkResult (`result`
+  // above), and the recommended-mode hint for boundary responses (document/
+  // photo required). No localStorage/sessionStorage — transient React state
+  // only, cleared whenever the user leaves this mode (see the mode-change
+  // effect below).
+  const [firstContactScenario, setFirstContactScenario] = useState<FirstContactScenarioId | null>(
+    null,
+  );
+  const [firstContactMeta, setFirstContactMeta] = useState<FirstContactPresentationUi | null>(null);
+  const [firstContactRecommendedMode, setFirstContactRecommendedMode] =
+    useState<FirstContactRecommendedModeUi>(null);
 
   const releaseCameraHardware = useCallback(() => {
     const v = videoRef.current;
@@ -916,6 +1359,14 @@ export default function SmartTalkClient() {
       setPhotoPages([]);
       setPartialOcrNotice(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+
+    // Phase 8.12E: leaving First Contact clears its scenario selection and
+    // any stale response/recommendation so nothing leaks into another mode.
+    if (mode !== "first_contact") {
+      setFirstContactScenario(null);
+      setFirstContactMeta(null);
+      setFirstContactRecommendedMode(null);
     }
   }, [mode, releaseCameraHardware]);
 
@@ -1202,7 +1653,7 @@ export default function SmartTalkClient() {
   );
 
   const trimmedLen = text.trim().length;
-  const lengthGuardActive = mode === "question" || mode === "text";
+  const lengthGuardActive = mode === "question" || mode === "text" || mode === "first_contact";
   const overMaxLength = lengthGuardActive && trimmedLen > MAX_TEXT_LENGTH;
   const showLengthRecommendation =
     lengthGuardActive &&
@@ -1317,6 +1768,70 @@ export default function SmartTalkClient() {
       setLoading(false);
     }
   }, [text, mode]);
+
+  // Phase 8.12E: First Contact ("Prvý kontakt") submit handler. Only ever
+  // called when mode === "first_contact" (explicit user selection — never
+  // auto-selected). Maps the UI-only "first_contact" mode value to the
+  // exact route contract "first_contact_controlled_runtime". Sends JSON
+  // only (never multipart/files/images), the server-bounded market "DE",
+  // the shared locale, and the optional scenario id verbatim (never
+  // translated/renamed). Exactly one request per intentional submit, no
+  // automatic retry, no fallback to another mode on failure — boundary
+  // responses (document/photo required) only surface a recommendation via
+  // firstContactRecommendedMode; the user must manually pick that mode.
+  const onFirstContactSubmit = useCallback(async () => {
+    if (mode !== "first_contact") return;
+    const trimmed = text.trim();
+    if (trimmed.length < 8 || trimmed.length > MAX_TEXT_LENGTH || busyRef.current) return;
+    const genAtStart = generationRef.current;
+    busyRef.current = true;
+
+    setLoading(true);
+    setError(null);
+    setResult(null);
+    setFirstContactMeta(null);
+    setFirstContactRecommendedMode(null);
+
+    try {
+      const res = await fetch("/api/smart-talk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "first_contact_controlled_runtime",
+          text: trimmed,
+          locale: "sk",
+          market: "DE",
+          ...(firstContactScenario ? { scenario: firstContactScenario } : {}),
+        }),
+      });
+
+      let data: unknown = null;
+      try {
+        data = (await res.json()) as unknown;
+      } catch {
+        data = null;
+      }
+
+      if (genAtStart !== generationRef.current) return;
+
+      const okParsed = parseFirstContactResponse(data);
+      if (res.ok && okParsed) {
+        setResult(okParsed.result);
+        setFirstContactMeta(okParsed.firstContactMeta);
+        return;
+      }
+
+      const info = readFirstContactErrorInfo(data);
+      setFirstContactRecommendedMode(info.recommendedMode);
+      setError(messageForFirstContactCode(info.code, res.status));
+    } catch {
+      if (genAtStart !== generationRef.current) return;
+      setError(MSG.fallback);
+    } finally {
+      busyRef.current = false;
+      setLoading(false);
+    }
+  }, [text, mode, firstContactScenario]);
 
   // Phase 8.9K: controlled/internal-only Text Document Mode test action.
   // Fully additive — does not alter onSubmit/onPhotoSubmit or their branching.
@@ -1709,15 +2224,18 @@ export default function SmartTalkClient() {
         aria-label="Spôsob vstupu"
         style={{ display: "flex", flexWrap: "wrap", gap: 8 }}
       >
-        {modeChip("question", "Mám otázku")}
-        {modeChip("text", "Mám text listu")}
+        {modeChip("question", "Opýtať sa")}
+        {modeChip("first_contact", "Prvý kontakt")}
+        {modeChip("text", "Vysvetliť text")}
         {modeChip("photo", "Odfotiť dokument")}
       </div>
 
       <div style={{ display: "grid", gap: 6 }}>
-        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: "var(--muted)" }}>
-          {GUIDANCE_PRIMARY[mode]}
-        </p>
+        {GUIDANCE_PRIMARY[mode] ? (
+          <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: "var(--muted)" }}>
+            {GUIDANCE_PRIMARY[mode]}
+          </p>
+        ) : null}
         {lengthGuardActive ? (
           <p style={{ margin: 0, fontSize: 12, lineHeight: 1.45, color: "var(--muted2)" }}>
             Limit: maximálne 12 000 znakov.
@@ -1931,8 +2449,77 @@ export default function SmartTalkClient() {
           </>
         ) : (
           <>
+            {mode === "first_contact" ? (
+              <div style={{ display: "grid", gap: 10 }}>
+                <h2
+                  style={{
+                    margin: 0,
+                    fontSize: 17,
+                    fontWeight: 800,
+                    color: "var(--text)",
+                    lineHeight: 1.3,
+                  }}
+                >
+                  {FIRST_CONTACT_ENTRY_HEADING}
+                </h2>
+                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: "var(--muted)" }}>
+                  {FIRST_CONTACT_ENTRY_SUPPORTING_TEXT}
+                </p>
+                <div
+                  role="group"
+                  aria-label="Kategória situácie (nepovinné)"
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
+                    gap: 8,
+                  }}
+                >
+                  {FIRST_CONTACT_SCENARIO_OPTIONS.map((opt) => {
+                    const selected = firstContactScenario === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() => setFirstContactScenario(selected ? null : opt.id)}
+                        disabled={loading}
+                        style={{
+                          minHeight: 44,
+                          padding: "10px 12px",
+                          borderRadius: "var(--r12)",
+                          border: selected
+                            ? "1px solid var(--accentBorder)"
+                            : "1px solid var(--border)",
+                          background: selected
+                            ? "rgba(238, 242, 255, 1)"
+                            : "rgba(255, 255, 255, 0.96)",
+                          color: "var(--text)",
+                          fontWeight: selected ? 800 : 600,
+                          fontSize: 13,
+                          lineHeight: 1.3,
+                          textAlign: "left",
+                          cursor: loading ? "not-allowed" : "pointer",
+                          boxShadow: selected ? "0 0 0 3px rgba(199, 210, 254, 0.35)" : "none",
+                          opacity: loading ? 0.7 : 1,
+                        }}
+                      >
+                        {selected ? "✓ " : ""}
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p style={{ margin: 0, fontSize: 11, lineHeight: 1.4, color: "var(--muted2)" }}>
+                  Kategória je len pomôcka na zobrazenie, nie dôkaz. Výber je nepovinný.
+                </p>
+              </div>
+            ) : null}
             <label htmlFor="smart-talk-input" className="sr-only">
-              {mode === "question" ? "Otázka pre Vayla" : "Text dokumentu"}
+              {mode === "question"
+                ? "Otázka pre Vayla"
+                : mode === "first_contact"
+                  ? "Popis tvojej situácie"
+                  : "Text dokumentu"}
             </label>
             <textarea
               id="smart-talk-input"
@@ -1980,6 +2567,7 @@ export default function SmartTalkClient() {
         type="button"
         onClick={() => {
           if (mode === "photo") void onPhotoSubmit();
+          else if (mode === "first_contact") void onFirstContactSubmit();
           else void onSubmit();
         }}
         disabled={submitDisabled}
@@ -2369,10 +2957,42 @@ export default function SmartTalkClient() {
                   : "Spracovávam fotografiu a analyzujem text…"
                 : mode === "question"
                   ? "Vaylo odpovedá na vašu otázku…"
-                  : "Vaylo vysvetľuje text…"}
+                  : mode === "first_contact"
+                    ? "Vaylo hľadá prvý krok…"
+                    : "Vaylo vysvetľuje text…"}
           </p>
         ) : error ? (
-          <p style={{ margin: 0, color: "rgba(127, 29, 29, 0.92)" }}>{error}</p>
+          <div style={{ display: "grid", gap: 10 }} role="alert">
+            <p style={{ margin: 0, color: "rgba(127, 29, 29, 0.92)" }}>{error}</p>
+            {mode === "first_contact" && firstContactRecommendedMode ? (
+              <button
+                type="button"
+                onClick={() =>
+                  setMode(
+                    firstContactRecommendedMode === "text_document_controlled_runtime"
+                      ? "text"
+                      : "photo",
+                  )
+                }
+                style={{
+                  width: "fit-content",
+                  height: 40,
+                  padding: "0 16px",
+                  borderRadius: "var(--r999)",
+                  border: "1px solid var(--accentBorder)",
+                  background: "rgba(238, 242, 255, 1)",
+                  color: "var(--text)",
+                  fontWeight: 700,
+                  fontSize: 13,
+                  cursor: "pointer",
+                }}
+              >
+                {firstContactRecommendedMode === "text_document_controlled_runtime"
+                  ? "Prepnúť na Vysvetliť text"
+                  : "Prepnúť na Odfotiť dokument"}
+              </button>
+            ) : null}
+          </div>
         ) : photoInfoLine && mode === "photo" ? (
           <p style={{ margin: 0 }}>{photoInfoLine}</p>
         ) : result ? (
@@ -2402,6 +3022,10 @@ export default function SmartTalkClient() {
             ) : null}
 
             {renderSmartTalkResultCards(result)}
+
+            {mode === "first_contact" && firstContactMeta
+              ? renderFirstContactPresentationCards(firstContactMeta, result)
+              : null}
 
             {process.env.NODE_ENV === "development" ? (
               <details
