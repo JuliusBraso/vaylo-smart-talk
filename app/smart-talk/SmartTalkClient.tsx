@@ -849,7 +849,12 @@ function renderSmartTalkResultCards(result: SmartTalkResult) {
 
 export default function SmartTalkClient() {
   const [mode, setMode] = useState<SmartTalkUiMode>("question");
-  const [text, setText] = useState("");
+  // Phase 8.13C-BLOCKER: question-mode and text-document-mode inputs are
+  // intentionally isolated in separate state. They must never share a
+  // setter or a value — switching modes must never copy one into the
+  // other. Photo mode never reads either of these.
+  const [questionInput, setQuestionInput] = useState("");
+  const [textDocumentInput, setTextDocumentInput] = useState("");
   const [photoPages, setPhotoPages] = useState<SmartTalkPhotoPage[]>([]);
   const [photoPreparing, setPhotoPreparing] = useState(false);
   const [photoPrepareStatus, setPhotoPrepareStatus] = useState<string | null>(null);
@@ -1201,7 +1206,14 @@ export default function SmartTalkClient() {
     [photoPages, releaseCameraHardware],
   );
 
-  const trimmedLen = text.trim().length;
+  // Phase 8.13C-BLOCKER: trimmedLen always reads the state that belongs to
+  // the currently active mode — never the other mode's draft.
+  const trimmedLen =
+    mode === "question"
+      ? questionInput.trim().length
+      : mode === "text"
+        ? textDocumentInput.trim().length
+        : 0;
   const lengthGuardActive = mode === "question" || mode === "text";
   const overMaxLength = lengthGuardActive && trimmedLen > MAX_TEXT_LENGTH;
   const showLengthRecommendation =
@@ -1270,7 +1282,10 @@ export default function SmartTalkClient() {
 
   const onSubmit = useCallback(async () => {
     if (mode === "photo") return;
-    const trimmed = text.trim();
+    // Phase 8.13C-BLOCKER: read only the input state that belongs to the
+    // mode that is about to be submitted — never the other mode's draft.
+    const trimmed =
+      mode === "question" ? questionInput.trim() : textDocumentInput.trim();
     if (trimmed.length < 8 || trimmed.length > MAX_TEXT_LENGTH || busyRef.current) return;
     const genAtStart = generationRef.current;
     busyRef.current = true;
@@ -1316,7 +1331,7 @@ export default function SmartTalkClient() {
       busyRef.current = false;
       setLoading(false);
     }
-  }, [text, mode]);
+  }, [questionInput, textDocumentInput, mode]);
 
   // Phase 8.9K: controlled/internal-only Text Document Mode test action.
   // Fully additive — does not alter onSubmit/onPhotoSubmit or their branching.
@@ -1326,7 +1341,9 @@ export default function SmartTalkClient() {
   // control only (see JSX below) — internal/local test surface only.
   const handleControlledTextDocumentModeSubmit = useCallback(async () => {
     if (mode !== "text") return;
-    const trimmed = text.trim();
+    // Phase 8.13C-BLOCKER: text-document mode reads only its own isolated
+    // input state — never the question-mode draft.
+    const trimmed = textDocumentInput.trim();
     if (trimmed.length < 8 || trimmed.length > MAX_TEXT_LENGTH || busyRef.current) return;
     const genAtStart = generationRef.current;
     busyRef.current = true;
@@ -1371,7 +1388,7 @@ export default function SmartTalkClient() {
       busyRef.current = false;
       setLoading(false);
     }
-  }, [text, mode]);
+  }, [textDocumentInput, mode]);
 
   // Phase 8.10C: controlled/internal-only Photo/OCR placeholder test action.
   // Fully additive — does not alter onPhotoSubmit or its FormData/upload
@@ -1940,8 +1957,16 @@ export default function SmartTalkClient() {
               id="smart-talk-input"
               name="smart-talk-text"
               rows={8}
-              value={text}
-              onChange={(e) => setText(e.target.value)}
+              // Phase 8.13C-BLOCKER: value/onChange are routed to the
+              // isolated state for the currently active mode only —
+              // question and text-document drafts never share a value or
+              // a setter, so switching modes can never copy one into the
+              // other.
+              value={mode === "question" ? questionInput : textDocumentInput}
+              onChange={(e) => {
+                if (mode === "question") setQuestionInput(e.target.value);
+                else setTextDocumentInput(e.target.value);
+              }}
               placeholder={PLACEHOLDER[mode]}
               className="w-full resize-y rounded-[var(--r12)] border border-[var(--border)] bg-[var(--bg0)] px-3 py-3 text-[15px] leading-relaxed text-[var(--text)] outline-none placeholder:text-[var(--muted2)] focus:border-[color:rgba(199,210,254,1)] focus:shadow-[0_0_0_3px_rgba(199,210,254,0.45)] min-h-[168px]"
               disabled={loading}
