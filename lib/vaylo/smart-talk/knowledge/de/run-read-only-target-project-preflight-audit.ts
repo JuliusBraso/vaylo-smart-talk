@@ -5,7 +5,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 
 const ROOT = process.cwd();
-const EXPECTED_HEAD = "796904e";
+const EXPECTED_HEAD = "093fd91";
 const CONTRACT =
   "lib/vaylo/smart-talk/knowledge/source-registry/remote-preflight-contract.ts";
 const TRUSTED = [
@@ -74,8 +74,43 @@ function classify(input: Readonly<{
   return "READY_FOR_POST_DEPLOYMENT_VERIFICATION_REVIEW";
 }
 
+const USAGE = `Usage:
+  run-read-only-target-project-preflight-audit.ts --help
+  run-read-only-target-project-preflight-audit.ts --offline
+  run-read-only-target-project-preflight-audit.ts [--target-fingerprint <64-lowercase-hex-fingerprint>]
+
+Modes:
+  --help        Print this usage text without running an audit.
+  --offline     Run repository and contract checks only.
+  normal        Run contract checks; without an explicit selector, remain blocked.
+
+Explicit target selection:
+  --target-fingerprint requires an operator-confirmed SHA-256 fingerprint of the
+  intended target's non-secret identity metadata. Linked and cached Supabase
+  projects are never selected implicitly.
+
+Remote capability:
+  REMOTE MODE NOT YET IMPLEMENTED
+
+Do not place project references, URLs, hostnames, credentials, tokens, keys, or
+passwords in command-line arguments.`;
+
+function argumentValue(name: string): string | null {
+  const index = process.argv.indexOf(name);
+  if (index < 0 || index + 1 >= process.argv.length) return null;
+  return process.argv[index + 1];
+}
+
 function main(): void {
+  if (process.argv.includes("--help")) {
+    console.log(USAGE);
+    return;
+  }
   const offline = process.argv.includes("--offline");
+  const targetFingerprint = argumentValue("--target-fingerprint");
+  const explicitTargetConfigured =
+    targetFingerprint !== null && /^[a-f0-9]{64}$/.test(targetFingerprint);
+  const remoteExecutionPathImplemented = false;
   const sourceCommit = git(["rev-parse", "--short", "HEAD"]);
   const branch = git(["branch", "--show-current"]);
   const status = git(["status", "--short"]);
@@ -139,6 +174,8 @@ function main(): void {
     "partial-ledger", "conflicting-ledger", "object-count-only", "policy-ignored", "grant-ignored", "enum-order-ignored",
     "overload-ignored", "migration-034-ignored", "backup-fabricated", "actor-fabricated", "fixture", "baseline-auto",
     "deployment", "runtime-enabled", "public-authorized", "sensitive-report", "temporary-artifact", "unrelated-change", "hardcoded-pass",
+    "stale-expected-head", "help-runs-audit", "implicit-linked-project", "implicit-cached-project",
+    "help-sensitive-target", "missing-explicit-target", "false-remote-path", "target-absence-validator-defect",
   ];
   const tamperCount = tamperGroups.length * 6;
   const temp = mkdtempSync(path.join(tmpdir(), "phase9x-a-"));
@@ -162,7 +199,6 @@ function main(): void {
     temporaryArtifactsRemoved = true;
   }
   const remotePreflightAttempted = false;
-  const explicitTargetConfigured = false;
   const offlineContractAuditPassed =
     approved.every(isReadOnlyQuery) &&
     denied.every((query) => !isReadOnlyQuery(query)) &&
@@ -188,16 +224,26 @@ function main(): void {
     positiveRuntimeCaseCount >= 55 &&
     negativeRuntimeCaseCount >= 160 &&
     temporaryArtifactsRemoved;
-  const finalDecision = "BLOCKED_TARGET_NOT_CONFIGURED";
+  const currentHeadMatchesExpected = sourceCommit === EXPECTED_HEAD;
+  const blockReason = explicitTargetConfigured
+    ? "REMOTE_EXECUTION_PATH_NOT_IMPLEMENTED"
+    : "TARGET_PROJECT_NOT_CONFIGURED";
+  const finalDecision = explicitTargetConfigured
+    ? "BLOCKED_SAFE_AUTH_UNAVAILABLE"
+    : "BLOCKED_TARGET_NOT_CONFIGURED";
   console.log(JSON.stringify({
     checkId: "9X-A", phase: "Read-Only Target Supabase Project Preflight",
-    allPassed, blocked: !explicitTargetConfigured, blockReason: explicitTargetConfigured ? null : "TARGET_PROJECT_NOT_CONFIGURED",
+    allPassed, blocked: true, blockReason,
     defectClassification: allPassed ? "NONE" : "VALIDATOR_DEFECT",
-    sourceCommit, expectedSourceCommit: EXPECTED_HEAD,
+    sourceCommit, expectedSourceCommit: EXPECTED_HEAD, currentHeadMatchesExpected,
     remotePreflightContractPath: CONTRACT,
     auditRunnerPath: "lib/vaylo/smart-talk/knowledge/de/run-read-only-target-project-preflight-audit.ts",
     offlineContractAuditPassed, remotePreflightAttempted, safeAuthenticationAvailable: false,
     explicitTargetConfigured, targetIdentityOperatorConfirmed: false,
+    explicitTargetSelectionRequired: true,
+    linkedProjectImplicitlyAccepted: false,
+    cachedProjectImplicitlyAccepted: false,
+    remoteExecutionPathImplemented,
     remoteConnectionPerformed: false, remoteTransactionReadOnly: false, remoteStatementTimeoutEnforced: false, remoteLockTimeoutEnforced: false,
     remoteWriteStatementCount: 0, remoteDdlStatementCount: 0, remoteDmlStatementCount: 0, remoteMutationRpcCallCount: 0,
     targetClassification: null, finalPreflightDecision: finalDecision,
@@ -215,7 +261,11 @@ function main(): void {
     cleanupAttempted, temporaryArtifactsRemoved, temporaryArtifactCount: 0, workingTreeScopeValid,
     readyForExplicitDeploymentAuthorizationCheckpoint: false,
     recommendedNextPhase: "Configure the intended target through a secure local mechanism, then rerun only the 9X-A remote preflight.",
-    mode: offline ? "OFFLINE_CONTRACT" : "NORMAL_WITHOUT_EXPLICIT_TARGET",
+    mode: offline
+      ? "OFFLINE_CONTRACT"
+      : explicitTargetConfigured
+        ? "EXPLICIT_TARGET_WITHOUT_REMOTE_EXECUTOR"
+        : "NORMAL_WITHOUT_EXPLICIT_TARGET",
   }, null, 2));
   if (!allPassed) process.exitCode = 1;
 }
