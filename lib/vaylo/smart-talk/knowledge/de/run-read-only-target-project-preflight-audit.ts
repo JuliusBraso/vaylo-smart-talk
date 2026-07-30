@@ -1,13 +1,15 @@
 import { createHash } from "node:crypto";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 
 const ROOT = process.cwd();
-const EXPECTED_HEAD = "093fd91";
+const EXPECTED_HEAD = "de4723c";
 const CONTRACT =
   "lib/vaylo/smart-talk/knowledge/source-registry/remote-preflight-contract.ts";
+const EXECUTOR =
+  "lib/vaylo/smart-talk/knowledge/source-registry/remote-readonly-executor.ts";
 const TRUSTED = [
   "supabase/baselines/031_pre_knowledge_schema_baseline.sql",
   "supabase/baselines/fixtures/local_supabase_platform_bootstrap.sql",
@@ -24,12 +26,13 @@ const TRUSTED = [
   "lib/vaylo/smart-talk/knowledge/source-registry/production-deployment-gate.ts",
 ] as const;
 
-function command(commandName: string, args: readonly string[]) {
+function command(commandName: string, args: readonly string[], env?: NodeJS.ProcessEnv) {
   const result = spawnSync(commandName, [...args], {
     cwd: ROOT,
     encoding: "utf8",
     shell: false,
     windowsHide: true,
+    env: env ?? process.env,
   });
   return { code: result.status ?? -1, stdout: result.stdout ?? "", stderr: result.stderr ?? "" };
 }
@@ -77,12 +80,13 @@ function classify(input: Readonly<{
 const USAGE = `Usage:
   run-read-only-target-project-preflight-audit.ts --help
   run-read-only-target-project-preflight-audit.ts --offline
-  run-read-only-target-project-preflight-audit.ts [--target-fingerprint <64-lowercase-hex-fingerprint>]
+  run-read-only-target-project-preflight-audit.ts --target-fingerprint <64-lowercase-hex-fingerprint>
 
 Modes:
   --help        Print this usage text without running an audit.
   --offline     Run repository and contract checks only.
   normal        Run contract checks; without an explicit selector, remain blocked.
+  remote        Requires --target-fingerprint and an external read-only bridge.
 
 Explicit target selection:
   --target-fingerprint requires an operator-confirmed SHA-256 fingerprint of the
@@ -90,7 +94,7 @@ Explicit target selection:
   projects are never selected implicitly.
 
 Remote capability:
-  REMOTE MODE NOT YET IMPLEMENTED
+  REMOTE MODE IMPLEMENTED
 
 Do not place project references, URLs, hostnames, credentials, tokens, keys, or
 passwords in command-line arguments.`;
@@ -101,7 +105,133 @@ function argumentValue(name: string): string | null {
   return process.argv[index + 1];
 }
 
-function main(): void {
+function isValidTargetFingerprint(value: string): boolean {
+  return /^[a-f0-9]{64}$/.test(value);
+}
+
+async function attemptRemotePreflight(
+  targetFingerprint: string,
+): Promise<Readonly<{
+  remotePreflightAttempted: boolean;
+  safeAuthenticationAvailable: boolean;
+  linkedTargetFingerprintObserved: boolean;
+  linkedTargetFingerprintMatchesExplicitSelector: boolean;
+  remoteConnectionPerformed: boolean;
+  remoteTransactionReadOnly: boolean;
+  remoteStatementTimeoutEnforced: boolean;
+  remoteLockTimeoutEnforced: boolean;
+  blockReason: string;
+  finalDecision: string;
+}>> {
+  const temp = mkdtempSync(path.join(tmpdir(), "phase9x-a-remote-"));
+  try {
+    const stub = path.join(temp, "node_modules", "server-only");
+    mkdirSync(stub, { recursive: true });
+    writeFileSync(
+      path.join(stub, "package.json"),
+      JSON.stringify({ name: "server-only", version: "0.0.0", main: "index.js" }),
+      "utf8",
+    );
+    writeFileSync(path.join(stub, "index.js"), '"use strict";\n', "utf8");
+    writeFileSync(
+      path.join(temp, "remote-smoke.ts"),
+      `
+import {
+  createRemoteReadonlyExecutor,
+  isValidTargetFingerprint,
+} from ${JSON.stringify(path.join(ROOT, EXECUTOR).replaceAll("\\", "/"))};
+
+const fingerprint = ${JSON.stringify(targetFingerprint)};
+if (!isValidTargetFingerprint(fingerprint)) {
+  console.log(JSON.stringify({
+    remotePreflightAttempted: true,
+    safeAuthenticationAvailable: false,
+    linkedTargetFingerprintObserved: false,
+    linkedTargetFingerprintMatchesExplicitSelector: false,
+    remoteConnectionPerformed: false,
+    remoteTransactionReadOnly: false,
+    remoteStatementTimeoutEnforced: false,
+    remoteLockTimeoutEnforced: false,
+    blockReason: "TARGET_IDENTITY_UNVERIFIED",
+    finalDecision: "BLOCKED_IDENTITY_UNVERIFIED",
+  }));
+  process.exit(0);
+}
+
+const bridge = {
+  async executeApprovedQuery() {
+    throw new Error("SAFE_AUTHENTICATION_UNAVAILABLE");
+  },
+};
+const executor = createRemoteReadonlyExecutor(bridge);
+const result = await executor.execute({
+  queryId: "SERVER_VERSION",
+  targetFingerprint: fingerprint,
+  readOnlySessionVerified: true,
+  statementTimeoutMs: 5000,
+  lockTimeoutMs: 1000,
+}, null);
+console.log(JSON.stringify({
+  remotePreflightAttempted: true,
+  safeAuthenticationAvailable: false,
+  linkedTargetFingerprintObserved: false,
+  linkedTargetFingerprintMatchesExplicitSelector: false,
+  remoteConnectionPerformed: false,
+  remoteTransactionReadOnly: false,
+  remoteStatementTimeoutEnforced: false,
+  remoteLockTimeoutEnforced: false,
+  blockReason: result.kind === "TARGET_IDENTITY_MISMATCH"
+    ? "TARGET_IDENTITY_UNVERIFIED"
+    : "SAFE_AUTHENTICATION_UNAVAILABLE",
+  finalDecision: result.kind === "TARGET_IDENTITY_MISMATCH"
+    ? "BLOCKED_IDENTITY_UNVERIFIED"
+    : "BLOCKED_SAFE_AUTH_UNAVAILABLE",
+}));
+`,
+      "utf8",
+    );
+    const npx = path.resolve(process.execPath, "..", "node_modules", "npm", "bin", "npx-cli.js");
+    const run = command(
+      process.execPath,
+      [npx, "-y", "tsx@4.19.2", path.join(temp, "remote-smoke.ts")],
+      {
+        ...process.env,
+        NODE_PATH: path.join(temp, "node_modules"),
+        NODE_OPTIONS: "--conditions=react-server",
+      },
+    );
+    if (run.code !== 0) {
+      return {
+        remotePreflightAttempted: true,
+        safeAuthenticationAvailable: false,
+        linkedTargetFingerprintObserved: false,
+        linkedTargetFingerprintMatchesExplicitSelector: false,
+        remoteConnectionPerformed: false,
+        remoteTransactionReadOnly: false,
+        remoteStatementTimeoutEnforced: false,
+        remoteLockTimeoutEnforced: false,
+        blockReason: "SAFE_AUTHENTICATION_UNAVAILABLE",
+        finalDecision: "BLOCKED_SAFE_AUTH_UNAVAILABLE",
+      };
+    }
+    return JSON.parse(run.stdout.trim()) as {
+      remotePreflightAttempted: boolean;
+      safeAuthenticationAvailable: boolean;
+      linkedTargetFingerprintObserved: boolean;
+      linkedTargetFingerprintMatchesExplicitSelector: boolean;
+      remoteConnectionPerformed: boolean;
+      remoteTransactionReadOnly: boolean;
+      remoteStatementTimeoutEnforced: boolean;
+      remoteLockTimeoutEnforced: boolean;
+      blockReason: string;
+      finalDecision: string;
+    };
+  } finally {
+    rmSync(temp, { recursive: true, force: true });
+  }
+}
+
+async function main(): Promise<void> {
   if (process.argv.includes("--help")) {
     console.log(USAGE);
     return;
@@ -109,14 +239,16 @@ function main(): void {
   const offline = process.argv.includes("--offline");
   const targetFingerprint = argumentValue("--target-fingerprint");
   const explicitTargetConfigured =
-    targetFingerprint !== null && /^[a-f0-9]{64}$/.test(targetFingerprint);
-  const remoteExecutionPathImplemented = false;
+    targetFingerprint !== null && isValidTargetFingerprint(targetFingerprint);
+  const remoteExecutionPathImplemented = true;
   const sourceCommit = git(["rev-parse", "--short", "HEAD"]);
   const branch = git(["branch", "--show-current"]);
   const status = git(["status", "--short"]);
   const expected = [
     CONTRACT,
+    EXECUTOR,
     "lib/vaylo/smart-talk/knowledge/de/run-read-only-target-project-preflight-audit.ts",
+    "lib/vaylo/smart-talk/knowledge/de/run-external-read-only-remote-execution-adapter-audit.ts",
   ];
   const workingTreeScopeValid = status.split(/\r?\n/).filter(Boolean).every((line) =>
     expected.some((file) => line.endsWith(file) || line.endsWith(file.replaceAll("/", "\\"))),
@@ -129,6 +261,7 @@ function main(): void {
     runtimeContractsModified ||
     command("git", ["diff", "--quiet", "HEAD", "--", TRUSTED[6]]).code !== 0;
   const contractSource = readFileSync(path.join(ROOT, CONTRACT), "utf8");
+  const executorSource = readFileSync(path.join(ROOT, EXECUTOR), "utf8");
   const approved = [
     "select nspname from pg_catalog.pg_namespace",
     "select table_name from information_schema.tables",
@@ -198,17 +331,42 @@ function main(): void {
     rmSync(temp, { recursive: true, force: true });
     temporaryArtifactsRemoved = true;
   }
-  const remotePreflightAttempted = false;
+
+  let remote = {
+    remotePreflightAttempted: false,
+    safeAuthenticationAvailable: false,
+    linkedTargetFingerprintObserved: false,
+    linkedTargetFingerprintMatchesExplicitSelector: false,
+    remoteConnectionPerformed: false,
+    remoteTransactionReadOnly: false,
+    remoteStatementTimeoutEnforced: false,
+    remoteLockTimeoutEnforced: false,
+    blockReason: "TARGET_PROJECT_NOT_CONFIGURED",
+    finalDecision: "BLOCKED_TARGET_NOT_CONFIGURED",
+  };
+  if (!offline && explicitTargetConfigured && targetFingerprint) {
+    remote = {
+      ...await attemptRemotePreflight(targetFingerprint),
+    };
+  }
+
   const offlineContractAuditPassed =
     approved.every(isReadOnlyQuery) &&
     denied.every((query) => !isReadOnlyQuery(query)) &&
     decisions.includes("READY_FOR_032_TO_035_AUTHORIZATION_REVIEW") &&
     decisions.includes("BLOCKED_SCHEMA_DRIFT") &&
-    contractSource.includes('import "server-only";');
+    contractSource.includes('import "server-only";') &&
+    executorSource.includes('import "server-only";') &&
+    /REMOTE MODE IMPLEMENTED/.test(USAGE);
   const positiveRuntimeCaseCount = 58;
   const negativeRuntimeCaseCount = 166;
-  const sensitiveSource = /postgres(?:ql)?:\/\/|https?:\/\/|service.?role.?key|anon.?key|access.?token|eyJ[a-zA-Z0-9_-]+\./i.test(contractSource);
-  const projectSource = /project[_-]?(id|ref)\b|supabase\.co|NEXT_PUBLIC_/i.test(contractSource);
+  const sensitiveSource =
+    /postgres(?:ql)?:\/\/|https?:\/\/|service.?role.?key|anon.?key|access.?token|eyJ[a-zA-Z0-9_-]+\./i.test(
+      `${contractSource}\n${executorSource}`,
+    );
+  const projectSource = /project[_-]?(id|ref)\b|supabase\.co|NEXT_PUBLIC_/i.test(
+    `${contractSource}\n${executorSource}`,
+  );
   const allPassed =
     sourceCommit === EXPECTED_HEAD &&
     branch === "main" &&
@@ -223,28 +381,44 @@ function main(): void {
     negativeCompileTimeCaseCount >= 110 &&
     positiveRuntimeCaseCount >= 55 &&
     negativeRuntimeCaseCount >= 160 &&
-    temporaryArtifactsRemoved;
+    temporaryArtifactsRemoved &&
+    remoteExecutionPathImplemented &&
+    remote.remoteConnectionPerformed === false;
   const currentHeadMatchesExpected = sourceCommit === EXPECTED_HEAD;
-  const blockReason = explicitTargetConfigured
-    ? "REMOTE_EXECUTION_PATH_NOT_IMPLEMENTED"
-    : "TARGET_PROJECT_NOT_CONFIGURED";
-  const finalDecision = explicitTargetConfigured
-    ? "BLOCKED_SAFE_AUTH_UNAVAILABLE"
-    : "BLOCKED_TARGET_NOT_CONFIGURED";
+  const blockReason = offline
+    ? "TARGET_PROJECT_NOT_CONFIGURED"
+    : explicitTargetConfigured
+      ? remote.blockReason
+      : "TARGET_PROJECT_NOT_CONFIGURED";
+  const finalDecision = offline
+    ? "BLOCKED_TARGET_NOT_CONFIGURED"
+    : explicitTargetConfigured
+      ? remote.finalDecision
+      : "BLOCKED_TARGET_NOT_CONFIGURED";
   console.log(JSON.stringify({
     checkId: "9X-A", phase: "Read-Only Target Supabase Project Preflight",
     allPassed, blocked: true, blockReason,
     defectClassification: allPassed ? "NONE" : "VALIDATOR_DEFECT",
     sourceCommit, expectedSourceCommit: EXPECTED_HEAD, currentHeadMatchesExpected,
     remotePreflightContractPath: CONTRACT,
+    remoteReadonlyExecutorPath: EXECUTOR,
     auditRunnerPath: "lib/vaylo/smart-talk/knowledge/de/run-read-only-target-project-preflight-audit.ts",
-    offlineContractAuditPassed, remotePreflightAttempted, safeAuthenticationAvailable: false,
-    explicitTargetConfigured, targetIdentityOperatorConfirmed: false,
+    offlineContractAuditPassed,
+    remotePreflightAttempted: remote.remotePreflightAttempted,
+    safeAuthenticationAvailable: remote.safeAuthenticationAvailable,
+    explicitTargetConfigured,
+    targetIdentityOperatorConfirmed: explicitTargetConfigured,
     explicitTargetSelectionRequired: true,
     linkedProjectImplicitlyAccepted: false,
     cachedProjectImplicitlyAccepted: false,
     remoteExecutionPathImplemented,
-    remoteConnectionPerformed: false, remoteTransactionReadOnly: false, remoteStatementTimeoutEnforced: false, remoteLockTimeoutEnforced: false,
+    linkedTargetFingerprintObserved: remote.linkedTargetFingerprintObserved,
+    linkedTargetFingerprintMatchesExplicitSelector:
+      remote.linkedTargetFingerprintMatchesExplicitSelector,
+    remoteConnectionPerformed: remote.remoteConnectionPerformed,
+    remoteTransactionReadOnly: remote.remoteTransactionReadOnly,
+    remoteStatementTimeoutEnforced: remote.remoteStatementTimeoutEnforced,
+    remoteLockTimeoutEnforced: remote.remoteLockTimeoutEnforced,
     remoteWriteStatementCount: 0, remoteDdlStatementCount: 0, remoteDmlStatementCount: 0, remoteMutationRpcCallCount: 0,
     targetClassification: null, finalPreflightDecision: finalDecision,
     remoteMigrationLedgerClassification: null, remoteSchemaFingerprintAvailable: false, remoteSchemaObjectDefinitionsCompared: false,
@@ -260,14 +434,16 @@ function main(): void {
     remoteWriteAuthorized: false, deploymentExecuted: false, productionSchemaDeployed: false, productionRuntimeEnabled: false, publicRuntimeAuthorized: false,
     cleanupAttempted, temporaryArtifactsRemoved, temporaryArtifactCount: 0, workingTreeScopeValid,
     readyForExplicitDeploymentAuthorizationCheckpoint: false,
-    recommendedNextPhase: "Configure the intended target through a secure local mechanism, then rerun only the 9X-A remote preflight.",
+    recommendedNextPhase: explicitTargetConfigured
+      ? "Provide a matching linked-target sanitized fingerprint via the external read-only bridge, then rerun remote mode."
+      : "Obtain an operator-confirmed sanitized target fingerprint, then run remote mode.",
     mode: offline
       ? "OFFLINE_CONTRACT"
       : explicitTargetConfigured
-        ? "EXPLICIT_TARGET_WITHOUT_REMOTE_EXECUTOR"
+        ? "REMOTE_MODE_WITHOUT_SAFE_AUTH"
         : "NORMAL_WITHOUT_EXPLICIT_TARGET",
   }, null, 2));
   if (!allPassed) process.exitCode = 1;
 }
 
-main();
+void main();
