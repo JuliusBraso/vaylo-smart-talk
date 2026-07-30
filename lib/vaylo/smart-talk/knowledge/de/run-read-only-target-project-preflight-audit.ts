@@ -5,7 +5,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 
 const ROOT = process.cwd();
-const EXPECTED_HEAD = "de4723c";
+const EXPECTED_HEAD = "6e169db";
 const CONTRACT =
   "lib/vaylo/smart-talk/knowledge/source-registry/remote-preflight-contract.ts";
 const EXECUTOR =
@@ -92,6 +92,11 @@ Explicit target selection:
   --target-fingerprint requires an operator-confirmed SHA-256 fingerprint of the
   intended target's non-secret identity metadata. Linked and cached Supabase
   projects are never selected implicitly.
+
+Fingerprint derivation:
+  Derive the sanitized fingerprint with the separate PHASE 9X-A3 runner using
+  --derive-target-fingerprint. Do not self-confirm. Re-enter the exact displayed
+  fingerprint here only after operator confirmation.
 
 Remote capability:
   REMOTE MODE IMPLEMENTED
@@ -249,6 +254,7 @@ async function main(): Promise<void> {
     EXECUTOR,
     "lib/vaylo/smart-talk/knowledge/de/run-read-only-target-project-preflight-audit.ts",
     "lib/vaylo/smart-talk/knowledge/de/run-external-read-only-remote-execution-adapter-audit.ts",
+    "lib/vaylo/smart-talk/knowledge/de/run-target-fingerprint-derivation-and-real-read-only-preflight-audit.ts",
   ];
   const workingTreeScopeValid = status.split(/\r?\n/).filter(Boolean).every((line) =>
     expected.some((file) => line.endsWith(file) || line.endsWith(file.replaceAll("/", "\\"))),

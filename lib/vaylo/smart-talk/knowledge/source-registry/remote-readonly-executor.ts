@@ -1,4 +1,5 @@
 import "server-only";
+import { createHash } from "node:crypto";
 
 export const APPROVED_REMOTE_QUERY_IDS = [
   "SERVER_VERSION",
@@ -238,6 +239,235 @@ export type LinkedTargetIdentityObservation = Readonly<{
   rawUrlExposed: false;
   credentialExposed: false;
 }>;
+
+export const TARGET_FINGERPRINT_ALGORITHM = "SHA-256" as const;
+export const TARGET_FINGERPRINT_CANONICAL_CONTRACT_VERSION =
+  "vaylo-target-identity-v1" as const;
+export const TARGET_FINGERPRINT_FIELD_SEPARATOR = "\u001f" as const;
+export const TARGET_FINGERPRINT_USES_SECRET_MATERIAL = false;
+export const TARGET_FINGERPRINT_FIELD_ORDER = [
+  "applicationIdentity",
+  "environmentClassification",
+  "organizationFingerprint",
+  "projectReferenceFingerprint",
+  "regionClassification",
+  "expectedPostgresMajor",
+] as const;
+
+export type CanonicalTargetIdentityFieldName =
+  (typeof TARGET_FINGERPRINT_FIELD_ORDER)[number];
+
+export type CanonicalTargetIdentityTuple = Readonly<{
+  applicationIdentity: string;
+  environmentClassification: "CONTROLLED_PRODUCTION" | "CONTROLLED_STAGING";
+  organizationFingerprint: string;
+  projectReferenceFingerprint: string;
+  regionClassification: string;
+  expectedPostgresMajor: number;
+}>;
+
+export type DerivedTargetFingerprintSuccess = Readonly<{
+  available: true;
+  targetFingerprint: string;
+  fingerprintAlgorithm: typeof TARGET_FINGERPRINT_ALGORITHM;
+  canonicalContractVersion: typeof TARGET_FINGERPRINT_CANONICAL_CONTRACT_VERSION;
+  derived: true;
+  sensitiveInputRemoved: true;
+  linkedTargetPresent: boolean;
+  safeAuthenticationAvailable: boolean;
+  remoteCatalogQueryCount: 0;
+  remoteWriteStatementCount: 0;
+}>;
+
+export type DerivedTargetFingerprintUnavailable = Readonly<{
+  available: false;
+  reason: "SAFE_TARGET_FINGERPRINT_DERIVATION_UNAVAILABLE";
+  derived: false;
+  remoteCatalogQueryCount: 0;
+  remoteWriteStatementCount: 0;
+}>;
+
+export type DerivedTargetFingerprintResult =
+  | DerivedTargetFingerprintSuccess
+  | DerivedTargetFingerprintUnavailable;
+
+export interface ExternalTargetFingerprintDerivationBridge {
+  deriveLinkedTargetFingerprint(): Promise<DerivedTargetFingerprintResult>;
+}
+
+const FINGERPRINT_FIELD_HEX = /^[a-f0-9]{64}$/;
+const FORBIDDEN_DERIVATION_OUTPUT =
+  /postgres(?:ql)?:\/\/|https?:\/\/|service.?role.?key|anon.?key|access.?token|eyJ[a-zA-Z0-9_-]+\.|project[_-]?(?:id|ref)\b|supabase\.co|password|username|hostname|connection.?string|organization.?id|cli.?session|credential/i;
+
+function rejectEmptyNormalized(value: string, field: string): string {
+  if (value.normalize("NFC") !== value) {
+    throw new TypeError(`Canonical identity field ${field} must already be Unicode NFC`);
+  }
+  if (value.length === 0 || value.trim() !== value) {
+    throw new TypeError(`Canonical identity field ${field} must be non-empty without surrounding whitespace`);
+  }
+  return value;
+}
+
+export function serializeCanonicalTargetIdentity(
+  tuple: CanonicalTargetIdentityTuple,
+): string {
+  const keys = Object.keys(tuple) as CanonicalTargetIdentityFieldName[];
+  if (keys.length !== TARGET_FINGERPRINT_FIELD_ORDER.length) {
+    throw new TypeError("Canonical identity tuple has unexpected field count");
+  }
+  const seen = new Set<string>();
+  for (const key of keys) {
+    if (seen.has(key)) {
+      throw new TypeError("Canonical identity tuple rejects duplicate fields");
+    }
+    seen.add(key);
+    if (
+      !(TARGET_FINGERPRINT_FIELD_ORDER as readonly string[]).includes(key)
+    ) {
+      throw new TypeError("Canonical identity tuple rejects unknown fields");
+    }
+  }
+  for (const field of TARGET_FINGERPRINT_FIELD_ORDER) {
+    if (!(field in tuple)) {
+      throw new TypeError(`Canonical identity tuple missing field ${field}`);
+    }
+  }
+  const parts = TARGET_FINGERPRINT_FIELD_ORDER.map((field) => {
+    if (field === "expectedPostgresMajor") {
+      const major = tuple.expectedPostgresMajor;
+      if (!Number.isInteger(major) || major < 1 || major > 99) {
+        throw new TypeError("expectedPostgresMajor must be a bounded positive integer");
+      }
+      return String(major);
+    }
+    if (field === "environmentClassification") {
+      const environment = tuple.environmentClassification;
+      if (
+        environment !== "CONTROLLED_PRODUCTION" &&
+        environment !== "CONTROLLED_STAGING"
+      ) {
+        throw new TypeError("environmentClassification is outside the allowed set");
+      }
+      return environment;
+    }
+    const value = rejectEmptyNormalized(String(tuple[field]), field);
+    if (
+      (field === "organizationFingerprint" ||
+        field === "projectReferenceFingerprint") &&
+      !FINGERPRINT_FIELD_HEX.test(value)
+    ) {
+      throw new TypeError(`${field} must already be a 64-character lowercase hex digest`);
+    }
+    if (
+      field === "applicationIdentity" &&
+      /password|token|secret|postgres(?:ql)?:\/\/|https?:\/\//i.test(value)
+    ) {
+      throw new TypeError("applicationIdentity must not contain secret material");
+    }
+    return value;
+  });
+  return parts.join(TARGET_FINGERPRINT_FIELD_SEPARATOR);
+}
+
+export function deriveCanonicalTargetFingerprint(
+  tuple: CanonicalTargetIdentityTuple,
+): string {
+  const serialized = serializeCanonicalTargetIdentity(tuple);
+  return createHash("sha256").update(serialized, "utf8").digest("hex");
+}
+
+export function assertOperatorConfirmationSeparation(
+  derivationModeActive: boolean,
+  preflightModeActive: boolean,
+): Readonly<{
+  operatorConfirmationRequired: true;
+  selfConfirmationAllowed: false;
+  accepted: boolean;
+}> {
+  return Object.freeze({
+    operatorConfirmationRequired: true,
+    selfConfirmationAllowed: false,
+    accepted: !(derivationModeActive && preflightModeActive),
+  });
+}
+
+export function confirmExplicitFingerprintAgainstDerived(
+  explicitFingerprint: string,
+  derivedFingerprint: string,
+): Readonly<{
+  matched: boolean;
+  remoteCatalogQueriesAllowed: boolean;
+  remoteCatalogQueryCountBeforeConfirmation: 0;
+}> {
+  const matched =
+    isValidTargetFingerprint(explicitFingerprint) &&
+    isValidTargetFingerprint(derivedFingerprint) &&
+    explicitFingerprint === derivedFingerprint;
+  return Object.freeze({
+    matched,
+    remoteCatalogQueriesAllowed: matched,
+    remoteCatalogQueryCountBeforeConfirmation: 0,
+  });
+}
+
+export function isSafeDerivedFingerprintPayload(
+  payload: unknown,
+): payload is DerivedTargetFingerprintSuccess {
+  if (!payload || typeof payload !== "object") return false;
+  const record = payload as Record<string, unknown>;
+  if (record.available !== true) return false;
+  if (record.derived !== true) return false;
+  if (record.sensitiveInputRemoved !== true) return false;
+  if (record.fingerprintAlgorithm !== TARGET_FINGERPRINT_ALGORITHM) return false;
+  if (record.canonicalContractVersion !== TARGET_FINGERPRINT_CANONICAL_CONTRACT_VERSION) {
+    return false;
+  }
+  if (typeof record.targetFingerprint !== "string") return false;
+  if (!isValidTargetFingerprint(record.targetFingerprint)) return false;
+  if (typeof record.linkedTargetPresent !== "boolean") return false;
+  if (typeof record.safeAuthenticationAvailable !== "boolean") return false;
+  if (record.remoteCatalogQueryCount !== 0) return false;
+  if (record.remoteWriteStatementCount !== 0) return false;
+  if (FORBIDDEN_DERIVATION_OUTPUT.test(JSON.stringify(record))) return false;
+  return true;
+}
+
+export async function deriveLinkedTargetFingerprintExternally(
+  bridge: ExternalTargetFingerprintDerivationBridge,
+): Promise<DerivedTargetFingerprintResult> {
+  const result = await bridge.deriveLinkedTargetFingerprint();
+  if (result.available === false) {
+    return Object.freeze({
+      available: false,
+      reason: "SAFE_TARGET_FINGERPRINT_DERIVATION_UNAVAILABLE",
+      derived: false,
+      remoteCatalogQueryCount: 0,
+      remoteWriteStatementCount: 0,
+    });
+  }
+  if (!isSafeDerivedFingerprintPayload(result)) {
+    return Object.freeze({
+      available: false,
+      reason: "SAFE_TARGET_FINGERPRINT_DERIVATION_UNAVAILABLE",
+      derived: false,
+      remoteCatalogQueryCount: 0,
+      remoteWriteStatementCount: 0,
+    });
+  }
+  return Object.freeze({
+    available: true,
+    targetFingerprint: result.targetFingerprint,
+    fingerprintAlgorithm: TARGET_FINGERPRINT_ALGORITHM,
+    canonicalContractVersion: TARGET_FINGERPRINT_CANONICAL_CONTRACT_VERSION,
+    derived: true,
+    sensitiveInputRemoved: true,
+    linkedTargetPresent: result.linkedTargetPresent,
+    safeAuthenticationAvailable: result.safeAuthenticationAvailable,
+    remoteCatalogQueryCount: 0,
+    remoteWriteStatementCount: 0,
+  });
+}
 
 const FORBIDDEN_SQL =
   /\b(?:insert|update|delete|merge|create|alter|drop|truncate|grant|revoke|copy|call|do|vacuum|analyze|refresh|reindex|cluster|comment|security\s+label|listen|notify|set\s+role|set\s+session\s+authorization|create\s+temp|pg_advisory_lock|pg_terminate_backend|dblink|lo_export)\b/i;
