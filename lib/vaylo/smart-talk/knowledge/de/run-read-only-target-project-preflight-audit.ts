@@ -5,7 +5,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 
 const ROOT = process.cwd();
-const EXPECTED_HEAD = "6e169db";
+const EXPECTED_HEAD = "bec39dd";
 const CONTRACT =
   "lib/vaylo/smart-talk/knowledge/source-registry/remote-preflight-contract.ts";
 const EXECUTOR =
@@ -255,6 +255,8 @@ async function main(): Promise<void> {
     "lib/vaylo/smart-talk/knowledge/de/run-read-only-target-project-preflight-audit.ts",
     "lib/vaylo/smart-talk/knowledge/de/run-external-read-only-remote-execution-adapter-audit.ts",
     "lib/vaylo/smart-talk/knowledge/de/run-target-fingerprint-derivation-and-real-read-only-preflight-audit.ts",
+    "lib/vaylo/smart-talk/knowledge/source-registry/supabase-cli-readonly-bridge.ts",
+    "lib/vaylo/smart-talk/knowledge/de/run-concrete-safe-external-authentication-bridge-audit.ts",
   ];
   const workingTreeScopeValid = status.split(/\r?\n/).filter(Boolean).every((line) =>
     expected.some((file) => line.endsWith(file) || line.endsWith(file.replaceAll("/", "\\"))),

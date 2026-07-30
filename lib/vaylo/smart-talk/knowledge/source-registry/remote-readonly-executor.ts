@@ -233,6 +233,11 @@ export interface ExternalReadonlyCommandBridge {
   ): Promise<ExternalReadonlyCommandResult>;
 }
 
+/** Fail-closed concrete CLI bridge module identity (no dynamic resolution). */
+export const CONCRETE_CLI_READONLY_BRIDGE_MODULE =
+  "supabase-cli-readonly-bridge" as const;
+export const CONCRETE_AUTHENTICATED_BRIDGE_AVAILABLE_BY_DEFAULT = false;
+
 export type LinkedTargetIdentityObservation = Readonly<{
   sanitizedFingerprint: string;
   rawProjectReferenceExposed: false;

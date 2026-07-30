@@ -4,7 +4,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 
 const ROOT = process.cwd();
-const EXPECTED_HEAD = "6e169db";
+  const EXPECTED_HEAD = "bec39dd";
 const CHECK_ID = "9X-A3";
 const PHASE = "Target Fingerprint Derivation and Real Read-Only Preflight";
 const EXECUTOR =
@@ -17,6 +17,10 @@ const ADAPTER_AUDIT =
   "lib/vaylo/smart-talk/knowledge/de/run-external-read-only-remote-execution-adapter-audit.ts";
 const AUDIT =
   "lib/vaylo/smart-talk/knowledge/de/run-target-fingerprint-derivation-and-real-read-only-preflight-audit.ts";
+const BRIDGE =
+  "lib/vaylo/smart-talk/knowledge/source-registry/supabase-cli-readonly-bridge.ts";
+const BRIDGE_AUDIT =
+  "lib/vaylo/smart-talk/knowledge/de/run-concrete-safe-external-authentication-bridge-audit.ts";
 const TRUSTED = [
   "supabase/baselines/031_pre_knowledge_schema_baseline.sql",
   "supabase/baselines/fixtures/local_supabase_platform_bootstrap.sql",
@@ -203,7 +207,7 @@ function resolvePhase9XA3Readiness(input: ReadinessInput): ReadinessState {
     "Run --derive-target-fingerprint through the external helper, then separately confirm with --target-fingerprint.";
   if (fingerprintConfirmationCompleted && readyForSafeAuthenticationBridgeConfiguration) {
     recommendedNextAction =
-      "Configure or implement the concrete safe external authentication bridge, then rerun the operator-confirmed read-only preflight. Do not repeat fingerprint derivation unless the linked target changes.";
+      "Official dedicated read-only CLI capability is unavailable on the pinned Supabase CLI. Do not use the general Management API query path. Wait for an official read-only query command or an operator-owned Option C executable, then rerun the operator-confirmed read-only preflight. Do not repeat fingerprint derivation unless the linked target changes.";
   } else if (mismatch) {
     recommendedNextAction =
       "Resolve the linked-target fingerprint mismatch before any remote catalog execution. Do not treat this state as authentication-ready.";
@@ -573,7 +577,7 @@ async function main(): Promise<void> {
   const sourceCommit = git(["rev-parse", "--short", "HEAD"]);
   const branch = git(["branch", "--show-current"]);
   const status = git(["status", "--short"]);
-  const expectedScope = [AUDIT, EXECUTOR, PREFLIGHT, CONTRACT];
+  const expectedScope = [AUDIT, EXECUTOR, PREFLIGHT, CONTRACT, BRIDGE, BRIDGE_AUDIT];
   const workingTreeScopeValid = status
     .split(/\r?\n/)
     .filter(Boolean)
@@ -1205,7 +1209,9 @@ void run();
     const rejected = [
       confirmedNoAuth.readyForExplicitFingerprintConfirmation === true,
       /--target-fingerprint/.test(confirmedNoAuth.recommendedNextAction) &&
-        !/authentication bridge/.test(confirmedNoAuth.recommendedNextAction),
+        !/dedicated read-only|authentication bridge|Option C/i.test(
+          confirmedNoAuth.recommendedNextAction,
+        ),
       confirmedNoAuth.concreteAuthenticatedBridgeAvailable === true,
       confirmedNoAuth.endToEndRemoteCatalogExecutionAvailable === true,
       confirmedNoAuth.readyForDeploymentAuthorizationCheckpoint === true,
@@ -1229,7 +1235,7 @@ void run();
       confirmedNoAuth.remoteExecutionPathImplemented === false &&
       confirmedNoAuth.concreteAuthenticatedBridgeAvailable === false &&
       confirmedNoAuth.endToEndRemoteCatalogExecutionAvailable === false &&
-      /authentication bridge/.test(confirmedNoAuth.recommendedNextAction)
+      /dedicated read-only|Option C/i.test(confirmedNoAuth.recommendedNextAction)
     );
   })();
 
