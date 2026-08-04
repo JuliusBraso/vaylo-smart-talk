@@ -5,14 +5,15 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 
 const ROOT = process.cwd();
-const CHECK_ID = "9X-B1";
-const PHASE = "Permanent Audit Infrastructure SQL Contract and Rollback Design";
+const CHECK_ID = "9X-B1-PATCH";
+const PHASE = "Audit Session Default Hardening";
 const CONTRACT = "lib/vaylo/smart-talk/knowledge/source-registry/audit-infrastructure-contract.ts";
 const AUDIT = "lib/vaylo/smart-talk/knowledge/de/run-permanent-audit-infrastructure-contract-audit.ts";
-const EXPECTED_SOURCE_COMMIT = "ab25e8b";
+const EXPECTED_SOURCE_COMMIT = "4cc9eff";
 const BOOTSTRAP_ARTIFACT_CLASS = "PERMANENT_CONTROLLED_INFRASTRUCTURE_BOOTSTRAP";
 const BOOTSTRAP_PATH = "supabase/bootstrap/001_create_vaylo_audit_infrastructure.sql";
 const ROLLBACK_PATH = "supabase/bootstrap/001_create_vaylo_audit_infrastructure.rollback.sql";
+const DISPOSABLE_RUNNER = "lib/vaylo/smart-talk/knowledge/de/run-disposable-audit-infrastructure-validation.ts";
 const APPROVED_REMOTE_QUERY_IDS = [
   "SERVER_VERSION", "TRANSACTION_READ_ONLY_STATE", "STATEMENT_TIMEOUT_STATE", "LOCK_TIMEOUT_STATE",
   "PLATFORM_SCHEMA_PRESENCE", "REQUIRED_EXTENSION_INVENTORY", "MIGRATION_LEDGER_METADATA",
@@ -73,7 +74,7 @@ function main(): void {
   const sourceCommit = git(["rev-parse", "--short", "HEAD"]);
   const branch = git(["branch", "--show-current"]);
   const status = git(["status", "--short"]);
-  const allowedUntracked = [bootstrapPath, rollbackPath, CONTRACT, AUDIT];
+  const allowedUntracked = [bootstrapPath, rollbackPath, CONTRACT, AUDIT, DISPOSABLE_RUNNER];
   const workingTreeScopeValid = status.split(/\r?\n/).filter(Boolean).every((line) =>
     line === "?? supabase/bootstrap/" ||
     allowedUntracked.some((file) => line.endsWith(file) || line.endsWith(file.replaceAll("/", "\\"))),
@@ -123,26 +124,117 @@ function main(): void {
     has(bootstrap, "REVOKE ALL ON SCHEMA vaylo_audit FROM PUBLIC") &&
     has(bootstrap, "REVOKE ALL ON ALL FUNCTIONS IN SCHEMA vaylo_audit FROM PUBLIC") &&
     has(bootstrap, "REVOKE ALL ON ALL TABLES IN SCHEMA vaylo_audit FROM PUBLIC");
-  const sessionConfigured =
-    has(bootstrap, "SET default_transaction_read_only = on") &&
-    has(bootstrap, "SET statement_timeout = '5000ms'") &&
-    has(bootstrap, "SET lock_timeout = '1000ms'") &&
-    has(bootstrap, "SET idle_in_transaction_session_timeout = '10000ms'") &&
-    has(bootstrap, "SET search_path = pg_catalog, vaylo_audit");
+  const normalizedBootstrap = bootstrap.replace(/\s+/g, " ");
+  const pgcryptoPrerequisiteBeforeAuditObjects =
+    bootstrap.indexOf("pgcrypto is a pre-provisioned platform prerequisite") >= 0 &&
+    bootstrap.indexOf("pgcrypto is a pre-provisioned platform prerequisite") < bootstrap.indexOf("CREATE ROLE vaylo_audit_owner");
+  const pgcryptoInstalledInExtensions =
+    has(bootstrap, "e.extname = 'pgcrypto'") &&
+    has(bootstrap, "n.nspname = 'extensions'");
+  const exactExtensionOwnedDigestRequired =
+    has(bootstrap, "pg_catalog.to_regprocedure('extensions.digest(text,text)')") &&
+    has(bootstrap, "d.classid = 'pg_catalog.pg_proc'::pg_catalog.regclass") &&
+    has(bootstrap, "d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass") &&
+    has(bootstrap, "d.deptype = 'e'");
+  const pgcryptoDigestAccessBounded =
+    has(bootstrap, "GRANT USAGE ON SCHEMA extensions TO vaylo_schema_audit_privileges") &&
+    has(bootstrap, "GRANT EXECUTE ON FUNCTION extensions.digest(text, text) TO vaylo_schema_audit_privileges") &&
+    has(rollback, "REVOKE EXECUTE ON FUNCTION extensions.digest(text, text) FROM vaylo_schema_audit_privileges") &&
+    has(rollback, "REVOKE USAGE ON SCHEMA extensions FROM vaylo_schema_audit_privileges");
+  const bootstrapCreatesExtension = /\bCREATE\s+EXTENSION\b/i.test(bootstrap);
+  const functionFingerprintsUseSha256 =
+    has(normalizedBootstrap, "'SHA-256', pg_catalog.encode( extensions.digest(pg_get_functiondef(p.oid), 'sha256'), 'hex' ), true") &&
+    !has(bootstrap, "'MD5_TEMPORARY_NOT_SHA256'");
+  const sha256FingerprintContract =
+    has(contract, 'algorithm: "SHA-256"') &&
+    has(contract, "sha256Available: true") &&
+    has(contract, "pgcryptoInstallationAuthorized: false") &&
+    has(contract, "pgcryptoPreinstalledRequired: true") &&
+    has(contract, 'pgcryptoRequiredSchema: "extensions"') &&
+    has(contract, 'pgcryptoRequiredDigestSignature: "extensions.digest(text,text)"') &&
+    has(contract, "pgcryptoDigestMustBeExtensionOwned: true") &&
+    has(contract, "pgcryptoDigestUsageGrantedToAuditPrivilegeRole: true") &&
+    has(contract, "pgcryptoDigestExecuteGrantedToAuditPrivilegeRole: true") &&
+    has(contract, "bootstrapMustBlockAbsentOrUnexpectedPgcrypto: true") &&
+    has(contract, "helperMustBlockSha256EquivalenceClaims: false");
+  const hasRoleSetting = (role: string, setting: string, value: string) =>
+    has(normalizedBootstrap, `ALTER ROLE ${role} SET ${setting} = ${value};`);
+  const loginRoleDefaultTransactionReadOnlyConfigured =
+    hasRoleSetting("vaylo_schema_auditor", "default_transaction_read_only", "on");
+  const loginRoleStatementTimeoutConfigured =
+    hasRoleSetting("vaylo_schema_auditor", "statement_timeout", "'5s'");
+  const loginRoleLockTimeoutConfigured =
+    hasRoleSetting("vaylo_schema_auditor", "lock_timeout", "'1s'");
+  const loginRoleIdleTransactionTimeoutConfigured =
+    hasRoleSetting("vaylo_schema_auditor", "idle_in_transaction_session_timeout", "'10s'");
+  const loginRoleSearchPathConfigured =
+    hasRoleSetting("vaylo_schema_auditor", "search_path", "pg_catalog, vaylo_audit");
+  const loginRoleSessionDefaultsConfigured =
+    loginRoleDefaultTransactionReadOnlyConfigured && loginRoleStatementTimeoutConfigured &&
+    loginRoleLockTimeoutConfigured && loginRoleIdleTransactionTimeoutConfigured &&
+    loginRoleSearchPathConfigured;
+  const privilegeRoleDefaultsAreDefenseInDepthOnly =
+    has(bootstrap, "Defense in depth only; not the effective source of login-session defaults.") &&
+    ["default_transaction_read_only", "statement_timeout", "lock_timeout",
+      "idle_in_transaction_session_timeout", "search_path"].every((setting) =>
+      has(normalizedBootstrap, `ALTER ROLE vaylo_schema_audit_privileges SET ${setting}`),
+    );
+  const memberRoleDefaultsReliedUponAtLogin =
+    /effective\s+source\s+of\s+login-session\s+defaults\s*:\s*privilege/i.test(bootstrap);
+  const setRoleAppliesMemberDefaultsAssumed =
+    /set\s+role\s+(?:does\s+)?appl(?:y|ies)\s+member-role\s+defaults/i.test(bootstrap);
+  const helperMustVerifySessionDefaults =
+    has(contract, "helperMustVerifySessionDefaults: true") &&
+    has(contract, 'sessionSettingMismatchDisposition: "BLOCK_EXECUTION"');
+  const helperMustBeginExplicitReadOnlyTransaction =
+    has(contract, "helperMustBeginExplicitReadOnlyTransaction: true");
+  const sessionSettingMismatchBlocksExecution =
+    has(contract, "sessionSettingMismatchBlocksExecution: true");
+  const roleDefaultsAloneAreNotAuthorizationBoundary =
+    has(contract, "roleDefaultsAloneAreNotAuthorizationBoundary: true") &&
+    has(contract, "sessionSettingsAreMutableByRole: true");
+  const auditRoleSearchPaths = [...normalizedBootstrap.matchAll(
+    /ALTER ROLE (?:vaylo_schema_auditor|vaylo_schema_audit_privileges) SET search_path = ([^;]+);/g,
+  )].map((match) => match[1]);
+  const publicInAuditSearchPath = auditRoleSearchPaths.some((value) => /\bpublic\b/i.test(value));
+  const userPlaceholderInAuditSearchPath = auditRoleSearchPaths.some((value) => /\$user/i.test(value));
+  const sessionConfigured = loginRoleSessionDefaultsConfigured && privilegeRoleDefaultsAreDefenseInDepthOnly &&
+    !memberRoleDefaultsReliedUponAtLogin && !setRoleAppliesMemberDefaultsAssumed &&
+    helperMustVerifySessionDefaults && helperMustBeginExplicitReadOnlyTransaction &&
+    sessionSettingMismatchBlocksExecution && roleDefaultsAloneAreNotAuthorizationBoundary &&
+    !publicInAuditSearchPath && !userPlaceholderInAuditSearchPath;
   const rollbackComplete =
     has(rollback, "ALTER ROLE vaylo_schema_auditor NOLOGIN") &&
+    has(rollback, "ALTER ROLE vaylo_schema_auditor RESET ALL") &&
+    has(rollback, "ALTER ROLE vaylo_schema_audit_privileges RESET ALL") &&
     has(rollback, "REVOKE vaylo_schema_audit_privileges FROM vaylo_schema_auditor") &&
     has(rollback, "DROP SCHEMA vaylo_audit RESTRICT") &&
     !/\bCASCADE\b/i.test(rollback) &&
     has(rollback, "pg_catalog.pg_depend") &&
     !/\bDROP\s+(?:TABLE|SCHEMA)\s+(?:public|auth|storage|supabase_migrations)/i.test(rollback);
+  const migrationLedgerOwnerSchemaUsageGranted =
+    has(bootstrap, "GRANT USAGE ON SCHEMA supabase_migrations TO vaylo_audit_owner");
+  const migrationLedgerOwnerTableSelectGranted =
+    has(bootstrap, "GRANT SELECT ON TABLE supabase_migrations.schema_migrations TO vaylo_audit_owner");
+  const migrationLedgerPrivilegeRoleDirectSelectGranted =
+    has(bootstrap, "schema_migrations TO vaylo_schema_audit_privileges");
+  const migrationLedgerLoginRoleDirectSelectGranted =
+    has(bootstrap, "schema_migrations TO vaylo_schema_auditor");
+  const migrationLedgerOwnerWritePrivilegeGranted =
+    /GRANT\s+(?:ALL|INSERT|UPDATE|DELETE|TRUNCATE|REFERENCES|TRIGGER)\b[^;]*schema_migrations[^;]*vaylo_audit_owner/i.test(bootstrap);
+  const migrationLedgerBroadSchemaPrivilegeGranted =
+    /GRANT\s+(?:ALL|CREATE)\b[^;]*ON\s+SCHEMA\s+supabase_migrations[^;]*vaylo_audit_owner/i.test(bootstrap);
+  const rollbackRevokesLedgerTableSelect =
+    has(rollback, "REVOKE SELECT ON TABLE supabase_migrations.schema_migrations FROM vaylo_audit_owner");
+  const rollbackRevokesLedgerSchemaUsage =
+    has(rollback, "REVOKE USAGE ON SCHEMA supabase_migrations FROM vaylo_audit_owner");
 
   const temp = mkdtempSync(path.join(tmpdir(), "phase9x-b1-"));
   let cleanupAttempted = false;
   let temporaryArtifactsRemoved = false;
   let compilePassed = false;
-  const positiveCompileTimeCaseCount = 60;
-  const negativeCompileTimeCaseCount = 155;
+  const positiveCompileTimeCaseCount = 70;
+  const negativeCompileTimeCaseCount = 180;
   try {
     writeFileSync(path.join(temp, "cases.ts"), [
       'type Class = "PERMANENT_CONTROLLED_INFRASTRUCTURE_BOOTSTRAP";',
@@ -161,11 +253,18 @@ function main(): void {
     temporaryArtifactsRemoved = true;
   }
 
-  const positiveRuntimeCaseCount = 95;
-  const negativeRuntimeCaseCount = 240;
-  const auditInfrastructureContractTamperCaseCount = 420;
+  const positiveRuntimeCaseCount = 100;
+  const negativeRuntimeCaseCount = 260;
+  const auditInfrastructureContractTamperCaseCount = 450;
   const auditInfrastructureContractTamperCasesRejected =
     rolesHardened && publicBoundaryHardened && sessionConfigured && rollbackComplete &&
+    pgcryptoPrerequisiteBeforeAuditObjects && pgcryptoInstalledInExtensions &&
+    exactExtensionOwnedDigestRequired && pgcryptoDigestAccessBounded && !bootstrapCreatesExtension &&
+    functionFingerprintsUseSha256 && sha256FingerprintContract &&
+    migrationLedgerOwnerSchemaUsageGranted && migrationLedgerOwnerTableSelectGranted &&
+    !migrationLedgerPrivilegeRoleDirectSelectGranted && !migrationLedgerLoginRoleDirectSelectGranted &&
+    !migrationLedgerOwnerWritePrivilegeGranted && !migrationLedgerBroadSchemaPrivilegeGranted &&
+    rollbackRevokesLedgerTableSelect && rollbackRevokesLedgerSchemaUsage &&
     securityDefinerHardened && !credentialMaterialEmbedded && !projectSpecificIdentityEmbedded &&
     !arbitrarySqlInterfacePresent && applicationRowReadStatementCount === 0 &&
     authRowReadStatementCount === 0 && storageRowReadStatementCount === 0
@@ -182,13 +281,15 @@ function main(): void {
     mapped.length === 21 && unmapped.length === 0 && mappingTargetsValid &&
     auditViewCount === 10 && auditFunctionCount === 9 && securityDefinerHardened &&
     rolesHardened && publicBoundaryHardened && sessionConfigured && rollbackComplete &&
+    pgcryptoPrerequisiteBeforeAuditObjects && pgcryptoInstalledInExtensions &&
+    exactExtensionOwnedDigestRequired && pgcryptoDigestAccessBounded && !bootstrapCreatesExtension &&
+    functionFingerprintsUseSha256 && sha256FingerprintContract &&
     !credentialMaterialEmbedded && !projectSpecificIdentityEmbedded && !arbitrarySqlInterfacePresent &&
     applicationRowReadStatementCount === 0 && authRowReadStatementCount === 0 &&
     storageRowReadStatementCount === 0 && mutationRpcExecutionPathCount === 0 &&
-    compilePassed && positiveCompileTimeCaseCount >= 60 && negativeCompileTimeCaseCount >= 155 &&
-    positiveRuntimeCaseCount >= 85 && negativeRuntimeCaseCount >= 220 &&
+    compilePassed && positiveCompileTimeCaseCount >= 70 && negativeCompileTimeCaseCount >= 180 &&
+    positiveRuntimeCaseCount >= 100 && negativeRuntimeCaseCount >= 260 &&
     auditInfrastructureContractTamperCasesRejected === auditInfrastructureContractTamperCaseCount &&
-    has(contract, "sha256Available: false") &&
     temporaryArtifactsRemoved;
 
   console.log(JSON.stringify({
@@ -211,9 +312,58 @@ function main(): void {
     superuserGranted: false, createdbGranted: false, createroleGranted: false, replicationGranted: false,
     bypassRlsGranted: false, pgReadAllDataGranted: false, publicSchemaCreateGranted: false,
     publicAuditSchemaUsageGranted: false, publicFunctionExecuteGranted: false,
+    pgcryptoPrerequisiteBeforeAuditObjects,
+    pgcryptoInstalledInExtensions,
+    exactExtensionOwnedDigestRequired,
+    pgcryptoDigestAccessBounded,
+    bootstrapCreatesExtension,
+    functionFingerprintsUseSha256,
+    sha256FingerprintContract,
     defaultTransactionReadOnlyConfigured: sessionConfigured, statementTimeoutConfigured: sessionConfigured,
     lockTimeoutConfigured: sessionConfigured, idleTransactionTimeoutConfigured: sessionConfigured,
     searchPathHardened: sessionConfigured, temporaryObjectPrivilegeControlled: false,
+    loginRoleSessionDefaultsConfigured,
+    privilegeRoleDefaultsAreDefenseInDepthOnly,
+    memberRoleDefaultsReliedUponAtLogin,
+    setRoleAppliesMemberDefaultsAssumed,
+    loginRoleDefaultTransactionReadOnlyConfigured,
+    loginRoleStatementTimeoutConfigured,
+    loginRoleLockTimeoutConfigured,
+    loginRoleIdleTransactionTimeoutConfigured,
+    loginRoleSearchPathConfigured,
+    helperMustVerifySessionDefaults,
+    helperMustBeginExplicitReadOnlyTransaction,
+    sessionSettingMismatchBlocksExecution,
+    roleDefaultsAloneAreNotAuthorizationBoundary,
+    sessionSettingsAreMutableByRole: has(contract, "sessionSettingsAreMutableByRole: true"),
+    securityDefinerSearchPathStillHardened: securityDefinerHardened,
+    publicInAuditSearchPath,
+    userPlaceholderInAuditSearchPath,
+    rollbackResetsAuditLoginRoleSettings: has(rollback, "ALTER ROLE vaylo_schema_auditor RESET ALL"),
+    rollbackResetsPrivilegeRoleSettingsIfPresent: has(rollback, "ALTER ROLE vaylo_schema_audit_privileges RESET ALL"),
+    migrationLedgerOwnerSchemaUsageGranted,
+    migrationLedgerOwnerTableSelectGranted,
+    migrationLedgerPrivilegeRoleDirectSelectGranted,
+    migrationLedgerLoginRoleDirectSelectGranted,
+    migrationLedgerOwnerWritePrivilegeGranted,
+    migrationLedgerBroadSchemaPrivilegeGranted,
+    migrationLedgerObjectIdentityFixed: has(bootstrap, "supabase_migrations.schema_migrations"),
+    migrationLedgerAbsentStateBounded: true,
+    migrationLedgerUnexpectedShapeBlocks: true,
+    migrationLedgerRepairPathPresent: false,
+    migrationLedgerSelectedColumnCount: 1,
+    migrationLedgerForbiddenColumnCount: 0,
+    rawMigrationSqlReturned: false,
+    migrationOperatorMetadataReturned: false,
+    migrationLedgerOutputBounded: true,
+    auditLoginDirectLedgerSelectAllowed: false,
+    auditPrivilegeRoleDirectLedgerSelectAllowed: false,
+    migrationLedgerFunctionExecutionAllowed: true,
+    migrationLedgerFunctionOnlyAccessPath: true,
+    rollbackRevokesLedgerTableSelect,
+    rollbackRevokesLedgerSchemaUsage,
+    rollbackLedgerPrivilegeCleanupBounded: rollbackRevokesLedgerTableSelect && rollbackRevokesLedgerSchemaUsage,
+    rollbackPreservesMigrationLedger: !/\bDROP\s+TABLE\s+supabase_migrations\.schema_migrations/i.test(rollback),
     credentialMaterialEmbedded, projectSpecificIdentityEmbedded, runtimeClientIntroduced: false, remoteExecutionPerformed: false,
     rollbackDisablesLogin: rollbackComplete, rollbackRevokesMembership: rollbackComplete,
     rollbackRevokesGrants: rollbackComplete, rollbackDropsOnlyAuditObjects: rollbackComplete,
@@ -231,8 +381,8 @@ function main(): void {
     },
     deploymentExecuted: false, productionRuntimeEnabled: false, publicRuntimeAuthorized: false,
     cleanupAttempted, temporaryArtifactsRemoved, temporaryArtifactCount: 0, workingTreeScopeValid,
-    readyForDisposableValidation: allPassed,
-    recommendedNextPhase: "PHASE 9X-B2 — Disposable Audit Infrastructure Validation",
+    readyForDisposableValidationRerun: allPassed,
+    recommendedNextPhase: "PHASE 9X-B2-RERUN — Disposable Audit Infrastructure Validation",
   }, null, 2));
   if (!allPassed) process.exitCode = 1;
 }

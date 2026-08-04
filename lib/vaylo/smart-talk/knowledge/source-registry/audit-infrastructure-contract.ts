@@ -4,7 +4,7 @@ export const AUDIT_BOOTSTRAP_ID = "9X-B1" as const;
 export const AUDIT_BOOTSTRAP_ARTIFACT_VERSION = "v1" as const;
 export const AUDIT_BOOTSTRAP_ARTIFACT_CLASS =
   "PERMANENT_CONTROLLED_INFRASTRUCTURE_BOOTSTRAP" as const;
-export const AUDIT_BOOTSTRAP_EXPECTED_SOURCE_COMMIT = "ab25e8b" as const;
+export const AUDIT_BOOTSTRAP_EXPECTED_SOURCE_COMMIT = "4cc9eff" as const;
 
 export const AUDIT_BOOTSTRAP_ARTIFACT_PATHS = Object.freeze({
   bootstrapSql: "supabase/bootstrap/001_create_vaylo_audit_infrastructure.sql",
@@ -78,11 +78,26 @@ export const AUDIT_APPROVED_QUERY_MAPPING = Object.freeze({
 
 export const AUDIT_SESSION_REQUIREMENTS = Object.freeze({
   defaultTransactionReadOnly: "on",
-  statementTimeout: "5000ms",
-  lockTimeout: "1000ms",
-  idleInTransactionSessionTimeout: "10000ms",
+  statementTimeout: "5s",
+  lockTimeout: "1s",
+  idleInTransactionSessionTimeout: "10s",
   searchPath: "pg_catalog, vaylo_audit",
+  auditLoginRoleName: AUDIT_ROLE_NAMES.login,
+  loginRoleSessionDefaults: true,
+  privilegeRoleSessionDefaults: true,
+  effectiveSessionDefaultSource: "LOGIN_ROLE",
+  memberRoleDefaultsReliedUponAtLogin: false,
+  setRoleAppliesMemberDefaultsAssumed: false,
+  databaseRoleDefaultReadOnlyRequired: true,
   helperMustVerifyEverySession: true,
+  helperMustVerifySessionDefaults: true,
+  helperMustBeginExplicitReadOnlyTransaction: true,
+  explicitReadOnlyTransactionRequired: true,
+  sessionSettingMismatchBlocksExecution: true,
+  sessionSettingMismatchDisposition: "BLOCK_EXECUTION",
+  sessionSettingsAreMutableByRole: true,
+  roleDefaultsAreDefenseInDepth: true,
+  roleDefaultsAloneAreNotAuthorizationBoundary: true,
   temporaryObjectPrivilegeMayBeInheritedFromPublic: true,
 });
 
@@ -135,11 +150,35 @@ export const AUDIT_AUTHORIZATION_PREREQUISITES = Object.freeze({
 });
 
 export const AUDIT_FUNCTION_FINGERPRINT_CONTRACT = Object.freeze({
-  algorithm: "MD5_TEMPORARY_NOT_SHA256",
-  sha256Available: false,
+  algorithm: "SHA-256",
+  sha256Available: true,
   pgcryptoInstallationAuthorized: false,
-  helperMustBlockSha256EquivalenceClaims: true,
+  pgcryptoPreinstalledRequired: true,
+  pgcryptoRequiredSchema: "extensions",
+  pgcryptoRequiredDigestSignature: "extensions.digest(text,text)",
+  pgcryptoDigestMustBeExtensionOwned: true,
+  pgcryptoDigestUsageGrantedToAuditPrivilegeRole: true,
+  pgcryptoDigestExecuteGrantedToAuditPrivilegeRole: true,
+  bootstrapMustBlockAbsentOrUnexpectedPgcrypto: true,
+  helperMustBlockSha256EquivalenceClaims: false,
   rawFunctionDefinitionExposed: false,
+});
+
+export const AUDIT_MIGRATION_LEDGER_CONTRACT = Object.freeze({
+  migrationLedgerSchemaName: "supabase_migrations",
+  migrationLedgerTableName: "schema_migrations",
+  migrationLedgerFunctionName: "migration_ledger",
+  migrationLedgerOwnerRoleName: AUDIT_ROLE_NAMES.owner,
+  migrationLedgerOwnerPrivileges: ["USAGE_ON_EXACT_SCHEMA", "SELECT_ON_EXACT_TABLE"],
+  migrationLedgerOwnerPrivilegeScope: "EXACT_SCHEMA_USAGE_AND_EXACT_TABLE_SELECT",
+  migrationLedgerDirectAccessPolicy: "SECURITY_DEFINER_FUNCTION_ONLY",
+  migrationLedgerOutputPolicy: "VERSION_IDENTIFIER_AND_DERIVED_METADATA_ONLY",
+  migrationLedgerAbsentStatePolicy: "REQUIRE_EXACT_LEDGER_OBJECT",
+  migrationLedgerUnexpectedShapeDisposition: "BLOCK_EXECUTION",
+  migrationLedgerRepairAllowed: false,
+  migrationLedgerPrivilegeRoleDirectSelectAllowed: false,
+  migrationLedgerLoginRoleDirectSelectAllowed: false,
+  migrationLedgerRollbackPolicy: "REVOKE_EXACT_TABLE_SELECT_AND_SCHEMA_USAGE",
 });
 
 export type AuditInterfaceObject = (typeof AUDIT_INTERFACE_OBJECTS)[number];

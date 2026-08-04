@@ -5,10 +5,16 @@
 BEGIN;
 
 ALTER ROLE vaylo_schema_auditor NOLOGIN;
+ALTER ROLE vaylo_schema_auditor RESET ALL;
+ALTER ROLE vaylo_schema_audit_privileges RESET ALL;
 REVOKE vaylo_schema_audit_privileges FROM vaylo_schema_auditor;
 REVOKE ALL ON SCHEMA vaylo_audit FROM vaylo_schema_audit_privileges;
 REVOKE ALL ON ALL TABLES IN SCHEMA vaylo_audit FROM vaylo_schema_audit_privileges;
 REVOKE ALL ON ALL FUNCTIONS IN SCHEMA vaylo_audit FROM vaylo_schema_audit_privileges;
+REVOKE SELECT ON TABLE supabase_migrations.schema_migrations FROM vaylo_audit_owner;
+REVOKE USAGE ON SCHEMA supabase_migrations FROM vaylo_audit_owner;
+REVOKE EXECUTE ON FUNCTION extensions.digest(text, text) FROM vaylo_schema_audit_privileges;
+REVOKE USAGE ON SCHEMA extensions FROM vaylo_schema_audit_privileges;
 
 -- Refuse rollback when an object outside vaylo_audit depends on a relation in
 -- the audit schema. This protects application and platform objects.

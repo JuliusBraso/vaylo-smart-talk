@@ -11,6 +11,35 @@
 
 BEGIN;
 
+-- pgcrypto is a pre-provisioned platform prerequisite, not a bootstrap
+-- responsibility. Require the exact extension-owned text digest overload in
+-- the fixed extensions schema before creating any audit object.
+DO $$
+DECLARE
+  required_digest_oid oid;
+BEGIN
+  SELECT p.oid
+  INTO required_digest_oid
+  FROM pg_catalog.pg_extension AS e
+  JOIN pg_catalog.pg_namespace AS n ON n.oid = e.extnamespace
+  JOIN pg_catalog.pg_proc AS p
+    ON p.oid = pg_catalog.to_regprocedure('extensions.digest(text,text)')
+  JOIN pg_catalog.pg_depend AS d
+    ON d.classid = 'pg_catalog.pg_proc'::pg_catalog.regclass
+   AND d.objid = p.oid
+   AND d.refclassid = 'pg_catalog.pg_extension'::pg_catalog.regclass
+   AND d.refobjid = e.oid
+   AND d.deptype = 'e'
+  WHERE e.extname = 'pgcrypto'
+    AND n.nspname = 'extensions';
+
+  IF required_digest_oid IS NULL THEN
+    RAISE EXCEPTION
+      'vaylo_audit bootstrap requires extension-owned extensions.digest(text,text) from pgcrypto';
+  END IF;
+END;
+$$;
+
 CREATE ROLE vaylo_audit_owner
   NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
 CREATE ROLE vaylo_schema_audit_privileges
@@ -20,16 +49,41 @@ CREATE ROLE vaylo_schema_auditor
 
 GRANT vaylo_schema_audit_privileges TO vaylo_schema_auditor;
 
+-- PostgreSQL applies role defaults at connection time only for the LOGIN
+-- identity. They are intentionally duplicated on the NOLOGIN privilege role
+-- as defense in depth, but SET ROLE does not make those member-role defaults
+-- take effect. The helper must still verify every session and begin an
+-- explicit read-only transaction before an approved inspection query.
+ALTER ROLE vaylo_schema_auditor
+  SET default_transaction_read_only = on;
+ALTER ROLE vaylo_schema_auditor
+  SET statement_timeout = '5s';
+ALTER ROLE vaylo_schema_auditor
+  SET lock_timeout = '1s';
+ALTER ROLE vaylo_schema_auditor
+  SET idle_in_transaction_session_timeout = '10s';
+ALTER ROLE vaylo_schema_auditor
+  SET search_path = pg_catalog, vaylo_audit;
+
+-- Defense in depth only; not the effective source of login-session defaults.
 ALTER ROLE vaylo_schema_audit_privileges
   SET default_transaction_read_only = on;
 ALTER ROLE vaylo_schema_audit_privileges
-  SET statement_timeout = '5000ms';
+  SET statement_timeout = '5s';
 ALTER ROLE vaylo_schema_audit_privileges
-  SET lock_timeout = '1000ms';
+  SET lock_timeout = '1s';
 ALTER ROLE vaylo_schema_audit_privileges
-  SET idle_in_transaction_session_timeout = '10000ms';
+  SET idle_in_transaction_session_timeout = '10s';
 ALTER ROLE vaylo_schema_audit_privileges
   SET search_path = pg_catalog, vaylo_audit;
+
+-- The fixed Supabase migration ledger must already exist with its expected
+-- shape. These are the only platform privileges granted to the NOLOGIN owner;
+-- audit callers can reach it only through migration_ledger().
+GRANT USAGE ON SCHEMA supabase_migrations TO vaylo_audit_owner;
+GRANT SELECT ON TABLE supabase_migrations.schema_migrations TO vaylo_audit_owner;
+GRANT USAGE ON SCHEMA extensions TO vaylo_schema_audit_privileges;
+GRANT EXECUTE ON FUNCTION extensions.digest(text, text) TO vaylo_schema_audit_privileges;
 
 -- Database TEMP is commonly inherited through PUBLIC. This bootstrap does not
 -- alter the target database's PUBLIC privilege model; the external helper must
@@ -171,9 +225,6 @@ AS $$
   ORDER BY migration_identifier
 $$;
 
--- pgcrypto is deliberately not installed by this bootstrap. PostgreSQL's
--- built-in md5 is emitted only as a temporary non-SHA-256 drift marker; the
--- B2 helper must classify this as insufficient for SHA-256 equivalence.
 CREATE FUNCTION vaylo_audit.functions()
 RETURNS TABLE(schema_name text, function_name text, identity_arguments text, result_type text,
               language_name text, volatility text, security_definer boolean, leakproof boolean,
@@ -202,7 +253,10 @@ LANGUAGE sql STABLE SECURITY INVOKER
 SET search_path = pg_catalog, vaylo_audit
 AS $$
   SELECT n.nspname, p.proname, pg_get_function_identity_arguments(p.oid),
-         'MD5_TEMPORARY_NOT_SHA256', md5(pg_get_functiondef(p.oid)), false
+         'SHA-256', pg_catalog.encode(
+           extensions.digest(pg_get_functiondef(p.oid), 'sha256'),
+           'hex'
+         ), true
   FROM pg_proc AS p
   JOIN pg_namespace AS n ON n.oid = p.pronamespace
   WHERE n.nspname = 'public'
