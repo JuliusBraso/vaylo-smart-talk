@@ -1,4 +1,5 @@
 import "server-only";
+import { pathToFileURL } from "node:url";
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -978,7 +979,8 @@ function registerExtraVolumeTampers(): void {
   }
 }
 
-async function main(): Promise<void> {
+export async function runControlledProductionPreflightExecutionContractsAudit() {
+  registryCases.length = 0;
   registerPositiveCases();
   registerArtifactTampers();
   registerWindowTampers();
@@ -1049,8 +1051,7 @@ async function main(): Promise<void> {
     CONTRACT_META.committedArtifactCount === 5 &&
     evidence.productionWriteAuthorized === false;
 
-  console.log(
-    JSON.stringify(
+  return Object.freeze(
       {
         checkId: "9X-C2",
         phase: "Execution Manifest and Authorization Contract Implementation",
@@ -1122,11 +1123,15 @@ async function main(): Promise<void> {
           .filter((item) => !item.passed)
           .map((item) => item.caseId),
       },
-      null,
-      2,
-    ),
   );
-  if (!allPassed) process.exitCode = 1;
 }
 
-void main();
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
+  void runControlledProductionPreflightExecutionContractsAudit().then((result) => {
+    console.log(JSON.stringify(result, null, 2));
+    if (!result.allPassed) process.exitCode = 1;
+  });
+}

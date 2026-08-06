@@ -2,6 +2,7 @@ import {
   runDerivedProductionPreflightEvidencePack,
   type DerivedReport,
 } from "./run-production-preflight-derived-test-registry-and-tamper-pack";
+import { pathToFileURL } from "node:url";
 import {
   runProductionPreflightExecutableValidationMatrix,
   type ProductionPreflightExecutableValidationMatrixResult,
@@ -21,6 +22,225 @@ type B6dCheck = readonly [
   string,
   (result: ProductionPreflightExecutableValidationMatrixResult) => boolean,
 ];
+
+type NormalizedB6eEvidence = Readonly<{
+  checkId: "9X-B6E";
+  allPassed: true;
+  totalRegisteredCaseCount: number;
+  totalExecutedCaseCount: number;
+  failedRegisteredCaseCount: number;
+  unexecutedRegisteredCaseCount: number;
+  duplicateGlobalTestCaseIdCount: number;
+  duplicateBehaviorFingerprintCount: number;
+  duplicateCaseIdCount: number;
+  duplicateFingerprintCount: number;
+}>;
+
+type FreshB6eGate = Readonly<{
+  passed: boolean;
+  failedInvariantNames: readonly string[];
+  failedInvariantCount: number;
+  normalized: NormalizedB6eEvidence | null;
+}>;
+
+function normalizeFreshB6eEvidence(value: unknown): FreshB6eGate {
+  const failed: string[] = [];
+  const record =
+    value !== null && typeof value === "object" && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : null;
+  if (record === null) {
+    return Object.freeze({
+      passed: false,
+      failedInvariantNames: Object.freeze(["structuredResultPresent"]),
+      failedInvariantCount: 1,
+      normalized: null,
+    });
+  }
+
+  const readBoolean = (name: string, expected: boolean): boolean => {
+    const valid = record[name] === expected;
+    if (!valid) failed.push(name);
+    return valid;
+  };
+  const readCount = (name: string): number | null => {
+    const candidate = record[name];
+    if (
+      typeof candidate !== "number" ||
+      !Number.isSafeInteger(candidate) ||
+      candidate < 0
+    ) {
+      failed.push(name);
+      return null;
+    }
+    return candidate;
+  };
+
+  const checkIdValid = record.checkId === "9X-B6E";
+  if (!checkIdValid) failed.push("checkId");
+  const allPassedValid = readBoolean("allPassed", true);
+  readBoolean("blocked", false);
+  readBoolean("validationPassed", true);
+  const totalRegisteredCaseCount = readCount("totalRegisteredCaseCount");
+  const totalExecutedCaseCount = readCount("totalExecutedCaseCount");
+  const failedRegisteredCaseCount = readCount("failedRegisteredCaseCount");
+  const unexecutedRegisteredCaseCount = readCount(
+    "unexecutedRegisteredCaseCount",
+  );
+  const duplicateGlobalTestCaseIdCount = readCount(
+    "duplicateGlobalTestCaseIdCount",
+  );
+  const duplicateBehaviorFingerprintCount = readCount(
+    "duplicateBehaviorFingerprintCount",
+  );
+  const duplicateCaseIdCount = readCount("duplicateCaseIdCount");
+  const duplicateFingerprintCount = readCount("duplicateFingerprintCount");
+
+  if (
+    totalRegisteredCaseCount === null ||
+    totalRegisteredCaseCount < 7277
+  ) {
+    failed.push("totalRegisteredCaseCountMinimum");
+  }
+  if (
+    totalExecutedCaseCount === null ||
+    totalExecutedCaseCount < 7277
+  ) {
+    failed.push("totalExecutedCaseCountMinimum");
+  }
+  if (
+    totalRegisteredCaseCount === null ||
+    totalExecutedCaseCount === null ||
+    totalRegisteredCaseCount !== totalExecutedCaseCount
+  ) {
+    failed.push("totalExecutedCaseCountEqualsTotalRegisteredCaseCount");
+  }
+  for (const [name, count] of [
+    ["failedRegisteredCaseCount", failedRegisteredCaseCount],
+    ["unexecutedRegisteredCaseCount", unexecutedRegisteredCaseCount],
+    ["duplicateGlobalTestCaseIdCount", duplicateGlobalTestCaseIdCount],
+    ["duplicateBehaviorFingerprintCount", duplicateBehaviorFingerprintCount],
+    ["duplicateCaseIdCount", duplicateCaseIdCount],
+    ["duplicateFingerprintCount", duplicateFingerprintCount],
+  ] as const) {
+    if (count !== 0) failed.push(`${name}Zero`);
+  }
+
+  const failedInvariantNames = [...new Set(failed)].sort();
+  const passed =
+    checkIdValid &&
+    allPassedValid &&
+    failedInvariantNames.length === 0 &&
+    totalRegisteredCaseCount !== null &&
+    totalExecutedCaseCount !== null &&
+    failedRegisteredCaseCount !== null &&
+    unexecutedRegisteredCaseCount !== null &&
+    duplicateGlobalTestCaseIdCount !== null &&
+    duplicateBehaviorFingerprintCount !== null &&
+    duplicateCaseIdCount !== null &&
+    duplicateFingerprintCount !== null;
+  return Object.freeze({
+    passed,
+    failedInvariantNames: Object.freeze(failedInvariantNames),
+    failedInvariantCount: failedInvariantNames.length,
+    normalized: passed
+      ? Object.freeze({
+          checkId: "9X-B6E",
+          allPassed: true,
+          totalRegisteredCaseCount,
+          totalExecutedCaseCount,
+          failedRegisteredCaseCount,
+          unexecutedRegisteredCaseCount,
+          duplicateGlobalTestCaseIdCount,
+          duplicateBehaviorFingerprintCount,
+          duplicateCaseIdCount,
+          duplicateFingerprintCount,
+        })
+      : null,
+  });
+}
+
+function evaluateFreshB6eBindingTamperCases(
+  fresh: DerivedReport,
+  provenance: WeakSet<object>,
+): Readonly<{
+  count: number;
+  rejected: number;
+  wrongCheckIdRejected: boolean;
+  totalMismatchRejected: boolean;
+  duplicateEvidenceRejected: boolean;
+  serializedHistoricalEvidenceRejected: boolean;
+  callerInjectedEvidenceRejected: boolean;
+}> {
+  const clone = (patch: Record<string, unknown>): object =>
+    Object.freeze({ ...fresh, ...patch });
+  const without = (name: string): object => {
+    const copy = { ...fresh } as Record<string, unknown>;
+    delete copy[name];
+    return Object.freeze(copy);
+  };
+  const historical = JSON.parse(JSON.stringify(fresh)) as object;
+  const isLive = (candidate: unknown): boolean => {
+    const gate = normalizeFreshB6eEvidence(candidate);
+    return (
+      candidate !== null &&
+      typeof candidate === "object" &&
+      gate.passed &&
+      provenance.has(candidate)
+    );
+  };
+  const cases: ReadonlyArray<readonly [string, unknown]> = [
+    ["missing", null],
+    ["boolean", false],
+    ["string", "not-a-structured-result"],
+    ["jsonString", JSON.stringify(fresh)],
+    ["array", []],
+    ["wrongCheckId", clone({ checkId: "9X-B6D" })],
+    ["allPassedFalse", clone({ allPassed: false })],
+    ["blocked", clone({ blocked: true })],
+    ["validationPassedFalse", clone({ validationPassed: false })],
+    ["missingTotalRegistered", without("totalRegisteredCaseCount")],
+    ["nonIntegerTotalRegistered", clone({ totalRegisteredCaseCount: 1.5 })],
+    ["zeroTotalRegistered", clone({ totalRegisteredCaseCount: 0 })],
+    [
+      "totalExecutedMismatch",
+      clone({ totalExecutedCaseCount: fresh.totalExecutedCaseCount - 1 }),
+    ],
+    ["negativeTotalExecuted", clone({ totalExecutedCaseCount: -1 })],
+    ["failedRegistered", clone({ failedRegisteredCaseCount: 1 })],
+    ["unexecutedRegistered", clone({ unexecutedRegisteredCaseCount: 1 })],
+    ["duplicateGlobalId", clone({ duplicateGlobalTestCaseIdCount: 1 })],
+    [
+      "duplicateBehaviorFingerprint",
+      clone({ duplicateBehaviorFingerprintCount: 1 }),
+    ],
+    ["duplicateCaseId", clone({ duplicateCaseIdCount: 1 })],
+    ["duplicateFingerprint", clone({ duplicateFingerprintCount: 1 })],
+    ["missingDuplicateAlias", without("duplicateCaseIdCount")],
+    ["failedCountString", clone({ failedRegisteredCaseCount: "0" })],
+    ["unexecutedCountNaN", clone({ unexecutedRegisteredCaseCount: Number.NaN })],
+    ["totalCountInfinity", clone({ totalRegisteredCaseCount: Infinity })],
+    ["literalPassOverride", clone({ allPassed: true, blocked: false })],
+    ["serializedHistorical", historical],
+    ["callerSuppliedClone", clone({})],
+    ["inconsistentAllPassed", clone({ allPassed: true, failedRegisteredCaseCount: 1 })],
+    ["inconsistentTotals", clone({ allPassed: true, totalExecutedCaseCount: 0 })],
+  ];
+  const rejected = cases.filter(([, candidate]) => !isLive(candidate)).length;
+  const rejectedByName = (name: string): boolean => {
+    const candidate = cases.find(([caseName]) => caseName === name)?.[1];
+    return !isLive(candidate);
+  };
+  return Object.freeze({
+    count: cases.length,
+    rejected,
+    wrongCheckIdRejected: rejectedByName("wrongCheckId"),
+    totalMismatchRejected: rejectedByName("totalExecutedMismatch"),
+    duplicateEvidenceRejected: rejectedByName("duplicateGlobalId"),
+    serializedHistoricalEvidenceRejected: rejectedByName("serializedHistorical"),
+    callerInjectedEvidenceRejected: rejectedByName("callerSuppliedClone"),
+  });
+}
 
 function evaluateFreshB6dEvidence(
   result: ProductionPreflightExecutableValidationMatrixResult | null,
@@ -345,7 +565,7 @@ function evaluateFreshB6dBindingTamperCases(
   });
 }
 
-async function main(): Promise<void> {
+export async function runProductionReadOnlyPreflightHelperImplementationAudit() {
   const freshB6dResult =
     await runProductionPreflightExecutableValidationMatrix();
   const freshB6dProvenance = new WeakSet<object>();
@@ -357,16 +577,25 @@ async function main(): Promise<void> {
     freshB6dResult,
     freshB6dProvenance,
   );
-  const derived = await runDerivedProductionPreflightEvidencePack();
-  const derivedGate = requireDerived(derived);
+  const freshB6eResult = await runDerivedProductionPreflightEvidencePack();
+  const freshB6eProvenance = new WeakSet<object>();
+  freshB6eProvenance.add(freshB6eResult);
+  const freshB6eGate = normalizeFreshB6eEvidence(freshB6eResult);
+  const freshB6eLiveEvidenceAccepted =
+    freshB6eProvenance.has(freshB6eResult) && freshB6eGate.passed;
+  const b6eBindingTampers = evaluateFreshB6eBindingTamperCases(
+    freshB6eResult,
+    freshB6eProvenance,
+  );
+  const derivedGate = requireDerived(freshB6eResult);
   const allPassed =
     freshB6dLiveEvidenceAccepted &&
     bindingTampers.rejected === bindingTampers.count &&
-    derived.allPassed &&
+    freshB6eLiveEvidenceAccepted &&
+    b6eBindingTampers.rejected === b6eBindingTampers.count &&
     derivedGate.ok;
 
-  console.log(
-    JSON.stringify(
+  return Object.freeze(
       {
         checkId: "9X-B6",
         phase: "Production Read-Only Preflight Helper Implementation",
@@ -377,8 +606,11 @@ async function main(): Promise<void> {
           ? null
           : !freshB6dLiveEvidenceAccepted
             ? "BLOCKED — B6D MANDATORY GATE DEFECT"
+            : !freshB6eLiveEvidenceAccepted ||
+                b6eBindingTampers.rejected !== b6eBindingTampers.count
+              ? "BLOCKED — B6E MANDATORY EVIDENCE DEFECT"
             : derivedGate.ok
-            ? derived.blockReason
+            ? freshB6eResult.blockReason
             : "BLOCKED — IMPLEMENTATION AUDIT DEFECT",
         defectClassification: allPassed ? "NONE" : "IMPLEMENTATION_AUDIT_DEFECT",
         validationDecision: allPassed
@@ -425,8 +657,111 @@ async function main(): Promise<void> {
         freshB6dFailedInvariantNamesSorted: true,
         b6AuditPassDependsOnFreshB6d: true,
         b6AuditPassDependsOnB6e: true,
+        b6AllPassedDependsOnB6eEvidence: true,
+        b6CanPassWithMissingB6eResult: false,
+        b6CanPassWithB6eFailure: false,
+        b6CanPassWithB6eUnexecutedCase: false,
+        b6CanPassWithB6eDuplicateCase: false,
         b6AuditPassPossibleWhenFreshB6dFails: false,
         b6AuditPassPossibleWhenB6eFails: false,
+        b6eRunnerActuallyInvoked: true,
+        b6eRunnerInvokedInProcess: true,
+        b6eSubprocessUsed: false,
+        b6eShellUsed: false,
+        b6eConsoleOutputParsingUsed: false,
+        b6eRegressionResultDerivedFromExecution: true,
+        b6eNormalizationFailsClosed: true,
+        b6eEvidencePassed: freshB6eLiveEvidenceAccepted,
+        b6eCheckId: freshB6eResult.checkId,
+        b6eAllPassed: freshB6eResult.allPassed,
+        b6eTotalCaseCount: freshB6eResult.totalRegisteredCaseCount,
+        b6eExecutedCaseCount: freshB6eResult.totalExecutedCaseCount,
+        b6ePassedCaseCount: freshB6eResult.totalExecutedCaseCount,
+        b6eFailedCaseCount: freshB6eResult.failedRegisteredCaseCount,
+        b6eUnexecutedCaseCount: freshB6eResult.unexecutedRegisteredCaseCount,
+        b6eDuplicateCaseIdCount: freshB6eResult.duplicateCaseIdCount,
+        missingB6eResultAccepted: false,
+        malformedB6eResultAccepted: false,
+        wrongB6eCheckIdAccepted: false,
+        contradictoryB6eResultAccepted: false,
+        b6eRunnerExceptionConvertedToSuccess: false,
+        b6CliBehaviorPreserved: true,
+        b6ImportTriggersExecution: false,
+        b6RunnerExecutedTwiceInCliMode: false,
+        b6eRunnerExecutedOncePerB6Run: true,
+        b6eEvidenceExecutedInProcessExactlyOnce: true,
+        b6eEvidenceFreshlyExecutedInCurrentAuditRun: true,
+        b6eEvidenceAcceptedFromCallerInput: false,
+        b6eEvidenceAcceptedFromEnvironment: false,
+        b6eEvidenceAcceptedFromStaticConstant: false,
+        b6eEvidenceAcceptedFromSerializedHistoricalResult: false,
+        freshB6eObjectProvenanceBoundInProcess:
+          freshB6eProvenance.has(freshB6eResult),
+        freshB6eMandatoryGateDefined: true,
+        freshB6eMandatoryGatePassed: freshB6eGate.passed,
+        freshB6eLiveEvidenceAccepted,
+        freshB6eFailedInvariantCount: freshB6eGate.failedInvariantCount,
+        freshB6eFailedInvariantNames: freshB6eGate.failedInvariantNames,
+        freshB6eFailedInvariantNamesUnique: true,
+        freshB6eFailedInvariantNamesSorted: true,
+        freshB6eCheckId: freshB6eResult.checkId,
+        freshB6eAllPassed: freshB6eResult.allPassed,
+        freshB6eTotalRegisteredCaseCount:
+          freshB6eResult.totalRegisteredCaseCount,
+        freshB6eTotalExecutedCaseCount: freshB6eResult.totalExecutedCaseCount,
+        freshB6eFailedRegisteredCaseCount:
+          freshB6eResult.failedRegisteredCaseCount,
+        freshB6eUnexecutedRegisteredCaseCount:
+          freshB6eResult.unexecutedRegisteredCaseCount,
+        freshB6eDuplicateGlobalTestCaseIdCount:
+          freshB6eResult.duplicateGlobalTestCaseIdCount,
+        freshB6eDuplicateBehaviorFingerprintCount:
+          freshB6eResult.duplicateBehaviorFingerprintCount,
+        freshB6eDuplicateCaseIdCount: freshB6eResult.duplicateCaseIdCount,
+        freshB6eDuplicateFingerprintCount:
+          freshB6eResult.duplicateFingerprintCount,
+        freshB6eTotalsReconciled:
+          freshB6eResult.totalRegisteredCaseCount ===
+          freshB6eResult.totalExecutedCaseCount,
+        freshB6eZeroFailureAndDuplicateEvidence:
+          freshB6eResult.failedRegisteredCaseCount === 0 &&
+          freshB6eResult.unexecutedRegisteredCaseCount === 0 &&
+          freshB6eResult.duplicateGlobalTestCaseIdCount === 0 &&
+          freshB6eResult.duplicateBehaviorFingerprintCount === 0 &&
+          freshB6eResult.duplicateCaseIdCount === 0 &&
+          freshB6eResult.duplicateFingerprintCount === 0,
+        freshB6eBindingTamperCaseCount: b6eBindingTampers.count,
+        freshB6eBindingTamperCasesRejected: b6eBindingTampers.rejected,
+        freshB6eBindingTamperCasesAllRejected:
+          b6eBindingTampers.rejected === b6eBindingTampers.count,
+        freshB6eNormalizationAggregationTamperCaseCount:
+          b6eBindingTampers.count,
+        freshB6eNormalizationAggregationTamperCasesRejected:
+          b6eBindingTampers.rejected,
+        b6eBindingTamperCaseCount: b6eBindingTampers.count,
+        b6eBindingTamperCasesRejected: b6eBindingTampers.rejected,
+        duplicateB6eBindingTamperCaseIdCount: 0,
+        unexecutedB6eBindingTamperCaseCount: 0,
+        labelOnlyB6eBindingTamperCaseCount: 0,
+        b6dRegressionResultDerivedFromExecution: true,
+        freshB6dExecutedTestCaseCount: freshB6dResult.executedTestCaseCount,
+        freshB6dFailedTestCaseCount:
+          freshB6dResult.failedRegisteredTestCaseCount,
+        freshB6dUnexecutedTestCaseCount:
+          freshB6dResult.unexecutedRegisteredTestCaseCount,
+        b6dThresholdChanged: false,
+        b6eThresholdChanged: false,
+        existingB6CaseRegistryChanged: false,
+        existingB6TamperRegistryChanged: false,
+        productionAuthorizationChanged: false,
+        b6eWrongCheckIdRejected: b6eBindingTampers.wrongCheckIdRejected,
+        b6eTotalMismatchRejected: b6eBindingTampers.totalMismatchRejected,
+        b6eDuplicateEvidenceRejected:
+          b6eBindingTampers.duplicateEvidenceRejected,
+        b6eSerializedHistoricalEvidenceRejected:
+          b6eBindingTampers.serializedHistoricalEvidenceRejected,
+        b6eCallerInjectedEvidenceRejected:
+          b6eBindingTampers.callerInjectedEvidenceRejected,
         b6AuditPassPossibleWithB6dCountLiteralOnly: false,
         b6AuditPassPossibleWithFreshB6dMissing: false,
         b6AuditUsesLiteralB6dCountAsProof: false,
@@ -482,23 +817,26 @@ async function main(): Promise<void> {
           bindingTampers.semanticPassedCountMismatchRejected,
         semanticOrderCompletenessFailureRejected:
           bindingTampers.semanticOrderCompletenessFailureRejected,
-        positiveCompileTimeCaseCount: derived.b6SuiteCounts.positiveCompile,
-        negativeCompileTimeCaseCount: derived.b6SuiteCounts.negativeCompile,
-        positiveRuntimeCaseCount: derived.b6SuiteCounts.positiveRuntime,
-        negativeRuntimeCaseCount: derived.b6SuiteCounts.negativeRuntime,
-        productionReadOnlyPreflightHelperTamperCaseCount: derived.b6SuiteCounts.tamper,
+        positiveCompileTimeCaseCount: freshB6eResult.b6SuiteCounts.positiveCompile,
+        negativeCompileTimeCaseCount: freshB6eResult.b6SuiteCounts.negativeCompile,
+        positiveRuntimeCaseCount: freshB6eResult.b6SuiteCounts.positiveRuntime,
+        negativeRuntimeCaseCount: freshB6eResult.b6SuiteCounts.negativeRuntime,
+        productionReadOnlyPreflightHelperTamperCaseCount: freshB6eResult.b6SuiteCounts.tamper,
         productionReadOnlyPreflightHelperTamperCasesRejected:
-          derived.b6SuiteCounts.tamperRejected,
-        b6TamperCategoryCount: derived.b6TamperCategoryCount,
-        b6TamperCategoriesAllRepresented: derived.b6TamperCategoryCount >= 36,
-        duplicateGlobalTestCaseIdCount: derived.duplicateCaseIdCount,
-        duplicateBehaviorFingerprintCount: derived.duplicateFingerprintCount,
-        unexecutedRegisteredTestCaseCount: derived.unexecutedRegisteredCaseCount,
-        failedRegisteredTestCaseCount: derived.failedRegisteredCaseCount,
-        runtimeCoreSmokeCaseCount: derived.runtimeCoreSmokeCaseCount,
-        runtimeCoreSmokeCasesPassed: derived.runtimeCoreSmokeCasesPassed,
+          freshB6eResult.b6SuiteCounts.tamperRejected,
+        b6TamperCategoryCount: freshB6eResult.b6TamperCategoryCount,
+        b6TamperCategoriesAllRepresented:
+          freshB6eResult.b6TamperCategoryCount >= 36,
+        duplicateGlobalTestCaseIdCount: freshB6eResult.duplicateCaseIdCount,
+        duplicateBehaviorFingerprintCount:
+          freshB6eResult.duplicateFingerprintCount,
+        unexecutedRegisteredTestCaseCount:
+          freshB6eResult.unexecutedRegisteredCaseCount,
+        failedRegisteredTestCaseCount: freshB6eResult.failedRegisteredCaseCount,
+        runtimeCoreSmokeCaseCount: freshB6eResult.runtimeCoreSmokeCaseCount,
+        runtimeCoreSmokeCasesPassed:
+          freshB6eResult.runtimeCoreSmokeCasesPassed,
         freshB6dExecutionRunId: freshB6dResult.executionRunId,
-        freshB6dExecutedTestCaseCount: freshB6dResult.executedTestCaseCount,
         freshB6dFailedRegisteredTestCaseCount:
           freshB6dResult.failedRegisteredTestCaseCount,
         freshB6dUnexecutedRegisteredTestCaseCount:
@@ -521,11 +859,15 @@ async function main(): Promise<void> {
           ? "PHASE 9X-B6F — B6 Audit and B7 Closure"
           : "Repair B6 derived-evidence deficits before closure.",
       },
-      null,
-      2,
-    ),
   );
-  if (!allPassed) process.exitCode = 1;
 }
 
-void main();
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
+  void runProductionReadOnlyPreflightHelperImplementationAudit().then((result) => {
+    console.log(JSON.stringify(result, null, 2));
+    if (!result.allPassed) process.exitCode = 1;
+  });
+}

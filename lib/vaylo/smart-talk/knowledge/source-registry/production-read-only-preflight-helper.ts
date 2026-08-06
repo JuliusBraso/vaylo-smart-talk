@@ -125,7 +125,7 @@ export type ProductionPreflightSafeSqlStateClass =
   | "UNKNOWN_SQLSTATE_CLASS"
   | null;
 
-type SchemaKey =
+export type ProductionReadOnlyPreflightResultSchemaId =
   | "TARGET_IDENTITY_RESULT"
   | "SERVER_VERSION_RESULT"
   | "CURRENT_DATABASE_RESULT"
@@ -160,7 +160,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
 
 function validateExact(
   input: unknown,
-  schemaKey: SchemaKey,
+  schemaKey: ProductionReadOnlyPreflightResultSchemaId,
   fields: readonly string[],
 ): input is NormalizedPreflightResult {
   if (!isObject(input) || Object.keys(input).length !== fields.length + 1) {
@@ -376,7 +376,7 @@ export const validateRollbackCapabilityResult = (v: unknown) =>
 export type PreflightEntry = Readonly<{
   id: ProductionReadOnlyPreflightQueryId;
   intent: string;
-  resultSchemaKey: SchemaKey;
+  resultSchemaKey: ProductionReadOnlyPreflightResultSchemaId;
   blocker: string;
   sql: string;
   parameterPolicy: "NO_CALLER_PARAMETERS";
@@ -392,7 +392,7 @@ export type PreflightEntry = Readonly<{
 function query(
   id: ProductionReadOnlyPreflightQueryId,
   intent: string,
-  resultSchemaKey: SchemaKey,
+  resultSchemaKey: ProductionReadOnlyPreflightResultSchemaId,
   blocker: string,
   sql: string,
   validateResult: (input: unknown) => input is NormalizedPreflightResult,
@@ -565,6 +565,321 @@ export const PRODUCTION_READ_ONLY_PREFLIGHT_REGISTRY = Object.freeze({
 } as const satisfies Readonly<
   Record<ProductionReadOnlyPreflightQueryId, PreflightEntry>
 >);
+
+export const PRODUCTION_PREFLIGHT_SYNTHETIC_FIXTURE_MODE =
+  "SYNTHETIC_VALIDATION_ONLY" as const;
+export const PRODUCTION_PREFLIGHT_SYNTHETIC_FIXTURE_VERSION = "1" as const;
+
+export type ProductionPreflightSyntheticResultFixture = Readonly<{
+  mode: typeof PRODUCTION_PREFLIGHT_SYNTHETIC_FIXTURE_MODE;
+  queryId: ProductionReadOnlyPreflightQueryId;
+  resultSchemaId: ProductionReadOnlyPreflightResultSchemaId;
+  fixtureId: string;
+  value: unknown;
+}>;
+
+type SyntheticFixtureFactory = () => NormalizedPreflightResult;
+type SyntheticFixtureSchemaRegistryEntry = Readonly<{
+  resultSchemaId: ProductionReadOnlyPreflightResultSchemaId;
+  fixtureFactory: SyntheticFixtureFactory;
+  syntheticOnly: true;
+}>;
+
+function deepFreeze<T>(value: T, seen = new WeakSet<object>()): T {
+  if (value === null || typeof value !== "object" || seen.has(value)) return value;
+  seen.add(value);
+  for (const nested of Object.values(value)) deepFreeze(nested, seen);
+  return Object.freeze(value);
+}
+
+function syntheticValue(
+  resultSchemaKey: ProductionReadOnlyPreflightResultSchemaId,
+  fields: Readonly<Record<string, Scalar>>,
+): NormalizedPreflightResult {
+  return deepFreeze({ resultSchemaKey, ...fields });
+}
+
+const PRODUCTION_PREFLIGHT_SYNTHETIC_FIXTURE_SCHEMA_REGISTRY = Object.freeze({
+  TARGET_IDENTITY_RESULT: Object.freeze({
+    resultSchemaId: "TARGET_IDENTITY_RESULT",
+    fixtureFactory: () =>
+      syntheticValue("TARGET_IDENTITY_RESULT", {
+        currentDatabaseIdentifier: "synthetic_db",
+        databaseIdentityEvidencePresent: true,
+        operatorIdentityEvidenceRequired: true,
+        targetFingerprintComparisonRequired: true,
+        targetIdentityMatched: true,
+        targetClassification: "MATCHED",
+      }),
+    syntheticOnly: true as const,
+  }),
+  SERVER_VERSION_RESULT: Object.freeze({
+    resultSchemaId: "SERVER_VERSION_RESULT",
+    fixtureFactory: () =>
+      syntheticValue("SERVER_VERSION_RESULT", {
+        serverVersionNum: 170000,
+        serverMajorVersion: 17,
+        expectedServerMajorVersion: 17,
+        serverMajorVersionMatched: true,
+        compatibilityClassification: "COMPATIBLE",
+      }),
+    syntheticOnly: true as const,
+  }),
+  CURRENT_DATABASE_RESULT: Object.freeze({
+    resultSchemaId: "CURRENT_DATABASE_RESULT",
+    fixtureFactory: () =>
+      syntheticValue("CURRENT_DATABASE_RESULT", {
+        currentDatabase: "synthetic_db",
+        expectedDatabaseMatched: true,
+        resultBounded: true,
+        secretExposureDetected: false,
+      }),
+    syntheticOnly: true as const,
+  }),
+  CURRENT_USER_RESULT: Object.freeze({
+    resultSchemaId: "CURRENT_USER_RESULT",
+    fixtureFactory: () =>
+      syntheticValue("CURRENT_USER_RESULT", {
+        currentUser: "synthetic_executor",
+        expectedExecutorMatched: true,
+        resultBounded: true,
+        secretExposureDetected: false,
+      }),
+    syntheticOnly: true as const,
+  }),
+  TRANSACTION_CAPABILITY_RESULT: Object.freeze({
+    resultSchemaId: "TRANSACTION_CAPABILITY_RESULT",
+    fixtureFactory: () =>
+      syntheticValue("TRANSACTION_CAPABILITY_RESULT", {
+        explicitReadOnlyTransactionStarted: true,
+        transactionReadOnlyObserved: true,
+        transactionStateKnown: true,
+        rollbackAvailable: true,
+        transactionCleanupConfirmed: true,
+        writeProbeUsed: false,
+      }),
+    syntheticOnly: true as const,
+  }),
+  PGCRYPTO_EXTENSION_RESULT: Object.freeze({
+    resultSchemaId: "PGCRYPTO_EXTENSION_RESULT",
+    fixtureFactory: () =>
+      syntheticValue("PGCRYPTO_EXTENSION_RESULT", {
+        extensionPresent: true,
+        extensionCount: 1,
+        expectedExtensionCount: 1,
+        normalizedExtensionVersion: "1.3",
+        installationAttempted: false,
+        repairAttempted: false,
+      }),
+    syntheticOnly: true as const,
+  }),
+  PGCRYPTO_SCHEMA_RESULT: Object.freeze({
+    resultSchemaId: "PGCRYPTO_SCHEMA_RESULT",
+    fixtureFactory: () =>
+      syntheticValue("PGCRYPTO_SCHEMA_RESULT", {
+        observedSchema: "extensions",
+        expectedSchema: "extensions",
+        schemaMatched: true,
+        relocationAttempted: false,
+      }),
+    syntheticOnly: true as const,
+  }),
+  PGCRYPTO_DIGEST_SIGNATURE_RESULT: Object.freeze({
+    resultSchemaId: "PGCRYPTO_DIGEST_SIGNATURE_RESULT",
+    fixtureFactory: () =>
+      syntheticValue("PGCRYPTO_DIGEST_SIGNATURE_RESULT", {
+        schemaQualifiedIdentityMatched: true,
+        argumentTypesMatched: true,
+        returnTypeMatched: true,
+        overloadResolutionUnambiguous: true,
+        conflictingDigestDetected: false,
+        signatureClassification: "EXACT",
+      }),
+    syntheticOnly: true as const,
+  }),
+  PGCRYPTO_EXTENSION_MEMBERSHIP_RESULT: Object.freeze({
+    resultSchemaId: "PGCRYPTO_EXTENSION_MEMBERSHIP_RESULT",
+    fixtureFactory: () =>
+      syntheticValue("PGCRYPTO_EXTENSION_MEMBERSHIP_RESULT", {
+        extensionMembershipVerified: true,
+        catalogDerived: true,
+        functionNameOnlyVerificationUsed: false,
+        operatorAssertionOnlyUsed: false,
+      }),
+    syntheticOnly: true as const,
+  }),
+  SHA256_CAPABILITY_RESULT: Object.freeze({
+    resultSchemaId: "SHA256_CAPABILITY_RESULT",
+    fixtureFactory: () =>
+      syntheticValue("SHA256_CAPABILITY_RESULT", {
+        algorithm: "SHA256",
+        digestByteLength: 32,
+        hexLength: 64,
+        lowercaseHex: true,
+        repeatStable: true,
+        callerControlledInputUsed: false,
+        callerControlledAlgorithmUsed: false,
+        fallbackDetected: false,
+      }),
+    syntheticOnly: true as const,
+  }),
+  AUDIT_ROLE_CONFLICT_RESULT: Object.freeze({
+    resultSchemaId: "AUDIT_ROLE_CONFLICT_RESULT",
+    fixtureFactory: () =>
+      syntheticValue("AUDIT_ROLE_CONFLICT_RESULT", {
+        expectedRoleCount: 3,
+        observedExpectedRoleCount: 0,
+        roleNamesFixed: true,
+        attributesCompared: true,
+        membershipsCompared: true,
+        classification: "ABSENT_OR_COMPATIBLE",
+        repairAttempted: false,
+      }),
+    syntheticOnly: true as const,
+  }),
+  AUDIT_SCHEMA_CONFLICT_RESULT: Object.freeze({
+    resultSchemaId: "AUDIT_SCHEMA_CONFLICT_RESULT",
+    fixtureFactory: () =>
+      syntheticValue("AUDIT_SCHEMA_CONFLICT_RESULT", {
+        expectedSchema: "vaylo_audit",
+        schemaPresent: false,
+        ownerMatched: true,
+        unexpectedContentsDetected: false,
+        classification: "ABSENT_OR_COMPATIBLE",
+        cleanupAttempted: false,
+      }),
+    syntheticOnly: true as const,
+  }),
+  AUDIT_VIEW_CONFLICT_RESULT: Object.freeze({
+    resultSchemaId: "AUDIT_VIEW_CONFLICT_RESULT",
+    fixtureFactory: () =>
+      syntheticValue("AUDIT_VIEW_CONFLICT_RESULT", {
+        expectedViewCount: 10,
+        expectedNamesDerivedFromTrustedSource: true,
+        observedExpectedNameCount: 0,
+        conflictingObjectCount: 0,
+        unrelatedObjectsReturned: false,
+        perObjectClassifications: "NONE",
+        repairAttempted: false,
+      }),
+    syntheticOnly: true as const,
+  }),
+  AUDIT_FUNCTION_CONFLICT_RESULT: Object.freeze({
+    resultSchemaId: "AUDIT_FUNCTION_CONFLICT_RESULT",
+    fixtureFactory: () =>
+      syntheticValue("AUDIT_FUNCTION_CONFLICT_RESULT", {
+        expectedFunctionCount: 9,
+        expectedNamesDerivedFromTrustedSource: true,
+        identityArgumentsCompared: true,
+        returnTypesCompared: true,
+        ownersCompared: true,
+        securityModesCompared: true,
+        configurationsCompared: true,
+        rawDefinitionsReturned: false,
+        conflictingObjectCount: 0,
+        repairAttempted: false,
+      }),
+    syntheticOnly: true as const,
+  }),
+  MIGRATION_LEDGER_IDENTITY_RESULT: Object.freeze({
+    resultSchemaId: "MIGRATION_LEDGER_IDENTITY_RESULT",
+    fixtureFactory: () =>
+      syntheticValue("MIGRATION_LEDGER_IDENTITY_RESULT", {
+        expectedSchema: "supabase_migrations",
+        expectedRelation: "schema_migrations",
+        schemaPresent: true,
+        relationPresent: true,
+        relationKindMatched: true,
+        identityUnambiguous: true,
+        alternateRelationAccepted: false,
+        rowsRead: false,
+      }),
+    syntheticOnly: true as const,
+  }),
+  MIGRATION_LEDGER_COLUMNS_RESULT: Object.freeze({
+    resultSchemaId: "MIGRATION_LEDGER_COLUMNS_RESULT",
+    fixtureFactory: () =>
+      syntheticValue("MIGRATION_LEDGER_COLUMNS_RESULT", {
+        expectedColumnsDerivedFromTrustedSource: true,
+        requiredColumnNamesMatched: true,
+        requiredColumnTypesMatched: true,
+        requiredNullabilityMatched: true,
+        extraColumnPolicy: "CLASSIFIED",
+        rawIdentifiersReturned: false,
+        rawMigrationSqlReturned: false,
+        rowsRead: false,
+      }),
+    syntheticOnly: true as const,
+  }),
+  EXECUTOR_CAPABILITY_RESULT: Object.freeze({
+    resultSchemaId: "EXECUTOR_CAPABILITY_RESULT",
+    fixtureFactory: () =>
+      syntheticValue("EXECUTOR_CAPABILITY_RESULT", {
+        currentExecutor: "synthetic_executor",
+        capabilityClassifications: "ALL_PROVEN",
+        allRequiredCapabilitiesProven: true,
+        capabilityAssumedFromUsername: false,
+        superuserRequiredUnconditionally: false,
+        writeProbeUsed: false,
+        ambiguousCapabilityCount: 0,
+        deniedCapabilityCount: 0,
+      }),
+    syntheticOnly: true as const,
+  }),
+  ROLLBACK_CAPABILITY_RESULT: Object.freeze({
+    resultSchemaId: "ROLLBACK_CAPABILITY_RESULT",
+    fixtureFactory: () =>
+      syntheticValue("ROLLBACK_CAPABILITY_RESULT", {
+        executorIdentityKnown: true,
+        requiredCapabilitiesProven: true,
+        rollbackArtifactPinned: true,
+        rollbackArtifactHashVerified: true,
+        rollbackUsesCascade: false,
+        targetIdentityBound: true,
+        rollbackExecutionAuthorizedNow: false,
+        capabilityClassification: "PROVEN",
+      }),
+    syntheticOnly: true as const,
+  }),
+} as const satisfies Readonly<
+  Record<
+    ProductionReadOnlyPreflightResultSchemaId,
+    SyntheticFixtureSchemaRegistryEntry
+  >
+>);
+
+const syntheticFixtureProvenance = new WeakSet<object>();
+
+export function createSyntheticProductionPreflightResultFixture(
+  queryId: ProductionReadOnlyPreflightQueryId,
+): ProductionPreflightSyntheticResultFixture {
+  if (
+    typeof queryId !== "string" ||
+    !(PRODUCTION_PREFLIGHT_CANONICAL_EXECUTION_ORDER as readonly string[]).includes(
+      queryId,
+    )
+  ) {
+    throw new Error("SYNTHETIC_FIXTURE_QUERY_ID_NOT_APPROVED");
+  }
+  const entry = PRODUCTION_READ_ONLY_PREFLIGHT_REGISTRY[queryId];
+  const schemaFactory =
+    PRODUCTION_PREFLIGHT_SYNTHETIC_FIXTURE_SCHEMA_REGISTRY[entry.resultSchemaKey];
+  const fixture = deepFreeze({
+    mode: PRODUCTION_PREFLIGHT_SYNTHETIC_FIXTURE_MODE,
+    queryId,
+    resultSchemaId: entry.resultSchemaKey,
+    fixtureId: `synthetic_preflight_fixture_${queryId.toLowerCase()}`,
+    value: schemaFactory.fixtureFactory(),
+  });
+  syntheticFixtureProvenance.add(fixture);
+  return fixture;
+}
+
+export function isHelperCreatedSyntheticProductionPreflightResultFixture(
+  value: unknown,
+): value is ProductionPreflightSyntheticResultFixture {
+  return value !== null && typeof value === "object" && syntheticFixtureProvenance.has(value);
+}
 
 function executableSql(sql: string): string | null {
   let out = "";
@@ -1637,186 +1952,23 @@ export async function executeProductionReadOnlyPreflight(
 function buildSyntheticReadyResults(): Readonly<
   Record<ProductionReadOnlyPreflightQueryId, NormalizedPreflightResult>
 > {
-  const fixtures: Record<ProductionReadOnlyPreflightQueryId, NormalizedPreflightResult> =
-    {
-      PROD_PREFLIGHT_TARGET_IDENTITY: {
-        resultSchemaKey: "TARGET_IDENTITY_RESULT",
-        currentDatabaseIdentifier: "synthetic_db",
-        databaseIdentityEvidencePresent: true,
-        operatorIdentityEvidenceRequired: true,
-        targetFingerprintComparisonRequired: true,
-        targetIdentityMatched: true,
-        targetClassification: "MATCHED",
-      },
-      PROD_PREFLIGHT_SERVER_VERSION: {
-        resultSchemaKey: "SERVER_VERSION_RESULT",
-        serverVersionNum: 170000,
-        serverMajorVersion: 17,
-        expectedServerMajorVersion: 17,
-        serverMajorVersionMatched: true,
-        compatibilityClassification: "COMPATIBLE",
-      },
-      PROD_PREFLIGHT_CURRENT_DATABASE: {
-        resultSchemaKey: "CURRENT_DATABASE_RESULT",
-        currentDatabase: "synthetic_db",
-        expectedDatabaseMatched: true,
-        resultBounded: true,
-        secretExposureDetected: false,
-      },
-      PROD_PREFLIGHT_CURRENT_USER: {
-        resultSchemaKey: "CURRENT_USER_RESULT",
-        currentUser: "synthetic_executor",
-        expectedExecutorMatched: true,
-        resultBounded: true,
-        secretExposureDetected: false,
-      },
-      PROD_PREFLIGHT_TRANSACTION_CAPABILITY: {
-        resultSchemaKey: "TRANSACTION_CAPABILITY_RESULT",
-        explicitReadOnlyTransactionStarted: true,
-        transactionReadOnlyObserved: true,
-        transactionStateKnown: true,
-        rollbackAvailable: true,
-        transactionCleanupConfirmed: true,
-        writeProbeUsed: false,
-      },
-      PROD_PREFLIGHT_PGCRYPTO_EXTENSION: {
-        resultSchemaKey: "PGCRYPTO_EXTENSION_RESULT",
-        extensionPresent: true,
-        extensionCount: 1,
-        expectedExtensionCount: 1,
-        normalizedExtensionVersion: "1.3",
-        installationAttempted: false,
-        repairAttempted: false,
-      },
-      PROD_PREFLIGHT_PGCRYPTO_SCHEMA: {
-        resultSchemaKey: "PGCRYPTO_SCHEMA_RESULT",
-        observedSchema: "extensions",
-        expectedSchema: "extensions",
-        schemaMatched: true,
-        relocationAttempted: false,
-      },
-      PROD_PREFLIGHT_PGCRYPTO_DIGEST_SIGNATURE: {
-        resultSchemaKey: "PGCRYPTO_DIGEST_SIGNATURE_RESULT",
-        schemaQualifiedIdentityMatched: true,
-        argumentTypesMatched: true,
-        returnTypeMatched: true,
-        overloadResolutionUnambiguous: true,
-        conflictingDigestDetected: false,
-        signatureClassification: "EXACT",
-      },
-      PROD_PREFLIGHT_PGCRYPTO_EXTENSION_OWNERSHIP: {
-        resultSchemaKey: "PGCRYPTO_EXTENSION_MEMBERSHIP_RESULT",
-        extensionMembershipVerified: true,
-        catalogDerived: true,
-        functionNameOnlyVerificationUsed: false,
-        operatorAssertionOnlyUsed: false,
-      },
-      PROD_PREFLIGHT_SHA256_CAPABILITY: {
-        resultSchemaKey: "SHA256_CAPABILITY_RESULT",
-        algorithm: "SHA256",
-        digestByteLength: 32,
-        hexLength: 64,
-        lowercaseHex: true,
-        repeatStable: true,
-        callerControlledInputUsed: false,
-        callerControlledAlgorithmUsed: false,
-        fallbackDetected: false,
-      },
-      PROD_PREFLIGHT_AUDIT_ROLE_CONFLICTS: {
-        resultSchemaKey: "AUDIT_ROLE_CONFLICT_RESULT",
-        expectedRoleCount: 3,
-        observedExpectedRoleCount: 0,
-        roleNamesFixed: true,
-        attributesCompared: true,
-        membershipsCompared: true,
-        classification: "ABSENT_OR_COMPATIBLE",
-        repairAttempted: false,
-      },
-      PROD_PREFLIGHT_AUDIT_SCHEMA_CONFLICT: {
-        resultSchemaKey: "AUDIT_SCHEMA_CONFLICT_RESULT",
-        expectedSchema: "vaylo_audit",
-        schemaPresent: false,
-        ownerMatched: true,
-        unexpectedContentsDetected: false,
-        classification: "ABSENT_OR_COMPATIBLE",
-        cleanupAttempted: false,
-      },
-      PROD_PREFLIGHT_AUDIT_VIEW_CONFLICTS: {
-        resultSchemaKey: "AUDIT_VIEW_CONFLICT_RESULT",
-        expectedViewCount: 10,
-        expectedNamesDerivedFromTrustedSource: true,
-        observedExpectedNameCount: 0,
-        conflictingObjectCount: 0,
-        unrelatedObjectsReturned: false,
-        perObjectClassifications: "NONE",
-        repairAttempted: false,
-      },
-      PROD_PREFLIGHT_AUDIT_FUNCTION_CONFLICTS: {
-        resultSchemaKey: "AUDIT_FUNCTION_CONFLICT_RESULT",
-        expectedFunctionCount: 9,
-        expectedNamesDerivedFromTrustedSource: true,
-        identityArgumentsCompared: true,
-        returnTypesCompared: true,
-        ownersCompared: true,
-        securityModesCompared: true,
-        configurationsCompared: true,
-        rawDefinitionsReturned: false,
-        conflictingObjectCount: 0,
-        repairAttempted: false,
-      },
-      PROD_PREFLIGHT_MIGRATION_LEDGER_IDENTITY: {
-        resultSchemaKey: "MIGRATION_LEDGER_IDENTITY_RESULT",
-        expectedSchema: "supabase_migrations",
-        expectedRelation: "schema_migrations",
-        schemaPresent: true,
-        relationPresent: true,
-        relationKindMatched: true,
-        identityUnambiguous: true,
-        alternateRelationAccepted: false,
-        rowsRead: false,
-      },
-      PROD_PREFLIGHT_MIGRATION_LEDGER_COLUMNS: {
-        resultSchemaKey: "MIGRATION_LEDGER_COLUMNS_RESULT",
-        expectedColumnsDerivedFromTrustedSource: true,
-        requiredColumnNamesMatched: true,
-        requiredColumnTypesMatched: true,
-        requiredNullabilityMatched: true,
-        extraColumnPolicy: "CLASSIFIED",
-        rawIdentifiersReturned: false,
-        rawMigrationSqlReturned: false,
-        rowsRead: false,
-      },
-      PROD_PREFLIGHT_EXECUTOR_CAPABILITY: {
-        resultSchemaKey: "EXECUTOR_CAPABILITY_RESULT",
-        currentExecutor: "synthetic_executor",
-        capabilityClassifications: "ALL_PROVEN",
-        allRequiredCapabilitiesProven: true,
-        capabilityAssumedFromUsername: false,
-        superuserRequiredUnconditionally: false,
-        writeProbeUsed: false,
-        ambiguousCapabilityCount: 0,
-        deniedCapabilityCount: 0,
-      },
-      PROD_PREFLIGHT_ROLLBACK_CAPABILITY: {
-        resultSchemaKey: "ROLLBACK_CAPABILITY_RESULT",
-        executorIdentityKnown: true,
-        requiredCapabilitiesProven: true,
-        rollbackArtifactPinned: true,
-        rollbackArtifactHashVerified: true,
-        rollbackUsesCascade: false,
-        targetIdentityBound: true,
-        rollbackExecutionAuthorizedNow: false,
-        capabilityClassification: "PROVEN",
-      },
-    };
+  const fixtures = {} as Record<
+    ProductionReadOnlyPreflightQueryId,
+    NormalizedPreflightResult
+  >;
 
   for (const id of PRODUCTION_PREFLIGHT_CANONICAL_EXECUTION_ORDER) {
     const entry = PRODUCTION_READ_ONLY_PREFLIGHT_REGISTRY[id];
-    if (!entry.validateResult(fixtures[id])) {
+    const fixture = createSyntheticProductionPreflightResultFixture(id);
+    if (
+      fixture.resultSchemaId !== entry.resultSchemaKey ||
+      !entry.validateResult(fixture.value)
+    ) {
       throw new Error(`SYNTHETIC_FIXTURE_INVALID:${id}`);
     }
+    fixtures[id] = fixture.value;
   }
-  return Object.freeze(fixtures);
+  return deepFreeze(fixtures);
 }
 
 function createSyntheticAuth(): ProductionReadOnlyPreflightAuthorization {

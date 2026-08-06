@@ -1,4 +1,5 @@
 import "server-only";
+import { pathToFileURL } from "node:url";
 
 /**
  * C1 is an executable design gate only. It defines no credential provider,
@@ -329,7 +330,7 @@ function buildTamperCases(): readonly TamperCase[] {
   return Object.freeze(cases);
 }
 
-async function main(): Promise<void> {
+export async function runControlledRemotePreflightExecutionBoundaryDesignAudit() {
   const failedInvariantNames = evaluateDesign(DESIGN);
   const tamperCases = buildTamperCases();
   const duplicateTamperCaseIdCount =
@@ -341,8 +342,7 @@ async function main(): Promise<void> {
     designTamperCasesRejected === tamperCases.length &&
     duplicateTamperCaseIdCount === 0;
 
-  console.log(
-    JSON.stringify(
+  return Object.freeze(
       {
         checkId: "9X-C1",
         phase: "Controlled Remote Preflight Execution Boundary Design",
@@ -372,10 +372,15 @@ async function main(): Promise<void> {
           ? "PHASE 9X-C2 — Execution Manifest and Authorization Contract Implementation"
           : "Redesign the failed controlled execution boundary.",
       },
-      null,
-      2,
-    ),
   );
 }
 
-void main();
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
+  void runControlledRemotePreflightExecutionBoundaryDesignAudit().then((result) => {
+    console.log(JSON.stringify(result, null, 2));
+    if (!result.allPassed) process.exitCode = 1;
+  });
+}

@@ -1,4 +1,5 @@
 import "server-only";
+import { pathToFileURL } from "node:url";
 
 import {
   CONTROLLED_PRODUCTION_PREFLIGHT_AUTHORIZATION_KIND,
@@ -97,13 +98,14 @@ function register() {
   for(let i=0;i<100;i++) add(`neg-transport-field-${i}`,false,()=>{const x=validLease();return !validateTransportFactoryRequest({validatedManifest:x.chain.manifest,validatedAuthorization:x.chain.authorization,validatedBinding:x.chain.binding,activeCredentialLease:x.lease,transportConstructionId:"bad"}).ok;});
   for(let i=0;i<20;i++) add(`neg-release-sequence-${i}`,false,()=>{const x=validLease();return !x.provider.releaseCredentialLease(x.lease).ok;});
 }
-async function main(){
+export async function runControlledProductionPreflightCredentialAndTransportBoundaryAudit(){
+  cases.length = 0;
   register(); for(const item of cases){try{item.passed=item.test();}catch{item.passed=false;}}
   const pos=cases.filter(x=>x.positive), neg=cases.filter(x=>!x.positive);
   const pp=pos.filter(x=>x.passed).length,np=neg.filter(x=>x.passed).length;
   const dup=cases.length-new Set(cases.map(x=>x.id)).size, failed=cases.filter(x=>!x.passed).length;
   const allPassed=pp===pos.length&&np===neg.length&&pos.length>=20&&neg.length>=280&&dup===0&&failed===0;
-  console.log(JSON.stringify({
+  return Object.freeze({
     checkId:"9X-C3",phase:"Credential Lease and Transport Factory Interface",allPassed,blocked:!allPassed,blockReason:allPassed?null:"BLOCKED — TEST EVIDENCE DEFECT",defectClassification:allPassed?"NONE":"CREDENTIAL_TRANSPORT_BOUNDARY_DEFECT",
     implementationDecision:allPassed?"AUTHORIZE_CONCRETE_POSTGRES_READ_ONLY_ADAPTER_IMPLEMENTATION_PLAN":"REJECT_CREDENTIAL_AND_TRANSPORT_BOUNDARY",sourceCommit:"8a9f3c8",expectedSourceCommit:"8a9f3c8",currentHeadMatchesExpected:true,
     c2ContractTypesReused:true,duplicateManifestContractDefined:false,duplicateAuthorizationContractDefined:false,unvalidatedManifestAccepted:false,unvalidatedAuthorizationAccepted:false,
@@ -113,6 +115,16 @@ async function main(){
     secretContainmentBoundaryDefined:true,secretVisibleToHelper:false,secretVisibleToFactoryCaller:false,secretVisibleInTransportPublicInterface:false,secretVisibleInEvidence:false,secretVisibleInErrors:false,syntheticCredentialProviderHarnessPresent:true,syntheticHarnessContainsCredential:false,syntheticHarnessPerformsRemoteAccess:false,syntheticHarnessAuthorizedForProduction:false,syntheticTransportFactoryHarnessPresent:true,syntheticTransportExecutesSql:false,syntheticTransportPerformsRemoteAccess:false,syntheticTransportAuthorizedForProduction:false,
     positiveAuditCaseCount:pos.length,positiveAuditCasesPassed:pp,contractTamperCaseCount:neg.length,contractTamperCasesRejected:np,duplicateAuditCaseIdCount:dup,duplicateTamperCaseIdCount:dup,unexecutedAuditCaseCount:0,failedAuditCaseCount:failed,
     databaseClientImportCount:0,networkExecutionPathCount:0,subprocessExecutionPathCount:0,shellExecutionPathCount:0,environmentReadPathCount:0,credentialReadPathCount:0,filesystemSecretReadPathCount:0,remoteSupabaseCommandCount:0,sqlExecutionPathCount:0,productionCredentialAccessed:false,remoteConnectionPerformed:false,productionReadOnlyPreflightExecutedNow:false,productionWriteAuthorized:false,productionBootstrapAuthorized:false,productionRollbackAuthorized:false,productionRuntimeAuthorized:false,publicLaunchAuthorized:false,c1RegressionPassed:true,c2RegressionPassed:true,existingFileModifiedDuringC3:false,workingTreeScopeValid:true,recommendedNextPhase:allPassed?"PHASE 9X-C4 — Concrete PostgreSQL Read-Only Adapter Design and Synthetic Implementation":"Repair C3 boundary.",failedCaseIds:cases.filter(x=>!x.passed).map(x=>x.id)
-  },null,2));
+  });
 }
-void main();
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
+  void runControlledProductionPreflightCredentialAndTransportBoundaryAudit().then(
+    (result) => {
+      console.log(JSON.stringify(result, null, 2));
+      if (!result.allPassed) process.exitCode = 1;
+    },
+  );
+}

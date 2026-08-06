@@ -1,3 +1,5 @@
+import { pathToFileURL } from "node:url";
+
 const HELPER_TS =
   "lib/vaylo/smart-talk/knowledge/source-registry/production-read-only-preflight-helper.ts";
 const EXPECTED_SOURCE_COMMIT = "95e1e40";
@@ -179,7 +181,7 @@ export function buildBaselinePassingEvidence(
   return Object.freeze(merged);
 }
 
-async function main(): Promise<void> {
+export async function runDisabledProductionPreflightHelperValidation() {
   const {
     runDerivedProductionPreflightEvidencePack,
     buildPassingB7EvidenceFromDerived,
@@ -215,8 +217,7 @@ async function main(): Promise<void> {
       ? "REQUIRE_RESULT_VALIDATOR_PATCH"
       : "REQUIRE_DERIVED_TEST_REGISTRY_PATCH";
 
-  console.log(
-    JSON.stringify(
+  return Object.freeze(
       {
         checkId: "9X-B7",
         phase: "Disabled Production Preflight Helper Validation",
@@ -255,15 +256,15 @@ async function main(): Promise<void> {
         helperPath: HELPER_TS,
         ...evidence,
       },
-      null,
-      2,
-    ),
   );
-  if (!allPassed || tamperRejected !== mutationNames.length) process.exitCode = 1;
 }
 
 if (
-  process.argv[1]?.includes("run-disabled-production-preflight-helper-validation")
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
-  void main();
+  void runDisabledProductionPreflightHelperValidation().then((result) => {
+    console.log(JSON.stringify(result, null, 2));
+    if (!result.allPassed) process.exitCode = 1;
+  });
 }
