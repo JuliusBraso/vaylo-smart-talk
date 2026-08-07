@@ -12,6 +12,7 @@ import {
   CONTROLLED_PRODUCTION_PERMISSION_AUTHORITY_ID,
   CONTROLLED_PRODUCTION_PERMISSION_AUTHORITY_VERSION,
   CONTROLLED_PRODUCTION_PERMISSION_IDS,
+  getControlledProductionPermissionAuthorityFingerprint,
   type ControlledProductionPermissionState,
   verifyAllControlledProductionPermissionsFalse,
 } from "./controlled-production-permission-authority";
@@ -27,6 +28,14 @@ export const CONTROLLED_OPERATOR_AUTHORIZATION_ENVELOPE = Object.freeze({
   c5BoundCheckpointCommit: "9993d2ad6ed5f8de5546edc95c4e702abac38414",
   requestedLaunchCount: 1,
   productionCapabilityCount: 0,
+} as const);
+
+export const CONTROLLED_VALIDATED_SYNTHETIC_C5_LAUNCH_HANDOFF = Object.freeze({
+  handoffContractId: "VAYLO_C6_VALIDATED_SYNTHETIC_C5_LAUNCH_HANDOFF",
+  handoffVersion: 1,
+  handoffScope: "SYNTHETIC_LOCAL_ONLY",
+  authorizedAction: "REQUEST_ONE_C5_SYNTHETIC_LAUNCH",
+  authorizedLaunchCount: 1,
 } as const);
 
 export type ControlledOperatorAuthorizationFailureCode =
@@ -82,6 +91,20 @@ export type ControlledOperatorAuthorizationCurrentEvidence = Readonly<{
   boundaryEvidence: ControlledOperatorAuthorizationBoundaryEvidence;
 }>;
 
+export type ControlledValidatedSyntheticC5LaunchHandoff = Readonly<{
+  handoffContractId: "VAYLO_C6_VALIDATED_SYNTHETIC_C5_LAUNCH_HANDOFF";
+  handoffVersion: 1;
+  handoffScope: "SYNTHETIC_LOCAL_ONLY";
+  authorizedAction: "REQUEST_ONE_C5_SYNTHETIC_LAUNCH";
+  authorizedLaunchCount: 1;
+  fixedClockSnapshot: string;
+  nonceDigest: string;
+  c5BoundCheckpointCommit: string;
+  productionPermissionAuthorityFingerprint: string;
+  productionPermissionsRemainAllFalse: true;
+  remoteExecutionAuthorized: false;
+}>;
+
 export type ControlledOperatorAuthorizationEvaluation =
   | Readonly<{
       ok: true;
@@ -96,6 +119,7 @@ export type ControlledOperatorAuthorizationEvaluation =
       productionWritePerformed: false;
       productionRuntimeAuthorized: false;
       publicLaunchAuthorized: false;
+      validatedLaunchHandoff: ControlledValidatedSyntheticC5LaunchHandoff;
     }>
   | Readonly<{
       ok: false;
@@ -347,6 +371,16 @@ export const evaluateControlledOperatorAuthorizationEnvelope = (
     productionWritePerformed: false as const,
     productionRuntimeAuthorized: false as const,
     publicLaunchAuthorized: false as const,
+    validatedLaunchHandoff: Object.freeze({
+      ...CONTROLLED_VALIDATED_SYNTHETIC_C5_LAUNCH_HANDOFF,
+      fixedClockSnapshot: envelope.fixedClockSnapshot,
+      nonceDigest: envelope.nonceDigest,
+      c5BoundCheckpointCommit: envelope.c5BoundCheckpointCommit,
+      productionPermissionAuthorityFingerprint:
+        getControlledProductionPermissionAuthorityFingerprint(),
+      productionPermissionsRemainAllFalse: true as const,
+      remoteExecutionAuthorized: false as const,
+    }),
   });
 };
 
