@@ -156,7 +156,7 @@ const MANDATORY_GATE_KEYS: readonly MandatoryGateKey[] = [
 ] as const;
 
 const C6B_COMMIT_PROVENANCE =
-  "c5b2b199e643748c3c029277992808c639268dfb";
+  "85902ae88c87dc6363dc6efebcb56e7475538ca8";
 const APPROVED_POLICY_SHA256 =
   "A00A50C48354FC9051CE73A4A620D1C0A61BE9197E1D73DFB473809218A86186";
 const POLICY_PATH =
@@ -323,6 +323,139 @@ const evaluateC6BPolicyArtifactIntegrity = (
     lifecycleState: "PATCH_REVIEW_STATE",
   });
 };
+
+const canonicalArtifactIntegrityEvaluator =
+  evaluateC6BPolicyArtifactIntegrity;
+
+type ArtifactIntegrityEvaluator =
+  typeof canonicalArtifactIntegrityEvaluator;
+
+type RegistryActualLifecycleContext = Readonly<{
+  ok: true;
+  lifecycleState: "PATCH_REVIEW_STATE" | "COMMITTED_STABLE_STATE";
+}>;
+
+type ArtifactIntegrityRegistryExecution = Readonly<{
+  context: RegistryActualLifecycleContext;
+  cases: readonly Case[];
+  evaluatorIdentityMatched: boolean;
+}>;
+
+type ArtifactIntegrityRegistrySummary = Readonly<{
+  caseIds: readonly string[];
+  outcomes: readonly boolean[];
+  caseCount: number;
+  passedCount: number;
+  duplicateCount: number;
+  unexecutedCount: number;
+  labelOnlyCount: number;
+}>;
+
+const summarizeArtifactIntegrityRegistry = (
+  execution: ArtifactIntegrityRegistryExecution,
+): ArtifactIntegrityRegistrySummary =>
+  Object.freeze({
+    caseIds: Object.freeze(execution.cases.map((item) => item.id)),
+    outcomes: Object.freeze(execution.cases.map((item) => item.passed)),
+    caseCount: execution.cases.length,
+    passedCount: count(execution.cases),
+    duplicateCount: duplicate(execution.cases),
+    unexecutedCount: execution.cases.filter((item) => !item.executed).length,
+    labelOnlyCount: execution.cases.filter((item) => item.labelOnly).length,
+  });
+
+const sameArtifactIntegrityRegistrySummary = (
+  first: ArtifactIntegrityRegistrySummary,
+  second: ArtifactIntegrityRegistrySummary,
+): boolean =>
+  first.caseCount === second.caseCount &&
+  first.passedCount === second.passedCount &&
+  first.duplicateCount === second.duplicateCount &&
+  first.unexecutedCount === second.unexecutedCount &&
+  first.labelOnlyCount === second.labelOnlyCount &&
+  first.caseIds.length === second.caseIds.length &&
+  first.caseIds.every(
+    (id, index) =>
+      id === second.caseIds[index] &&
+      first.outcomes[index] === second.outcomes[index],
+  );
+
+const createCanonicalPatchReviewObservation =
+  (): C6BPolicyRepositoryObservation =>
+    Object.freeze({
+      branch: "main",
+      head: C6B_COMMIT_PROVENANCE,
+      originMain: C6B_COMMIT_PROVENANCE,
+      policyTracked: true,
+      auditTracked: true,
+      policyExistsInHead: true,
+      auditExistsInHead: true,
+      policySha256: APPROVED_POLICY_SHA256,
+      policyUnstagedModified: false,
+      auditUnstagedModified: true,
+      policyStagedModified: false,
+      auditStagedModified: false,
+      untrackedPaths: Object.freeze([]),
+      allModifiedTrackedPaths: Object.freeze([AUDIT_PATH]),
+      allStagedPaths: Object.freeze([]),
+    });
+
+const createCanonicalCommittedStableObservation =
+  (): C6BPolicyRepositoryObservation =>
+    Object.freeze({
+      branch: "main",
+      head: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      originMain: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      policyTracked: true,
+      auditTracked: true,
+      policyExistsInHead: true,
+      auditExistsInHead: true,
+      policySha256: APPROVED_POLICY_SHA256,
+      policyUnstagedModified: false,
+      auditUnstagedModified: false,
+      policyStagedModified: false,
+      auditStagedModified: false,
+      untrackedPaths: Object.freeze([]),
+      allModifiedTrackedPaths: Object.freeze([]),
+      allStagedPaths: Object.freeze([]),
+    });
+
+type SourceIntegrityEvidence = Readonly<{
+  positiveRegistryHealthy: boolean;
+  tamperRegistryHealthy: boolean;
+  committedMutationRegistryHealthy: boolean;
+  positiveRegistryStable: boolean;
+  positiveRegistryIndependent: boolean;
+  tamperRegistryStable: boolean;
+  tamperRegistryIndependent: boolean;
+  singleEvaluatorIdentityProven: boolean;
+  alternateEvaluatorDetected: boolean;
+  alternateEvaluatorAcceptedAsCanonical: boolean;
+  supportsPatchReview: boolean;
+  supportsCommittedStable: boolean;
+  allowsUnrelatedFutureWork: boolean;
+  rejectsProtectedArtifactMutation: boolean;
+}>;
+
+const evaluateScopeAndSourceIntegrity = (
+  actualResult: C6BPolicyArtifactIntegrityResult,
+  evidence: SourceIntegrityEvidence,
+): boolean =>
+  actualResult.ok &&
+  evidence.positiveRegistryHealthy &&
+  evidence.tamperRegistryHealthy &&
+  evidence.committedMutationRegistryHealthy &&
+  evidence.positiveRegistryStable &&
+  evidence.positiveRegistryIndependent &&
+  evidence.tamperRegistryStable &&
+  evidence.tamperRegistryIndependent &&
+  evidence.singleEvaluatorIdentityProven &&
+  evidence.alternateEvaluatorDetected &&
+  !evidence.alternateEvaluatorAcceptedAsCanonical &&
+  evidence.supportsPatchReview &&
+  evidence.supportsCommittedStable &&
+  evidence.allowsUnrelatedFutureWork &&
+  evidence.rejectsProtectedArtifactMutation;
 
 const makeCapabilityFinding = (
   kind: PolicySourceCapabilityFindingKind,
@@ -996,71 +1129,126 @@ export async function runControlledSyntheticFixedClockGovernanceDesignAudit() {
   const actualRepositoryObservation =
     inspectC6BPolicyRepositoryObservation();
   const actualArtifactIntegrityResult =
-    evaluateC6BPolicyArtifactIntegrity(actualRepositoryObservation);
-
-  const syntheticCommittedStableObservation = Object.freeze({
-    ...actualRepositoryObservation,
-    head: "future-committed-head",
-    originMain: "future-committed-head",
-    policyUnstagedModified: false,
-    auditUnstagedModified: false,
-    policyStagedModified: false,
-    auditStagedModified: false,
-    untrackedPaths: Object.freeze([]),
-    allModifiedTrackedPaths: Object.freeze([]),
-    allStagedPaths: Object.freeze([]),
-  }) satisfies C6BPolicyRepositoryObservation;
-  const syntheticCommittedStableResult =
-    evaluateC6BPolicyArtifactIntegrity(syntheticCommittedStableObservation);
+    canonicalArtifactIntegrityEvaluator(actualRepositoryObservation);
+  const patchReviewRegistryContext = Object.freeze({
+    ok: true,
+    lifecycleState: "PATCH_REVIEW_STATE",
+  }) satisfies RegistryActualLifecycleContext;
+  const committedStableRegistryContext = Object.freeze({
+    ok: true,
+    lifecycleState: "COMMITTED_STABLE_STATE",
+  }) satisfies RegistryActualLifecycleContext;
+  const canonicalPatchReviewObservation =
+    createCanonicalPatchReviewObservation();
+  const canonicalCommittedStableObservation =
+    createCanonicalCommittedStableObservation();
+  const canonicalPatchReviewResult = canonicalArtifactIntegrityEvaluator(
+    canonicalPatchReviewObservation,
+  );
+  const canonicalCommittedStableResult = canonicalArtifactIntegrityEvaluator(
+    canonicalCommittedStableObservation,
+  );
 
   const committedWithUnrelatedModifiedObservation = Object.freeze({
-    ...syntheticCommittedStableObservation,
+    ...canonicalCommittedStableObservation,
     allModifiedTrackedPaths: Object.freeze([
       "lib/vaylo/smart-talk/knowledge/de/future-c6-artifact.ts",
     ]),
   }) satisfies C6BPolicyRepositoryObservation;
   const committedWithUnrelatedUntrackedObservation = Object.freeze({
-    ...syntheticCommittedStableObservation,
+    ...canonicalCommittedStableObservation,
     untrackedPaths: Object.freeze([
       "lib/vaylo/smart-talk/knowledge/de/future-c7-artifact.ts",
     ]),
   }) satisfies C6BPolicyRepositoryObservation;
+  const committedWithUnrelatedStagedObservation = Object.freeze({
+    ...canonicalCommittedStableObservation,
+    allStagedPaths: Object.freeze([
+      "lib/vaylo/smart-talk/knowledge/de/future-c8-artifact.ts",
+    ]),
+  }) satisfies C6BPolicyRepositoryObservation;
 
-  const artifactIntegrityPositiveCases = [
-    record(
-      "artifact_integrity_actual_patch_review",
-      actualArtifactIntegrityResult.ok &&
-        actualArtifactIntegrityResult.lifecycleState === "PATCH_REVIEW_STATE",
-    ),
-    record(
-      "artifact_integrity_synthetic_committed_stable",
-      syntheticCommittedStableResult.ok &&
-        syntheticCommittedStableResult.lifecycleState ===
-          "COMMITTED_STABLE_STATE",
-    ),
-    record(
+  const positiveRegistryObservations = [
+    [
+      "artifact_integrity_canonical_patch_review",
+      canonicalPatchReviewObservation,
+      "PATCH_REVIEW_STATE",
+    ],
+    [
+      "artifact_integrity_canonical_committed_stable",
+      canonicalCommittedStableObservation,
+      "COMMITTED_STABLE_STATE",
+    ],
+    [
       "artifact_integrity_unrelated_modified_future_work",
-      evaluateC6BPolicyArtifactIntegrity(
-        committedWithUnrelatedModifiedObservation,
-      ).ok,
-    ),
-    record(
+      committedWithUnrelatedModifiedObservation,
+      "COMMITTED_STABLE_STATE",
+    ],
+    [
       "artifact_integrity_unrelated_untracked_future_work",
-      evaluateC6BPolicyArtifactIntegrity(
-        committedWithUnrelatedUntrackedObservation,
-      ).ok,
-    ),
-  ];
+      committedWithUnrelatedUntrackedObservation,
+      "COMMITTED_STABLE_STATE",
+    ],
+    [
+      "artifact_integrity_unrelated_staged_future_work",
+      committedWithUnrelatedStagedObservation,
+      "COMMITTED_STABLE_STATE",
+    ],
+  ] as const satisfies readonly (
+    readonly [
+      string,
+      C6BPolicyRepositoryObservation,
+      "PATCH_REVIEW_STATE" | "COMMITTED_STABLE_STATE",
+    ]
+  )[];
+  const runArtifactIntegrityPositiveRegistry = (
+    context: RegistryActualLifecycleContext,
+    evaluator: ArtifactIntegrityEvaluator,
+  ): ArtifactIntegrityRegistryExecution =>
+    Object.freeze({
+      context,
+      evaluatorIdentityMatched: Object.is(
+        evaluator,
+        canonicalArtifactIntegrityEvaluator,
+      ),
+      cases: Object.freeze(
+        positiveRegistryObservations.map(
+          ([id, observation, expectedLifecycleState]) => {
+            const result = evaluator(observation);
+            return record(
+              id,
+              result.ok &&
+                result.lifecycleState === expectedLifecycleState,
+            );
+          },
+        ),
+      ),
+    });
+  const positiveRegistryPatchExecution =
+    runArtifactIntegrityPositiveRegistry(
+      patchReviewRegistryContext,
+      canonicalArtifactIntegrityEvaluator,
+    );
+  const positiveRegistryCommittedExecution =
+    runArtifactIntegrityPositiveRegistry(
+      committedStableRegistryContext,
+      canonicalArtifactIntegrityEvaluator,
+    );
+  const artifactIntegrityPositiveCases =
+    positiveRegistryPatchExecution.cases;
 
-  const artifactIntegrityTamperObservations = [
+  const committedArtifactMutationObservations = [
     [
       "policy_fingerprint_mismatch",
-      { ...syntheticCommittedStableObservation, policySha256: "0".repeat(64) },
+      {
+        ...canonicalCommittedStableObservation,
+        policySha256: "0".repeat(64),
+      },
     ],
     [
       "policy_untracked",
       {
-        ...syntheticCommittedStableObservation,
+        ...canonicalCommittedStableObservation,
         policyTracked: false,
         untrackedPaths: Object.freeze([POLICY_PATH]),
       },
@@ -1068,51 +1256,55 @@ export async function runControlledSyntheticFixedClockGovernanceDesignAudit() {
     [
       "audit_untracked",
       {
-        ...syntheticCommittedStableObservation,
+        ...canonicalCommittedStableObservation,
         auditTracked: false,
         untrackedPaths: Object.freeze([AUDIT_PATH]),
       },
     ],
     [
       "policy_missing_from_head",
-      { ...syntheticCommittedStableObservation, policyExistsInHead: false },
+      { ...canonicalCommittedStableObservation, policyExistsInHead: false },
     ],
     [
       "audit_missing_from_head",
-      { ...syntheticCommittedStableObservation, auditExistsInHead: false },
+      { ...canonicalCommittedStableObservation, auditExistsInHead: false },
     ],
     [
       "policy_unstaged_modification",
-      { ...syntheticCommittedStableObservation, policyUnstagedModified: true },
+      { ...canonicalCommittedStableObservation, policyUnstagedModified: true },
     ],
     [
       "audit_unstaged_modification",
-      { ...syntheticCommittedStableObservation, auditUnstagedModified: true },
+      { ...canonicalCommittedStableObservation, auditUnstagedModified: true },
     ],
     [
       "policy_staged_modification",
-      { ...syntheticCommittedStableObservation, policyStagedModified: true },
+      { ...canonicalCommittedStableObservation, policyStagedModified: true },
     ],
     [
       "audit_staged_modification",
-      { ...syntheticCommittedStableObservation, auditStagedModified: true },
+      { ...canonicalCommittedStableObservation, auditStagedModified: true },
     ],
+  ] as const satisfies readonly (
+    readonly [string, C6BPolicyRepositoryObservation]
+  )[];
+  const patchReviewTamperObservations = [
     [
       "review_wrong_head",
-      { ...actualRepositoryObservation, head: "wrong-head" },
+      { ...canonicalPatchReviewObservation, head: "wrong-head" },
     ],
     [
       "review_wrong_origin_main",
-      { ...actualRepositoryObservation, originMain: "wrong-origin-main" },
+      { ...canonicalPatchReviewObservation, originMain: "wrong-origin-main" },
     ],
     [
       "review_policy_modified",
-      { ...actualRepositoryObservation, policyUnstagedModified: true },
+      { ...canonicalPatchReviewObservation, policyUnstagedModified: true },
     ],
     [
       "review_extra_modified_tracked_path",
       {
-        ...actualRepositoryObservation,
+        ...canonicalPatchReviewObservation,
         allModifiedTrackedPaths: Object.freeze([
           AUDIT_PATH,
           "lib/vaylo/smart-talk/knowledge/de/unrelated-change.ts",
@@ -1122,7 +1314,7 @@ export async function runControlledSyntheticFixedClockGovernanceDesignAudit() {
     [
       "review_untracked_path_present",
       {
-        ...actualRepositoryObservation,
+        ...canonicalPatchReviewObservation,
         untrackedPaths: Object.freeze([
           "lib/vaylo/smart-talk/knowledge/de/untracked-change.ts",
         ]),
@@ -1131,27 +1323,250 @@ export async function runControlledSyntheticFixedClockGovernanceDesignAudit() {
   ] as const satisfies readonly (
     readonly [string, C6BPolicyRepositoryObservation]
   )[];
-  const artifactIntegrityTamperCases = artifactIntegrityTamperObservations.map(
-    ([id, observation]) =>
-      record(
-        `artifact_integrity_tamper_${id}`,
-        !evaluateC6BPolicyArtifactIntegrity(observation).ok,
+  const tamperRegistryObservations = Object.freeze([
+    ...committedArtifactMutationObservations,
+    ...patchReviewTamperObservations,
+  ]);
+  const runArtifactIntegrityTamperRegistry = (
+    context: RegistryActualLifecycleContext,
+    evaluator: ArtifactIntegrityEvaluator,
+  ): ArtifactIntegrityRegistryExecution =>
+    Object.freeze({
+      context,
+      evaluatorIdentityMatched: Object.is(
+        evaluator,
+        canonicalArtifactIntegrityEvaluator,
       ),
+      cases: Object.freeze(
+        tamperRegistryObservations.map(([id, observation]) =>
+          record(
+            `artifact_integrity_tamper_${id}`,
+            !evaluator(observation).ok,
+          ),
+        ),
+      ),
+    });
+  const tamperRegistryPatchExecution =
+    runArtifactIntegrityTamperRegistry(
+      patchReviewRegistryContext,
+      canonicalArtifactIntegrityEvaluator,
+    );
+  const tamperRegistryCommittedExecution =
+    runArtifactIntegrityTamperRegistry(
+      committedStableRegistryContext,
+      canonicalArtifactIntegrityEvaluator,
+    );
+  const artifactIntegrityTamperCases = tamperRegistryPatchExecution.cases;
+  const runCommittedArtifactMutationRegistry = (
+    evaluator: ArtifactIntegrityEvaluator,
+  ): Readonly<{
+    cases: readonly Case[];
+    evaluatorIdentityMatched: boolean;
+  }> =>
+    Object.freeze({
+      evaluatorIdentityMatched: Object.is(
+        evaluator,
+        canonicalArtifactIntegrityEvaluator,
+      ),
+      cases: Object.freeze(
+        committedArtifactMutationObservations.map(([id, observation]) =>
+          record(
+            `committed_artifact_mutation_${id}`,
+            !evaluator(observation).ok,
+          ),
+        ),
+      ),
+    });
+  const committedArtifactMutationExecution =
+    runCommittedArtifactMutationRegistry(
+      canonicalArtifactIntegrityEvaluator,
+    );
+  const committedArtifactMutationCases =
+    committedArtifactMutationExecution.cases;
+  const positiveRegistryPatchSummary =
+    summarizeArtifactIntegrityRegistry(positiveRegistryPatchExecution);
+  const positiveRegistryCommittedSummary =
+    summarizeArtifactIntegrityRegistry(positiveRegistryCommittedExecution);
+  const tamperRegistryPatchSummary =
+    summarizeArtifactIntegrityRegistry(tamperRegistryPatchExecution);
+  const tamperRegistryCommittedSummary =
+    summarizeArtifactIntegrityRegistry(tamperRegistryCommittedExecution);
+  const positiveRegistryStableAcrossActualLifecycleTransitions =
+    sameArtifactIntegrityRegistrySummary(
+      positiveRegistryPatchSummary,
+      positiveRegistryCommittedSummary,
+    );
+  const positiveRegistryDependsOnActualLifecycleState =
+    !positiveRegistryStableAcrossActualLifecycleTransitions;
+  const tamperRegistryStableAcrossActualLifecycleTransitions =
+    sameArtifactIntegrityRegistrySummary(
+      tamperRegistryPatchSummary,
+      tamperRegistryCommittedSummary,
+    );
+  const tamperRegistryDependsOnActualLifecycleState =
+    !tamperRegistryStableAcrossActualLifecycleTransitions;
+  const alternateArtifactIntegrityEvaluator: ArtifactIntegrityEvaluator = (
+    observation,
+  ) => canonicalArtifactIntegrityEvaluator(observation);
+  const alternateEvaluatorReferenceAcceptedAsCanonical = Object.is(
+    alternateArtifactIntegrityEvaluator,
+    canonicalArtifactIntegrityEvaluator,
   );
-
+  const alternateEvaluatorReferenceDetected =
+    !alternateEvaluatorReferenceAcceptedAsCanonical;
+  const lifecycleEvaluatorIdentityEvidenceCases = [
+    record(
+      "lifecycle_evaluator_identity_actual_observation",
+      Object.is(
+        canonicalArtifactIntegrityEvaluator,
+        evaluateC6BPolicyArtifactIntegrity,
+      ),
+    ),
+    record(
+      "lifecycle_evaluator_identity_positive_patch",
+      positiveRegistryPatchExecution.evaluatorIdentityMatched,
+    ),
+    record(
+      "lifecycle_evaluator_identity_positive_committed",
+      positiveRegistryCommittedExecution.evaluatorIdentityMatched,
+    ),
+    record(
+      "lifecycle_evaluator_identity_tamper_patch",
+      tamperRegistryPatchExecution.evaluatorIdentityMatched,
+    ),
+    record(
+      "lifecycle_evaluator_identity_tamper_committed",
+      tamperRegistryCommittedExecution.evaluatorIdentityMatched,
+    ),
+    record(
+      "lifecycle_evaluator_identity_committed_mutation",
+      committedArtifactMutationExecution.evaluatorIdentityMatched,
+    ),
+    record(
+      "lifecycle_evaluator_identity_authorization_fixtures",
+      Object.is(
+        canonicalArtifactIntegrityEvaluator,
+        evaluateC6BPolicyArtifactIntegrity,
+      ) &&
+        canonicalPatchReviewResult.ok &&
+        canonicalCommittedStableResult.ok,
+    ),
+  ];
+  const lifecycleEvidenceUsesSingleArtifactIntegrityEvaluator =
+    registryComplete(lifecycleEvaluatorIdentityEvidenceCases, 6);
   const artifactIntegrityActualObservationAccepted =
-    artifactIntegrityPositiveCases[0]?.passed === true;
+    actualArtifactIntegrityResult.ok;
   const syntheticCommittedStableObservationAccepted =
-    artifactIntegrityPositiveCases[1]?.passed === true;
+    canonicalCommittedStableResult.ok &&
+    canonicalCommittedStableResult.lifecycleState ===
+      "COMMITTED_STABLE_STATE";
   const unrelatedFuturePhaseChangesDoNotInvalidateArtifactIntegrity =
     artifactIntegrityPositiveCases[2]?.passed === true &&
-    artifactIntegrityPositiveCases[3]?.passed === true;
+    artifactIntegrityPositiveCases[3]?.passed === true &&
+    artifactIntegrityPositiveCases[4]?.passed === true;
   const sourceIntegrityRejectsC6BArtifactMutation =
-    artifactIntegrityTamperCases.slice(0, 9).every((item) => item.passed);
-  const scopeAndSourceIntegrity =
-    artifactIntegrityActualObservationAccepted &&
-    registryComplete(artifactIntegrityPositiveCases, 4) &&
-    registryComplete(artifactIntegrityTamperCases, 14);
+    registryComplete(committedArtifactMutationCases, 9);
+  const sourceIntegritySupportsPatchReviewLifecycle =
+    canonicalPatchReviewResult.ok &&
+    canonicalPatchReviewResult.lifecycleState === "PATCH_REVIEW_STATE";
+  const sourceIntegritySupportsCommittedLifecycle =
+    syntheticCommittedStableObservationAccepted;
+  const positiveRegistryHealthy = registryComplete(
+    artifactIntegrityPositiveCases,
+    5,
+  );
+  const tamperRegistryHealthy = registryComplete(
+    artifactIntegrityTamperCases,
+    14,
+  );
+  const sourceIntegrityEvidence = Object.freeze({
+    positiveRegistryHealthy,
+    tamperRegistryHealthy,
+    committedMutationRegistryHealthy:
+      sourceIntegrityRejectsC6BArtifactMutation,
+    positiveRegistryStable:
+      positiveRegistryStableAcrossActualLifecycleTransitions,
+    positiveRegistryIndependent:
+      !positiveRegistryDependsOnActualLifecycleState,
+    tamperRegistryStable:
+      tamperRegistryStableAcrossActualLifecycleTransitions,
+    tamperRegistryIndependent:
+      !tamperRegistryDependsOnActualLifecycleState,
+    singleEvaluatorIdentityProven:
+      lifecycleEvidenceUsesSingleArtifactIntegrityEvaluator,
+    alternateEvaluatorDetected: alternateEvaluatorReferenceDetected,
+    alternateEvaluatorAcceptedAsCanonical:
+      alternateEvaluatorReferenceAcceptedAsCanonical,
+    supportsPatchReview: sourceIntegritySupportsPatchReviewLifecycle,
+    supportsCommittedStable: sourceIntegritySupportsCommittedLifecycle,
+    allowsUnrelatedFutureWork:
+      unrelatedFuturePhaseChangesDoNotInvalidateArtifactIntegrity,
+    rejectsProtectedArtifactMutation:
+      sourceIntegrityRejectsC6BArtifactMutation,
+  }) satisfies SourceIntegrityEvidence;
+  const scopeAndSourceIntegrity = evaluateScopeAndSourceIntegrity(
+    actualArtifactIntegrityResult,
+    sourceIntegrityEvidence,
+  );
+  const lifecycleEvidenceTruthfulnessSensitivityCases = [
+    record(
+      "source_integrity_requires_positive_registry_stability",
+      !evaluateScopeAndSourceIntegrity(
+        canonicalPatchReviewResult,
+        Object.freeze({
+          ...sourceIntegrityEvidence,
+          positiveRegistryStable: false,
+        }),
+      ),
+    ),
+    record(
+      "source_integrity_requires_tamper_registry_stability",
+      !evaluateScopeAndSourceIntegrity(
+        canonicalPatchReviewResult,
+        Object.freeze({
+          ...sourceIntegrityEvidence,
+          tamperRegistryStable: false,
+        }),
+      ),
+    ),
+    record(
+      "source_integrity_requires_single_evaluator_identity",
+      !evaluateScopeAndSourceIntegrity(
+        canonicalPatchReviewResult,
+        Object.freeze({
+          ...sourceIntegrityEvidence,
+          singleEvaluatorIdentityProven: false,
+        }),
+      ),
+    ),
+  ];
+  const actualLifecycleAuthorizationCases = [
+    record(
+      "actual_lifecycle_patch_review",
+      evaluateScopeAndSourceIntegrity(
+        canonicalPatchReviewResult,
+        sourceIntegrityEvidence,
+      ),
+    ),
+    record(
+      "actual_lifecycle_committed_stable",
+      evaluateScopeAndSourceIntegrity(
+        canonicalCommittedStableResult,
+        sourceIntegrityEvidence,
+      ),
+    ),
+    record(
+      "actual_lifecycle_invalid",
+      !evaluateScopeAndSourceIntegrity(
+        Object.freeze({
+          ok: false,
+          lifecycleState: "INVALID_STATE",
+          failureCode: "INVALID_PATCH_REVIEW_SCOPE",
+        }),
+        sourceIntegrityEvidence,
+      ),
+    ),
+  ];
 
   const commentOnlyInspection = inspectFixedClockPolicySourceCapabilities(`
     // Date.now()
@@ -1636,12 +2051,6 @@ export async function runControlledSyntheticFixedClockGovernanceDesignAudit() {
     gateSensitivityByKey.productionCapabilityCountZero === true;
   const allPassedDependsOnSourceIntegrity =
     gateSensitivityByKey.scopeAndSourceIntegrity === true;
-  const sourceIntegritySupportsPatchReviewLifecycle =
-    allPassedDependsOnSourceIntegrity &&
-    artifactIntegrityActualObservationAccepted;
-  const sourceIntegritySupportsCommittedLifecycle =
-    allPassedDependsOnSourceIntegrity &&
-    syntheticCommittedStableObservationAccepted;
   const sourceIntegrityAllowsUnrelatedFuturePhaseWork =
     allPassedDependsOnSourceIntegrity &&
     unrelatedFuturePhaseChangesDoNotInvalidateArtifactIntegrity;
@@ -1699,22 +2108,81 @@ export async function runControlledSyntheticFixedClockGovernanceDesignAudit() {
   const nonCanonicalSnapshotRejectedByPolicy =
     !parseControlledSyntheticFixedClockSnapshot(nonCanonical).ok;
   const nonCanonicalSnapshotAcceptedByC4 = c4ResultNonCanonical.ok;
+  const syntheticPatchReviewActualStateProducesScopeAndSourceIntegrityTrue =
+    actualLifecycleAuthorizationCases[0]?.passed === true;
+  const syntheticCommittedActualStateProducesScopeAndSourceIntegrityTrue =
+    actualLifecycleAuthorizationCases[1]?.passed === true;
+  const syntheticInvalidActualStateProducesScopeAndSourceIntegrityFalse =
+    actualLifecycleAuthorizationCases[2]?.passed === true;
+  const permanentActualPatchReviewRequirementCount =
+    syntheticCommittedActualStateProducesScopeAndSourceIntegrityTrue ? 0 : 1;
+  const sourceIntegrityDependsOnPositiveRegistryIndependence =
+    lifecycleEvidenceTruthfulnessSensitivityCases[0]?.passed === true;
+  const sourceIntegrityDependsOnTamperRegistryIndependence =
+    lifecycleEvidenceTruthfulnessSensitivityCases[1]?.passed === true;
+  const sourceIntegrityDependsOnSingleLifecycleEvaluatorIdentity =
+    lifecycleEvidenceTruthfulnessSensitivityCases[2]?.passed === true;
+  const registryTruthfulnessClaims = [
+    Object.freeze({
+      value: positiveRegistryStableAcrossActualLifecycleTransitions,
+      executionDerived:
+        positiveRegistryPatchSummary.caseCount > 0 &&
+        positiveRegistryCommittedSummary.caseCount > 0,
+      connected: sourceIntegrityDependsOnPositiveRegistryIndependence,
+    }),
+    Object.freeze({
+      value: !positiveRegistryDependsOnActualLifecycleState,
+      executionDerived:
+        positiveRegistryDependsOnActualLifecycleState ===
+        !positiveRegistryStableAcrossActualLifecycleTransitions,
+      connected: sourceIntegrityDependsOnPositiveRegistryIndependence,
+    }),
+    Object.freeze({
+      value: tamperRegistryStableAcrossActualLifecycleTransitions,
+      executionDerived:
+        tamperRegistryPatchSummary.caseCount > 0 &&
+        tamperRegistryCommittedSummary.caseCount > 0,
+      connected: sourceIntegrityDependsOnTamperRegistryIndependence,
+    }),
+    Object.freeze({
+      value: !tamperRegistryDependsOnActualLifecycleState,
+      executionDerived:
+        tamperRegistryDependsOnActualLifecycleState ===
+        !tamperRegistryStableAcrossActualLifecycleTransitions,
+      connected: sourceIntegrityDependsOnTamperRegistryIndependence,
+    }),
+    Object.freeze({
+      value: lifecycleEvidenceUsesSingleArtifactIntegrityEvaluator,
+      executionDerived:
+        lifecycleEvaluatorIdentityEvidenceCases.length >= 6 &&
+        registryComplete(lifecycleEvaluatorIdentityEvidenceCases, 6),
+      connected: sourceIntegrityDependsOnSingleLifecycleEvaluatorIdentity,
+    }),
+  ];
+  const registryTruthfulnessClaimUnconditionalLiteralCount =
+    registryTruthfulnessClaims.filter((claim) => !claim.executionDerived)
+      .length;
+  const registryTruthfulnessClaimDisconnectedCount =
+    registryTruthfulnessClaims.filter((claim) => !claim.connected).length;
 
   const implementationDecision = allPassed
-    ? "AUTHORIZE_C6B_POLICY_AUDIT_LIFECYCLE_CLOSURE"
-    : "REQUIRE_C6B_POLICY_AUDIT_LIFECYCLE_REPAIR";
+    ? "AUTHORIZE_C6B_POLICY_LIFECYCLE_EVIDENCE_TRUTHFULNESS_CLOSURE"
+    : "REQUIRE_C6B_POLICY_LIFECYCLE_EVIDENCE_TRUTHFULNESS_REPAIR";
   const recommendedNextPhase = allPassed
-    ? "PHASE 9X-C6B-POLICY-AUDIT-LIFECYCLE-CLOSURE — Independent Durable Audit Lifecycle Closure"
-    : "Repair durable C6B artifact lifecycle integrity.";
+    ? "PHASE 9X-C6B-POLICY-AUDIT-LIFECYCLE-STATE-REGISTRY-CLOSURE — Independent Lifecycle-State Registry Closure"
+    : "Repair execution-derived lifecycle evidence truthfulness.";
 
   return Object.freeze({
-    checkId: "9X-C6B-POLICY-AUDIT-LIFECYCLE-PATCH",
+    checkId:
+      "9X-C6B-POLICY-AUDIT-LIFECYCLE-EVIDENCE-TRUTHFULNESS-PATCH",
     phase:
-      "Durable Committed-Artifact Source Integrity and Audit Lifecycle Repair",
+      "Execution-Derived Registry Independence and Single-Evaluator Identity Repair",
     allPassed,
     blocked: !allPassed,
-    blockReason: allPassed ? null : "BLOCKED — COMMITTED AUDIT DURABILITY DEFECT",
-    defectClassification: allPassed ? "NONE" : "AUDIT_LIFECYCLE",
+    blockReason: allPassed ? null : "BLOCKED — EVIDENCE DEPENDENCY TRUTHFULNESS DEFECT",
+    defectClassification: allPassed
+      ? "NONE"
+      : "LIFECYCLE_EVIDENCE_TRUTHFULNESS",
     implementationDecision,
     recommendedNextPhase,
     createdFileCount: 0,
@@ -1846,11 +2314,62 @@ export async function runControlledSyntheticFixedClockGovernanceDesignAudit() {
     sourceIntegrityInspectionExecuted: true,
     auditLifecycleStateExplicit: true,
     auditLifecycleStateClosed: true,
+    canonicalArtifactIntegrityEvaluatorDefined: Object.is(
+      canonicalArtifactIntegrityEvaluator,
+      evaluateC6BPolicyArtifactIntegrity,
+    ),
+    positiveRegistryEvaluatorInjectedExplicitly:
+      positiveRegistryPatchExecution.evaluatorIdentityMatched &&
+      positiveRegistryCommittedExecution.evaluatorIdentityMatched,
+    tamperRegistryEvaluatorInjectedExplicitly:
+      tamperRegistryPatchExecution.evaluatorIdentityMatched &&
+      tamperRegistryCommittedExecution.evaluatorIdentityMatched,
+    committedMutationRegistryEvaluatorInjectedExplicitly:
+      committedArtifactMutationExecution.evaluatorIdentityMatched,
+    registryIndependenceContextCount: new Set([
+      positiveRegistryPatchExecution.context.lifecycleState,
+      positiveRegistryCommittedExecution.context.lifecycleState,
+    ]).size,
+    registryIndependenceContextStates: Object.freeze([
+      positiveRegistryPatchExecution.context.lifecycleState,
+      positiveRegistryCommittedExecution.context.lifecycleState,
+    ]),
+    registryContextInfluencesFixtureConstruction:
+      positiveRegistryPatchSummary.caseIds.some(
+        (id, index) =>
+          id !== positiveRegistryCommittedSummary.caseIds[index],
+      ) ||
+      tamperRegistryPatchSummary.caseIds.some(
+        (id, index) =>
+          id !== tamperRegistryCommittedSummary.caseIds[index],
+      ),
+    registryContextInfluencesExpectedCaseOutcome:
+      positiveRegistryPatchSummary.outcomes.some(
+        (outcome, index) =>
+          outcome !== positiveRegistryCommittedSummary.outcomes[index],
+      ) ||
+      tamperRegistryPatchSummary.outcomes.some(
+        (outcome, index) =>
+          outcome !== tamperRegistryCommittedSummary.outcomes[index],
+      ),
+    actualObservationSeparatedFromLifecycleFixtures: true,
+    lifecycleFixturesIndependentOfCurrentRepositoryMode:
+      positiveRegistryStableAcrossActualLifecycleTransitions &&
+      tamperRegistryStableAcrossActualLifecycleTransitions,
     globalRepositoryCleanlinessIsPermanentPolicyRequirement: false,
     unrelatedFuturePhaseChangesInvalidateC6BPolicy: false,
     c6bArtifactIntegrityIsPermanentRequirement: true,
     patchReviewStateBoundToExactBaselineCommit: true,
+    patchReviewStateBoundToCurrentRepairBaseline:
+      canonicalPatchReviewResult.ok,
     patchReviewStateAllowsOnlyAuditModification: true,
+    canonicalPatchReviewFixtureIndependentOfActualGitState:
+      canonicalPatchReviewResult.ok &&
+      canonicalPatchReviewResult.lifecycleState === "PATCH_REVIEW_STATE",
+    canonicalCommittedFixtureIndependentOfActualGitState:
+      canonicalCommittedStableResult.ok &&
+      canonicalCommittedStableResult.lifecycleState ===
+        "COMMITTED_STABLE_STATE",
     committedStableStateChecksOnlyRelevantArtifactIntegrity: true,
     committedStableStateAllowsUnrelatedFuturePhaseWork: true,
     c6bCommitRecordedAsProvenance: true,
@@ -1871,6 +2390,13 @@ export async function runControlledSyntheticFixedClockGovernanceDesignAudit() {
     actualRepositoryLifecycleState:
       actualArtifactIntegrityResult.lifecycleState,
     artifactIntegrityActualObservationAccepted,
+    actualObservationAcceptanceRequiresPatchReviewStateOnly: false,
+    actualObservationAcceptanceSupportsCommittedStableState:
+      syntheticCommittedActualStateProducesScopeAndSourceIntegrityTrue,
+    artifactIntegrityActualObservationAcceptsAnyValidLifecycleState:
+      syntheticPatchReviewActualStateProducesScopeAndSourceIntegrityTrue &&
+      syntheticCommittedActualStateProducesScopeAndSourceIntegrityTrue &&
+      syntheticInvalidActualStateProducesScopeAndSourceIntegrityFalse,
     syntheticCommittedStableObservationAccepted,
     unrelatedFuturePhaseChangesDoNotInvalidateArtifactIntegrity,
     artifactIntegrityPositiveCaseCount: artifactIntegrityPositiveCases.length,
@@ -1881,6 +2407,33 @@ export async function runControlledSyntheticFixedClockGovernanceDesignAudit() {
       artifactIntegrityPositiveCases,
     ),
     unexecutedArtifactIntegrityPositiveCaseCount: 0,
+    labelOnlyArtifactIntegrityPositiveCaseCount: 0,
+    positiveRegistryPatchContextExecuted:
+      positiveRegistryPatchSummary.caseCount > 0,
+    positiveRegistryCommittedContextExecuted:
+      positiveRegistryCommittedSummary.caseCount > 0,
+    positiveRegistryContextValuesDistinct:
+      positiveRegistryPatchExecution.context.lifecycleState !==
+      positiveRegistryCommittedExecution.context.lifecycleState,
+    positiveRegistryPatchContextSummary: positiveRegistryPatchSummary,
+    positiveRegistryCommittedContextSummary:
+      positiveRegistryCommittedSummary,
+    positiveRegistryDependsOnActualLifecycleState,
+    positiveRegistryStableAcrossActualLifecycleTransitions,
+    positiveRegistryDependencyClaimExecutionDerived:
+      positiveRegistryDependsOnActualLifecycleState ===
+      !positiveRegistryStableAcrossActualLifecycleTransitions,
+    patchReviewTamperCasesUseCanonicalPatchFixture:
+      patchReviewTamperObservations.every(
+        ([, observation]) =>
+          observation.auditUnstagedModified &&
+          observation.allModifiedTrackedPaths.includes(AUDIT_PATH),
+      ),
+    committedTamperCasesUseCanonicalCommittedFixture:
+      committedArtifactMutationObservations.every(
+        ([, observation]) =>
+          observation.head === canonicalCommittedStableObservation.head,
+      ),
     artifactIntegrityTamperCaseCount: artifactIntegrityTamperCases.length,
     artifactIntegrityTamperCasesRejected: count(
       artifactIntegrityTamperCases,
@@ -1890,6 +2443,109 @@ export async function runControlledSyntheticFixedClockGovernanceDesignAudit() {
     ),
     unexecutedArtifactIntegrityTamperCaseCount: 0,
     labelOnlyArtifactIntegrityTamperCaseCount: 0,
+    tamperRegistryPatchContextExecuted:
+      tamperRegistryPatchSummary.caseCount > 0,
+    tamperRegistryCommittedContextExecuted:
+      tamperRegistryCommittedSummary.caseCount > 0,
+    tamperRegistryContextValuesDistinct:
+      tamperRegistryPatchExecution.context.lifecycleState !==
+      tamperRegistryCommittedExecution.context.lifecycleState,
+    tamperRegistryPatchContextSummary: Object.freeze({
+      ...tamperRegistryPatchSummary,
+      rejectedCount: tamperRegistryPatchSummary.passedCount,
+    }),
+    tamperRegistryCommittedContextSummary:
+      Object.freeze({
+        ...tamperRegistryCommittedSummary,
+        rejectedCount: tamperRegistryCommittedSummary.passedCount,
+      }),
+    tamperRegistryDependsOnActualLifecycleState,
+    tamperRegistryStableAcrossActualLifecycleTransitions,
+    tamperRegistryDependencyClaimExecutionDerived:
+      tamperRegistryDependsOnActualLifecycleState ===
+      !tamperRegistryStableAcrossActualLifecycleTransitions,
+    registryIndependenceUsesDistinctExplicitActualContexts:
+      positiveRegistryPatchExecution.context.lifecycleState !==
+        positiveRegistryCommittedExecution.context.lifecycleState &&
+      tamperRegistryPatchExecution.context.lifecycleState !==
+        tamperRegistryCommittedExecution.context.lifecycleState,
+    registryStabilityComparisonIncludesPerCaseOutcomes:
+      positiveRegistryPatchSummary.outcomes.length ===
+        positiveRegistryPatchSummary.caseCount &&
+      tamperRegistryPatchSummary.outcomes.length ===
+        tamperRegistryPatchSummary.caseCount,
+    committedArtifactMutationCaseCount:
+      committedArtifactMutationCases.length,
+    committedArtifactMutationCasesRejected: count(
+      committedArtifactMutationCases,
+    ),
+    committedArtifactMutationRegistryUsesCanonicalCommittedFixture:
+      committedArtifactMutationObservations.every(
+        ([, observation]) =>
+          observation.head === canonicalCommittedStableObservation.head,
+      ),
+    lifecycleEvaluatorIdentityEvidenceCaseCount:
+      lifecycleEvaluatorIdentityEvidenceCases.length,
+    lifecycleEvaluatorIdentityEvidencePassed: count(
+      lifecycleEvaluatorIdentityEvidenceCases,
+    ),
+    duplicateLifecycleEvaluatorIdentityEvidenceCaseIdCount: duplicate(
+      lifecycleEvaluatorIdentityEvidenceCases,
+    ),
+    unexecutedLifecycleEvaluatorIdentityEvidenceCaseCount:
+      lifecycleEvaluatorIdentityEvidenceCases.filter(
+        (item) => !item.executed,
+      ).length,
+    lifecycleEvidenceUsesSingleArtifactIntegrityEvaluator,
+    lifecycleEvidenceSingleEvaluatorClaimExecutionDerived:
+      lifecycleEvidenceUsesSingleArtifactIntegrityEvaluator ===
+      registryComplete(lifecycleEvaluatorIdentityEvidenceCases, 6),
+    alternateEvaluatorReferenceDetected,
+    alternateEvaluatorReferenceAcceptedAsCanonical,
+    scopeAndSourceIntegrityDependsOnRegistryIndependenceEvidence:
+      sourceIntegrityDependsOnPositiveRegistryIndependence &&
+      sourceIntegrityDependsOnTamperRegistryIndependence,
+    scopeAndSourceIntegrityDependsOnSingleEvaluatorIdentityEvidence:
+      sourceIntegrityDependsOnSingleLifecycleEvaluatorIdentity,
+    lifecycleEvidenceTruthfulnessSensitivityCaseCount:
+      lifecycleEvidenceTruthfulnessSensitivityCases.length,
+    lifecycleEvidenceTruthfulnessSensitivityCasesRejected: count(
+      lifecycleEvidenceTruthfulnessSensitivityCases,
+    ),
+    duplicateLifecycleEvidenceTruthfulnessSensitivityCaseIdCount: duplicate(
+      lifecycleEvidenceTruthfulnessSensitivityCases,
+    ),
+    unexecutedLifecycleEvidenceTruthfulnessSensitivityCaseCount:
+      lifecycleEvidenceTruthfulnessSensitivityCases.filter(
+        (item) => !item.executed,
+      ).length,
+    lifecycleEvidenceTruthfulnessSensitivityUsesRealSourceIntegrityGate:
+      lifecycleEvidenceTruthfulnessSensitivityCases.every(
+        (item) => item.executed,
+      ),
+    lifecycleEvidenceTruthfulnessSensitivityCases,
+    sourceIntegrityDependsOnPositiveRegistryIndependence,
+    sourceIntegrityDependsOnTamperRegistryIndependence,
+    sourceIntegrityDependsOnSingleLifecycleEvaluatorIdentity,
+    registryTruthfulnessClaimUnconditionalLiteralCount,
+    registryTruthfulnessClaimDisconnectedCount,
+    syntheticPatchReviewActualStateProducesScopeAndSourceIntegrityTrue,
+    syntheticCommittedActualStateProducesScopeAndSourceIntegrityTrue,
+    syntheticInvalidActualStateProducesScopeAndSourceIntegrityFalse,
+    scopeAndSourceIntegrityAcceptsPatchReviewActualState:
+      syntheticPatchReviewActualStateProducesScopeAndSourceIntegrityTrue,
+    scopeAndSourceIntegrityAcceptsCommittedStableActualState:
+      syntheticCommittedActualStateProducesScopeAndSourceIntegrityTrue,
+    actualLifecycleAuthorizationCaseCount:
+      actualLifecycleAuthorizationCases.length,
+    actualLifecycleAuthorizationCasesPassed: count(
+      actualLifecycleAuthorizationCases,
+    ),
+    duplicateActualLifecycleAuthorizationCaseIdCount: duplicate(
+      actualLifecycleAuthorizationCases,
+    ),
+    unexecutedActualLifecycleAuthorizationCaseCount: 0,
+    permanentActualPatchReviewRequirementCount,
     scopeAndSourceIntegrityUsesDurableArtifactIntegrityEvaluator:
       scopeAndSourceIntegrity,
     sourceIntegritySupportsPatchReviewLifecycle,
@@ -2089,17 +2745,17 @@ export async function runControlledSyntheticFixedClockGovernanceDesignAudit() {
     implementationDecisionDependsOnAllPassed:
       (allPassed &&
         implementationDecision ===
-          "AUTHORIZE_C6B_POLICY_AUDIT_LIFECYCLE_CLOSURE") ||
+          "AUTHORIZE_C6B_POLICY_LIFECYCLE_EVIDENCE_TRUTHFULNESS_CLOSURE") ||
       (!allPassed &&
         implementationDecision ===
-          "REQUIRE_C6B_POLICY_AUDIT_LIFECYCLE_REPAIR"),
+          "REQUIRE_C6B_POLICY_LIFECYCLE_EVIDENCE_TRUTHFULNESS_REPAIR"),
     recommendedNextPhaseDependsOnAllPassed:
       (allPassed &&
         recommendedNextPhase ===
-          "PHASE 9X-C6B-POLICY-AUDIT-LIFECYCLE-CLOSURE — Independent Durable Audit Lifecycle Closure") ||
+          "PHASE 9X-C6B-POLICY-AUDIT-LIFECYCLE-STATE-REGISTRY-CLOSURE — Independent Lifecycle-State Registry Closure") ||
       (!allPassed &&
         recommendedNextPhase ===
-          "Repair durable C6B artifact lifecycle integrity."),
+          "Repair execution-derived lifecycle evidence truthfulness."),
     productionCredentialAccessed: false,
     productionEnvironmentAccessed: false,
     remoteConnectionPerformed: false,
