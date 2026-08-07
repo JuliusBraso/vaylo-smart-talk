@@ -1,5 +1,6 @@
 import "server-only";
 import { pathToFileURL } from "node:url";
+import { CONTROLLED_PREFLIGHT_ACTOR_AUTHORITY } from "../source-registry/controlled-preflight-actor-authority";
 
 /**
  * C1 is an executable design gate only. It defines no credential provider,
@@ -22,14 +23,7 @@ type Failure = Readonly<{
   retryAllowed: false;
 }>;
 
-const ACTORS = Object.freeze([
-  Object.freeze(["operator", "confirms identity, supplies approved references, starts one attempt"]),
-  Object.freeze(["authorizationIssuer", "issues the external single-attempt envelope"]),
-  Object.freeze(["credentialProvider", "leases one credential only after boundary validation"]),
-  Object.freeze(["concreteTransportAdapter", "owns one session and maps approved IDs internally"]),
-  Object.freeze(["existingHelper", "validates, orchestrates, normalizes, and classifies"]),
-  Object.freeze(["evidenceConsumer", "receives only bounded sanitized evidence"]),
-] as const);
+const ACTORS = CONTROLLED_PREFLIGHT_ACTOR_AUTHORITY;
 
 const MANIFEST_FIELDS = Object.freeze([
   "manifestKind",
