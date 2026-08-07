@@ -1,6 +1,7 @@
 import "server-only";
 
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -84,6 +85,53 @@ type PolicySourceCapabilityInspection = Readonly<{
   productionCapabilityFindings: readonly PolicySourceCapabilityFinding[];
 }>;
 
+type C6BPolicyAuditLifecycleState =
+  | "PATCH_REVIEW_STATE"
+  | "COMMITTED_STABLE_STATE"
+  | "INVALID_STATE";
+
+type C6BPolicyRepositoryObservation = Readonly<{
+  branch: string;
+  head: string;
+  originMain: string;
+  policyTracked: boolean;
+  auditTracked: boolean;
+  policyExistsInHead: boolean;
+  auditExistsInHead: boolean;
+  policySha256: string;
+  policyUnstagedModified: boolean;
+  auditUnstagedModified: boolean;
+  policyStagedModified: boolean;
+  auditStagedModified: boolean;
+  untrackedPaths: readonly string[];
+  allModifiedTrackedPaths: readonly string[];
+  allStagedPaths: readonly string[];
+}>;
+
+type C6BPolicyArtifactIntegrityResult =
+  | Readonly<{
+      ok: true;
+      lifecycleState: Exclude<
+        C6BPolicyAuditLifecycleState,
+        "INVALID_STATE"
+      >;
+    }>
+  | Readonly<{
+      ok: false;
+      lifecycleState: Extract<
+        C6BPolicyAuditLifecycleState,
+        "INVALID_STATE"
+      >;
+      failureCode:
+        | "POLICY_FINGERPRINT_MISMATCH"
+        | "ARTIFACT_NOT_TRACKED"
+        | "ARTIFACT_MISSING_FROM_HEAD"
+        | "ARTIFACT_STAGED"
+        | "ARTIFACT_MODIFIED_OUTSIDE_PATCH_REVIEW"
+        | "INVALID_PATCH_REVIEW_BASELINE"
+        | "INVALID_PATCH_REVIEW_SCOPE";
+    }>;
+
 const MANDATORY_GATE_KEYS: readonly MandatoryGateKey[] = [
   "scopeAndSourceIntegrity",
   "exactPolicyIdentityAndSemantics",
@@ -107,11 +155,14 @@ const MANDATORY_GATE_KEYS: readonly MandatoryGateKey[] = [
   "productionCapabilityCountZero",
 ] as const;
 
-const EXPECTED_HEAD = "90984ffe97877c518145c8e4155e495e7128cc8d";
-const EXPECTED_UNTRACKED = Object.freeze([
-  "lib/vaylo/smart-talk/knowledge/de/run-controlled-synthetic-fixed-clock-governance-design-audit.ts",
-  "lib/vaylo/smart-talk/knowledge/source-registry/controlled-synthetic-fixed-clock-policy.ts",
-]);
+const C6B_COMMIT_PROVENANCE =
+  "c5b2b199e643748c3c029277992808c639268dfb";
+const APPROVED_POLICY_SHA256 =
+  "A00A50C48354FC9051CE73A4A620D1C0A61BE9197E1D73DFB473809218A86186";
+const POLICY_PATH =
+  "lib/vaylo/smart-talk/knowledge/source-registry/controlled-synthetic-fixed-clock-policy.ts";
+const AUDIT_PATH =
+  "lib/vaylo/smart-talk/knowledge/de/run-controlled-synthetic-fixed-clock-governance-design-audit.ts";
 
 const RUNTIME_CLOCK_CATEGORIES = Object.freeze([
   "DATE_NOW",
@@ -166,6 +217,111 @@ const evaluateMandatoryPolicyGates = (
 const gitOutput = (...args: readonly string[]): string => {
   const result = spawnSync("git", [...args], { encoding: "utf8" });
   return result.stdout.trim();
+};
+
+const gitSucceeds = (...args: readonly string[]): boolean =>
+  spawnSync("git", [...args], { encoding: "utf8" }).status === 0;
+
+const outputPaths = (value: string): readonly string[] =>
+  Object.freeze(
+    value
+      .split("\n")
+      .map((path) => path.trim())
+      .filter(Boolean)
+      .sort(),
+  );
+
+const includesPath = (paths: readonly string[], path: string): boolean =>
+  paths.includes(path);
+
+const evaluateC6BPolicyArtifactIntegrity = (
+  observation: C6BPolicyRepositoryObservation,
+): C6BPolicyArtifactIntegrityResult => {
+  if (observation.policySha256 !== APPROVED_POLICY_SHA256) {
+    return Object.freeze({
+      ok: false,
+      lifecycleState: "INVALID_STATE",
+      failureCode: "POLICY_FINGERPRINT_MISMATCH",
+    });
+  }
+  if (
+    !observation.policyTracked ||
+    !observation.auditTracked ||
+    includesPath(observation.untrackedPaths, POLICY_PATH) ||
+    includesPath(observation.untrackedPaths, AUDIT_PATH)
+  ) {
+    return Object.freeze({
+      ok: false,
+      lifecycleState: "INVALID_STATE",
+      failureCode: "ARTIFACT_NOT_TRACKED",
+    });
+  }
+  if (!observation.policyExistsInHead || !observation.auditExistsInHead) {
+    return Object.freeze({
+      ok: false,
+      lifecycleState: "INVALID_STATE",
+      failureCode: "ARTIFACT_MISSING_FROM_HEAD",
+    });
+  }
+  if (
+    observation.policyStagedModified ||
+    observation.auditStagedModified ||
+    includesPath(observation.allStagedPaths, POLICY_PATH) ||
+    includesPath(observation.allStagedPaths, AUDIT_PATH)
+  ) {
+    return Object.freeze({
+      ok: false,
+      lifecycleState: "INVALID_STATE",
+      failureCode: "ARTIFACT_STAGED",
+    });
+  }
+
+  const c6bArtifactsUnstagedClean =
+    !observation.policyUnstagedModified &&
+    !observation.auditUnstagedModified &&
+    !includesPath(observation.allModifiedTrackedPaths, POLICY_PATH) &&
+    !includesPath(observation.allModifiedTrackedPaths, AUDIT_PATH);
+  if (c6bArtifactsUnstagedClean) {
+    return Object.freeze({
+      ok: true,
+      lifecycleState: "COMMITTED_STABLE_STATE",
+    });
+  }
+
+  if (!observation.auditUnstagedModified || observation.policyUnstagedModified) {
+    return Object.freeze({
+      ok: false,
+      lifecycleState: "INVALID_STATE",
+      failureCode: "ARTIFACT_MODIFIED_OUTSIDE_PATCH_REVIEW",
+    });
+  }
+  if (
+    observation.branch !== "main" ||
+    observation.head !== C6B_COMMIT_PROVENANCE ||
+    observation.originMain !== C6B_COMMIT_PROVENANCE
+  ) {
+    return Object.freeze({
+      ok: false,
+      lifecycleState: "INVALID_STATE",
+      failureCode: "INVALID_PATCH_REVIEW_BASELINE",
+    });
+  }
+  if (
+    observation.allModifiedTrackedPaths.length !== 1 ||
+    observation.allModifiedTrackedPaths[0] !== AUDIT_PATH ||
+    observation.allStagedPaths.length !== 0 ||
+    observation.untrackedPaths.length !== 0
+  ) {
+    return Object.freeze({
+      ok: false,
+      lifecycleState: "INVALID_STATE",
+      failureCode: "INVALID_PATCH_REVIEW_SCOPE",
+    });
+  }
+  return Object.freeze({
+    ok: true,
+    lifecycleState: "PATCH_REVIEW_STATE",
+  });
 };
 
 const makeCapabilityFinding = (
@@ -464,56 +620,71 @@ const inspectPolicySource = (): PolicySourceCapabilityInspection => {
   return inspectFixedClockPolicySourceCapabilities(source);
 };
 
-const inspectSourceIntegrity = (): Readonly<{
-  branch: string;
-  head: string;
-  originMain: string;
-  stagedPaths: readonly string[];
-  modifiedCommittedPaths: readonly string[];
-  untrackedPaths: readonly string[];
-  scopeAndSourceIntegrity: boolean;
-  sourceIntegrityExpectedPathCount: number;
-  sourceIntegrityUnexpectedPathCount: number;
-  sourceIntegrityStagedPathCount: number;
-  sourceIntegrityModifiedCommittedPathCount: number;
-}> => {
+const inspectC6BPolicyRepositoryObservation =
+  (): C6BPolicyRepositoryObservation => {
   const branch = gitOutput("branch", "--show-current");
   const head = gitOutput("rev-parse", "HEAD");
   const originMain = gitOutput("rev-parse", "origin/main");
-  const stagedPaths = gitOutput("diff", "--cached", "--name-only")
-    .split("\n")
-    .filter(Boolean);
-  const modifiedCommittedPaths = gitOutput("diff", "--name-only")
-    .split("\n")
-    .filter(Boolean);
-  const untrackedPaths = gitOutput("ls-files", "--others", "--exclude-standard")
-    .split("\n")
-    .filter(Boolean)
-    .sort();
-  const expectedUntracked = [...EXPECTED_UNTRACKED].sort();
-  const scopeAndSourceIntegrity =
-    branch === "main" &&
-    head === EXPECTED_HEAD &&
-    originMain === EXPECTED_HEAD &&
-    stagedPaths.length === 0 &&
-    modifiedCommittedPaths.length === 0 &&
-    untrackedPaths.length === expectedUntracked.length &&
-    untrackedPaths.every((path, index) => path === expectedUntracked[index]);
-  const sourceIntegrityUnexpectedPathCount = untrackedPaths.filter(
-    (path) => !EXPECTED_UNTRACKED.includes(path),
-  ).length;
+  const allStagedPaths = outputPaths(
+    gitOutput("diff", "--cached", "--name-only"),
+  );
+  const allModifiedTrackedPaths = outputPaths(
+    gitOutput("diff", "--name-only"),
+  );
+  const untrackedPaths = outputPaths(
+    gitOutput("ls-files", "--others", "--exclude-standard"),
+  );
+  const artifactUnstagedPaths = outputPaths(
+    gitOutput("diff", "--name-only", "--", POLICY_PATH, AUDIT_PATH),
+  );
+  const artifactStagedPaths = outputPaths(
+    gitOutput(
+      "diff",
+      "--cached",
+      "--name-only",
+      "--",
+      POLICY_PATH,
+      AUDIT_PATH,
+    ),
+  );
+  const policySourcePath = join(
+    dirname(fileURLToPath(import.meta.url)),
+    "../source-registry/controlled-synthetic-fixed-clock-policy.ts",
+  );
+  const policySha256 = createHash("sha256")
+    .update(readFileSync(policySourcePath))
+    .digest("hex")
+    .toUpperCase();
   return Object.freeze({
     branch,
     head,
     originMain,
-    stagedPaths: Object.freeze(stagedPaths),
-    modifiedCommittedPaths: Object.freeze(modifiedCommittedPaths),
-    untrackedPaths: Object.freeze(untrackedPaths),
-    scopeAndSourceIntegrity,
-    sourceIntegrityExpectedPathCount: EXPECTED_UNTRACKED.length,
-    sourceIntegrityUnexpectedPathCount,
-    sourceIntegrityStagedPathCount: stagedPaths.length,
-    sourceIntegrityModifiedCommittedPathCount: modifiedCommittedPaths.length,
+    policyTracked: gitSucceeds(
+      "ls-files",
+      "--error-unmatch",
+      "--",
+      POLICY_PATH,
+    ),
+    auditTracked: gitSucceeds(
+      "ls-files",
+      "--error-unmatch",
+      "--",
+      AUDIT_PATH,
+    ),
+    policyExistsInHead: gitSucceeds(
+      "cat-file",
+      "-e",
+      `HEAD:${POLICY_PATH}`,
+    ),
+    auditExistsInHead: gitSucceeds("cat-file", "-e", `HEAD:${AUDIT_PATH}`),
+    policySha256,
+    policyUnstagedModified: includesPath(artifactUnstagedPaths, POLICY_PATH),
+    auditUnstagedModified: includesPath(artifactUnstagedPaths, AUDIT_PATH),
+    policyStagedModified: includesPath(artifactStagedPaths, POLICY_PATH),
+    auditStagedModified: includesPath(artifactStagedPaths, AUDIT_PATH),
+    untrackedPaths,
+    allModifiedTrackedPaths,
+    allStagedPaths,
   });
 };
 
@@ -822,7 +993,165 @@ export async function runControlledSyntheticFixedClockGovernanceDesignAudit() {
   const c5 = await runControlledPreflightLauncherAndNonceOrchestrationAudit();
 
   const policySourceInspection = inspectPolicySource();
-  const sourceIntegrityInspection = inspectSourceIntegrity();
+  const actualRepositoryObservation =
+    inspectC6BPolicyRepositoryObservation();
+  const actualArtifactIntegrityResult =
+    evaluateC6BPolicyArtifactIntegrity(actualRepositoryObservation);
+
+  const syntheticCommittedStableObservation = Object.freeze({
+    ...actualRepositoryObservation,
+    head: "future-committed-head",
+    originMain: "future-committed-head",
+    policyUnstagedModified: false,
+    auditUnstagedModified: false,
+    policyStagedModified: false,
+    auditStagedModified: false,
+    untrackedPaths: Object.freeze([]),
+    allModifiedTrackedPaths: Object.freeze([]),
+    allStagedPaths: Object.freeze([]),
+  }) satisfies C6BPolicyRepositoryObservation;
+  const syntheticCommittedStableResult =
+    evaluateC6BPolicyArtifactIntegrity(syntheticCommittedStableObservation);
+
+  const committedWithUnrelatedModifiedObservation = Object.freeze({
+    ...syntheticCommittedStableObservation,
+    allModifiedTrackedPaths: Object.freeze([
+      "lib/vaylo/smart-talk/knowledge/de/future-c6-artifact.ts",
+    ]),
+  }) satisfies C6BPolicyRepositoryObservation;
+  const committedWithUnrelatedUntrackedObservation = Object.freeze({
+    ...syntheticCommittedStableObservation,
+    untrackedPaths: Object.freeze([
+      "lib/vaylo/smart-talk/knowledge/de/future-c7-artifact.ts",
+    ]),
+  }) satisfies C6BPolicyRepositoryObservation;
+
+  const artifactIntegrityPositiveCases = [
+    record(
+      "artifact_integrity_actual_patch_review",
+      actualArtifactIntegrityResult.ok &&
+        actualArtifactIntegrityResult.lifecycleState === "PATCH_REVIEW_STATE",
+    ),
+    record(
+      "artifact_integrity_synthetic_committed_stable",
+      syntheticCommittedStableResult.ok &&
+        syntheticCommittedStableResult.lifecycleState ===
+          "COMMITTED_STABLE_STATE",
+    ),
+    record(
+      "artifact_integrity_unrelated_modified_future_work",
+      evaluateC6BPolicyArtifactIntegrity(
+        committedWithUnrelatedModifiedObservation,
+      ).ok,
+    ),
+    record(
+      "artifact_integrity_unrelated_untracked_future_work",
+      evaluateC6BPolicyArtifactIntegrity(
+        committedWithUnrelatedUntrackedObservation,
+      ).ok,
+    ),
+  ];
+
+  const artifactIntegrityTamperObservations = [
+    [
+      "policy_fingerprint_mismatch",
+      { ...syntheticCommittedStableObservation, policySha256: "0".repeat(64) },
+    ],
+    [
+      "policy_untracked",
+      {
+        ...syntheticCommittedStableObservation,
+        policyTracked: false,
+        untrackedPaths: Object.freeze([POLICY_PATH]),
+      },
+    ],
+    [
+      "audit_untracked",
+      {
+        ...syntheticCommittedStableObservation,
+        auditTracked: false,
+        untrackedPaths: Object.freeze([AUDIT_PATH]),
+      },
+    ],
+    [
+      "policy_missing_from_head",
+      { ...syntheticCommittedStableObservation, policyExistsInHead: false },
+    ],
+    [
+      "audit_missing_from_head",
+      { ...syntheticCommittedStableObservation, auditExistsInHead: false },
+    ],
+    [
+      "policy_unstaged_modification",
+      { ...syntheticCommittedStableObservation, policyUnstagedModified: true },
+    ],
+    [
+      "audit_unstaged_modification",
+      { ...syntheticCommittedStableObservation, auditUnstagedModified: true },
+    ],
+    [
+      "policy_staged_modification",
+      { ...syntheticCommittedStableObservation, policyStagedModified: true },
+    ],
+    [
+      "audit_staged_modification",
+      { ...syntheticCommittedStableObservation, auditStagedModified: true },
+    ],
+    [
+      "review_wrong_head",
+      { ...actualRepositoryObservation, head: "wrong-head" },
+    ],
+    [
+      "review_wrong_origin_main",
+      { ...actualRepositoryObservation, originMain: "wrong-origin-main" },
+    ],
+    [
+      "review_policy_modified",
+      { ...actualRepositoryObservation, policyUnstagedModified: true },
+    ],
+    [
+      "review_extra_modified_tracked_path",
+      {
+        ...actualRepositoryObservation,
+        allModifiedTrackedPaths: Object.freeze([
+          AUDIT_PATH,
+          "lib/vaylo/smart-talk/knowledge/de/unrelated-change.ts",
+        ]),
+      },
+    ],
+    [
+      "review_untracked_path_present",
+      {
+        ...actualRepositoryObservation,
+        untrackedPaths: Object.freeze([
+          "lib/vaylo/smart-talk/knowledge/de/untracked-change.ts",
+        ]),
+      },
+    ],
+  ] as const satisfies readonly (
+    readonly [string, C6BPolicyRepositoryObservation]
+  )[];
+  const artifactIntegrityTamperCases = artifactIntegrityTamperObservations.map(
+    ([id, observation]) =>
+      record(
+        `artifact_integrity_tamper_${id}`,
+        !evaluateC6BPolicyArtifactIntegrity(observation).ok,
+      ),
+  );
+
+  const artifactIntegrityActualObservationAccepted =
+    artifactIntegrityPositiveCases[0]?.passed === true;
+  const syntheticCommittedStableObservationAccepted =
+    artifactIntegrityPositiveCases[1]?.passed === true;
+  const unrelatedFuturePhaseChangesDoNotInvalidateArtifactIntegrity =
+    artifactIntegrityPositiveCases[2]?.passed === true &&
+    artifactIntegrityPositiveCases[3]?.passed === true;
+  const sourceIntegrityRejectsC6BArtifactMutation =
+    artifactIntegrityTamperCases.slice(0, 9).every((item) => item.passed);
+  const scopeAndSourceIntegrity =
+    artifactIntegrityActualObservationAccepted &&
+    registryComplete(artifactIntegrityPositiveCases, 4) &&
+    registryComplete(artifactIntegrityTamperCases, 14);
 
   const commentOnlyInspection = inspectFixedClockPolicySourceCapabilities(`
     // Date.now()
@@ -1167,7 +1496,7 @@ export async function runControlledSyntheticFixedClockGovernanceDesignAudit() {
     );
 
   const canonicalMandatoryGateVector = Object.freeze({
-    scopeAndSourceIntegrity: sourceIntegrityInspection.scopeAndSourceIntegrity,
+    scopeAndSourceIntegrity,
     exactPolicyIdentityAndSemantics,
     policyNotTimestampAuthority,
     canonicalSnapshotValidation,
@@ -1307,6 +1636,20 @@ export async function runControlledSyntheticFixedClockGovernanceDesignAudit() {
     gateSensitivityByKey.productionCapabilityCountZero === true;
   const allPassedDependsOnSourceIntegrity =
     gateSensitivityByKey.scopeAndSourceIntegrity === true;
+  const sourceIntegritySupportsPatchReviewLifecycle =
+    allPassedDependsOnSourceIntegrity &&
+    artifactIntegrityActualObservationAccepted;
+  const sourceIntegritySupportsCommittedLifecycle =
+    allPassedDependsOnSourceIntegrity &&
+    syntheticCommittedStableObservationAccepted;
+  const sourceIntegrityAllowsUnrelatedFuturePhaseWork =
+    allPassedDependsOnSourceIntegrity &&
+    unrelatedFuturePhaseChangesDoNotInvalidateArtifactIntegrity;
+  const sourceIntegrityRejectsC6BArtifactMutationExecutionDerived =
+    allPassedDependsOnSourceIntegrity &&
+    sourceIntegrityRejectsC6BArtifactMutation;
+  const obsoleteUntrackedC6BRequirementCount =
+    syntheticCommittedStableObservationAccepted ? 0 : 1;
   const allPassedDependsOnRuntimeClockDetectorSensitivity =
     gateSensitivityByKey.noRuntimeClockOrTimers === true &&
     runtimeClockDetectorSensitivityComplete;
@@ -1358,23 +1701,24 @@ export async function runControlledSyntheticFixedClockGovernanceDesignAudit() {
   const nonCanonicalSnapshotAcceptedByC4 = c4ResultNonCanonical.ok;
 
   const implementationDecision = allPassed
-    ? "AUTHORIZE_C6B_POLICY_DETECTOR_FINAL_CLOSURE"
-    : "REQUIRE_C6B_POLICY_DETECTOR_REPAIR";
+    ? "AUTHORIZE_C6B_POLICY_AUDIT_LIFECYCLE_CLOSURE"
+    : "REQUIRE_C6B_POLICY_AUDIT_LIFECYCLE_REPAIR";
   const recommendedNextPhase = allPassed
-    ? "PHASE 9X-C6B-POLICY-CLOSURE — Independent Synthetic Fixed-Clock Governance Closure"
-    : "Repair authoritative mandatory-gate integration.";
+    ? "PHASE 9X-C6B-POLICY-AUDIT-LIFECYCLE-CLOSURE — Independent Durable Audit Lifecycle Closure"
+    : "Repair durable C6B artifact lifecycle integrity.";
 
   return Object.freeze({
-    checkId: "9X-C6B-POLICY-DETECTOR-SENSITIVITY-PATCH",
-    phase: "Audit-Only Capability Detector Truthfulness and Sensitivity Repair",
+    checkId: "9X-C6B-POLICY-AUDIT-LIFECYCLE-PATCH",
+    phase:
+      "Durable Committed-Artifact Source Integrity and Audit Lifecycle Repair",
     allPassed,
     blocked: !allPassed,
-    blockReason: allPassed ? null : "BLOCKED — DETECTOR GATE INTEGRATION DEFECT",
-    defectClassification: allPassed ? "NONE" : "DETECTOR_SENSITIVITY",
+    blockReason: allPassed ? null : "BLOCKED — COMMITTED AUDIT DURABILITY DEFECT",
+    defectClassification: allPassed ? "NONE" : "AUDIT_LIFECYCLE",
     implementationDecision,
     recommendedNextPhase,
-    createdFileCount: 2,
-    modifiedExistingFileCount: 0,
+    createdFileCount: 0,
+    modifiedExistingFileCount: 1,
     detectorUsesBoundedTypeScriptSyntaxInspection: true,
     detectorUsesRawRegexAsExecutableAuthority: false,
     detectorIsAuditOnly: true,
@@ -1500,15 +1844,68 @@ export async function runControlledSyntheticFixedClockGovernanceDesignAudit() {
     productionCapabilityCountObserved,
     productionCapabilityCountZero,
     sourceIntegrityInspectionExecuted: true,
-    sourceIntegrityExpectedPathCount:
-      sourceIntegrityInspection.sourceIntegrityExpectedPathCount,
+    auditLifecycleStateExplicit: true,
+    auditLifecycleStateClosed: true,
+    globalRepositoryCleanlinessIsPermanentPolicyRequirement: false,
+    unrelatedFuturePhaseChangesInvalidateC6BPolicy: false,
+    c6bArtifactIntegrityIsPermanentRequirement: true,
+    patchReviewStateBoundToExactBaselineCommit: true,
+    patchReviewStateAllowsOnlyAuditModification: true,
+    committedStableStateChecksOnlyRelevantArtifactIntegrity: true,
+    committedStableStateAllowsUnrelatedFuturePhaseWork: true,
+    c6bCommitRecordedAsProvenance: true,
+    currentHeadMustRemainC6BCommitForever: false,
+    artifactIntegrityGitInspectionBounded: true,
+    artifactIntegrityGitInspectionUsesFixedArguments: true,
+    policyFingerprintDirectlyGatesArtifactIntegrity:
+      artifactIntegrityTamperCases[0]?.passed === true,
+    auditSelfHashRecursionIntroduced: false,
+    auditTrackedCleanStateUsedForSelfIntegrity:
+      artifactIntegrityTamperCases[2]?.passed === true &&
+      artifactIntegrityTamperCases[4]?.passed === true &&
+      artifactIntegrityTamperCases[6]?.passed === true &&
+      artifactIntegrityTamperCases[8]?.passed === true,
+    artifactIntegrityEvaluatorPure: true,
+    artifactIntegrityEvaluatorUsesStructuredObservation: true,
+    repositoryObservationClosed: true,
+    actualRepositoryLifecycleState:
+      actualArtifactIntegrityResult.lifecycleState,
+    artifactIntegrityActualObservationAccepted,
+    syntheticCommittedStableObservationAccepted,
+    unrelatedFuturePhaseChangesDoNotInvalidateArtifactIntegrity,
+    artifactIntegrityPositiveCaseCount: artifactIntegrityPositiveCases.length,
+    artifactIntegrityPositiveCasesPassed: count(
+      artifactIntegrityPositiveCases,
+    ),
+    duplicateArtifactIntegrityPositiveCaseIdCount: duplicate(
+      artifactIntegrityPositiveCases,
+    ),
+    unexecutedArtifactIntegrityPositiveCaseCount: 0,
+    artifactIntegrityTamperCaseCount: artifactIntegrityTamperCases.length,
+    artifactIntegrityTamperCasesRejected: count(
+      artifactIntegrityTamperCases,
+    ),
+    duplicateArtifactIntegrityTamperCaseIdCount: duplicate(
+      artifactIntegrityTamperCases,
+    ),
+    unexecutedArtifactIntegrityTamperCaseCount: 0,
+    labelOnlyArtifactIntegrityTamperCaseCount: 0,
+    scopeAndSourceIntegrityUsesDurableArtifactIntegrityEvaluator:
+      scopeAndSourceIntegrity,
+    sourceIntegritySupportsPatchReviewLifecycle,
+    sourceIntegritySupportsCommittedLifecycle,
+    sourceIntegrityAllowsUnrelatedFuturePhaseWork,
+    sourceIntegrityRejectsC6BArtifactMutation:
+      sourceIntegrityRejectsC6BArtifactMutationExecutionDerived,
+    obsoleteUntrackedC6BRequirementCount,
+    sourceIntegrityExpectedPathCount: 2,
     sourceIntegrityUnexpectedPathCount:
-      sourceIntegrityInspection.sourceIntegrityUnexpectedPathCount,
+      actualRepositoryObservation.untrackedPaths.length,
     sourceIntegrityStagedPathCount:
-      sourceIntegrityInspection.sourceIntegrityStagedPathCount,
+      actualRepositoryObservation.allStagedPaths.length,
     sourceIntegrityModifiedCommittedPathCount:
-      sourceIntegrityInspection.sourceIntegrityModifiedCommittedPathCount,
-    scopeAndSourceIntegrity: sourceIntegrityInspection.scopeAndSourceIntegrity,
+      actualRepositoryObservation.allModifiedTrackedPaths.length,
+    scopeAndSourceIntegrity,
     canonicalMandatoryGateVectorConstructedAfterEvidence: true,
     allPassedDirectlyDerivedFromMandatoryGateVector: true,
     allPassedIndependentAuthorizingPathCount: 0,
@@ -1692,16 +2089,17 @@ export async function runControlledSyntheticFixedClockGovernanceDesignAudit() {
     implementationDecisionDependsOnAllPassed:
       (allPassed &&
         implementationDecision ===
-          "AUTHORIZE_C6B_POLICY_DETECTOR_FINAL_CLOSURE") ||
+          "AUTHORIZE_C6B_POLICY_AUDIT_LIFECYCLE_CLOSURE") ||
       (!allPassed &&
-        implementationDecision === "REQUIRE_C6B_POLICY_DETECTOR_REPAIR"),
+        implementationDecision ===
+          "REQUIRE_C6B_POLICY_AUDIT_LIFECYCLE_REPAIR"),
     recommendedNextPhaseDependsOnAllPassed:
       (allPassed &&
         recommendedNextPhase ===
-          "PHASE 9X-C6B-POLICY-CLOSURE — Independent Synthetic Fixed-Clock Governance Closure") ||
+          "PHASE 9X-C6B-POLICY-AUDIT-LIFECYCLE-CLOSURE — Independent Durable Audit Lifecycle Closure") ||
       (!allPassed &&
         recommendedNextPhase ===
-          "Repair authoritative mandatory-gate integration."),
+          "Repair durable C6B artifact lifecycle integrity."),
     productionCredentialAccessed: false,
     productionEnvironmentAccessed: false,
     remoteConnectionPerformed: false,
