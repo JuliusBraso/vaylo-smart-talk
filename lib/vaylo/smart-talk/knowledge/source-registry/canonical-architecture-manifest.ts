@@ -10,18 +10,28 @@ import {
 } from "./audit-infrastructure-contract";
 import { CONTROLLED_PREFLIGHT_ACTOR_AUTHORITY } from "./controlled-preflight-actor-authority";
 import {
+  CONTROLLED_PRODUCTION_REMOTE_ACTION_AUTHORIZATION_CLASS,
+  CONTROLLED_PRODUCTION_REMOTE_ACTION_AUTHORIZATION_CONTRACT_FINGERPRINT,
+  CONTROLLED_PRODUCTION_REMOTE_ACTION_AUTHORIZATION_CONTRACT_ID,
+  CONTROLLED_PRODUCTION_REMOTE_ACTION_AUTHORIZATION_CONTRACT_VERSION,
+  CONTROLLED_PRODUCTION_REMOTE_ACTION_ID,
+} from "./controlled-production-remote-action-authorization-contract";
+import {
   CONTROLLED_PRODUCTION_PERMISSION_AUTHORITY_ID,
   CONTROLLED_PRODUCTION_PERMISSION_IDS,
   createFailClosedControlledProductionPermissionState,
 } from "./controlled-production-permission-authority";
 import {
   CONTROLLED_PRODUCTION_PREFLIGHT_AUTHORIZATION_KIND,
+  CONTROLLED_PRODUCTION_PREFLIGHT_INGRESS_POLICY_ID,
   CONTROLLED_PRODUCTION_PREFLIGHT_MANIFEST_KIND,
+  CONTROLLED_PRODUCTION_PREFLIGHT_PROVENANCE_POLICY_ID,
   CONTROLLED_PRODUCTION_PREFLIGHT_SOURCE_COMMIT,
   EXPECTED_PRODUCTION_PREFLIGHT_EXECUTOR_IDENTITY,
 } from "./controlled-production-preflight-execution-contracts";
 import {
   PRODUCTION_PREFLIGHT_H_EXECUTOR_CONTRACT_FINGERPRINT,
+  PRODUCTION_PREFLIGHT_H_INGRESS_POLICY_ID,
   PRODUCTION_PREFLIGHT_H_REMOTE_EXECUTOR_CONTRACT,
 } from "./production-preflight-remote-executor-contract";
 import { PRODUCTION_READ_ONLY_PREFLIGHT_QUERY_IDS } from "./production-read-only-preflight-helper";
@@ -171,6 +181,7 @@ const manifestSemanticPayload = deepFreeze({
       component("C7", "source-registry/controlled-synthetic-c5-launch-execution-boundary.ts", "synthetic execution boundary", "IMPLEMENTED", "NOT_AUTHORIZED", "SYNTHETIC_ONLY", "C7", "C6D", "CURRENT"),
       component("H_HELPER", "source-registry/production-read-only-preflight-helper.ts", "production read-only preflight helper", "IMPLEMENTED", "NOT_AUTHORIZED", "CONTRACT_ONLY", "H", "C6C", "CURRENT"),
       component("H_EXECUTOR", "source-registry/production-preflight-remote-executor-contract.ts", "dedicated H executor contract", "IMPLEMENTED", "NOT_AUTHORIZED", "CONTRACT_ONLY", "H executor", "H", "CURRENT"),
+      component("PKG03_AUTHORIZATION", "source-registry/controlled-production-remote-action-authorization-contract.ts", "bounded H remote-action authorization contract", "IMPLEMENTED", "NOT_AUTHORIZED", "CONTRACT_ONLY", "PKG-03 authorization evaluator", "C2/C6C/PKG-01", "CURRENT"),
       component("R_EXECUTOR", "source-registry/remote-readonly-executor.ts", "remote R executor", "IMPLEMENTED", "NOT_AUTHORIZED", "CONTRACT_ONLY", "R", "none", "CURRENT"),
       component("A_CONTRACT", "source-registry/audit-infrastructure-contract.ts", "audit infrastructure mapping", "IMPLEMENTED", "NOT_AUTHORIZED", "CONTRACT_ONLY", "A", "R", "CURRENT"),
       component("CREDENTIAL_TRANSPORT", "source-registry/controlled-production-preflight-credential-and-transport-boundary.ts", "credential and transport design contracts", "DESIGN_ONLY", "NOT_AUTHORIZED", "INTERFACE_ONLY", "future credential authority", "C6D", "CURRENT"),
@@ -186,7 +197,7 @@ const manifestSemanticPayload = deepFreeze({
   authorityRegistry: section(
     { authoritySource: "Distinct committed authority modules", authorityClassification: "DERIVED_SOURCE" },
     { authorityOwnershipUnique: true, duplicateAuthorizationAuthorityCount: 0, domains: Object.freeze([
-      ["synthetic capability", "C4", "IMPLEMENTED"], ["actor", "C6A", "IMPLEMENTED"], ["fixed-clock", "C6B", "IMPLEMENTED"], ["production permission", "C6C", "IMPLEMENTED"], ["H query namespace", "H helper", "IMPLEMENTED"], ["H executor contract", "PKG-01", "IMPLEMENTED"], ["R remote query", "R executor", "IMPLEMENTED"], ["A mapping", "A contract", "IMPLEMENTED"], ["credential", "future provider", "MISSING"], ["remote-action authorization", "future PKG-03", "OPEN"], ["bootstrap", "C6C", "NOT_AUTHORIZED"], ["production write", "C6C", "NOT_AUTHORIZED"], ["runtime/public launch", "C6C", "NOT_AUTHORIZED"],
+      ["synthetic capability", "C4", "IMPLEMENTED"], ["actor", "C6A", "IMPLEMENTED"], ["fixed-clock", "C6B", "IMPLEMENTED"], ["production permission", "C6C", "IMPLEMENTED"], ["H query namespace", "H helper", "IMPLEMENTED"], ["H executor contract", "PKG-01", "IMPLEMENTED"], ["R remote query", "R executor", "IMPLEMENTED"], ["A mapping", "A contract", "IMPLEMENTED"], ["credential", "future provider", "MISSING"], ["remote-action authorization", "PKG-03", "IMPLEMENTED"], ["bootstrap", "C6C", "NOT_AUTHORIZED"], ["production write", "C6C", "NOT_AUTHORIZED"], ["runtime/public launch", "C6C", "NOT_AUTHORIZED"],
     ].map(([domain, owner, status]) => deepFreeze({ domain, owner, status }))) },
   ),
   productionPermissionRegistry: section(
@@ -216,15 +227,37 @@ const manifestSemanticPayload = deepFreeze({
       boundary("C6ABC_TO_C6", "C6A/C6B/C6C", "C6", "EXPLICIT_DESIGN_ONLY", "CB-03"), boundary("C6_TO_C6D", "C6", "C6D", "EXPLICIT_AND_BOUND", null),
       boundary("C6D_TO_C7", "C6D", "C7", "EXPLICIT_AND_BOUND", null), boundary("C7_TO_C5", "C7", "C5", "EXPLICIT_AND_BOUND", null),
       boundary("HELPER_TO_H_EXECUTOR", "H helper", "H executor", "IMPLEMENTED_NOT_AUTHORIZED", null), boundary("R_TO_A", "R", "A", "EXPLICIT_AND_BOUND", null),
-      boundary("C6C_TO_REMOTE_ACTION", "C6C", "future bounded remote action", "OPEN", "CB-02"), boundary("C6C_TO_AUTHORIZATION", "C6C", "C6 authorization envelope", "OPEN", "CB-03"),
-      boundary("HELPER_C2_AUTH_REBIND", "helper/C2", "remote authorization state", "OPEN", "CB-09"), boundary("CREDENTIAL_TO_TRANSPORT", "credential provider", "transport", "MISSING", "CB-04"),
+      boundary("C6C_TO_REMOTE_ACTION", "C6C", "PKG-03 bounded remote action", "IMPLEMENTED_NOT_AUTHORIZED", "CB-02"), boundary("C6C_TO_AUTHORIZATION", "C6C", "PKG-03 authorization evaluator", "IMPLEMENTED_NOT_AUTHORIZED", "CB-03"),
+      boundary("HELPER_C2_AUTH_REBIND", "helper/C2", "PKG-03 authorization evaluator", "IMPLEMENTED_NOT_AUTHORIZED", "CB-09"), boundary("CREDENTIAL_TO_TRANSPORT", "credential provider", "transport", "MISSING", "CB-04"),
+      deepFreeze({
+        boundaryId: "PKG03_REMOTE_ACTION_AUTHORIZATION_CONTRACT",
+        producer: "C2/C6C/PKG-01",
+        consumer: "production read-only preflight helper",
+        status: "IMPLEMENTED_NOT_AUTHORIZED",
+        blockerIds: Object.freeze(["CB-02", "CB-03", "CB-09"]),
+        contractId: CONTROLLED_PRODUCTION_REMOTE_ACTION_AUTHORIZATION_CONTRACT_ID,
+        contractVersion: CONTROLLED_PRODUCTION_REMOTE_ACTION_AUTHORIZATION_CONTRACT_VERSION,
+        contractFingerprint: CONTROLLED_PRODUCTION_REMOTE_ACTION_AUTHORIZATION_CONTRACT_FINGERPRINT,
+        authorizationClass: CONTROLLED_PRODUCTION_REMOTE_ACTION_AUTHORIZATION_CLASS,
+        allowedAction: CONTROLLED_PRODUCTION_REMOTE_ACTION_ID,
+        grantsAuthorization: false,
+        canonicalPermissionAuthority: "C6C",
+        canonicalC2IngressPolicy:
+          CONTROLLED_PRODUCTION_PREFLIGHT_INGRESS_POLICY_ID,
+        canonicalC2ProvenancePolicy:
+          CONTROLLED_PRODUCTION_PREFLIGHT_PROVENANCE_POLICY_ID,
+        canonicalPkg01IngressPolicy: PRODUCTION_PREFLIGHT_H_INGRESS_POLICY_ID,
+        descriptorSafeCanonicalSnapshotsRequired: true,
+        helperRebindImplemented: true,
+        legacyFreeBooleanAuthorizationAuthoritative: false,
+      }),
       boundary("TRANSPORT_TO_H", "transport", "future H execution boundary", "MISSING", "CB-06"), boundary("BACKUP_TO_CREDENTIAL", "backup evidence", "credential gate", "OPEN", "CB-05"),
       boundary("TARGET_TO_BOOTSTRAP", "production target evidence", "bootstrap decision", "OPEN", "CB-08"),
       deepFreeze({
         boundaryId: "PKG02_TO_PKG03_REMOTE_ACTION_AUTHORIZATION_HANDOFF",
         producer: "PKG-02 canonical architecture manifest",
         consumer: "future PKG-03 remote-action authorization contract",
-        status: "OPEN_DESIGN_INPUT_READY",
+        status: "CONSUMED_BY_IMPLEMENTED_CONTRACT",
         blockerIds: Object.freeze(["CB-02", "CB-03", "CB-09"]),
         authorityRole: "DESCRIPTIVE_BINDING_REFERENCE_ONLY",
         grantsAuthorization: false,
@@ -254,6 +287,10 @@ const manifestSemanticPayload = deepFreeze({
             sourceCommitIdentity: CONTROLLED_PRODUCTION_PREFLIGHT_SOURCE_COMMIT,
             executionManifestKind: CONTROLLED_PRODUCTION_PREFLIGHT_MANIFEST_KIND,
             authorizationKind: CONTROLLED_PRODUCTION_PREFLIGHT_AUTHORIZATION_KIND,
+            ingressPolicyId:
+              CONTROLLED_PRODUCTION_PREFLIGHT_INGRESS_POLICY_ID,
+            provenancePolicyId:
+              CONTROLLED_PRODUCTION_PREFLIGHT_PROVENANCE_POLICY_ID,
             requiredForPkg03Binding: true,
             readiness: "OPEN",
           }),
@@ -300,6 +337,7 @@ const manifestSemanticPayload = deepFreeze({
             contractId: PRODUCTION_PREFLIGHT_H_REMOTE_EXECUTOR_CONTRACT.contractId,
             contractVersion: PRODUCTION_PREFLIGHT_H_REMOTE_EXECUTOR_CONTRACT.version,
             contractFingerprint: PRODUCTION_PREFLIGHT_H_EXECUTOR_CONTRACT_FINGERPRINT,
+            ingressPolicyId: PRODUCTION_PREFLIGHT_H_INGRESS_POLICY_ID,
             grantsAuthorization: false,
             manifestCreatesSecondHActionAuthority: false,
             requiredForPkg03Binding: true,
@@ -335,7 +373,7 @@ const manifestSemanticPayload = deepFreeze({
   ),
   roadmapNamespace: section(
     { authoritySource: "This canonical modern roadmap declaration", authorityClassification: "CANONICAL_SOURCE" },
-    { canonicalCurrentNamespace: "9X-POST-C7", canonicalRoadmapAuthorityDefined: true, historicalPhaseLabelGrantsCurrentAuthority: false, phaseLocalRecommendationGrantsGlobalAuthority: false, sequence: Object.freeze(["modern C4", "C5", "C6A/B/C", "C6", "C6D", "C7", "POST-C7 successor bridge", "PKG-01", "PKG-02 current manifest", "future PKG-03", "future PKG-04", "future PKG-05"]), cb10Status: "IMPLEMENTED_PENDING_INDEPENDENT_CLOSURE" },
+    { canonicalCurrentNamespace: "9X-POST-C7", canonicalRoadmapAuthorityDefined: true, historicalPhaseLabelGrantsCurrentAuthority: false, phaseLocalRecommendationGrantsGlobalAuthority: false, sequence: Object.freeze(["modern C4", "C5", "C6A/B/C", "C6", "C6D", "C7", "POST-C7 successor bridge", "PKG-01", "PKG-02 current manifest", "PKG-03 current authorization contract", "future PKG-04", "future PKG-05"]), cb10Status: "CLOSED" },
   ),
   historicalAndSupersededReferences: section(
     { authoritySource: "Explicit historical metadata only", authorityClassification: "HISTORICAL_METADATA" },
@@ -363,8 +401,10 @@ const manifestSemanticPayload = deepFreeze({
     { authoritySource: "Current blocker architecture and committed PKG-01 truth", authorityClassification: "DERIVED_SOURCE" },
     { manifestDoesNotGrantBlockerClosureByAssertion: true, blockers: Object.freeze([
       deepFreeze({ blockerId: "CB-01", status: "CLOSED", basis: "PKG-01 dedicated H authority contract" }),
-      ...["CB-02", "CB-03", "CB-04", "CB-05", "CB-06", "CB-07", "CB-08", "CB-09"].map((blockerId) => deepFreeze({ blockerId, status: "OPEN", basis: "downstream contract remains absent" })),
-      deepFreeze({ blockerId: "CB-10", status: "IMPLEMENTED_PENDING_INDEPENDENT_CLOSURE", basis: "canonical roadmap manifest" }),
+      ...["CB-02", "CB-03"].map((blockerId) => deepFreeze({ blockerId, status: "IMPLEMENTED_PENDING_INDEPENDENT_CLOSURE", basis: "PKG-03 canonical authorization contract" })),
+      ...["CB-04", "CB-05", "CB-06", "CB-07", "CB-08"].map((blockerId) => deepFreeze({ blockerId, status: "OPEN", basis: "downstream contract remains absent" })),
+      deepFreeze({ blockerId: "CB-09", status: "IMPLEMENTED_PENDING_INDEPENDENT_CLOSURE", basis: "PKG-03 helper/C2 rebind" }),
+      deepFreeze({ blockerId: "CB-10", status: "CLOSED", basis: "committed canonical roadmap manifest" }),
       deepFreeze({ blockerId: "CB-11", status: "OPEN", basis: "production authorization review remains absent" }),
     ]) },
   ),

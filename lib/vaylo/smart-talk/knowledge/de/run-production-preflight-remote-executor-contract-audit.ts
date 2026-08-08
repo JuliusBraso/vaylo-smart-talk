@@ -167,7 +167,9 @@ const secondRequest = makeRequest(secondQueryId);
 const firstFixture = createSyntheticProductionPreflightResultFixture(firstQueryId);
 const secondFixture =
   createSyntheticProductionPreflightResultFixture(secondQueryId);
-const firstRecord = isPlainRecord(firstFixture.value)
+const firstRecord: Readonly<Record<string, unknown>> = isPlainRecord(
+  firstFixture.value,
+)
   ? firstFixture.value
   : Object.freeze({});
 
@@ -219,6 +221,300 @@ const requestCandidate = {
   resultContractId: firstRequest.resultContractId,
   authorizationReference: firstRequest.authorizationReference,
 };
+
+let hostileRequestGetterInvocationCount = 0;
+let hostileResultGetterInvocationCount = 0;
+const rejectRequestWithoutThrow = (candidate: unknown): boolean => {
+  try {
+    return !validateProductionPreflightHExecutionRequest(candidate).ok;
+  } catch {
+    return false;
+  }
+};
+const rejectResultWithoutThrow = (candidate: unknown): boolean => {
+  try {
+    return !validateProductionPreflightHResultEnvelope(
+      candidate,
+      firstRequest,
+    ).ok;
+  } catch {
+    return false;
+  }
+};
+const withOwnDescriptor = (
+  value: Readonly<Record<string, unknown>>,
+  key: PropertyKey,
+  descriptor: PropertyDescriptor,
+): Record<string, unknown> =>
+  Object.defineProperty({ ...value }, key, descriptor);
+
+const requestGetterCandidate = withOwnDescriptor(
+  requestCandidate,
+  "queryId",
+  {
+    enumerable: true,
+    configurable: true,
+    get: () => {
+      hostileRequestGetterInvocationCount += 1;
+      return firstRequest.queryId;
+    },
+  },
+);
+const requestSetterCandidate = withOwnDescriptor(
+  requestCandidate,
+  "queryId",
+  {
+    enumerable: true,
+    configurable: true,
+    set: () => undefined,
+  },
+);
+const requestCustomPrototypeCandidate = Object.assign(
+  Object.create({ hostilePrototype: true }) as Record<string, unknown>,
+  requestCandidate,
+);
+class HostileRequestClass {
+  constructor() {
+    Object.assign(this, requestCandidate);
+  }
+}
+const requestNullPrototypeCandidate = Object.assign(
+  Object.create(null) as Record<string, unknown>,
+  requestCandidate,
+);
+const {
+  authorizationReference: inheritedAuthorizationReference,
+  ...requestWithoutInheritedField
+} = requestCandidate;
+const requestInheritedFieldCandidate = Object.assign(
+  Object.create({
+    authorizationReference: inheritedAuthorizationReference,
+  }) as Record<string, unknown>,
+  requestWithoutInheritedField,
+);
+const requestSymbolCandidate = {
+  ...requestCandidate,
+  [Symbol("hostile-request-field")]: true,
+};
+const requestNonEnumerableUnexpectedCandidate = withOwnDescriptor(
+  requestCandidate,
+  "unexpectedAuthorityField",
+  {
+    enumerable: false,
+    configurable: true,
+    value: true,
+  },
+);
+const requestNonEnumerableAccessorCandidate = withOwnDescriptor(
+  requestCandidate,
+  "unexpectedAuthorityAccessor",
+  {
+    enumerable: false,
+    configurable: true,
+    get: () => {
+      hostileRequestGetterInvocationCount += 1;
+      return true;
+    },
+  },
+);
+const requestArrayCandidate = Object.assign([], requestCandidate);
+const requestProxyCandidate = new Proxy(
+  { ...requestCandidate },
+  {
+    get: (target, key, receiver) => {
+      hostileRequestGetterInvocationCount += 1;
+      return Reflect.get(target, key, receiver);
+    },
+  },
+);
+const revokedRequest = Proxy.revocable({ ...requestCandidate }, {});
+revokedRequest.revoke();
+
+const hostileRequestCases = Object.freeze([
+  rejectRequestWithoutThrow(requestGetterCandidate),
+  rejectRequestWithoutThrow(requestSetterCandidate),
+  rejectRequestWithoutThrow(requestCustomPrototypeCandidate),
+  rejectRequestWithoutThrow(new HostileRequestClass()),
+  rejectRequestWithoutThrow(requestNullPrototypeCandidate),
+  rejectRequestWithoutThrow(requestInheritedFieldCandidate),
+  rejectRequestWithoutThrow(requestSymbolCandidate),
+  rejectRequestWithoutThrow(requestNonEnumerableUnexpectedCandidate),
+  rejectRequestWithoutThrow(requestNonEnumerableAccessorCandidate),
+  rejectRequestWithoutThrow(requestArrayCandidate),
+  rejectRequestWithoutThrow(requestProxyCandidate),
+  rejectRequestWithoutThrow(revokedRequest.proxy),
+]);
+
+const resultCandidate = {
+  ...makeResultEnvelope(firstRequest, { ...firstRecord }),
+};
+const resultGetterCandidate = withOwnDescriptor(resultCandidate, "queryId", {
+  enumerable: true,
+  configurable: true,
+  get: () => {
+    hostileResultGetterInvocationCount += 1;
+    return firstRequest.queryId;
+  },
+});
+const resultSetterCandidate = withOwnDescriptor(resultCandidate, "queryId", {
+  enumerable: true,
+  configurable: true,
+  set: () => undefined,
+});
+const resultCustomPrototypeCandidate = Object.assign(
+  Object.create({ hostilePrototype: true }) as Record<string, unknown>,
+  resultCandidate,
+);
+class HostileResultClass {
+  constructor() {
+    Object.assign(this, resultCandidate);
+  }
+}
+const resultNullPrototypeCandidate = Object.assign(
+  Object.create(null) as Record<string, unknown>,
+  resultCandidate,
+);
+const { sanitized: inheritedSanitized, ...resultWithoutInheritedField } =
+  resultCandidate;
+const resultInheritedFieldCandidate = Object.assign(
+  Object.create({ sanitized: inheritedSanitized }) as Record<string, unknown>,
+  resultWithoutInheritedField,
+);
+const resultSymbolCandidate = {
+  ...resultCandidate,
+  [Symbol("hostile-result-field")]: true,
+};
+const resultNonEnumerableUnexpectedCandidate = withOwnDescriptor(
+  resultCandidate,
+  "unexpectedAuthorityField",
+  {
+    enumerable: false,
+    configurable: true,
+    value: true,
+  },
+);
+const resultNonEnumerableAccessorCandidate = withOwnDescriptor(
+  resultCandidate,
+  "unexpectedAuthorityAccessor",
+  {
+    enumerable: false,
+    configurable: true,
+    get: () => {
+      hostileResultGetterInvocationCount += 1;
+      return true;
+    },
+  },
+);
+const resultArrayCandidate = Object.assign([], resultCandidate);
+const resultProxyCandidate = new Proxy(
+  { ...resultCandidate },
+  {
+    get: (target, key, receiver) => {
+      hostileResultGetterInvocationCount += 1;
+      return Reflect.get(target, key, receiver);
+    },
+  },
+);
+const revokedResult = Proxy.revocable({ ...resultCandidate }, {});
+revokedResult.revoke();
+
+const nestedResultField = Object.keys(firstRecord).find(
+  (key) => key !== "resultSchemaKey",
+);
+if (!nestedResultField) throw new Error("SYNTHETIC_RESULT_FIELD_MISSING");
+const nestedGetterResult = withOwnDescriptor(
+  { ...firstRecord },
+  nestedResultField,
+  {
+    enumerable: true,
+    configurable: true,
+    get: () => {
+      hostileResultGetterInvocationCount += 1;
+      return firstRecord[nestedResultField];
+    },
+  },
+);
+const nestedArrayAccessor: unknown[] = [firstRecord[nestedResultField]];
+Object.defineProperty(nestedArrayAccessor, "0", {
+  enumerable: true,
+  configurable: true,
+  get: () => {
+    hostileResultGetterInvocationCount += 1;
+    return firstRecord[nestedResultField];
+  },
+});
+
+const hostileResultCases = Object.freeze([
+  rejectResultWithoutThrow(resultGetterCandidate),
+  rejectResultWithoutThrow(resultSetterCandidate),
+  rejectResultWithoutThrow(resultCustomPrototypeCandidate),
+  rejectResultWithoutThrow(new HostileResultClass()),
+  rejectResultWithoutThrow(resultNullPrototypeCandidate),
+  rejectResultWithoutThrow(resultInheritedFieldCandidate),
+  rejectResultWithoutThrow(resultSymbolCandidate),
+  rejectResultWithoutThrow(resultNonEnumerableUnexpectedCandidate),
+  rejectResultWithoutThrow(resultNonEnumerableAccessorCandidate),
+  rejectResultWithoutThrow(resultArrayCandidate),
+  rejectResultWithoutThrow(resultProxyCandidate),
+  rejectResultWithoutThrow(revokedResult.proxy),
+  rejectResultWithoutThrow({
+    ...resultCandidate,
+    validatedResult: nestedGetterResult,
+  }),
+  rejectResultWithoutThrow({
+    ...resultCandidate,
+    validatedResult: nestedArrayAccessor,
+  }),
+]);
+
+const mutableRequestCandidate = { ...requestCandidate };
+const mutableRequestValidation =
+  validateProductionPreflightHExecutionRequest(mutableRequestCandidate);
+const canonicalRequestBeforeMutation =
+  mutableRequestValidation.ok
+    ? JSON.stringify(mutableRequestValidation.value)
+    : "REQUEST_VALIDATION_FAILED";
+mutableRequestCandidate.queryId = secondRequest.queryId;
+mutableRequestCandidate.resultContractId = secondRequest.resultContractId;
+mutableRequestCandidate.targetFingerprint = "mutated_target_fingerprint";
+const requestSnapshotUnaffected =
+  mutableRequestValidation.ok &&
+  JSON.stringify(mutableRequestValidation.value) ===
+    canonicalRequestBeforeMutation &&
+  mutableRequestValidation.value.queryId === firstRequest.queryId &&
+  mutableRequestValidation.value.resultContractId ===
+    firstRequest.resultContractId;
+
+const mutableNestedResult = { ...firstRecord };
+const mutableResultCandidate = {
+  ...makeResultEnvelope(firstRequest, mutableNestedResult),
+};
+const mutableResultValidation = validateProductionPreflightHResultEnvelope(
+  mutableResultCandidate,
+  firstRequest,
+);
+const canonicalResultBeforeMutation =
+  mutableResultValidation.ok
+    ? JSON.stringify(mutableResultValidation.value)
+    : "RESULT_VALIDATION_FAILED";
+mutableResultCandidate.queryId = secondRequest.queryId;
+mutableResultCandidate.resultContractId = secondRequest.resultContractId;
+mutableNestedResult[nestedResultField] = "caller_mutated_after_validation";
+const resultSnapshotUnaffected =
+  mutableResultValidation.ok &&
+  JSON.stringify(mutableResultValidation.value) === canonicalResultBeforeMutation &&
+  mutableResultValidation.value.queryId === firstRequest.queryId &&
+  mutableResultValidation.value.resultContractId ===
+    firstRequest.resultContractId &&
+  Object.isFrozen(mutableResultValidation.value.validatedResult);
+const toctouCases = Object.freeze([
+  requestSnapshotUnaffected,
+  resultSnapshotUnaffected,
+]);
+const toctouAuthorityMutationAttemptCount = 2;
+const toctouCanonicalAuthorityChangeCount =
+  (requestSnapshotUnaffected ? 0 : 1) + (resultSnapshotUnaffected ? 0 : 1);
+
 const boundaryTamperCases = Object.freeze([
   !validateProductionPreflightHExecutionRequest({
     ...requestCandidate,
@@ -405,6 +701,14 @@ const gates = Object.freeze({
   foreignIdentityRejection:
     foreignQueryCasesRejected === foreignQueryIds.length &&
     rQueryAcceptedByHExecutorCount === 0,
+  hostileRequestBoundary:
+    hostileRequestCases.every(Boolean) &&
+    hostileRequestGetterInvocationCount === 0,
+  hostileResultBoundary:
+    hostileResultCases.every(Boolean) &&
+    hostileResultGetterInvocationCount === 0,
+  postValidationSnapshotIsolation:
+    toctouCases.every(Boolean) && toctouCanonicalAuthorityChangeCount === 0,
   resultTamperSensitivity: resultTamperCases.every(Boolean),
   boundaryTamperSensitivity: boundaryTamperCases.every(Boolean),
   authorityUniquenessSensitivity:
@@ -498,6 +802,21 @@ console.log(
       foreignQueryCaseCount: foreignQueryIds.length,
       foreignQueryCasesRejected,
       rQueryAcceptedByHExecutorCount,
+      hostileRequestCaseCount: hostileRequestCases.length,
+      hostileRequestCasesRejected:
+        hostileRequestCases.filter(Boolean).length,
+      hostileRequestAcceptedCount:
+        hostileRequestCases.filter((rejected) => !rejected).length,
+      hostileRequestGetterInvocationCount,
+      hostileResultCaseCount: hostileResultCases.length,
+      hostileResultCasesRejected: hostileResultCases.filter(Boolean).length,
+      hostileResultAcceptedCount:
+        hostileResultCases.filter((rejected) => !rejected).length,
+      hostileResultGetterInvocationCount,
+      toctouCaseCount: toctouCases.length,
+      toctouCasesPassed: toctouCases.filter(Boolean).length,
+      toctouAuthorityMutationAttemptCount,
+      toctouCanonicalAuthorityChangeCount,
       resultTamperCaseCount: resultTamperCases.length,
       resultTamperCasesRejected: resultTamperCases.filter(Boolean).length,
       boundaryTamperCaseCount: boundaryTamperCases.length,

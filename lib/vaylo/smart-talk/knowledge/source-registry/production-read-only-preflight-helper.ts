@@ -1,5 +1,10 @@
 import "server-only";
 
+import type {
+  ControlledProductionRemoteActionAuthorizationCandidate,
+  ControlledProductionRemoteActionAuthorizationDecision,
+} from "./controlled-production-remote-action-authorization-contract";
+import { CONTROLLED_PRODUCTION_PREFLIGHT_SOURCE_COMMIT } from "./controlled-production-preflight-execution-contracts";
 import type { ProductionPreflightHQueryExecutionPort } from "./production-preflight-remote-executor-contract";
 
 export const PRODUCTION_READ_ONLY_PREFLIGHT_QUERY_IDS = [
@@ -153,7 +158,6 @@ export type NormalizedPreflightResult = Readonly<Record<string, Scalar>>;
 const SECRET =
   /(?:password|passwd|secret|token|credential|api[_-]?key|service.?role|postgres(?:ql)?:\/\/|database_url|pgpassword|raw.?sql)/i;
 const IDENTIFIER = /^[A-Za-z0-9_.:-]{1,128}$/;
-const FINGERPRINT = /^[A-Za-z0-9_.:-]{12,128}$/;
 const SQLSTATE = /^[A-Z0-9]{5}$/;
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -1053,68 +1057,51 @@ export function isLexicallySafePreflightSql(sql: string): boolean {
   );
 }
 
-export type ProductionReadOnlyPreflightAuthorization = Readonly<{
-  authorizationKind: "PRODUCTION_READ_ONLY_PREFLIGHT_SINGLE_ATTEMPT";
-  sourceCommit: "95e1e40";
-  artifactFingerprintSetId: string;
-  targetFingerprint: string;
-  targetPurpose: string;
-  operatorEvidenceConfirmed: true;
-  executionWindowId: string;
-  singleAttemptNonce: string;
-  remoteExecutionSeparatelyAuthorized: true;
-}>;
+export type ProductionReadOnlyPreflightAuthorization =
+  ControlledProductionRemoteActionAuthorizationCandidate;
 
+/**
+ * Legacy compatibility predicate. Shape inspection alone can no longer confer
+ * authorization; callers must use the asynchronous canonical evaluator.
+ */
 export function isValidPreflightAuthorization(
-  value: unknown,
-): value is ProductionReadOnlyPreflightAuthorization {
-  if (!isObject(value)) return false;
-  if (value.authorizationKind !== "PRODUCTION_READ_ONLY_PREFLIGHT_SINGLE_ATTEMPT")
-    return false;
-  if (value.sourceCommit !== "95e1e40") return false;
-  if (value.operatorEvidenceConfirmed !== true) return false;
-  if (value.remoteExecutionSeparatelyAuthorized !== true) return false;
-  if ("writeAuthorized" in value || "reusable" in value) return false;
-  if (
-    typeof value.artifactFingerprintSetId !== "string" ||
-    !IDENTIFIER.test(value.artifactFingerprintSetId)
-  )
-    return false;
-  if (
-    typeof value.targetFingerprint !== "string" ||
-    !FINGERPRINT.test(value.targetFingerprint)
-  )
-    return false;
-  if (
-    typeof value.targetPurpose !== "string" ||
-    !IDENTIFIER.test(value.targetPurpose)
-  )
-    return false;
-  if (
-    typeof value.executionWindowId !== "string" ||
-    !IDENTIFIER.test(value.executionWindowId)
-  )
-    return false;
-  if (
-    typeof value.singleAttemptNonce !== "string" ||
-    !IDENTIFIER.test(value.singleAttemptNonce)
-  )
-    return false;
-  return true;
+  _value: unknown,
+): _value is ProductionReadOnlyPreflightAuthorization {
+  return false;
 }
 
-export function validateProductionPreflightAuthorization(value: unknown):
-  | { ok: true; authorization: ProductionReadOnlyPreflightAuthorization }
-  | { ok: false; blocker: "BLOCKED — REMOTE PREFLIGHT NOT AUTHORIZED" } {
-  if (!isValidPreflightAuthorization(value)) {
+export async function validateProductionPreflightAuthorization(
+  value: unknown,
+): Promise<
+  | Readonly<{
+      ok: true;
+      authorization: Extract<
+        ControlledProductionRemoteActionAuthorizationDecision,
+        { status: "AUTHORIZED" }
+      >;
+    }>
+  | Readonly<{
+      ok: false;
+      blocker: "BLOCKED — REMOTE PREFLIGHT NOT AUTHORIZED";
+      decision: ControlledProductionRemoteActionAuthorizationDecision;
+    }>
+> {
+  // Dynamic loading avoids a runtime initialization cycle: PKG-01 derives H
+  // descriptors from this helper, while PKG-03 consumes those descriptors.
+  const { evaluateControlledProductionRemoteActionAuthorization } =
+    await import("./controlled-production-remote-action-authorization-contract");
+  const decision =
+    evaluateControlledProductionRemoteActionAuthorization(value);
+  if (decision.status !== "AUTHORIZED") {
     return Object.freeze({
       ok: false as const,
       blocker: "BLOCKED — REMOTE PREFLIGHT NOT AUTHORIZED" as const,
+      decision,
     });
   }
   return Object.freeze({
     ok: true as const,
-    authorization: Object.freeze({ ...value }),
+    authorization: decision,
   });
 }
 
@@ -1170,7 +1157,7 @@ export type ProductionPreflightSuccessResult = Readonly<{
   success: true;
   checkId: "9X-B6C";
   phase: "Production Preflight Runtime Core Completion";
-  sourceCommit: "95e1e40";
+  sourceCommit: typeof CONTROLLED_PRODUCTION_PREFLIGHT_SOURCE_COMMIT;
   artifactFingerprintSetId: string;
   redactedTargetFingerprint: string;
   boundedExecutionId: string;
@@ -1755,12 +1742,27 @@ export async function executeProductionReadOnlyPreflight(
         null,
       );
     } else {
-      const authorizationResult = validateProductionPreflightAuthorization(
+      const authorizationResult = await validateProductionPreflightAuthorization(
         normalizedInput.authorization,
       );
       if (!authorizationResult.ok) {
         lifecycleState = "FAILED";
         setPrimary(authorizationResult.blocker, "AUTHORIZATION_REJECTED", null);
+      } else if (
+        PRODUCTION_PREFLIGHT_CANONICAL_EXECUTION_ORDER.length !== 1 ||
+        PRODUCTION_PREFLIGHT_CANONICAL_EXECUTION_ORDER[0] !==
+          authorizationResult.authorization.queryId
+      ) {
+        // PKG-03 authorizes exactly one H action. This legacy helper orchestrates
+        // the complete 18-query preflight and therefore cannot consume one
+        // decision as batch authority. PKG-04 must provide the one-action
+        // execution boundary before transport use can be enabled.
+        lifecycleState = "FAILED";
+        setPrimary(
+          "BLOCKED — REMOTE PREFLIGHT NOT AUTHORIZED",
+          "AUTHORIZATION_REJECTED",
+          authorizationResult.authorization.queryId,
+        );
       } else {
         lifecycleState = "AUTHORIZATION_VALIDATED";
 
@@ -1837,7 +1839,7 @@ export async function executeProductionReadOnlyPreflight(
             success: true as const,
             checkId: "9X-B6C" as const,
             phase: "Production Preflight Runtime Core Completion" as const,
-            sourceCommit: "95e1e40" as const,
+            sourceCommit: CONTROLLED_PRODUCTION_PREFLIGHT_SOURCE_COMMIT,
             artifactFingerprintSetId:
               authorizationResult.authorization.artifactFingerprintSetId,
             redactedTargetFingerprint: redactTargetFingerprint(
@@ -1971,16 +1973,16 @@ function buildSyntheticReadyResults(): Readonly<
   return deepFreeze(fixtures);
 }
 
-function createSyntheticAuth(): ProductionReadOnlyPreflightAuthorization {
+function createSyntheticAuth(): Readonly<Record<string, unknown>> {
   return Object.freeze({
     authorizationKind: "PRODUCTION_READ_ONLY_PREFLIGHT_SINGLE_ATTEMPT" as const,
-    sourceCommit: "95e1e40" as const,
+    sourceCommit: CONTROLLED_PRODUCTION_PREFLIGHT_SOURCE_COMMIT,
     artifactFingerprintSetId: "artifact-set-synthetic-01",
     targetFingerprint: "target-fingerprint-01",
     targetPurpose: "audit-bootstrap-preflight",
     operatorEvidenceConfirmed: true as const,
     executionWindowId: "window-synthetic-01",
-    singleAttemptNonce: "nonce-synthetic-01",
+    singleAttemptNonceReference: "nonce_synthetic_reference_0001",
     remoteExecutionSeparatelyAuthorized: true as const,
   });
 }

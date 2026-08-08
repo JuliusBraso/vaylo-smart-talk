@@ -1,10 +1,15 @@
 import "server-only";
 
 import { createHash } from "node:crypto";
+import { types as nodeUtilTypes } from "node:util";
 
 export const CONTROLLED_PRODUCTION_PREFLIGHT_MANIFEST_KIND =
   "CONTROLLED_PRODUCTION_READ_ONLY_PREFLIGHT_EXECUTION" as const;
 export const CONTROLLED_PRODUCTION_PREFLIGHT_MANIFEST_VERSION = "1" as const;
+export const CONTROLLED_PRODUCTION_PREFLIGHT_INGRESS_POLICY_ID =
+  "C2_DESCRIPTOR_SAFE_CANONICAL_SNAPSHOT_V1" as const;
+export const CONTROLLED_PRODUCTION_PREFLIGHT_PROVENANCE_POLICY_ID =
+  "C2_WEAK_IDENTITY_PROVENANCE_BINDING_V1" as const;
 export const CONTROLLED_PRODUCTION_PREFLIGHT_AUTHORIZATION_KIND =
   "PRODUCTION_READ_ONLY_PREFLIGHT_SINGLE_ATTEMPT" as const;
 export const CONTROLLED_PRODUCTION_PREFLIGHT_SOURCE_COMMIT = "8a9f3c8" as const;
@@ -169,24 +174,109 @@ function fail(code: ValidationErrorCode): ContractValidationFailure {
   });
 }
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+type ClosedRecordInspection =
+  | Readonly<{ ok: true; value: Readonly<Record<string, unknown>> }>
+  | Readonly<{ ok: false; reason: "INVALID" | "UNKNOWN" | "SENSITIVE" }>;
+
+function inspectClosedPlainDataRecord(
+  value: unknown,
+  allowed: ReadonlySet<string>,
+): ClosedRecordInspection {
+  if (
+    nodeUtilTypes.isProxy(value) ||
+    value === null ||
+    typeof value !== "object" ||
+    Array.isArray(value)
+  ) {
+    return Object.freeze({ ok: false as const, reason: "INVALID" as const });
+  }
+  try {
+    if (Object.getPrototypeOf(value) !== Object.prototype) {
+      return Object.freeze({ ok: false as const, reason: "INVALID" as const });
+    }
+    const ownKeys = Reflect.ownKeys(value);
+    if (ownKeys.some((key) => typeof key !== "string")) {
+      return Object.freeze({ ok: false as const, reason: "UNKNOWN" as const });
+    }
+    const stringKeys = ownKeys as string[];
+    const unexpected = stringKeys.filter((key) => !allowed.has(key));
+    if (unexpected.some((key) => SENSITIVE_FIELD.test(key))) {
+      return Object.freeze({ ok: false as const, reason: "SENSITIVE" as const });
+    }
+    if (
+      unexpected.length > 0 ||
+      stringKeys.length !== allowed.size ||
+      [...allowed].some((key) => !stringKeys.includes(key))
+    ) {
+      return Object.freeze({ ok: false as const, reason: "UNKNOWN" as const });
+    }
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    const snapshot: Record<string, unknown> = {};
+    for (const key of allowed) {
+      const descriptor = descriptors[key];
+      if (
+        !descriptor ||
+        !("value" in descriptor) ||
+        descriptor.get !== undefined ||
+        descriptor.set !== undefined
+      ) {
+        return Object.freeze({ ok: false as const, reason: "INVALID" as const });
+      }
+      snapshot[key] = descriptor.value;
+    }
+    return Object.freeze({
+      ok: true as const,
+      value: Object.freeze(snapshot),
+    });
+  } catch {
+    return Object.freeze({ ok: false as const, reason: "INVALID" as const });
+  }
 }
 
-function hasSensitiveUnknownField(
-  value: Record<string, unknown>,
-  allowed: ReadonlySet<string>,
-): boolean {
-  return Object.keys(value).some(
-    (key) => !allowed.has(key) && SENSITIVE_FIELD.test(key),
-  );
-}
-
-function hasUnknownField(
-  value: Record<string, unknown>,
-  allowed: ReadonlySet<string>,
-): boolean {
-  return Object.keys(value).some((key) => !allowed.has(key));
+function inspectPlainDataArray(value: unknown): readonly unknown[] | null {
+  if (nodeUtilTypes.isProxy(value) || !Array.isArray(value)) return null;
+  try {
+    if (Object.getPrototypeOf(value) !== Array.prototype) return null;
+    const ownKeys = Reflect.ownKeys(value);
+    if (ownKeys.some((key) => typeof key === "symbol")) return null;
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
+    if (!lengthDescriptor || !("value" in lengthDescriptor)) return null;
+    const length = lengthDescriptor.value;
+    if (
+      typeof length !== "number" ||
+      !Number.isSafeInteger(length) ||
+      length < 0
+    ) {
+      return null;
+    }
+    const expected = new Set([
+      "length",
+      ...Array.from({ length }, (_, index) => String(index)),
+    ]);
+    if (
+      ownKeys.length !== expected.size ||
+      ownKeys.some((key) => !expected.has(String(key)))
+    ) {
+      return null;
+    }
+    const snapshot: unknown[] = [];
+    for (let index = 0; index < length; index += 1) {
+      const descriptor = descriptors[String(index)];
+      if (
+        !descriptor ||
+        !("value" in descriptor) ||
+        descriptor.get !== undefined ||
+        descriptor.set !== undefined
+      ) {
+        return null;
+      }
+      snapshot.push(descriptor.value);
+    }
+    return Object.freeze(snapshot);
+  } catch {
+    return null;
+  }
 }
 
 export function deepFreezeContract<T>(value: T): T {
@@ -290,30 +380,43 @@ const ARTIFACT_SET_FIELDS = new Set([
 export function validateControlledProductionPreflightArtifactFingerprintSet(
   input: unknown,
 ): ContractValidationResult<ControlledProductionPreflightArtifactFingerprintSet> {
-  if (!isPlainObject(input)) return fail("INVALID_INPUT");
-  if (hasSensitiveUnknownField(input, ARTIFACT_SET_FIELDS)) {
-    return fail("SECRET_BEARING_FIELD_REJECTED");
+  const inspected = inspectClosedPlainDataRecord(input, ARTIFACT_SET_FIELDS);
+  if (!inspected.ok) {
+    return fail(
+      inspected.reason === "SENSITIVE"
+        ? "SECRET_BEARING_FIELD_REJECTED"
+        : inspected.reason === "UNKNOWN"
+          ? "UNKNOWN_FIELD"
+          : "INVALID_INPUT",
+    );
   }
-  if (hasUnknownField(input, ARTIFACT_SET_FIELDS)) return fail("UNKNOWN_FIELD");
-  if (!isCanonicalArtifactFingerprintSetId(input.artifactFingerprintSetId)) {
+  const source = inspected.value;
+  if (!isCanonicalArtifactFingerprintSetId(source.artifactFingerprintSetId)) {
     return fail("ARTIFACT_SET_INVALID");
   }
-  if (input.sourceCommit !== CONTROLLED_PRODUCTION_PREFLIGHT_SOURCE_COMMIT) {
+  if (source.sourceCommit !== CONTROLLED_PRODUCTION_PREFLIGHT_SOURCE_COMMIT) {
     return fail("SOURCE_COMMIT_MISMATCH");
   }
-  if (!Array.isArray(input.artifacts)) return fail("ARTIFACT_SET_INVALID");
-  if (input.artifacts.length !== COMMITTED_ARTIFACT_INVENTORY.length) {
+  const inputArtifacts = inspectPlainDataArray(source.artifacts);
+  if (!inputArtifacts) return fail("ARTIFACT_SET_INVALID");
+  if (inputArtifacts.length !== COMMITTED_ARTIFACT_INVENTORY.length) {
     return fail("ARTIFACT_COUNT_MISMATCH");
   }
 
   const byId = new Map<string, ControlledProductionPreflightArtifactFingerprintEntry>();
-  for (const entry of input.artifacts) {
-    if (!isPlainObject(entry)) return fail("ARTIFACT_SET_INVALID");
+  for (const untrustedEntry of inputArtifacts) {
     const allowed = new Set(["artifactId", "repositoryPath", "fingerprint"]);
-    if (hasSensitiveUnknownField(entry, allowed)) {
-      return fail("SECRET_BEARING_FIELD_REJECTED");
+    const entryInspection = inspectClosedPlainDataRecord(untrustedEntry, allowed);
+    if (!entryInspection.ok) {
+      return fail(
+        entryInspection.reason === "SENSITIVE"
+          ? "SECRET_BEARING_FIELD_REJECTED"
+          : entryInspection.reason === "UNKNOWN"
+            ? "UNKNOWN_FIELD"
+            : "ARTIFACT_SET_INVALID",
+      );
     }
-    if (hasUnknownField(entry, allowed)) return fail("UNKNOWN_FIELD");
+    const entry = entryInspection.value;
     if (
       typeof entry.artifactId !== "string" ||
       !(COMMITTED_ARTIFACT_IDS as readonly string[]).includes(entry.artifactId)
@@ -348,7 +451,7 @@ export function validateControlledProductionPreflightArtifactFingerprintSet(
 
   const normalized = deepFreezeContract(
     Object.freeze({
-      artifactFingerprintSetId: input.artifactFingerprintSetId,
+        artifactFingerprintSetId: source.artifactFingerprintSetId,
       sourceCommit: CONTROLLED_PRODUCTION_PREFLIGHT_SOURCE_COMMIT,
       artifacts: Object.freeze(artifacts),
     }),
@@ -373,16 +476,22 @@ export function validateControlledProductionPreflightExecutionWindow(
   input: unknown,
   currentTimeIso: unknown,
 ): ContractValidationResult<ControlledProductionPreflightExecutionWindow> {
-  if (!isPlainObject(input)) return fail("INVALID_INPUT");
-  if (hasSensitiveUnknownField(input, WINDOW_FIELDS)) {
-    return fail("SECRET_BEARING_FIELD_REJECTED");
+  const inspected = inspectClosedPlainDataRecord(input, WINDOW_FIELDS);
+  if (!inspected.ok) {
+    return fail(
+      inspected.reason === "SENSITIVE"
+        ? "SECRET_BEARING_FIELD_REJECTED"
+        : inspected.reason === "UNKNOWN"
+          ? "UNKNOWN_FIELD"
+          : "INVALID_INPUT",
+    );
   }
-  if (hasUnknownField(input, WINDOW_FIELDS)) return fail("UNKNOWN_FIELD");
-  if (!isCanonicalExecutionWindowId(input.executionWindowId)) {
+  const source = inspected.value;
+  if (!isCanonicalExecutionWindowId(source.executionWindowId)) {
     return fail("EXECUTION_WINDOW_INVALID");
   }
-  const notBefore = parseUtcIso(input.notBeforeIso);
-  const expiresAt = parseUtcIso(input.expiresAtIso);
+  const notBefore = parseUtcIso(source.notBeforeIso);
+  const expiresAt = parseUtcIso(source.expiresAtIso);
   const current = parseUtcIso(currentTimeIso);
   if (notBefore === null || expiresAt === null || current === null) {
     return fail("EXECUTION_WINDOW_INVALID");
@@ -399,9 +508,9 @@ export function validateControlledProductionPreflightExecutionWindow(
     ok: true as const,
     value: deepFreezeContract(
       Object.freeze({
-        executionWindowId: input.executionWindowId,
-        notBeforeIso: input.notBeforeIso as string,
-        expiresAtIso: input.expiresAtIso as string,
+        executionWindowId: source.executionWindowId,
+        notBeforeIso: source.notBeforeIso as string,
+        expiresAtIso: source.expiresAtIso as string,
       }),
     ),
   });
@@ -417,19 +526,26 @@ export function validateOperatorAcknowledgements(
 ): ContractValidationResult<
   readonly ControlledProductionPreflightOperatorAcknowledgement[]
 > {
-  if (!Array.isArray(input)) return fail("ACKNOWLEDGEMENT_INVENTORY_INVALID");
-  if (input.length !== OPERATOR_ACKNOWLEDGEMENT_IDS.length) {
+  const inputItems = inspectPlainDataArray(input);
+  if (!inputItems) return fail("ACKNOWLEDGEMENT_INVENTORY_INVALID");
+  if (inputItems.length !== OPERATOR_ACKNOWLEDGEMENT_IDS.length) {
     return fail("ACKNOWLEDGEMENT_INVENTORY_INVALID");
   }
   const seen = new Set<string>();
   const normalized: ControlledProductionPreflightOperatorAcknowledgement[] = [];
-  for (const item of input) {
-    if (!isPlainObject(item)) return fail("ACKNOWLEDGEMENT_INVENTORY_INVALID");
+  for (const untrustedItem of inputItems) {
     const allowed = new Set(["acknowledgementId", "confirmed"]);
-    if (hasSensitiveUnknownField(item, allowed)) {
-      return fail("SECRET_BEARING_FIELD_REJECTED");
+    const itemInspection = inspectClosedPlainDataRecord(untrustedItem, allowed);
+    if (!itemInspection.ok) {
+      return fail(
+        itemInspection.reason === "SENSITIVE"
+          ? "SECRET_BEARING_FIELD_REJECTED"
+          : itemInspection.reason === "UNKNOWN"
+            ? "UNKNOWN_FIELD"
+            : "ACKNOWLEDGEMENT_INVENTORY_INVALID",
+      );
     }
-    if (hasUnknownField(item, allowed)) return fail("UNKNOWN_FIELD");
+    const item = itemInspection.value;
     if (
       typeof item.acknowledgementId !== "string" ||
       !(OPERATOR_ACKNOWLEDGEMENT_IDS as readonly string[]).includes(
@@ -510,66 +626,72 @@ export function validateControlledProductionPreflightExecutionManifest(
   input: unknown,
   currentTimeIso: unknown,
 ): ContractValidationResult<ControlledProductionPreflightExecutionManifest> {
-  if (!isPlainObject(input)) return fail("INVALID_INPUT");
-  if (hasSensitiveUnknownField(input, MANIFEST_FIELDS)) {
-    return fail("SECRET_BEARING_FIELD_REJECTED");
+  const inspected = inspectClosedPlainDataRecord(input, MANIFEST_FIELDS);
+  if (!inspected.ok) {
+    return fail(
+      inspected.reason === "SENSITIVE"
+        ? "SECRET_BEARING_FIELD_REJECTED"
+        : inspected.reason === "UNKNOWN"
+          ? "UNKNOWN_FIELD"
+          : "INVALID_INPUT",
+    );
   }
-  if (hasUnknownField(input, MANIFEST_FIELDS)) return fail("UNKNOWN_FIELD");
-  if (input.manifestKind !== CONTROLLED_PRODUCTION_PREFLIGHT_MANIFEST_KIND) {
+  const source = inspected.value;
+  if (source.manifestKind !== CONTROLLED_PRODUCTION_PREFLIGHT_MANIFEST_KIND) {
     return fail("MANIFEST_KIND_MISMATCH");
   }
   if (
-    input.manifestVersion !== CONTROLLED_PRODUCTION_PREFLIGHT_MANIFEST_VERSION
+    source.manifestVersion !== CONTROLLED_PRODUCTION_PREFLIGHT_MANIFEST_VERSION
   ) {
     return fail("MANIFEST_VERSION_MISMATCH");
   }
-  if (input.sourceCommit !== CONTROLLED_PRODUCTION_PREFLIGHT_SOURCE_COMMIT) {
+  if (source.sourceCommit !== CONTROLLED_PRODUCTION_PREFLIGHT_SOURCE_COMMIT) {
     return fail("SOURCE_COMMIT_MISMATCH");
   }
   const artifactSet = validateControlledProductionPreflightArtifactFingerprintSet(
-    input.artifactFingerprintSet,
+    source.artifactFingerprintSet,
   );
   if (!artifactSet.ok) return artifactSet;
-  if (!isCanonicalTargetFingerprint(input.targetFingerprint)) {
+  if (!isCanonicalTargetFingerprint(source.targetFingerprint)) {
     return fail("TARGET_FINGERPRINT_INVALID");
   }
   if (
-    input.targetPurpose !==
+    source.targetPurpose !==
     "CONTROLLED_PRODUCTION_SCHEMA_AUDIT_PREFLIGHT"
   ) {
     return fail("TARGET_PURPOSE_INVALID");
   }
   const window = validateControlledProductionPreflightExecutionWindow(
-    input.executionWindow,
+    source.executionWindow,
     currentTimeIso,
   );
   if (!window.ok) return window;
-  if (!isCanonicalNonceReference(input.singleAttemptNonceReference)) {
+  if (!isCanonicalNonceReference(source.singleAttemptNonceReference)) {
     return fail("NONCE_REFERENCE_INVALID");
   }
   if (
-    !isCanonicalSha256Fingerprint(input.canonicalQueryRegistryFingerprint) ||
-    !isCanonicalSha256Fingerprint(input.canonicalExecutionOrderFingerprint) ||
-    !isCanonicalSha256Fingerprint(input.safetySettingsFingerprint)
+    !isCanonicalSha256Fingerprint(source.canonicalQueryRegistryFingerprint) ||
+    !isCanonicalSha256Fingerprint(source.canonicalExecutionOrderFingerprint) ||
+    !isCanonicalSha256Fingerprint(source.safetySettingsFingerprint)
   ) {
     return fail("FINGERPRINT_INVALID");
   }
   const contractFingerprints = [
-    input.canonicalQueryRegistryFingerprint,
-    input.canonicalExecutionOrderFingerprint,
-    input.safetySettingsFingerprint,
+    source.canonicalQueryRegistryFingerprint,
+    source.canonicalExecutionOrderFingerprint,
+    source.safetySettingsFingerprint,
   ];
   if (new Set(contractFingerprints).size !== 3) {
     return fail("CONTRACT_FINGERPRINT_COLLISION");
   }
   if (
-    input.expectedExecutorIdentity !==
+    source.expectedExecutorIdentity !==
     EXPECTED_PRODUCTION_PREFLIGHT_EXECUTOR_IDENTITY
   ) {
     return fail("EXECUTOR_IDENTITY_MISMATCH");
   }
   const acknowledgements = validateOperatorAcknowledgements(
-    input.operatorAcknowledgements,
+    source.operatorAcknowledgements,
   );
   if (!acknowledgements.ok) return acknowledgements;
 
@@ -579,16 +701,16 @@ export function validateControlledProductionPreflightExecutionManifest(
         manifestVersion: CONTROLLED_PRODUCTION_PREFLIGHT_MANIFEST_VERSION,
         sourceCommit: CONTROLLED_PRODUCTION_PREFLIGHT_SOURCE_COMMIT,
         artifactFingerprintSet: artifactSet.value,
-        targetFingerprint: input.targetFingerprint,
+        targetFingerprint: source.targetFingerprint,
         targetPurpose:
           "CONTROLLED_PRODUCTION_SCHEMA_AUDIT_PREFLIGHT" as const,
         executionWindow: window.value,
-        singleAttemptNonceReference: input.singleAttemptNonceReference,
+        singleAttemptNonceReference: source.singleAttemptNonceReference,
         canonicalQueryRegistryFingerprint:
-          input.canonicalQueryRegistryFingerprint,
+          source.canonicalQueryRegistryFingerprint,
         canonicalExecutionOrderFingerprint:
-          input.canonicalExecutionOrderFingerprint,
-        safetySettingsFingerprint: input.safetySettingsFingerprint,
+          source.canonicalExecutionOrderFingerprint,
+        safetySettingsFingerprint: source.safetySettingsFingerprint,
         expectedExecutorIdentity:
           EXPECTED_PRODUCTION_PREFLIGHT_EXECUTOR_IDENTITY,
         operatorAcknowledgements: acknowledgements.value,
@@ -635,41 +757,47 @@ const AUTHORIZATION_FIELDS = new Set([
 export function validateControlledProductionPreflightAuthorizationEnvelope(
   input: unknown,
 ): ContractValidationResult<ControlledProductionPreflightAuthorizationEnvelope> {
-  if (!isPlainObject(input)) return fail("INVALID_INPUT");
-  if (hasSensitiveUnknownField(input, AUTHORIZATION_FIELDS)) {
-    return fail("SECRET_BEARING_FIELD_REJECTED");
+  const inspected = inspectClosedPlainDataRecord(input, AUTHORIZATION_FIELDS);
+  if (!inspected.ok) {
+    return fail(
+      inspected.reason === "SENSITIVE"
+        ? "SECRET_BEARING_FIELD_REJECTED"
+        : inspected.reason === "UNKNOWN"
+          ? "UNKNOWN_FIELD"
+          : "INVALID_INPUT",
+    );
   }
-  if (hasUnknownField(input, AUTHORIZATION_FIELDS)) return fail("UNKNOWN_FIELD");
+  const source = inspected.value;
   if (
-    input.authorizationKind !==
+    source.authorizationKind !==
     CONTROLLED_PRODUCTION_PREFLIGHT_AUTHORIZATION_KIND
   ) {
     return fail("AUTHORIZATION_KIND_MISMATCH");
   }
-  if (input.sourceCommit !== CONTROLLED_PRODUCTION_PREFLIGHT_SOURCE_COMMIT) {
+  if (source.sourceCommit !== CONTROLLED_PRODUCTION_PREFLIGHT_SOURCE_COMMIT) {
     return fail("SOURCE_COMMIT_MISMATCH");
   }
-  if (!isCanonicalArtifactFingerprintSetId(input.artifactFingerprintSetId)) {
+  if (!isCanonicalArtifactFingerprintSetId(source.artifactFingerprintSetId)) {
     return fail("ARTIFACT_SET_INVALID");
   }
-  if (!isCanonicalTargetFingerprint(input.targetFingerprint)) {
+  if (!isCanonicalTargetFingerprint(source.targetFingerprint)) {
     return fail("TARGET_FINGERPRINT_INVALID");
   }
   if (
-    input.targetPurpose !==
+    source.targetPurpose !==
     "CONTROLLED_PRODUCTION_SCHEMA_AUDIT_PREFLIGHT"
   ) {
     return fail("TARGET_PURPOSE_INVALID");
   }
-  if (!isCanonicalExecutionWindowId(input.executionWindowId)) {
+  if (!isCanonicalExecutionWindowId(source.executionWindowId)) {
     return fail("EXECUTION_WINDOW_INVALID");
   }
-  if (!isCanonicalNonceReference(input.singleAttemptNonceReference)) {
+  if (!isCanonicalNonceReference(source.singleAttemptNonceReference)) {
     return fail("NONCE_REFERENCE_INVALID");
   }
   if (
-    input.operatorEvidenceConfirmed !== true ||
-    input.remoteExecutionSeparatelyAuthorized !== true
+    source.operatorEvidenceConfirmed !== true ||
+    source.remoteExecutionSeparatelyAuthorized !== true
   ) {
     return fail("AUTHORIZATION_NOT_CONFIRMED");
   }
@@ -677,12 +805,12 @@ export function validateControlledProductionPreflightAuthorizationEnvelope(
     Object.freeze({
         authorizationKind: CONTROLLED_PRODUCTION_PREFLIGHT_AUTHORIZATION_KIND,
         sourceCommit: CONTROLLED_PRODUCTION_PREFLIGHT_SOURCE_COMMIT,
-        artifactFingerprintSetId: input.artifactFingerprintSetId,
-        targetFingerprint: input.targetFingerprint,
+        artifactFingerprintSetId: source.artifactFingerprintSetId,
+        targetFingerprint: source.targetFingerprint,
         targetPurpose:
           "CONTROLLED_PRODUCTION_SCHEMA_AUDIT_PREFLIGHT" as const,
-        executionWindowId: input.executionWindowId,
-        singleAttemptNonceReference: input.singleAttemptNonceReference,
+        executionWindowId: source.executionWindowId,
+        singleAttemptNonceReference: source.singleAttemptNonceReference,
         operatorEvidenceConfirmed: true as const,
         remoteExecutionSeparatelyAuthorized: true as const,
     }),
@@ -714,9 +842,15 @@ export function isValidatedControlledProductionPreflightBindingEvidence(
 }
 
 export function validateManifestAuthorizationBinding(
-  manifest: ControlledProductionPreflightExecutionManifest,
-  authorization: ControlledProductionPreflightAuthorizationEnvelope,
+  manifest: unknown,
+  authorization: unknown,
 ): ContractValidationResult<ControlledProductionPreflightBindingEvidence> {
+  if (
+    !isValidatedControlledProductionPreflightExecutionManifest(manifest) ||
+    !isValidatedControlledProductionPreflightAuthorizationEnvelope(authorization)
+  ) {
+    return fail("AUTHORIZATION_BINDING_MISMATCH");
+  }
   if (
     manifest.sourceCommit !== authorization.sourceCommit ||
     manifest.artifactFingerprintSet.artifactFingerprintSetId !==

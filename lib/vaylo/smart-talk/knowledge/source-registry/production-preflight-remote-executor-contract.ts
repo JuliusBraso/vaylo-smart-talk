@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createHash } from "node:crypto";
+import { types as nodeUtilTypes } from "node:util";
 
 import {
   PRODUCTION_READ_ONLY_PREFLIGHT_QUERY_IDS,
@@ -17,12 +18,15 @@ export const PRODUCTION_PREFLIGHT_H_EXECUTION_CLASS =
   "CONTROLLED_READ_ONLY_PREFLIGHT_QUERY_EXECUTION" as const;
 export const PRODUCTION_PREFLIGHT_H_QUERY_NAMESPACE =
   "PRODUCTION_PREFLIGHT_H" as const;
+export const PRODUCTION_PREFLIGHT_H_INGRESS_POLICY_ID =
+  "PKG01_DESCRIPTOR_SAFE_CANONICAL_SNAPSHOT_V1" as const;
 
 export const PRODUCTION_PREFLIGHT_H_REMOTE_EXECUTOR_CONTRACT = Object.freeze({
   contractId: PRODUCTION_PREFLIGHT_H_REMOTE_EXECUTOR_CONTRACT_ID,
   version: PRODUCTION_PREFLIGHT_H_REMOTE_EXECUTOR_CONTRACT_VERSION,
   executionClass: PRODUCTION_PREFLIGHT_H_EXECUTION_CLASS,
   queryNamespace: PRODUCTION_PREFLIGHT_H_QUERY_NAMESPACE,
+  ingressPolicyId: PRODUCTION_PREFLIGHT_H_INGRESS_POLICY_ID,
   namespaceOwner: "PRODUCTION_READ_ONLY_PREFLIGHT_HELPER",
   remoteAuthorizationRequiredSeparately: true,
   remoteCapabilityImplemented: false,
@@ -119,6 +123,7 @@ export const PRODUCTION_PREFLIGHT_H_EXECUTOR_CONTRACT_FINGERPRINT =
         version: PRODUCTION_PREFLIGHT_H_REMOTE_EXECUTOR_CONTRACT_VERSION,
         executionClass: PRODUCTION_PREFLIGHT_H_EXECUTION_CLASS,
         queryNamespace: PRODUCTION_PREFLIGHT_H_QUERY_NAMESPACE,
+        ingressPolicyId: PRODUCTION_PREFLIGHT_H_INGRESS_POLICY_ID,
         descriptors: fingerprintPayload,
       }),
       "utf8",
@@ -215,22 +220,129 @@ const REQUEST_KEYS = Object.freeze([
 const SAFE_ID = /^[A-Za-z0-9_.:-]{12,128}$/;
 const SECRET_MATERIAL =
   /(?:password|secret|token|credential|api[_-]?key|postgres(?:ql)?:\/\/|database_url)/i;
+const normalizedHRequestProvenance = new WeakSet<object>();
 
-const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
-  value !== null &&
-  typeof value === "object" &&
-  !Array.isArray(value) &&
-  Object.getPrototypeOf(value) === Object.prototype;
-
-const hasExactKeys = (
-  value: Record<string, unknown>,
+const closedPlainDataRecordSnapshot = (
+  value: unknown,
   keys: readonly string[],
-): boolean => {
-  const actual = Object.keys(value);
-  return (
-    actual.length === keys.length &&
-    actual.every((key) => keys.some((expected) => expected === key))
-  );
+): Readonly<Record<string, unknown>> | null => {
+  if (
+    nodeUtilTypes.isProxy(value) ||
+    value === null ||
+    typeof value !== "object" ||
+    Array.isArray(value)
+  ) {
+    return null;
+  }
+  try {
+    if (Object.getPrototypeOf(value) !== Object.prototype) return null;
+    const ownKeys = Reflect.ownKeys(value);
+    if (
+      ownKeys.length !== keys.length ||
+      ownKeys.some(
+        (key) => typeof key !== "string" || !keys.includes(key),
+      )
+    ) {
+      return null;
+    }
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    const snapshot: Record<string, unknown> = {};
+    for (const key of keys) {
+      const descriptor = descriptors[key];
+      if (
+        !descriptor ||
+        !("value" in descriptor) ||
+        descriptor.get !== undefined ||
+        descriptor.set !== undefined
+      ) {
+        return null;
+      }
+      snapshot[key] = descriptor.value;
+    }
+    return Object.freeze(snapshot);
+  } catch {
+    return null;
+  }
+};
+
+const safeDataSnapshot = (
+  value: unknown,
+  seen: WeakSet<object> = new WeakSet<object>(),
+): unknown => {
+  if (
+    value === null ||
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
+    return value;
+  }
+  if (nodeUtilTypes.isProxy(value) || typeof value !== "object") {
+    throw new Error("UNSAFE_RESULT_DATA");
+  }
+  if (seen.has(value)) throw new Error("CYCLIC_RESULT_DATA");
+  seen.add(value);
+  try {
+    if (Array.isArray(value)) {
+      if (Object.getPrototypeOf(value) !== Array.prototype) {
+        throw new Error("UNSAFE_RESULT_ARRAY");
+      }
+      const ownKeys = Reflect.ownKeys(value);
+      const descriptors = Object.getOwnPropertyDescriptors(value);
+      const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
+      const length =
+        lengthDescriptor && "value" in lengthDescriptor
+          ? lengthDescriptor.value
+          : -1;
+      if (
+        typeof length !== "number" ||
+        !Number.isSafeInteger(length) ||
+        length < 0
+      ) {
+        throw new Error("UNSAFE_RESULT_ARRAY");
+      }
+      const expected = new Set([
+        "length",
+        ...Array.from({ length }, (_, index) => String(index)),
+      ]);
+      if (
+        ownKeys.some(
+          (key) => typeof key !== "string" || !expected.has(key),
+        ) ||
+        ownKeys.length !== expected.size
+      ) {
+        throw new Error("UNSAFE_RESULT_ARRAY");
+      }
+      const snapshot: unknown[] = [];
+      for (let index = 0; index < length; index += 1) {
+        const descriptor = descriptors[String(index)];
+        if (!descriptor || !("value" in descriptor)) {
+          throw new Error("UNSAFE_RESULT_ARRAY");
+        }
+        snapshot.push(safeDataSnapshot(descriptor.value, seen));
+      }
+      return Object.freeze(snapshot);
+    }
+    if (Object.getPrototypeOf(value) !== Object.prototype) {
+      throw new Error("UNSAFE_RESULT_RECORD");
+    }
+    const ownKeys = Reflect.ownKeys(value);
+    if (ownKeys.some((key) => typeof key !== "string")) {
+      throw new Error("UNSAFE_RESULT_RECORD");
+    }
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    const snapshot: Record<string, unknown> = {};
+    for (const key of ownKeys as string[]) {
+      const descriptor = descriptors[key];
+      if (!descriptor || !("value" in descriptor)) {
+        throw new Error("UNSAFE_RESULT_RECORD");
+      }
+      snapshot[key] = safeDataSnapshot(descriptor.value, seen);
+    }
+    return Object.freeze(snapshot);
+  } finally {
+    seen.delete(value);
+  }
 };
 
 const safeBoundedIdentity = (value: unknown): value is string =>
@@ -246,55 +358,65 @@ const requestFailure = (
 export const validateProductionPreflightHExecutionRequest = (
   input: unknown,
 ): ProductionPreflightHRequestValidation => {
-  if (!isPlainRecord(input) || !hasExactKeys(input, REQUEST_KEYS)) {
+  const source = closedPlainDataRecordSnapshot(input, REQUEST_KEYS);
+  if (!source) {
     return requestFailure("INVALID_REQUEST_SHAPE");
   }
   if (
-    input.contractId !== PRODUCTION_PREFLIGHT_H_REMOTE_EXECUTOR_CONTRACT_ID ||
-    input.contractVersion !==
+    source.contractId !== PRODUCTION_PREFLIGHT_H_REMOTE_EXECUTOR_CONTRACT_ID ||
+    source.contractVersion !==
       PRODUCTION_PREFLIGHT_H_REMOTE_EXECUTOR_CONTRACT_VERSION
   ) {
     return requestFailure("CONTRACT_IDENTITY_MISMATCH");
   }
   if (
-    input.contractFingerprint !==
+    source.contractFingerprint !==
     PRODUCTION_PREFLIGHT_H_EXECUTOR_CONTRACT_FINGERPRINT
   ) {
     return requestFailure("CONTRACT_FINGERPRINT_MISMATCH");
   }
-  const resolution = resolveProductionPreflightHQueryContract(input.queryId);
+  const resolution = resolveProductionPreflightHQueryContract(source.queryId);
   if (!resolution.ok) return requestFailure("QUERY_ID_REJECTED");
-  if (input.resultContractId !== resolution.value.resultContractId) {
+  if (source.resultContractId !== resolution.value.resultContractId) {
     return requestFailure("RESULT_CONTRACT_MISMATCH");
   }
-  if (!safeBoundedIdentity(input.targetFingerprint)) {
+  if (!safeBoundedIdentity(source.targetFingerprint)) {
     return requestFailure("TARGET_BINDING_INVALID");
   }
-  if (!safeBoundedIdentity(input.executorIdentity)) {
+  if (!safeBoundedIdentity(source.executorIdentity)) {
     return requestFailure("EXECUTOR_IDENTITY_INVALID");
   }
-  if (!safeBoundedIdentity(input.authorizationReference)) {
+  if (!safeBoundedIdentity(source.authorizationReference)) {
     return requestFailure("AUTHORIZATION_REFERENCE_INVALID");
   }
-  if (input.readOnly !== true) return requestFailure("READ_ONLY_REQUIRED");
+  if (source.readOnly !== true) return requestFailure("READ_ONLY_REQUIRED");
 
+  const value = Object.freeze({
+    contractId: PRODUCTION_PREFLIGHT_H_REMOTE_EXECUTOR_CONTRACT_ID,
+    contractVersion:
+      PRODUCTION_PREFLIGHT_H_REMOTE_EXECUTOR_CONTRACT_VERSION,
+    contractFingerprint:
+      PRODUCTION_PREFLIGHT_H_EXECUTOR_CONTRACT_FINGERPRINT,
+    queryId: resolution.value.queryId,
+    targetFingerprint: source.targetFingerprint,
+    executorIdentity: source.executorIdentity,
+    readOnly: true as const,
+    resultContractId: resolution.value.resultContractId,
+    authorizationReference: source.authorizationReference,
+  });
+  normalizedHRequestProvenance.add(value);
   return Object.freeze({
     ok: true as const,
-    value: Object.freeze({
-      contractId: PRODUCTION_PREFLIGHT_H_REMOTE_EXECUTOR_CONTRACT_ID,
-      contractVersion:
-        PRODUCTION_PREFLIGHT_H_REMOTE_EXECUTOR_CONTRACT_VERSION,
-      contractFingerprint:
-        PRODUCTION_PREFLIGHT_H_EXECUTOR_CONTRACT_FINGERPRINT,
-      queryId: resolution.value.queryId,
-      targetFingerprint: input.targetFingerprint,
-      executorIdentity: input.executorIdentity,
-      readOnly: true as const,
-      resultContractId: resolution.value.resultContractId,
-      authorizationReference: input.authorizationReference,
-    }),
+    value,
   });
 };
+
+export const isValidatedProductionPreflightHExecutionRequest = (
+  value: unknown,
+): value is ProductionPreflightHExecutionRequest =>
+  value !== null &&
+  typeof value === "object" &&
+  normalizedHRequestProvenance.has(value);
 
 export const createProductionPreflightHActionDescriptor = (
   request: ProductionPreflightHExecutionRequest,
@@ -351,22 +473,29 @@ export const validateProductionPreflightHResultEnvelope = (
   input: unknown,
   request: ProductionPreflightHExecutionRequest,
 ): ProductionPreflightHResultValidation => {
-  if (!isPlainRecord(input) || !hasExactKeys(input, RESULT_KEYS)) {
+  if (!isValidatedProductionPreflightHExecutionRequest(request)) {
+    return Object.freeze({
+      ok: false as const,
+      failureCode: "RESULT_REQUEST_BINDING_MISMATCH" as const,
+    });
+  }
+  const source = closedPlainDataRecordSnapshot(input, RESULT_KEYS);
+  if (!source) {
     return Object.freeze({
       ok: false as const,
       failureCode: "INVALID_RESULT_ENVELOPE" as const,
     });
   }
   if (
-    input.contractId !== request.contractId ||
-    input.contractVersion !== request.contractVersion ||
-    input.contractFingerprint !== request.contractFingerprint ||
-    input.queryId !== request.queryId ||
-    input.targetFingerprint !== request.targetFingerprint ||
-    input.resultContractId !== request.resultContractId ||
-    input.ok !== true ||
-    input.readOnlyVerified !== true ||
-    input.sanitized !== true
+    source.contractId !== request.contractId ||
+    source.contractVersion !== request.contractVersion ||
+    source.contractFingerprint !== request.contractFingerprint ||
+    source.queryId !== request.queryId ||
+    source.targetFingerprint !== request.targetFingerprint ||
+    source.resultContractId !== request.resultContractId ||
+    source.ok !== true ||
+    source.readOnlyVerified !== true ||
+    source.sanitized !== true
   ) {
     return Object.freeze({
       ok: false as const,
@@ -374,7 +503,19 @@ export const validateProductionPreflightHResultEnvelope = (
     });
   }
   const resolution = resolveProductionPreflightHQueryContract(request.queryId);
-  if (!resolution.ok || !resolution.value.validateResult(input.validatedResult)) {
+  let validatedResultSnapshot: unknown;
+  try {
+    validatedResultSnapshot = safeDataSnapshot(source.validatedResult);
+  } catch {
+    return Object.freeze({
+      ok: false as const,
+      failureCode: "INVALID_RESULT_ENVELOPE" as const,
+    });
+  }
+  if (
+    !resolution.ok ||
+    !resolution.value.validateResult(validatedResultSnapshot)
+  ) {
     return Object.freeze({
       ok: false as const,
       failureCode: "RESULT_SCHEMA_VALIDATION_FAILED" as const,
@@ -390,7 +531,7 @@ export const validateProductionPreflightHResultEnvelope = (
       targetFingerprint: request.targetFingerprint,
       resultContractId: request.resultContractId,
       ok: true as const,
-      validatedResult: Object.freeze({ ...input.validatedResult }),
+      validatedResult: validatedResultSnapshot,
       readOnlyVerified: true as const,
       sanitized: true as const,
     }),

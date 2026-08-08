@@ -83,6 +83,8 @@ const WINDOW_ID = "ewin_synthetic-c2-01";
 const NONCE_REF = "nonce_synthetic_c2_reference_0001";
 
 const registryCases: RegisteredCase[] = [];
+let hostileGetterInvocationCount = 0;
+let hostileSetterInvocationCount = 0;
 
 function register(
   caseId: string,
@@ -207,6 +209,45 @@ function mutationBlocked(target: object, key: string, value: unknown): boolean {
     return (target as Record<string, unknown>)[key] !== value;
   } catch {
     return true;
+  }
+}
+
+function withGetter(
+  source: Record<string, unknown>,
+  key: string,
+): Record<string, unknown> {
+  const hostile = { ...source };
+  Object.defineProperty(hostile, key, {
+    enumerable: true,
+    configurable: true,
+    get() {
+      hostileGetterInvocationCount += 1;
+      return source[key];
+    },
+  });
+  return hostile;
+}
+
+function withSetter(
+  source: Record<string, unknown>,
+  key: string,
+): Record<string, unknown> {
+  const hostile = { ...source };
+  Object.defineProperty(hostile, key, {
+    enumerable: true,
+    configurable: true,
+    set() {
+      hostileSetterInvocationCount += 1;
+    },
+  });
+  return hostile;
+}
+
+function validationRejected(execute: () => { readonly ok: boolean }): boolean {
+  try {
+    return !execute().ok;
+  } catch {
+    return false;
   }
 }
 
@@ -804,6 +845,353 @@ function registerBindingTampers(): void {
   });
 }
 
+function registerHostileIngressRegressions(): void {
+  register("hostile-manifest-top-level-getter", "INVALID_MANIFEST", "NEGATIVE", () =>
+    validationRejected(() =>
+      validateControlledProductionPreflightExecutionManifest(
+        withGetter(buildManifestRaw(), "manifestKind"),
+        CURRENT_TIME,
+      ),
+    ),
+  );
+  register("hostile-authorization-top-level-getter", "INVALID_AUTHORIZATION", "NEGATIVE", () =>
+    validationRejected(() =>
+      validateControlledProductionPreflightAuthorizationEnvelope(
+        withGetter(buildAuthorizationRaw(), "authorizationKind"),
+      ),
+    ),
+  );
+  register("hostile-manifest-top-level-setter", "INVALID_MANIFEST", "NEGATIVE", () =>
+    validationRejected(() =>
+      validateControlledProductionPreflightExecutionManifest(
+        withSetter(buildManifestRaw(), "manifestKind"),
+        CURRENT_TIME,
+      ),
+    ),
+  );
+  register("hostile-authorization-top-level-setter", "INVALID_AUTHORIZATION", "NEGATIVE", () =>
+    validationRejected(() =>
+      validateControlledProductionPreflightAuthorizationEnvelope(
+        withSetter(buildAuthorizationRaw(), "authorizationKind"),
+      ),
+    ),
+  );
+
+  register("hostile-artifact-set-nested-getter", "INVALID_MANIFEST", "NEGATIVE", () => {
+    const raw = buildManifestRaw({
+      artifactFingerprintSet: withGetter(buildArtifactSetRaw(), "sourceCommit"),
+    });
+    return validationRejected(() =>
+      validateControlledProductionPreflightExecutionManifest(raw, CURRENT_TIME),
+    );
+  });
+  register("hostile-artifact-entry-nested-getter", "INVALID_ARTIFACT_SET", "NEGATIVE", () => {
+    const artifactSet = buildArtifactSetRaw();
+    const artifacts = [...(artifactSet.artifacts as Record<string, unknown>[])];
+    artifacts[0] = withGetter(artifacts[0]!, "artifactId");
+    return validationRejected(() =>
+      validateControlledProductionPreflightArtifactFingerprintSet({
+        ...artifactSet,
+        artifacts,
+      }),
+    );
+  });
+  register("hostile-window-nested-getter", "INVALID_EXECUTION_WINDOW", "NEGATIVE", () =>
+    validationRejected(() =>
+      validateControlledProductionPreflightExecutionWindow(
+        withGetter(buildWindowRaw(), "notBeforeIso"),
+        CURRENT_TIME,
+      ),
+    ),
+  );
+  register("hostile-acknowledgement-nested-getter", "INVALID_ACKNOWLEDGEMENTS", "NEGATIVE", () => {
+    const acknowledgements = [...buildAcknowledgements()] as Array<Record<string, unknown>>;
+    acknowledgements[0] = withGetter(
+      acknowledgements[0]!,
+      "acknowledgementId",
+    );
+    return validationRejected(() =>
+      validateOperatorAcknowledgements(acknowledgements),
+    );
+  });
+  register("hostile-artifact-entry-nested-setter", "INVALID_ARTIFACT_SET", "NEGATIVE", () => {
+    const artifactSet = buildArtifactSetRaw();
+    const artifacts = [...(artifactSet.artifacts as Record<string, unknown>[])];
+    artifacts[0] = withSetter(artifacts[0]!, "fingerprint");
+    return validationRejected(() =>
+      validateControlledProductionPreflightArtifactFingerprintSet({
+        ...artifactSet,
+        artifacts,
+      }),
+    );
+  });
+
+  for (const [name, make] of [
+    ["custom-prototype", () => Object.assign(Object.create({ inherited: true }), buildManifestRaw())],
+    ["null-prototype", () => Object.assign(Object.create(null), buildManifestRaw())],
+    ["inherited-field", () => {
+      const raw = buildManifestRaw();
+      const manifestKind = raw.manifestKind;
+      delete raw.manifestKind;
+      return Object.assign(Object.create({ manifestKind }), raw);
+    }],
+    ["class-instance", () => {
+      class HostileManifest {
+        constructor() {
+          Object.assign(this, buildManifestRaw());
+        }
+      }
+      return new HostileManifest();
+    }],
+  ] as const) {
+    register(`hostile-record-${name}`, "INVALID_MANIFEST", "NEGATIVE", () =>
+      validationRejected(() =>
+        validateControlledProductionPreflightExecutionManifest(
+          make(),
+          CURRENT_TIME,
+        ),
+      ),
+    );
+  }
+
+  register("hostile-manifest-symbol", "INVALID_MANIFEST", "NEGATIVE", () => {
+    const raw = buildManifestRaw();
+    Object.defineProperty(raw, Symbol("hostile"), { value: true });
+    return validationRejected(() =>
+      validateControlledProductionPreflightExecutionManifest(raw, CURRENT_TIME),
+    );
+  });
+  register("hostile-manifest-unexpected-nonenumerable", "INVALID_MANIFEST", "NEGATIVE", () => {
+    const raw = buildManifestRaw();
+    Object.defineProperty(raw, "hidden", { value: true });
+    return validationRejected(() =>
+      validateControlledProductionPreflightExecutionManifest(raw, CURRENT_TIME),
+    );
+  });
+  register("hostile-authorization-unexpected-accessor", "INVALID_AUTHORIZATION", "NEGATIVE", () => {
+    const raw = buildAuthorizationRaw();
+    Object.defineProperty(raw, "hidden", {
+      get() {
+        hostileGetterInvocationCount += 1;
+        return true;
+      },
+    });
+    return validationRejected(() =>
+      validateControlledProductionPreflightAuthorizationEnvelope(raw),
+    );
+  });
+  register("hostile-artifact-set-symbol", "INVALID_ARTIFACT_SET", "NEGATIVE", () => {
+    const raw = buildArtifactSetRaw();
+    Object.defineProperty(raw, Symbol("hostile"), { value: true });
+    return validationRejected(() =>
+      validateControlledProductionPreflightArtifactFingerprintSet(raw),
+    );
+  });
+
+  for (const [name, make] of [
+    ["sparse", () => {
+      const values = [...buildAcknowledgements()];
+      delete values[0];
+      return values;
+    }],
+    ["extra-property", () => {
+      const values = [...buildAcknowledgements()];
+      Object.defineProperty(values, "extra", { value: true });
+      return values;
+    }],
+    ["symbol", () => {
+      const values = [...buildAcknowledgements()];
+      Object.defineProperty(values, Symbol("hostile"), { value: true });
+      return values;
+    }],
+    ["accessor-index", () => {
+      const values = [...buildAcknowledgements()];
+      const first = values[0];
+      Object.defineProperty(values, "0", {
+        enumerable: true,
+        get() {
+          hostileGetterInvocationCount += 1;
+          return first;
+        },
+      });
+      return values;
+    }],
+    ["custom-prototype", () => {
+      const values = [...buildAcknowledgements()];
+      Object.setPrototypeOf(values, Object.create(Array.prototype));
+      return values;
+    }],
+  ] as const) {
+    register(`hostile-ack-array-${name}`, "INVALID_ACKNOWLEDGEMENTS", "NEGATIVE", () =>
+      validationRejected(() => validateOperatorAcknowledgements(make())),
+    );
+  }
+
+  register("hostile-artifact-array-accessor-index", "INVALID_ARTIFACT_SET", "NEGATIVE", () => {
+    const raw = buildArtifactSetRaw();
+    const artifacts = [...(raw.artifacts as unknown[])];
+    const first = artifacts[0];
+    Object.defineProperty(artifacts, "0", {
+      enumerable: true,
+      get() {
+        hostileGetterInvocationCount += 1;
+        return first;
+      },
+    });
+    return validationRejected(() =>
+      validateControlledProductionPreflightArtifactFingerprintSet({
+        ...raw,
+        artifacts,
+      }),
+    );
+  });
+  register("hostile-artifact-array-hole", "INVALID_ARTIFACT_SET", "NEGATIVE", () => {
+    const raw = buildArtifactSetRaw();
+    const artifacts = [...(raw.artifacts as unknown[])];
+    delete artifacts[0];
+    return validationRejected(() =>
+      validateControlledProductionPreflightArtifactFingerprintSet({
+        ...raw,
+        artifacts,
+      }),
+    );
+  });
+  register("hostile-artifact-entry-nonenumerable", "INVALID_ARTIFACT_SET", "NEGATIVE", () => {
+    const raw = buildArtifactSetRaw();
+    const artifacts = [...(raw.artifacts as Record<string, unknown>[])];
+    const first = { ...artifacts[0] };
+    Object.defineProperty(first, "hidden", { value: true });
+    artifacts[0] = first;
+    return validationRejected(() =>
+      validateControlledProductionPreflightArtifactFingerprintSet({
+        ...raw,
+        artifacts,
+      }),
+    );
+  });
+  register("hostile-window-symbol", "INVALID_EXECUTION_WINDOW", "NEGATIVE", () => {
+    const raw = buildWindowRaw();
+    Object.defineProperty(raw, Symbol("hostile"), { value: true });
+    return validationRejected(() =>
+      validateControlledProductionPreflightExecutionWindow(raw, CURRENT_TIME),
+    );
+  });
+  register("hostile-acknowledgement-accessor", "INVALID_ACKNOWLEDGEMENTS", "NEGATIVE", () => {
+    const values = [...buildAcknowledgements()] as Array<Record<string, unknown>>;
+    values[0] = withSetter(values[0]!, "confirmed");
+    return validationRejected(() => validateOperatorAcknowledgements(values));
+  });
+
+  register("hostile-manifest-proxy", "INVALID_MANIFEST", "NEGATIVE", () =>
+    validationRejected(() =>
+      validateControlledProductionPreflightExecutionManifest(
+        new Proxy(buildManifestRaw(), {}),
+        CURRENT_TIME,
+      ),
+    ),
+  );
+  register("hostile-authorization-proxy", "INVALID_AUTHORIZATION", "NEGATIVE", () =>
+    validationRejected(() =>
+      validateControlledProductionPreflightAuthorizationEnvelope(
+        new Proxy(buildAuthorizationRaw(), {}),
+      ),
+    ),
+  );
+  register("hostile-artifact-array-proxy", "INVALID_ARTIFACT_SET", "NEGATIVE", () => {
+    const raw = buildArtifactSetRaw();
+    return validationRejected(() =>
+      validateControlledProductionPreflightArtifactFingerprintSet({
+        ...raw,
+        artifacts: new Proxy(raw.artifacts as unknown[], {}),
+      }),
+    );
+  });
+  register("hostile-revoked-proxy", "INVALID_MANIFEST", "NEGATIVE", () => {
+    const revocable = Proxy.revocable(buildManifestRaw(), {});
+    revocable.revoke();
+    return validationRejected(() =>
+      validateControlledProductionPreflightExecutionManifest(
+        revocable.proxy,
+        CURRENT_TIME,
+      ),
+    );
+  });
+
+  register("hostile-toctou-manifest-caller-mutation", "DEEP_IMMUTABILITY", "NEGATIVE", () => {
+    const raw = buildManifestRaw();
+    const result = validateControlledProductionPreflightExecutionManifest(
+      raw,
+      CURRENT_TIME,
+    );
+    if (!result.ok) return false;
+    raw.sourceCommit = "deadbeef";
+    (raw.executionWindow as Record<string, unknown>).executionWindowId =
+      "ewin_mutated-000001";
+    return (
+      result.value.sourceCommit === CONTROLLED_PRODUCTION_PREFLIGHT_SOURCE_COMMIT &&
+      result.value.executionWindow.executionWindowId === WINDOW_ID
+    );
+  });
+  register("hostile-toctou-artifacts-caller-mutation", "DEEP_IMMUTABILITY", "NEGATIVE", () => {
+    const raw = buildArtifactSetRaw({
+      artifacts: (buildArtifactSetRaw().artifacts as Array<Record<string, unknown>>).map(
+        (entry) => ({ ...entry }),
+      ),
+    });
+    const result =
+      validateControlledProductionPreflightArtifactFingerprintSet(raw);
+    if (!result.ok) return false;
+    (raw.artifacts as Array<Record<string, unknown>>)[0]!.fingerprint = FP(99);
+    return result.value.artifacts[0]!.fingerprint === FP(1);
+  });
+  register("hostile-toctou-authorization-caller-mutation", "DEEP_IMMUTABILITY", "NEGATIVE", () => {
+    const raw = buildAuthorizationRaw();
+    const result =
+      validateControlledProductionPreflightAuthorizationEnvelope(raw);
+    if (!result.ok) return false;
+    raw.targetFingerprint =
+      "target_sha256:1111111111111111111111111111111111111111111111111111111111111111";
+    return result.value.targetFingerprint === TARGET_FP;
+  });
+
+  register("hostile-provenance-cloned-manifest", "INVALID_BINDING", "NEGATIVE", () =>
+    !validateManifestAuthorizationBinding(
+      clone(requireValidManifest()),
+      requireValidAuthorization(),
+    ).ok,
+  );
+  register("hostile-provenance-cloned-authorization", "INVALID_BINDING", "NEGATIVE", () =>
+    !validateManifestAuthorizationBinding(
+      requireValidManifest(),
+      clone(requireValidAuthorization()),
+    ).ok,
+  );
+  register("hostile-provenance-forged-manifest", "INVALID_BINDING", "NEGATIVE", () =>
+    !validateManifestAuthorizationBinding(
+      deepFreezeContract({ ...requireValidManifest() }),
+      requireValidAuthorization(),
+    ).ok,
+  );
+  register("hostile-provenance-forged-authorization", "INVALID_BINDING", "NEGATIVE", () =>
+    !validateManifestAuthorizationBinding(
+      requireValidManifest(),
+      deepFreezeContract({ ...requireValidAuthorization() }),
+    ).ok,
+  );
+  register("hostile-provenance-binding-manifest-getter", "INVALID_BINDING", "NEGATIVE", () =>
+    !validateManifestAuthorizationBinding(
+      withGetter(buildManifestRaw(), "sourceCommit"),
+      requireValidAuthorization(),
+    ).ok,
+  );
+  register("hostile-provenance-binding-authorization-getter", "INVALID_BINDING", "NEGATIVE", () =>
+    !validateManifestAuthorizationBinding(
+      requireValidManifest(),
+      withGetter(buildAuthorizationRaw(), "sourceCommit"),
+    ).ok,
+  );
+}
+
 function registerSerializationAndSeparationTampers(): void {
   register("neg-mutation-after-normalize", "DEEP_IMMUTABILITY", "NEGATIVE", () => {
     const manifest = requireValidManifest() as {
@@ -981,6 +1369,8 @@ function registerExtraVolumeTampers(): void {
 
 export async function runControlledProductionPreflightExecutionContractsAudit() {
   registryCases.length = 0;
+  hostileGetterInvocationCount = 0;
+  hostileSetterInvocationCount = 0;
   registerPositiveCases();
   registerArtifactTampers();
   registerWindowTampers();
@@ -988,6 +1378,7 @@ export async function runControlledProductionPreflightExecutionContractsAudit() 
   registerManifestTampers();
   registerAuthorizationTampers();
   registerBindingTampers();
+  registerHostileIngressRegressions();
   registerSerializationAndSeparationTampers();
   registerRemotePathGuard();
   registerExtraVolumeTampers();
@@ -1010,6 +1401,25 @@ export async function runControlledProductionPreflightExecutionContractsAudit() 
   const unexecutedAuditCaseCount = registryCases.filter((item) => !item.executed)
     .length;
   const failedAuditCaseCount = registryCases.filter((item) => !item.passed).length;
+  const hostileIngressCases = registryCases.filter(
+    (item) =>
+      item.caseId.startsWith("hostile-") &&
+      !item.caseId.startsWith("hostile-provenance-") &&
+      !item.caseId.startsWith("hostile-toctou-"),
+  );
+  const hostileIngressAccepted = hostileIngressCases.filter(
+    (item) => !item.passed,
+  ).length;
+  const provenanceCases = registryCases.filter((item) =>
+    item.caseId.startsWith("hostile-provenance-"),
+  );
+  const provenanceCasesRejected = provenanceCases.filter(
+    (item) => item.passed,
+  ).length;
+  const toctouCases = registryCases.filter((item) =>
+    item.caseId.startsWith("hostile-toctou-"),
+  );
+  const toctouCasesPassed = toctouCases.filter((item) => item.passed).length;
 
   const validManifest = requireValidManifest();
   const validAuthorization = requireValidAuthorization();
@@ -1048,6 +1458,11 @@ export async function runControlledProductionPreflightExecutionContractsAudit() 
     duplicateAuditCaseIdCount === 0 &&
     unexecutedAuditCaseCount === 0 &&
     failedAuditCaseCount === 0 &&
+    hostileIngressAccepted === 0 &&
+    hostileGetterInvocationCount === 0 &&
+    hostileSetterInvocationCount === 0 &&
+    provenanceCasesRejected === provenanceCases.length &&
+    toctouCasesPassed === toctouCases.length &&
     CONTRACT_META.committedArtifactCount === 5 &&
     evidence.productionWriteAuthorized === false;
 
@@ -1097,6 +1512,14 @@ export async function runControlledProductionPreflightExecutionContractsAudit() 
           negative.length - new Set(negative.map((item) => item.caseId)).size,
         unexecutedAuditCaseCount,
         failedAuditCaseCount,
+        hostileIngressCaseCount: hostileIngressCases.length,
+        hostileIngressAccepted,
+        hostileGetterInvocationCount,
+        hostileSetterInvocationCount,
+        provenanceCaseCount: provenanceCases.length,
+        provenanceCasesRejected,
+        toctouCaseCount: toctouCases.length,
+        toctouCasesPassed,
         databaseClientImportCount: 0,
         networkExecutionPathCount: 0,
         subprocessExecutionPathCount: 0,

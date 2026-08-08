@@ -10,8 +10,16 @@ import {
   createFailClosedControlledProductionPermissionState,
 } from "../source-registry/controlled-production-permission-authority";
 import {
+  CONTROLLED_PRODUCTION_REMOTE_ACTION_AUTHORIZATION_CONTRACT_FINGERPRINT,
+  CONTROLLED_PRODUCTION_REMOTE_ACTION_AUTHORIZATION_CONTRACT_ID,
+  CONTROLLED_PRODUCTION_REMOTE_ACTION_AUTHORIZATION_CONTRACT_VERSION,
+  CONTROLLED_PRODUCTION_REMOTE_ACTION_ID,
+} from "../source-registry/controlled-production-remote-action-authorization-contract";
+import {
   CONTROLLED_PRODUCTION_PREFLIGHT_AUTHORIZATION_KIND,
+  CONTROLLED_PRODUCTION_PREFLIGHT_INGRESS_POLICY_ID,
   CONTROLLED_PRODUCTION_PREFLIGHT_MANIFEST_KIND,
+  CONTROLLED_PRODUCTION_PREFLIGHT_PROVENANCE_POLICY_ID,
   CONTROLLED_PRODUCTION_PREFLIGHT_SOURCE_COMMIT,
   EXPECTED_PRODUCTION_PREFLIGHT_EXECUTOR_IDENTITY,
 } from "../source-registry/controlled-production-preflight-execution-contracts";
@@ -19,6 +27,7 @@ import {
   createProductionPreflightHActionDescriptor,
   PRODUCTION_PREFLIGHT_H_EXECUTION_DESCRIPTORS,
   PRODUCTION_PREFLIGHT_H_EXECUTOR_CONTRACT_FINGERPRINT,
+  PRODUCTION_PREFLIGHT_H_INGRESS_POLICY_ID,
   PRODUCTION_PREFLIGHT_H_REMOTE_EXECUTOR_CONTRACT,
 } from "../source-registry/production-preflight-remote-executor-contract";
 import {
@@ -127,6 +136,13 @@ export const evaluateCanonicalArchitectureManifest = (candidate: unknown): Evalu
         "PKG02_TO_PKG03_REMOTE_ACTION_AUTHORIZATION_HANDOFF",
     ),
   );
+  const pkg03Boundary = asRecord(
+    boundaryRows.find(
+      (row) =>
+        asRecord(row)?.boundaryId ===
+        "PKG03_REMOTE_ACTION_AUTHORIZATION_CONTRACT",
+    ),
+  );
   const handoffRequirements = readArray(handoff, "requirements") ?? [];
   const handoffRequirement = (requirementId: string): UnknownRecord | null =>
     asRecord(
@@ -179,9 +195,27 @@ export const evaluateCanonicalArchitectureManifest = (candidate: unknown): Evalu
       asRecord(rToA)?.rCount === APPROVED_REMOTE_QUERY_IDS.length &&
       asRecord(rToA)?.aMappingCount === Object.keys(AUDIT_APPROVED_QUERY_MAPPING).length,
     boundaryContractsClassified:
-      (readArray(boundaries, "boundaries")?.length ?? 0) >= 15 &&
+      boundaryRows.length >= 17 &&
       currentBlocker("CB-01") === "CLOSED" &&
-      currentBlocker("CB-02") === "OPEN" && currentBlocker("CB-09") === "OPEN",
+      currentBlocker("CB-02") === "IMPLEMENTED_PENDING_INDEPENDENT_CLOSURE" &&
+      currentBlocker("CB-03") === "IMPLEMENTED_PENDING_INDEPENDENT_CLOSURE" &&
+      currentBlocker("CB-09") === "IMPLEMENTED_PENDING_INDEPENDENT_CLOSURE" &&
+      pkg03Boundary?.contractId ===
+        CONTROLLED_PRODUCTION_REMOTE_ACTION_AUTHORIZATION_CONTRACT_ID &&
+      pkg03Boundary?.contractVersion ===
+        CONTROLLED_PRODUCTION_REMOTE_ACTION_AUTHORIZATION_CONTRACT_VERSION &&
+      pkg03Boundary?.contractFingerprint ===
+        CONTROLLED_PRODUCTION_REMOTE_ACTION_AUTHORIZATION_CONTRACT_FINGERPRINT &&
+      pkg03Boundary?.allowedAction === CONTROLLED_PRODUCTION_REMOTE_ACTION_ID &&
+      pkg03Boundary?.canonicalC2IngressPolicy ===
+        CONTROLLED_PRODUCTION_PREFLIGHT_INGRESS_POLICY_ID &&
+      pkg03Boundary?.canonicalC2ProvenancePolicy ===
+        CONTROLLED_PRODUCTION_PREFLIGHT_PROVENANCE_POLICY_ID &&
+      pkg03Boundary?.canonicalPkg01IngressPolicy ===
+        PRODUCTION_PREFLIGHT_H_INGRESS_POLICY_ID &&
+      pkg03Boundary?.descriptorSafeCanonicalSnapshotsRequired === true &&
+      pkg03Boundary?.helperRebindImplemented === true &&
+      pkg03Boundary?.legacyFreeBooleanAuthorizationAuthoritative === false,
     transportAndCredentialStateTruthful:
       transport?.manifestClaimsProductionTransportImplemented === false &&
       credential?.realExecutableProvider === "MISSING" &&
@@ -203,10 +237,11 @@ export const evaluateCanonicalArchitectureManifest = (candidate: unknown): Evalu
       roadmap?.canonicalRoadmapAuthorityDefined === true &&
       roadmap?.historicalPhaseLabelGrantsCurrentAuthority === false &&
       roadmap?.phaseLocalRecommendationGrantsGlobalAuthority === false &&
-      roadmap?.cb10Status === "IMPLEMENTED_PENDING_INDEPENDENT_CLOSURE" &&
+      roadmap?.cb10Status === "CLOSED" &&
       readRecord(manifest, "currentArchitectureLineage")?.lineage === CANONICAL_ARCHITECTURE_LINEAGE &&
       (readArray(roadmap, "sequence") ?? []).includes("PKG-01") &&
-      (readArray(roadmap, "sequence") ?? []).includes("PKG-02 current manifest"),
+      (readArray(roadmap, "sequence") ?? []).includes("PKG-02 current manifest") &&
+      (readArray(roadmap, "sequence") ?? []).includes("PKG-03 current authorization contract"),
     antiStalenessBindingsValid:
       manifest?.manifestFingerprint === CANONICAL_ARCHITECTURE_MANIFEST_FINGERPRINT &&
       manifest?.manifestFingerprintDeterministic === true &&
@@ -221,7 +256,7 @@ export const evaluateCanonicalArchitectureManifest = (candidate: unknown): Evalu
     pkg03ArchitectureHandoffReady:
       CANONICAL_ARCHITECTURE_LINEAGE === "9X_POST_C7_MODERN_PRODUCTION_PREFLIGHT" &&
       asRecord(h)?.executorContractFingerprint === PRODUCTION_PREFLIGHT_H_EXECUTOR_CONTRACT_FINGERPRINT &&
-      handoff?.status === "OPEN_DESIGN_INPUT_READY" &&
+      handoff?.status === "CONSUMED_BY_IMPLEMENTED_CONTRACT" &&
       handoff?.authorityRole === "DESCRIPTIVE_BINDING_REFERENCE_ONLY" &&
       handoff?.grantsAuthorization === false &&
       handoff?.manifestOwnsC2ExecutionContractAuthority === false &&
@@ -246,6 +281,10 @@ export const evaluateCanonicalArchitectureManifest = (candidate: unknown): Evalu
         CONTROLLED_PRODUCTION_PREFLIGHT_MANIFEST_KIND &&
       handoffRequirement("ARTIFACT_CHECKPOINT_BINDING")?.authorizationKind ===
         CONTROLLED_PRODUCTION_PREFLIGHT_AUTHORIZATION_KIND &&
+      handoffRequirement("ARTIFACT_CHECKPOINT_BINDING")?.ingressPolicyId ===
+        CONTROLLED_PRODUCTION_PREFLIGHT_INGRESS_POLICY_ID &&
+      handoffRequirement("ARTIFACT_CHECKPOINT_BINDING")?.provenancePolicyId ===
+        CONTROLLED_PRODUCTION_PREFLIGHT_PROVENANCE_POLICY_ID &&
       handoffRequirement("NONCE_BINDING")?.manifestContainsNonceMaterial === false &&
       handoffRequirement("NONCE_BINDING")?.manifestOwnsNonceAuthority === false &&
       handoffRequirement("EXECUTION_WINDOW")?.manifestStoresLiveExecutionWindow === false &&
@@ -259,13 +298,15 @@ export const evaluateCanonicalArchitectureManifest = (candidate: unknown): Evalu
         PRODUCTION_PREFLIGHT_H_REMOTE_EXECUTOR_CONTRACT.version &&
       handoffRequirement("BOUNDED_H_ACTION_DESCRIPTOR")?.contractFingerprint ===
         PRODUCTION_PREFLIGHT_H_EXECUTOR_CONTRACT_FINGERPRINT &&
+      handoffRequirement("BOUNDED_H_ACTION_DESCRIPTOR")?.ingressPolicyId ===
+        PRODUCTION_PREFLIGHT_H_INGRESS_POLICY_ID &&
       handoffRequirement("BOUNDED_H_ACTION_DESCRIPTOR")?.manifestCreatesSecondHActionAuthority === false &&
       typeof createProductionPreflightHActionDescriptor === "function" &&
       permissions?.productionPermissionRegistryAuthority === "C6C" &&
       permissionsState?.AUTHORIZE_REMOTE_EXECUTION === false &&
-      currentBlocker("CB-02") === "OPEN" &&
-      currentBlocker("CB-03") === "OPEN" &&
-      currentBlocker("CB-09") === "OPEN",
+      currentBlocker("CB-02") === "IMPLEMENTED_PENDING_INDEPENDENT_CLOSURE" &&
+      currentBlocker("CB-03") === "IMPLEMENTED_PENDING_INDEPENDENT_CLOSURE" &&
+      currentBlocker("CB-09") === "IMPLEMENTED_PENDING_INDEPENDENT_CLOSURE",
   };
   return Object.freeze({ gates: Object.freeze(gates), allPassed: Object.values(gates).every(Boolean) });
 };
@@ -298,7 +339,7 @@ const roadmapTamperCases = Object.freeze([
   rejected(["roadmapNamespace", "canonicalRoadmapAuthorityDefined"], false),
   rejected(["roadmapNamespace", "historicalPhaseLabelGrantsCurrentAuthority"], true),
   rejected(["roadmapNamespace", "phaseLocalRecommendationGrantsGlobalAuthority"], true),
-  rejected(["roadmapNamespace", "cb10Status"], "CLOSED"),
+  rejected(["roadmapNamespace", "cb10Status"], "OPEN"),
   rejected(["currentArchitectureLineage", "lineage"], "historical C8"),
   rejected(["roadmapNamespace", "sequence"], []),
 ]);
@@ -337,23 +378,40 @@ const lifecycleTamperCases = Object.freeze([
   rejected(["lifecyclePrerequisiteGraph", "edges"], [["approved_h_query_execution", "credential_lease"]]),
 ]);
 const pkg03HandoffTamperCases = Object.freeze([
-  rejected(["boundaryContractRegistry", "boundaries", "15", "requirements"], []),
-  rejected(["boundaryContractRegistry", "boundaries", "15", "requirements", "0", "requiredForPkg03Binding"], false),
-  rejected(["boundaryContractRegistry", "boundaries", "15", "requirements", "0", "canonicalSource"], "wrong"),
-  rejected(["boundaryContractRegistry", "boundaries", "15", "requirements", "1", "sourceCommitIdentity"], "wrong"),
-  rejected(["boundaryContractRegistry", "boundaries", "15", "manifestConstructionCheckpointIsPkg03ExecutionCheckpointAuthority"], true),
-  rejected(["boundaryContractRegistry", "boundaries", "15", "requirements", "2", "requiredForPkg03Binding"], false),
-  rejected(["boundaryContractRegistry", "boundaries", "15", "requirements", "2", "manifestContainsNonceMaterial"], true),
-  rejected(["boundaryContractRegistry", "boundaries", "15", "requirements", "3", "requiredForPkg03Binding"], false),
-  rejected(["boundaryContractRegistry", "boundaries", "15", "requirements", "3", "manifestOwnsClockAuthority"], true),
-  rejected(["boundaryContractRegistry", "boundaries", "15", "requirements", "4", "requiredForPkg03Binding"], false),
-  rejected(["boundaryContractRegistry", "boundaries", "15", "requirements", "4", "manifestOwnsExecutorIdentityAuthority"], true),
+  rejected(["boundaryContractRegistry", "boundaries", "16", "requirements"], []),
+  rejected(["boundaryContractRegistry", "boundaries", "16", "requirements", "0", "requiredForPkg03Binding"], false),
+  rejected(["boundaryContractRegistry", "boundaries", "16", "requirements", "0", "canonicalSource"], "wrong"),
+  rejected(["boundaryContractRegistry", "boundaries", "16", "requirements", "1", "sourceCommitIdentity"], "wrong"),
+  rejected(["boundaryContractRegistry", "boundaries", "16", "manifestConstructionCheckpointIsPkg03ExecutionCheckpointAuthority"], true),
+  rejected(["boundaryContractRegistry", "boundaries", "16", "requirements", "2", "requiredForPkg03Binding"], false),
+  rejected(["boundaryContractRegistry", "boundaries", "16", "requirements", "2", "manifestContainsNonceMaterial"], true),
+  rejected(["boundaryContractRegistry", "boundaries", "16", "requirements", "3", "requiredForPkg03Binding"], false),
+  rejected(["boundaryContractRegistry", "boundaries", "16", "requirements", "3", "manifestOwnsClockAuthority"], true),
+  rejected(["boundaryContractRegistry", "boundaries", "16", "requirements", "4", "requiredForPkg03Binding"], false),
+  rejected(["boundaryContractRegistry", "boundaries", "16", "requirements", "4", "manifestOwnsExecutorIdentityAuthority"], true),
   rejected(["productionPermissionRegistry", "productionPermissionRegistryAuthority"], "other"),
   rejected(["productionPermissionRegistry", "state", "AUTHORIZE_REMOTE_EXECUTION"], true),
-  rejected(["boundaryContractRegistry", "boundaries", "15", "credentialAccessRemainsSeparate"], false),
+  rejected(["boundaryContractRegistry", "boundaries", "16", "credentialAccessRemainsSeparate"], false),
   rejected(["knownMissingContracts", "blockers", "1", "status"], "CLOSED"),
   rejected(["knownMissingContracts", "blockers", "2", "status"], "CLOSED"),
   rejected(["knownMissingContracts", "blockers", "8", "status"], "CLOSED"),
+]);
+const pkg03ManifestAntiStalenessCases = Object.freeze([
+  rejected(["boundaryContractRegistry", "boundaries", "12", "contractId"], "MISSING"),
+  rejected(["boundaryContractRegistry", "boundaries", "12", "contractFingerprint"], "drift"),
+  rejected(["boundaryContractRegistry", "boundaries", "12", "allowedAction"], "changed"),
+  rejected(["productionPermissionRegistry", "productionPermissionRegistryAuthority"], "other"),
+  rejected(["boundaryContractRegistry", "boundaries", "16", "requirements", "1", "sourceCommitIdentity"], "changed"),
+  rejected(["boundaryContractRegistry", "boundaries", "12", "helperRebindImplemented"], false),
+  rejected(["knownMissingContracts", "blockers", "1", "status"], "OPEN"),
+  rejected(["knownMissingContracts", "blockers", "1", "status"], "CLOSED"),
+  rejected(["boundaryContractRegistry", "boundaries", "12", "legacyFreeBooleanAuthorizationAuthoritative"], true),
+  rejected(["boundaryContractRegistry", "boundaries", "12", "canonicalC2IngressPolicy"], "C2_LEGACY_WEAK_INPUT_V0"),
+  rejected(["boundaryContractRegistry", "boundaries", "12", "canonicalC2ProvenancePolicy"], "STRUCTURAL_ONLY"),
+  rejected(["boundaryContractRegistry", "boundaries", "12", "canonicalPkg01IngressPolicy"], "PKG01_OBJECT_KEYS_V0"),
+  rejected(["boundaryContractRegistry", "boundaries", "16", "requirements", "1", "ingressPolicyId"], "C2_LEGACY_WEAK_INPUT_V0"),
+  rejected(["boundaryContractRegistry", "boundaries", "16", "requirements", "1", "provenancePolicyId"], "STRUCTURAL_ONLY"),
+  rejected(["boundaryContractRegistry", "boundaries", "16", "requirements", "5", "ingressPolicyId"], "PKG01_OBJECT_KEYS_V0"),
 ]);
 const gateSensitivityCases = Object.freeze([
   rejected(["currentRepositoryCheckpoint", "checkpoint"], "wrong"),
@@ -371,7 +429,7 @@ const gateSensitivityCases = Object.freeze([
   rejected(["roadmapNamespace", "canonicalCurrentNamespace"], "historical C7"),
   rejected(["manifestFingerprint"], "wrong"),
   rejected(["productionState", "remoteExecutionAuthorized"], true),
-  rejected(["boundaryContractRegistry", "boundaries", "15", "requirements"], []),
+  rejected(["boundaryContractRegistry", "boundaries", "16", "requirements"], []),
 ]);
 
 const report = {
@@ -383,26 +441,31 @@ const report = {
     roadmapTamperCases.every(Boolean) && antiStalenessTamperCases.every(Boolean) &&
     authorityTamperCases.every(Boolean) && immutabilityCases.every(Boolean) &&
     lifecycleTamperCases.every(Boolean) && pkg03HandoffTamperCases.every(Boolean) &&
+    pkg03ManifestAntiStalenessCases.every(Boolean) &&
     gateSensitivityCases.every(Boolean),
   blocked: !(evaluation.allPassed &&
     roadmapTamperCases.every(Boolean) && antiStalenessTamperCases.every(Boolean) &&
     authorityTamperCases.every(Boolean) && immutabilityCases.every(Boolean) &&
     lifecycleTamperCases.every(Boolean) && pkg03HandoffTamperCases.every(Boolean) &&
+    pkg03ManifestAntiStalenessCases.every(Boolean) &&
     gateSensitivityCases.every(Boolean)),
   blockReason: (evaluation.allPassed &&
     roadmapTamperCases.every(Boolean) && antiStalenessTamperCases.every(Boolean) &&
     authorityTamperCases.every(Boolean) && immutabilityCases.every(Boolean) &&
     lifecycleTamperCases.every(Boolean) && pkg03HandoffTamperCases.every(Boolean) &&
+    pkg03ManifestAntiStalenessCases.every(Boolean) &&
     gateSensitivityCases.every(Boolean)) ? null : "MANIFEST_GATE_FAILURE",
   defectClassification: (evaluation.allPassed &&
     roadmapTamperCases.every(Boolean) && antiStalenessTamperCases.every(Boolean) &&
     authorityTamperCases.every(Boolean) && immutabilityCases.every(Boolean) &&
     lifecycleTamperCases.every(Boolean) && pkg03HandoffTamperCases.every(Boolean) &&
+    pkg03ManifestAntiStalenessCases.every(Boolean) &&
     gateSensitivityCases.every(Boolean)) ? "NONE" : "MANIFEST_VALIDATION_FAILURE",
   implementationDecision: (evaluation.allPassed &&
     roadmapTamperCases.every(Boolean) && antiStalenessTamperCases.every(Boolean) &&
     authorityTamperCases.every(Boolean) && immutabilityCases.every(Boolean) &&
     lifecycleTamperCases.every(Boolean) && pkg03HandoffTamperCases.every(Boolean) &&
+    pkg03ManifestAntiStalenessCases.every(Boolean) &&
     gateSensitivityCases.every(Boolean))
     ? "AUTHORIZE_PKG_02_CANONICAL_ARCHITECTURE_MANIFEST_CLOSURE"
     : "BLOCK_MANIFEST_CLOSURE",
@@ -446,6 +509,9 @@ const report = {
   pkg03HandoffRequirementsWithAmbiguousAuthority: 0,
   pkg03HandoffTamperCaseCount: pkg03HandoffTamperCases.length,
   pkg03HandoffTamperCasesRejected: pkg03HandoffTamperCases.filter(Boolean).length,
+  pkg03ManifestAntiStalenessCaseCount: pkg03ManifestAntiStalenessCases.length,
+  pkg03ManifestAntiStalenessCasesRejected:
+    pkg03ManifestAntiStalenessCases.filter(Boolean).length,
   mandatoryManifestGateCount: mandatoryGateIds.length,
   mandatoryManifestGates: mandatoryGateIds,
   mandatoryManifestGateSensitivityCaseCount: gateSensitivityCases.length,
