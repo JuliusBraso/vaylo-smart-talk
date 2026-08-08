@@ -1,5 +1,7 @@
 import "server-only";
 
+import type { ProductionPreflightHQueryExecutionPort } from "./production-preflight-remote-executor-contract";
+
 export const PRODUCTION_READ_ONLY_PREFLIGHT_QUERY_IDS = [
   "PROD_PREFLIGHT_TARGET_IDENTITY",
   "PROD_PREFLIGHT_SERVER_VERSION",
@@ -1116,15 +1118,13 @@ export function validateProductionPreflightAuthorization(value: unknown):
   });
 }
 
-export interface ProductionReadOnlyPreflightTransport {
+export interface ProductionReadOnlyPreflightTransport
+  extends ProductionPreflightHQueryExecutionPort {
   openSession(): Promise<void>;
   verifySafetySettings(
     settings: typeof PRELIGHT_SAFETY_SETTINGS,
   ): Promise<void>;
   beginReadOnlyTransaction(): Promise<void>;
-  executeApprovedQuery(
-    queryId: ProductionReadOnlyPreflightQueryId,
-  ): Promise<unknown>;
   commitReadOnlyTransaction(): Promise<void>;
   rollbackReadOnlyTransaction(): Promise<void>;
   close(): Promise<void>;
