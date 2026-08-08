@@ -958,17 +958,22 @@ const gates: Record<GateId, boolean> = {
   canonicalManifestUpdatedAndValid:
     CANONICAL_ARCHITECTURE_MANIFEST_FINGERPRINT !==
       "5834c6b3d56d8c5c9dbce3f4d4f934f05a879f675d421041ef95c80292dd9333" &&
-    blockerStatus("CB-02") === "IMPLEMENTED_PENDING_INDEPENDENT_CLOSURE" &&
-    blockerStatus("CB-03") === "IMPLEMENTED_PENDING_INDEPENDENT_CLOSURE" &&
-    blockerStatus("CB-09") === "IMPLEMENTED_PENDING_INDEPENDENT_CLOSURE",
+    blockerStatus("CB-02") === "CLOSED" &&
+    blockerStatus("CB-03") === "CLOSED" &&
+    blockerStatus("CB-09") === "CLOSED",
   productionAuthorityPreserved:
     CONTROLLED_PRODUCTION_PERMISSION_IDS.every(
       (permissionId) => canonicalPermissionState[permissionId] === false,
     ),
   downstreamScopeContained:
-    ["CB-04", "CB-05", "CB-06", "CB-07", "CB-08", "CB-11"].every(
-      (blockerId) => blockerStatus(blockerId) === "OPEN",
-    ),
+    blockerStatus("CB-04") === "IMPLEMENTED_PENDING_INDEPENDENT_CLOSURE" &&
+    blockerStatus("CB-05") ===
+      "LOCAL_FOUNDATION_IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING" &&
+    blockerStatus("CB-06") === "IMPLEMENTED_PENDING_INDEPENDENT_CLOSURE" &&
+    blockerStatus("CB-07") === "IMPLEMENTED_PENDING_INDEPENDENT_CLOSURE" &&
+    blockerStatus("CB-08") ===
+      "LOCAL_FOUNDATION_IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING" &&
+    blockerStatus("CB-11") === "OPEN",
 };
 
 const evaluateGates = (candidate: Readonly<Record<GateId, boolean>>) =>

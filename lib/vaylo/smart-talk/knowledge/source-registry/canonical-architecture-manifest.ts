@@ -184,10 +184,11 @@ const manifestSemanticPayload = deepFreeze({
       component("PKG03_AUTHORIZATION", "source-registry/controlled-production-remote-action-authorization-contract.ts", "bounded H remote-action authorization contract", "IMPLEMENTED", "NOT_AUTHORIZED", "CONTRACT_ONLY", "PKG-03 authorization evaluator", "C2/C6C/PKG-01", "CURRENT"),
       component("R_EXECUTOR", "source-registry/remote-readonly-executor.ts", "remote R executor", "IMPLEMENTED", "NOT_AUTHORIZED", "CONTRACT_ONLY", "R", "none", "CURRENT"),
       component("A_CONTRACT", "source-registry/audit-infrastructure-contract.ts", "audit infrastructure mapping", "IMPLEMENTED", "NOT_AUTHORIZED", "CONTRACT_ONLY", "A", "R", "CURRENT"),
-      component("CREDENTIAL_TRANSPORT", "source-registry/controlled-production-preflight-credential-and-transport-boundary.ts", "credential and transport design contracts", "DESIGN_ONLY", "NOT_AUTHORIZED", "INTERFACE_ONLY", "future credential authority", "C6D", "CURRENT"),
+      component("CREDENTIAL_TRANSPORT", "source-registry/controlled-production-preflight-credential-and-transport-boundary.ts", "one-attempt credential lease boundary", "IMPLEMENTED", "NOT_AUTHORIZED", "FAIL_CLOSED_FOUNDATION", "future credential authority", "PKG-03/backup evidence", "CURRENT"),
+      component("PKG04_EXECUTION", "source-registry/controlled-production-remote-execution-boundary.ts", "bounded H-native execution boundary", "IMPLEMENTED", "NOT_AUTHORIZED", "ONE_SHOT_READ_ONLY", "PKG-04", "PKG-03/PKG-01", "CURRENT"),
       component("BOOTSTRAP", AUDIT_BOOTSTRAP_ARTIFACT_PATHS.bootstrapSql, "bootstrap artifact", "IMPLEMENTED", "NOT_AUTHORIZED", "NO_EXECUTION", "bootstrap authority", "C6C", "CURRENT"),
-      component("BACKUP_EVIDENCE", "external operator evidence", "backup/recovery evidence boundary", "MISSING", "NOT_AUTHORIZED", "NO_EXECUTION", "external evidence", "none", "CURRENT"),
-      component("TARGET_EVIDENCE", "external remote evidence", "production target evidence boundary", "UNVERIFIED", "NOT_AUTHORIZED", "NO_EXECUTION", "external evidence", "none", "CURRENT"),
+      component("BACKUP_EVIDENCE", "source-registry/production-preflight-prerequisite-evidence.ts", "local backup/recovery evidence contract; external proof pending", "IMPLEMENTED", "NOT_AUTHORIZED", "CONTRACT_ONLY", "PKG-04 evidence provenance", "external evidence", "CURRENT"),
+      component("TARGET_EVIDENCE", "source-registry/production-preflight-prerequisite-evidence.ts", "local production-presence evidence contract; remote observation pending", "IMPLEMENTED", "NOT_AUTHORIZED", "CONTRACT_ONLY", "PKG-04 evidence provenance", "external evidence", "CURRENT"),
     ]) },
   ),
   actorRegistry: section(
@@ -197,7 +198,7 @@ const manifestSemanticPayload = deepFreeze({
   authorityRegistry: section(
     { authoritySource: "Distinct committed authority modules", authorityClassification: "DERIVED_SOURCE" },
     { authorityOwnershipUnique: true, duplicateAuthorizationAuthorityCount: 0, domains: Object.freeze([
-      ["synthetic capability", "C4", "IMPLEMENTED"], ["actor", "C6A", "IMPLEMENTED"], ["fixed-clock", "C6B", "IMPLEMENTED"], ["production permission", "C6C", "IMPLEMENTED"], ["H query namespace", "H helper", "IMPLEMENTED"], ["H executor contract", "PKG-01", "IMPLEMENTED"], ["R remote query", "R executor", "IMPLEMENTED"], ["A mapping", "A contract", "IMPLEMENTED"], ["credential", "future provider", "MISSING"], ["remote-action authorization", "PKG-03", "IMPLEMENTED"], ["bootstrap", "C6C", "NOT_AUTHORIZED"], ["production write", "C6C", "NOT_AUTHORIZED"], ["runtime/public launch", "C6C", "NOT_AUTHORIZED"],
+      ["synthetic capability", "C4", "IMPLEMENTED"], ["actor", "C6A", "IMPLEMENTED"], ["fixed-clock", "C6B", "IMPLEMENTED"], ["production permission", "C6C", "IMPLEMENTED"], ["H query namespace", "H helper", "IMPLEMENTED"], ["H executor contract", "PKG-01", "IMPLEMENTED"], ["R remote query", "R executor", "IMPLEMENTED"], ["A mapping", "A contract", "IMPLEMENTED"], ["credential lease", "PKG-04 credential boundary", "IMPLEMENTED"], ["real credential provider", "future external provider", "MISSING"], ["remote-action authorization", "PKG-03", "IMPLEMENTED"], ["bootstrap", "C6C", "NOT_AUTHORIZED"], ["production write", "C6C", "NOT_AUTHORIZED"], ["runtime/public launch", "C6C", "NOT_AUTHORIZED"],
     ].map(([domain, owner, status]) => deepFreeze({ domain, owner, status }))) },
   ),
   productionPermissionRegistry: section(
@@ -228,7 +229,7 @@ const manifestSemanticPayload = deepFreeze({
       boundary("C6D_TO_C7", "C6D", "C7", "EXPLICIT_AND_BOUND", null), boundary("C7_TO_C5", "C7", "C5", "EXPLICIT_AND_BOUND", null),
       boundary("HELPER_TO_H_EXECUTOR", "H helper", "H executor", "IMPLEMENTED_NOT_AUTHORIZED", null), boundary("R_TO_A", "R", "A", "EXPLICIT_AND_BOUND", null),
       boundary("C6C_TO_REMOTE_ACTION", "C6C", "PKG-03 bounded remote action", "IMPLEMENTED_NOT_AUTHORIZED", "CB-02"), boundary("C6C_TO_AUTHORIZATION", "C6C", "PKG-03 authorization evaluator", "IMPLEMENTED_NOT_AUTHORIZED", "CB-03"),
-      boundary("HELPER_C2_AUTH_REBIND", "helper/C2", "PKG-03 authorization evaluator", "IMPLEMENTED_NOT_AUTHORIZED", "CB-09"), boundary("CREDENTIAL_TO_TRANSPORT", "credential provider", "transport", "MISSING", "CB-04"),
+      boundary("HELPER_C2_AUTH_REBIND", "helper/C2", "PKG-03 authorization evaluator", "IMPLEMENTED_NOT_AUTHORIZED", "CB-09"), boundary("CREDENTIAL_TO_TRANSPORT", "credential lease boundary", "pg.Client transport", "IMPLEMENTED_NOT_AUTHORIZED", "CB-04"),
       deepFreeze({
         boundaryId: "PKG03_REMOTE_ACTION_AUTHORIZATION_CONTRACT",
         producer: "C2/C6C/PKG-01",
@@ -251,7 +252,7 @@ const manifestSemanticPayload = deepFreeze({
         helperRebindImplemented: true,
         legacyFreeBooleanAuthorizationAuthoritative: false,
       }),
-      boundary("TRANSPORT_TO_H", "transport", "future H execution boundary", "MISSING", "CB-06"), boundary("BACKUP_TO_CREDENTIAL", "backup evidence", "credential gate", "OPEN", "CB-05"),
+      boundary("TRANSPORT_TO_H", "pg.Client transport", "H execution boundary", "IMPLEMENTED_NOT_AUTHORIZED", "CB-06"), boundary("BACKUP_TO_CREDENTIAL", "backup evidence", "credential gate", "IMPLEMENTED_NOT_AUTHORIZED", "CB-05"),
       boundary("TARGET_TO_BOOTSTRAP", "production target evidence", "bootstrap decision", "OPEN", "CB-08"),
       deepFreeze({
         boundaryId: "PKG02_TO_PKG03_REMOTE_ACTION_AUTHORIZATION_HANDOFF",
@@ -349,15 +350,15 @@ const manifestSemanticPayload = deepFreeze({
   ),
   transportRegistry: section(
     { authoritySource: "Transport interface and executor source contracts", authorityClassification: "DERIVED_SOURCE" },
-    { manifestClaimsProductionTransportImplemented: false, transports: Object.freeze([
+    { manifestClaimsProductionTransportImplemented: true, transports: Object.freeze([
       deepFreeze({ name: "ProductionReadOnlyPreflightTransport", state: "INTERFACE_ONLY" }), deepFreeze({ name: "ProductionPreflightHQueryExecutionPort", state: "CONTRACT_ONLY" }),
       deepFreeze({ name: "ControlledPreflightTransport", state: "INTERFACE_ONLY" }), deepFreeze({ name: "ControlledPostgresReadOnlyAdapter", state: "SYNTHETIC_ONLY" }),
-      deepFreeze({ name: "ExternalReadonlyCommandBridge", state: "CONTRACT_ONLY" }), deepFreeze({ name: "real production network transport", state: "MISSING" }),
+      deepFreeze({ name: "ExternalReadonlyCommandBridge", state: "CONTRACT_ONLY" }), deepFreeze({ name: "pg.Client one-shot H transport", state: "IMPLEMENTED_NOT_AUTHORIZED" }),
     ]) },
   ),
   credentialBoundary: section(
     { authoritySource: "C6A and credential/transport boundary design", authorityClassification: "DERIVED_SOURCE" },
-    { credentialProviderActor: "defined architecturally", realExecutableProvider: "MISSING", credentialAccessAuthorized: false, credentialMaterialStoredInManifest: false, remoteExecutionPermissionImpliesCredentialAccess: false, backupRecoveryPrerequisite: "REQUIRED_UNVERIFIED" },
+    { credentialProviderActor: "defined architecturally", realExecutableProvider: "NOT_CONFIGURED", leaseBoundary: "IMPLEMENTED_NOT_AUTHORIZED", credentialAccessAuthorized: false, credentialMaterialStoredInManifest: false, remoteExecutionPermissionImpliesCredentialAccess: false, backupRecoveryPrerequisite: "REQUIRED_NOT_YET_VERIFIED" },
   ),
   databaseAuditInterface: section(
     { authoritySource: "audit-infrastructure-contract.ts and bootstrap source", authorityClassification: "DERIVED_SOURCE" },
@@ -373,7 +374,28 @@ const manifestSemanticPayload = deepFreeze({
   ),
   roadmapNamespace: section(
     { authoritySource: "This canonical modern roadmap declaration", authorityClassification: "CANONICAL_SOURCE" },
-    { canonicalCurrentNamespace: "9X-POST-C7", canonicalRoadmapAuthorityDefined: true, historicalPhaseLabelGrantsCurrentAuthority: false, phaseLocalRecommendationGrantsGlobalAuthority: false, sequence: Object.freeze(["modern C4", "C5", "C6A/B/C", "C6", "C6D", "C7", "POST-C7 successor bridge", "PKG-01", "PKG-02 current manifest", "PKG-03 current authorization contract", "future PKG-04", "future PKG-05"]), cb10Status: "CLOSED" },
+    {
+      canonicalCurrentNamespace: "9X-POST-C7",
+      canonicalRoadmapAuthorityDefined: true,
+      historicalPhaseLabelGrantsCurrentAuthority: false,
+      phaseLocalRecommendationGrantsGlobalAuthority: false,
+      sequence: Object.freeze(["modern C4", "C5", "C6A/B/C", "C6", "C6D", "C7", "POST-C7 successor bridge", "PKG-01", "PKG-02 current manifest", "PKG-03 current authorization contract", "PKG-04 fail-closed execution foundation", "PKG-05 independent evidence and authorization handoff"]),
+      cb10Status: "CLOSED",
+      pkg05Handoff: deepFreeze({
+        backupEvidenceContract: "PRODUCTION_BACKUP_RECOVERY_EVIDENCE",
+        externalBackupState: "NOT_YET_VERIFIED",
+        credentialBoundary: "PKG04_ONE_ATTEMPT_CREDENTIAL_LEASE",
+        concreteTransport: "PG_CLIENT_ONE_SHOT",
+        boundedExecutionBoundary: "VAYLO_CONTROLLED_PRODUCTION_BOUNDED_REMOTE_EXECUTION_BOUNDARY",
+        presenceEvidenceContract:
+          "PRODUCTION_AUDIT_INTERFACE_PRESENCE_EVIDENCE",
+        remotePresenceState: "UNVERIFIED",
+        permissionAuthority: "C6C",
+        cb11State: "OPEN",
+        externalEvidenceCollected: false,
+        productionAuthorizationGranted: false,
+      }),
+    },
   ),
   historicalAndSupersededReferences: section(
     { authoritySource: "Explicit historical metadata only", authorityClassification: "HISTORICAL_METADATA" },
@@ -401,9 +423,10 @@ const manifestSemanticPayload = deepFreeze({
     { authoritySource: "Current blocker architecture and committed PKG-01 truth", authorityClassification: "DERIVED_SOURCE" },
     { manifestDoesNotGrantBlockerClosureByAssertion: true, blockers: Object.freeze([
       deepFreeze({ blockerId: "CB-01", status: "CLOSED", basis: "PKG-01 dedicated H authority contract" }),
-      ...["CB-02", "CB-03"].map((blockerId) => deepFreeze({ blockerId, status: "IMPLEMENTED_PENDING_INDEPENDENT_CLOSURE", basis: "PKG-03 canonical authorization contract" })),
-      ...["CB-04", "CB-05", "CB-06", "CB-07", "CB-08"].map((blockerId) => deepFreeze({ blockerId, status: "OPEN", basis: "downstream contract remains absent" })),
-      deepFreeze({ blockerId: "CB-09", status: "IMPLEMENTED_PENDING_INDEPENDENT_CLOSURE", basis: "PKG-03 helper/C2 rebind" }),
+      ...["CB-02", "CB-03"].map((blockerId) => deepFreeze({ blockerId, status: "CLOSED", basis: "committed PKG-03 canonical authorization contract" })),
+      ...["CB-04", "CB-06", "CB-07"].map((blockerId) => deepFreeze({ blockerId, status: "IMPLEMENTED_PENDING_INDEPENDENT_CLOSURE", basis: "PKG-04 local fail-closed execution foundation" })),
+      ...["CB-05", "CB-08"].map((blockerId) => deepFreeze({ blockerId, status: "LOCAL_FOUNDATION_IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING", basis: "local evidence boundary exists; external production evidence absent" })),
+      deepFreeze({ blockerId: "CB-09", status: "CLOSED", basis: "committed PKG-03 helper/C2 rebind" }),
       deepFreeze({ blockerId: "CB-10", status: "CLOSED", basis: "committed canonical roadmap manifest" }),
       deepFreeze({ blockerId: "CB-11", status: "OPEN", basis: "production authorization review remains absent" }),
     ]) },

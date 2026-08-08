@@ -12,6 +12,184 @@ import {
   type ControlledProductionPreflightBindingEvidence,
   type ControlledProductionPreflightExecutionManifest,
 } from "./controlled-production-preflight-execution-contracts";
+import {
+  isAuditOnlyControlledProductionRemoteActionAuthorizationDecision,
+  isCanonicalControlledProductionRemoteActionAuthorizationDecision,
+  type ControlledProductionRemoteActionAuthorizationDecision,
+} from "./controlled-production-remote-action-authorization-contract";
+import {
+  isCanonicalBackupEvidence,
+  type ProductionBackupEvidence,
+} from "./production-preflight-prerequisite-evidence";
+import type { ProductionPreflightHQueryIdentity } from "./production-preflight-remote-executor-contract";
+
+export type ProductionCredentialMaterial = Readonly<{
+  kind: "OPAQUE_PRODUCTION_PG_CREDENTIAL_MATERIAL";
+  materialId: string;
+}>;
+const credentialMaterialSecrets = new WeakMap<object, string>();
+
+export function createOpaqueProductionCredentialMaterial(
+  connectionString: string,
+  materialId: string,
+): ProductionCredentialMaterial {
+  if (
+    typeof connectionString !== "string" ||
+    connectionString.length === 0 ||
+    typeof materialId !== "string" ||
+    !/^cmat_[a-z0-9-]{7,91}$/.test(materialId)
+  ) {
+    throw new Error("INVALID_OPAQUE_CREDENTIAL_MATERIAL");
+  }
+  const material = Object.freeze({
+    kind: "OPAQUE_PRODUCTION_PG_CREDENTIAL_MATERIAL" as const,
+    materialId,
+  });
+  credentialMaterialSecrets.set(material, connectionString);
+  return material;
+}
+
+export function resolveOpaqueProductionCredentialMaterial(
+  material: ProductionCredentialMaterial,
+): string | null {
+  return credentialMaterialSecrets.get(material) ?? null;
+}
+
+export type ProductionExecutionCredentialLease = Readonly<{
+  kind: "PKG04_ONE_ATTEMPT_CREDENTIAL_LEASE";
+  targetFingerprint: string;
+  queryId: ProductionPreflightHQueryIdentity;
+  actionId: "EXECUTE_ONE_APPROVED_H_PREFLIGHT_QUERY";
+  nonceReference: string;
+  executionWindowId: string;
+  executorIdentity: string;
+  transport: "PG_CLIENT_ONE_SHOT";
+  attemptCount: 0 | 1;
+  released: boolean;
+}>;
+
+export interface ProductionExecutionCredentialProvider {
+  acquire(
+    decision: Extract<
+      ControlledProductionRemoteActionAuthorizationDecision,
+      { status: "AUTHORIZED" }
+    >,
+  ): Promise<ProductionCredentialMaterial>;
+  release(material: ProductionCredentialMaterial): Promise<void>;
+}
+
+export const PRODUCTION_EXECUTION_CREDENTIAL_PROVIDER: ProductionExecutionCredentialProvider | null =
+  null;
+const executionLeaseProvenance = new WeakSet<object>();
+const executionLeaseMaterials = new WeakMap<object, ProductionCredentialMaterial>();
+const executionLeaseReleased = new WeakSet<object>();
+const executionLeaseConsumed = new WeakSet<object>();
+
+async function acquireExecutionCredentialLease(
+  decision: ControlledProductionRemoteActionAuthorizationDecision,
+  backupEvidence: ProductionBackupEvidence,
+  provider: ProductionExecutionCredentialProvider | null,
+  auditOnly: boolean,
+): Promise<BoundaryResult<ProductionExecutionCredentialLease>> {
+  if (
+    !(
+      auditOnly
+        ? isAuditOnlyControlledProductionRemoteActionAuthorizationDecision(decision)
+        : isCanonicalControlledProductionRemoteActionAuthorizationDecision(decision)
+    ) ||
+    decision.status !== "AUTHORIZED" ||
+    decision.permissionValue !== true ||
+    !isCanonicalBackupEvidence(backupEvidence) ||
+    backupEvidence.state !== "VERIFIED" ||
+    backupEvidence.auditOnly !== auditOnly ||
+    backupEvidence.targetFingerprint !== decision.targetFingerprint ||
+    backupEvidence.sourceCommit !== decision.sourceCommit ||
+    provider === null
+  ) {
+    return fail("CREDENTIAL_PROVIDER_UNAVAILABLE");
+  }
+  const material = await provider.acquire(decision);
+  const lease = Object.freeze({
+    kind: "PKG04_ONE_ATTEMPT_CREDENTIAL_LEASE" as const,
+    targetFingerprint: decision.targetFingerprint,
+    queryId: decision.queryId,
+    actionId: decision.actionId,
+    nonceReference: decision.singleAttemptNonceReference,
+    executionWindowId: decision.executionWindowId,
+    executorIdentity: decision.expectedExecutorIdentity,
+    transport: "PG_CLIENT_ONE_SHOT" as const,
+    attemptCount: 0 as const,
+    released: false,
+  });
+  executionLeaseProvenance.add(lease);
+  executionLeaseMaterials.set(lease, material);
+  return Object.freeze({ ok: true as const, value: lease });
+}
+
+export async function acquireProductionExecutionCredentialLease(
+  decision: ControlledProductionRemoteActionAuthorizationDecision,
+  backupEvidence: ProductionBackupEvidence,
+  provider: ProductionExecutionCredentialProvider | null,
+): Promise<BoundaryResult<ProductionExecutionCredentialLease>> {
+  return acquireExecutionCredentialLease(
+    decision,
+    backupEvidence,
+    provider,
+    false,
+  );
+}
+
+/** AUDIT_ONLY: requires audit-only decision and evidence provenance. */
+export async function acquireAuditOnlyProductionExecutionCredentialLease(
+  decision: ControlledProductionRemoteActionAuthorizationDecision,
+  backupEvidence: ProductionBackupEvidence,
+  provider: ProductionExecutionCredentialProvider | null,
+): Promise<BoundaryResult<ProductionExecutionCredentialLease>> {
+  return acquireExecutionCredentialLease(
+    decision,
+    backupEvidence,
+    provider,
+    true,
+  );
+}
+
+export function isProductionExecutionCredentialLease(
+  value: unknown,
+): value is ProductionExecutionCredentialLease {
+  return value !== null &&
+    typeof value === "object" &&
+    executionLeaseProvenance.has(value);
+}
+
+export function consumeProductionExecutionCredentialLease(
+  lease: unknown,
+): ProductionCredentialMaterial | null {
+  if (
+    !isProductionExecutionCredentialLease(lease) ||
+    executionLeaseReleased.has(lease) ||
+    executionLeaseConsumed.has(lease)
+  ) return null;
+  const material = executionLeaseMaterials.get(lease) ?? null;
+  if (material) executionLeaseConsumed.add(lease);
+  return material;
+}
+
+export async function releaseProductionExecutionCredentialLease(
+  lease: ProductionExecutionCredentialLease,
+  provider: ProductionExecutionCredentialProvider,
+): Promise<boolean> {
+  if (
+    !executionLeaseProvenance.has(lease) ||
+    executionLeaseReleased.has(lease)
+  ) return false;
+  const material = executionLeaseMaterials.get(lease);
+  if (!material) return false;
+  executionLeaseReleased.add(lease);
+  executionLeaseMaterials.delete(lease);
+  credentialMaterialSecrets.delete(material);
+  await provider.release(material);
+  return true;
+}
 
 export const CONTROLLED_CREDENTIAL_LEASE_KIND =
   "CONTROLLED_PRODUCTION_PREFLIGHT_CREDENTIAL_LEASE" as const;

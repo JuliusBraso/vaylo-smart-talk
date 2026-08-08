@@ -197,9 +197,9 @@ export const evaluateCanonicalArchitectureManifest = (candidate: unknown): Evalu
     boundaryContractsClassified:
       boundaryRows.length >= 17 &&
       currentBlocker("CB-01") === "CLOSED" &&
-      currentBlocker("CB-02") === "IMPLEMENTED_PENDING_INDEPENDENT_CLOSURE" &&
-      currentBlocker("CB-03") === "IMPLEMENTED_PENDING_INDEPENDENT_CLOSURE" &&
-      currentBlocker("CB-09") === "IMPLEMENTED_PENDING_INDEPENDENT_CLOSURE" &&
+      currentBlocker("CB-02") === "CLOSED" &&
+      currentBlocker("CB-03") === "CLOSED" &&
+      currentBlocker("CB-09") === "CLOSED" &&
       pkg03Boundary?.contractId ===
         CONTROLLED_PRODUCTION_REMOTE_ACTION_AUTHORIZATION_CONTRACT_ID &&
       pkg03Boundary?.contractVersion ===
@@ -217,8 +217,9 @@ export const evaluateCanonicalArchitectureManifest = (candidate: unknown): Evalu
       pkg03Boundary?.helperRebindImplemented === true &&
       pkg03Boundary?.legacyFreeBooleanAuthorizationAuthoritative === false,
     transportAndCredentialStateTruthful:
-      transport?.manifestClaimsProductionTransportImplemented === false &&
-      credential?.realExecutableProvider === "MISSING" &&
+      transport?.manifestClaimsProductionTransportImplemented === true &&
+      credential?.realExecutableProvider === "NOT_CONFIGURED" &&
+      credential?.leaseBoundary === "IMPLEMENTED_NOT_AUTHORIZED" &&
       credential?.credentialAccessAuthorized === false,
     lifecyclePrerequisiteGraphAcyclic:
       !hasCycle(readArray(graph, "nodes") ?? [], readArray(graph, "edges") ?? []) &&
@@ -304,9 +305,9 @@ export const evaluateCanonicalArchitectureManifest = (candidate: unknown): Evalu
       typeof createProductionPreflightHActionDescriptor === "function" &&
       permissions?.productionPermissionRegistryAuthority === "C6C" &&
       permissionsState?.AUTHORIZE_REMOTE_EXECUTION === false &&
-      currentBlocker("CB-02") === "IMPLEMENTED_PENDING_INDEPENDENT_CLOSURE" &&
-      currentBlocker("CB-03") === "IMPLEMENTED_PENDING_INDEPENDENT_CLOSURE" &&
-      currentBlocker("CB-09") === "IMPLEMENTED_PENDING_INDEPENDENT_CLOSURE",
+      currentBlocker("CB-02") === "CLOSED" &&
+      currentBlocker("CB-03") === "CLOSED" &&
+      currentBlocker("CB-09") === "CLOSED",
   };
   return Object.freeze({ gates: Object.freeze(gates), allPassed: Object.values(gates).every(Boolean) });
 };
@@ -392,9 +393,9 @@ const pkg03HandoffTamperCases = Object.freeze([
   rejected(["productionPermissionRegistry", "productionPermissionRegistryAuthority"], "other"),
   rejected(["productionPermissionRegistry", "state", "AUTHORIZE_REMOTE_EXECUTION"], true),
   rejected(["boundaryContractRegistry", "boundaries", "16", "credentialAccessRemainsSeparate"], false),
-  rejected(["knownMissingContracts", "blockers", "1", "status"], "CLOSED"),
-  rejected(["knownMissingContracts", "blockers", "2", "status"], "CLOSED"),
-  rejected(["knownMissingContracts", "blockers", "8", "status"], "CLOSED"),
+  rejected(["knownMissingContracts", "blockers", "1", "status"], "OPEN"),
+  rejected(["knownMissingContracts", "blockers", "2", "status"], "OPEN"),
+  rejected(["knownMissingContracts", "blockers", "8", "status"], "OPEN"),
 ]);
 const pkg03ManifestAntiStalenessCases = Object.freeze([
   rejected(["boundaryContractRegistry", "boundaries", "12", "contractId"], "MISSING"),
@@ -404,7 +405,10 @@ const pkg03ManifestAntiStalenessCases = Object.freeze([
   rejected(["boundaryContractRegistry", "boundaries", "16", "requirements", "1", "sourceCommitIdentity"], "changed"),
   rejected(["boundaryContractRegistry", "boundaries", "12", "helperRebindImplemented"], false),
   rejected(["knownMissingContracts", "blockers", "1", "status"], "OPEN"),
-  rejected(["knownMissingContracts", "blockers", "1", "status"], "CLOSED"),
+  rejected(
+    ["knownMissingContracts", "blockers", "1", "status"],
+    "IMPLEMENTED_PENDING_INDEPENDENT_CLOSURE",
+  ),
   rejected(["boundaryContractRegistry", "boundaries", "12", "legacyFreeBooleanAuthorizationAuthoritative"], true),
   rejected(["boundaryContractRegistry", "boundaries", "12", "canonicalC2IngressPolicy"], "C2_LEGACY_WEAK_INPUT_V0"),
   rejected(["boundaryContractRegistry", "boundaries", "12", "canonicalC2ProvenancePolicy"], "STRUCTURAL_ONLY"),

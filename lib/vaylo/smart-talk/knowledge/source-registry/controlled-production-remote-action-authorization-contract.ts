@@ -212,6 +212,26 @@ export type ControlledProductionRemoteActionAuthorizationDecision =
       grantsCredentialAccess: false;
     }>;
 
+const authorizationDecisionProvenance = new WeakSet<object>();
+const auditOnlyAuthorizationDecisionProvenance = new WeakSet<object>();
+
+export const isCanonicalControlledProductionRemoteActionAuthorizationDecision = (
+  value: unknown,
+): value is ControlledProductionRemoteActionAuthorizationDecision =>
+  value !== null &&
+  typeof value === "object" &&
+  authorizationDecisionProvenance.has(value);
+
+export const isAuditOnlyControlledProductionRemoteActionAuthorizationDecision = (
+  value: unknown,
+): value is Extract<
+  ControlledProductionRemoteActionAuthorizationDecision,
+  { status: "AUTHORIZED" }
+> =>
+  value !== null &&
+  typeof value === "object" &&
+  auditOnlyAuthorizationDecisionProvenance.has(value);
+
 const CANDIDATE_KEYS = Object.freeze([
   "contractId",
   "contractVersion",
@@ -375,8 +395,8 @@ const rejectedDecision = (
     | ControlledProductionRemoteActionStructuralFailureCode
     | "REMOTE_EXECUTION_PERMISSION_FALSE",
   c2BindingValid: boolean,
-): ControlledProductionRemoteActionAuthorizationDecision =>
-  Object.freeze({
+): ControlledProductionRemoteActionAuthorizationDecision => {
+  const decision = Object.freeze({
     status: "REJECTED" as const,
     reason,
     contractId:
@@ -392,6 +412,9 @@ const rejectedDecision = (
     c2BindingValid,
     grantsCredentialAccess: false as const,
   });
+  authorizationDecisionProvenance.add(decision);
+  return decision;
+};
 
 export const evaluateControlledProductionRemoteActionAuthorization = (
   candidate: unknown,
@@ -408,7 +431,7 @@ export const evaluateControlledProductionRemoteActionAuthorization = (
   }
 
   const binding = structural.value;
-  return Object.freeze({
+  const decision = Object.freeze({
     status: "AUTHORIZED" as const,
     reason: "ALL_CANONICAL_BINDINGS_AND_C6C_PERMISSION_VALID" as const,
     contractId: binding.contractId,
@@ -436,4 +459,52 @@ export const evaluateControlledProductionRemoteActionAuthorization = (
     c2BindingValid: true as const,
     grantsCredentialAccess: false as const,
   });
+  authorizationDecisionProvenance.add(decision);
+  return decision;
+};
+
+/**
+ * AUDIT_ONLY: derives a provenance-recognized positive fixture from the same
+ * structural evaluator without changing or overriding canonical C6C state.
+ */
+export const createAuditOnlyAuthorizedRemoteActionDecision = (
+  candidate: unknown,
+): Extract<
+  ControlledProductionRemoteActionAuthorizationDecision,
+  { status: "AUTHORIZED" }
+> | null => {
+  const structural =
+    validateControlledProductionRemoteActionStructuralBinding(candidate);
+  if (!structural.ok) return null;
+  const binding = structural.value;
+  const decision = Object.freeze({
+    status: "AUTHORIZED" as const,
+    reason: "ALL_CANONICAL_BINDINGS_AND_C6C_PERMISSION_VALID" as const,
+    contractId: binding.contractId,
+    contractVersion: binding.contractVersion,
+    contractFingerprint: binding.contractFingerprint,
+    actionId: binding.actionId,
+    queryId: binding.hActionDescriptor.queryId,
+    resultContractId: binding.hActionDescriptor.resultContractId,
+    hExecutorContractFingerprint:
+      binding.hActionDescriptor.contractFingerprint,
+    sourceCommit: binding.executionManifest.sourceCommit,
+    artifactFingerprintSetId:
+      binding.executionManifest.artifactFingerprintSet
+        .artifactFingerprintSetId,
+    targetFingerprint: binding.executionManifest.targetFingerprint,
+    singleAttemptNonceReference:
+      binding.executionManifest.singleAttemptNonceReference,
+    executionWindowId:
+      binding.executionManifest.executionWindow.executionWindowId,
+    expectedExecutorIdentity:
+      binding.executionManifest.expectedExecutorIdentity,
+    permissionAuthorityId: CONTROLLED_PRODUCTION_PERMISSION_AUTHORITY_ID,
+    permissionId: "AUTHORIZE_REMOTE_EXECUTION" as const,
+    permissionValue: true as const,
+    c2BindingValid: true as const,
+    grantsCredentialAccess: false as const,
+  });
+  auditOnlyAuthorizationDecisionProvenance.add(decision);
+  return decision;
 };
