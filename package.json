@@ -18,6 +18,7 @@
     "docs:worker": "npx -y tsx@4.19.2 scripts/run-document-intelligence-worker.ts --mode worker",
     "docs:requeue-stale": "npx -y tsx@4.19.2 scripts/run-document-intelligence-worker.ts --mode requeue-stale",
     "db:verify": "npx -y tsx@4.19.2 scripts/verify-db-schema.ts",
+    "db:production:preflight": "npx -y tsx@4.19.2 scripts/production-schema-preflight.ts",
     "release:check": "npm run db:verify",
     "verify:8.3v": "npx -y tsx@4.19.2 scripts/verify-8-3v-additional-synthetic-live-execution.ts"
   },

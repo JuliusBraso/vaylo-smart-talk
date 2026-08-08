@@ -33,6 +33,51 @@ Single reference for predictable deploys. **Do not put real secrets in git**—u
 
 More detail: [MIGRATIONS.md](./MIGRATIONS.md).
 
+## Production schema preflight (maintenance only)
+
+Run this manually before planning a production migration. It is an adjacent
+maintenance utility, not an application runtime, migration, or public-launch
+path.
+
+1. Open the Supabase control plane and confirm the correct production project.
+2. Verify the project's backup/recovery status and recovery procedure.
+3. Configure these values only in the operator's server-side maintenance
+   environment:
+   - `VAYLO_PRODUCTION_MAINTENANCE_ENABLED=true`
+   - `VAYLO_PRODUCTION_MAINTENANCE_TARGET=production`
+   - `VAYLO_PRODUCTION_BACKUP_CONFIRMED=true`
+   - `VAYLO_PRODUCTION_READONLY_DATABASE_URL=<dedicated read-only PostgreSQL URL>`
+4. Run `npm run db:production:preflight`.
+5. Review the sanitized report, including the remote migration ledger,
+   knowledge-table inventory, RLS, grants, `pgcrypto`, and `vaylo_audit`.
+   Interpret its status as follows:
+   - `PASS`: no preflight action remains before the next operational stage.
+   - `NEEDS_MIGRATION`: review every pending migration; do not auto-apply it.
+   - `MISMATCH`: live catalog or security state contradicts expected state.
+   - `FAILED`: the preflight could not complete.
+6. Review the exact pending migration files. If
+   `20260423_branching_real_world_expansion.sql` is pending, review it
+   explicitly: it contains **data upserts**, not only structural DDL.
+7. Only in a separately approved migration phase use the official Supabase
+   migration workflow.
+8. Run post-migration verification after any later migration.
+
+`VAYLO_PRODUCTION_BACKUP_CONFIRMED=true` is an operator acknowledgement for
+that maintenance session. It does not independently prove backup state and
+does not authorize writes, migrations, runtime, or launch.
+
+The PostgreSQL URL must belong to a dedicated production inspection identity
+with no `INSERT`, `UPDATE`, `DELETE`, `CREATE`, `ALTER`, `DROP`, `TRUNCATE`,
+role-management, migration, or Supabase-management authority. The preflight
+uses one TLS-verified connection, `BEGIN READ ONLY`, a fixed 10-second
+statement timeout, a fixed 1-second lock timeout, source-owned catalog queries,
+and no automatic retry. Never use `SUPABASE_SERVICE_ROLE_KEY` as a fallback
+and never place the read-only URL in a `NEXT_PUBLIC_*` variable.
+The URL must not contain SSL/TLS-control query parameters (including
+`sslmode`, `sslcert`, `sslkey`, or `sslrootcert`): the maintenance utility
+owns TLS configuration and always requires certificate verification. Unsafe
+TLS parameters are rejected rather than silently removed.
+
 ## Supabase checklist
 
 - [ ] **Auth:** Production redirect URLs and site URL match your deployed domain.
