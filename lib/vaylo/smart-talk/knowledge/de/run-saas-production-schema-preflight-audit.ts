@@ -479,7 +479,7 @@ async function main(): Promise<void> {
     runScenario({ MIGRATION_LEDGER: migrationLedgerExcept("20260423") }),
     runScenario({ MIGRATION_LEDGER: migrationLedgerExcept("032") }),
     runScenario({
-      MIGRATION_LEDGER: migrationLedgerExcept("032", "20260423"),
+      MIGRATION_LEDGER: migrationLedgerExcept("032", "033", "20260423"),
     }),
     runScenario({
       KNOWLEDGE_TABLES_AND_RLS: knowledgeRowsExcept(["knowledge_topics"]),
@@ -658,9 +658,9 @@ async function main(): Promise<void> {
     PREFLIGHT_MIGRATION_CLASSIFICATIONS["035"] ===
       "PASS_CRITICAL_SCHEMA_PRODUCER" &&
     PREFLIGHT_MIGRATION_CLASSIFICATIONS["20260423"] ===
-      "PASS_CRITICAL_OPERATOR_ACTION_PREREQUISITE" &&
+      "DEFERRED_REVIEW_REQUIRED_NON_BLOCKING" &&
     JSON.stringify(EXPECTED_SCHEMA_MIGRATION_IDS) ===
-      JSON.stringify(["010", "032", "033", "035", "20260423"]) &&
+      JSON.stringify(["010", "032", "033", "035"]) &&
     JSON.stringify(DIAGNOSTIC_MIGRATION_IDS) === JSON.stringify(["034"]);
 
   const migrationClassificationCases = Object.freeze({
@@ -686,32 +686,38 @@ async function main(): Promise<void> {
       migration034Absent.operatorActionRequired,
     migration035AbsentNeedsMigration:
       migration035Absent.overall === "NEEDS_MIGRATION",
-    migration20260423AbsentNeedsMigration:
-      dataUpsertPending.overall === "NEEDS_MIGRATION",
+    migration20260423AbsentPassAllowed:
+      dataUpsertPending.overall === "PASS" &&
+      dataUpsertPending.connected === true &&
+      !dataUpsertPending.migrationLedger.pendingMigrationSet.includes(
+        "20260423",
+      ) &&
+      dataUpsertPending.migrationLedger.pendingMigrationCount === 0 &&
+      dataUpsertPending.operatorActionRequired === false,
     migration20260423ReviewRequired:
       dataUpsertPending.connected === true &&
       dataUpsertPending.migrationLedger.dataUpsertReviewRequired,
     migration034AbsentPlusMismatch:
       migration034AbsentPlusMismatch.overall === "MISMATCH",
-    migration034AbsentPlus20260423Pending:
-      migration034AbsentPlusDataUpsertPending.overall === "NEEDS_MIGRATION" &&
+    migration034AbsentPlus20260423Deferred:
+      migration034AbsentPlusDataUpsertPending.overall === "PASS" &&
       migration034AbsentPlusDataUpsertPending.connected === true &&
       !migration034AbsentPlusDataUpsertPending.migrationLedger.pendingMigrationSet.includes(
         "034",
       ) &&
-      migration034AbsentPlusDataUpsertPending.migrationLedger.pendingMigrationSet.includes(
+      !migration034AbsentPlusDataUpsertPending.migrationLedger.pendingMigrationSet.includes(
         "20260423",
       ),
   });
 
   const statusDecisionCases = Object.freeze({
     fullyHealthy: successResult.overall === "PASS",
-    dataUpsertOnlyPending:
-      dataUpsertPending.overall === "NEEDS_MIGRATION" &&
+    dataUpsertDeferredNonBlocking:
+      dataUpsertPending.overall === "PASS" &&
       dataUpsertPending.connected === true &&
       dataUpsertPending.migrationLedger.dataUpsertReviewRequired &&
-      dataUpsertPending.operatorActionRequired &&
-      dataUpsertPending.migrationLedger.pendingMigrationSet.includes(
+      !dataUpsertPending.operatorActionRequired &&
+      !dataUpsertPending.migrationLedger.pendingMigrationSet.includes(
         "20260423",
       ),
     ordinaryStructuralMigrationPending:

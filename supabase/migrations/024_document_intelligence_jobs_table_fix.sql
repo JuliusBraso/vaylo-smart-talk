@@ -72,18 +72,8 @@ create policy "document_intelligence_jobs_select_own"
   to authenticated
   using (auth.uid() = user_id);
 
-create policy "document_intelligence_jobs_insert_own"
-  on public.document_intelligence_jobs for insert
-  to authenticated
-  with check (auth.uid() = user_id);
-
-create policy "document_intelligence_jobs_update_own"
-  on public.document_intelligence_jobs for update
-  to authenticated
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
-
-create policy "document_intelligence_jobs_delete_own"
-  on public.document_intelligence_jobs for delete
-  to authenticated
-  using (auth.uid() = user_id);
+-- Job lifecycle writes are server-only. Enqueue/claim and worker updates use the
+-- service-role path; authenticated clients only need owner-scoped status reads.
+revoke insert, update, delete
+  on table public.document_intelligence_jobs
+  from authenticated, anon;

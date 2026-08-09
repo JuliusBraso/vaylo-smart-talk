@@ -1,4 +1,7 @@
--- Phase 5.5: Branching real-world expansion (production-safe).
+-- DEFERRED DATA MIGRATION — not part of automatic first production activation.
+-- Requires separate product/data review before execution and is not canonical
+-- German knowledge ingestion.
+-- Phase 5.5: Branching real-world expansion.
 -- Idempotent: safe to re-run. Uses upserts. Does not delete existing data.
 
 -- ---------------------------------------------------------------------------

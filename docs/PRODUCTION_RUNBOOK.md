@@ -55,9 +55,11 @@ path.
    - `NEEDS_MIGRATION`: review every pending migration; do not auto-apply it.
    - `MISMATCH`: live catalog or security state contradicts expected state.
    - `FAILED`: the preflight could not complete.
-6. Review the exact pending migration files. If
-   `20260423_branching_real_world_expansion.sql` is pending, review it
-   explicitly: it contains **data upserts**, not only structural DDL.
+6. Review the exact pending migration files. The data expansion at
+   `supabase/deferred-migrations/20260423_branching_real_world_expansion.sql`
+   is intentionally outside the automatic first-activation chain and does not
+   block preflight `PASS`. It requires separate product/data review before any
+   manual execution and is not canonical German knowledge ingestion.
 7. Only in a separately approved migration phase use the official Supabase
    migration workflow.
 8. Run post-migration verification after any later migration.

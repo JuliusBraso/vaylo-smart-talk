@@ -65,7 +65,7 @@ create policy "document_intelligence_jobs_select_own"
 
 drop policy if exists "document_intelligence_jobs_deny_mutations" on public.document_intelligence_jobs;
 create policy "document_intelligence_jobs_deny_mutations"
-  on public.document_intelligence_jobs for insert, update, delete
+  on public.document_intelligence_jobs for all
   to authenticated, anon
   using (false)
   with check (false);

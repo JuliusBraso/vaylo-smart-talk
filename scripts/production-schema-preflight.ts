@@ -84,7 +84,7 @@ export const PREFLIGHT_MIGRATION_CLASSIFICATIONS = Object.freeze({
   "033": "PASS_CRITICAL_SCHEMA_PRODUCER",
   "034": "DIAGNOSTIC_NON_BLOCKING",
   "035": "PASS_CRITICAL_SCHEMA_PRODUCER",
-  "20260423": "PASS_CRITICAL_OPERATOR_ACTION_PREREQUISITE",
+  "20260423": "DEFERRED_REVIEW_REQUIRED_NON_BLOCKING",
 } as const);
 
 export const EXPECTED_SCHEMA_MIGRATION_IDS = Object.freeze([
@@ -92,7 +92,6 @@ export const EXPECTED_SCHEMA_MIGRATION_IDS = Object.freeze([
   "032",
   "033",
   "035",
-  "20260423",
 ] as const);
 
 export const DIAGNOSTIC_MIGRATION_IDS = Object.freeze(["034"] as const);
@@ -572,7 +571,7 @@ function reportFromRows(
   const warnings: string[] = [];
   if (dataUpsertReviewRequired) {
     warnings.push(
-      "20260423_branching_real_world_expansion.sql contains DATA UPSERTS; review it manually before any future supabase db push.",
+      "20260423_branching_real_world_expansion.sql is deferred outside the automatic migration chain; separate product/data review is required before any manual execution.",
     );
   }
   if (auditBootstrapRequired) {
@@ -613,7 +612,7 @@ function reportFromRows(
       dataUpsertReviewRequired,
       warning: dataUpsertMigrationApplied
         ? null
-        : "20260423_branching_real_world_expansion.sql is pending or unrecorded; it contains DATA UPSERTS and requires explicit review before supabase db push.",
+        : "20260423_branching_real_world_expansion.sql is intentionally deferred and is not required for first-activation PASS.",
     }),
     schemas: Object.freeze({
       expected: REQUIRED_SCHEMAS,
