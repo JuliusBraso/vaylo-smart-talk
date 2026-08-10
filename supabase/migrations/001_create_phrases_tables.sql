@@ -1,9 +1,6 @@
--- Enable UUID extension if not already enabled
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
 -- Create phrases table
 CREATE TABLE IF NOT EXISTS public.phrases (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   level TEXT NOT NULL CHECK (level IN ('A0', 'A1', 'A2', 'B1', 'B2', 'C1')),
   category TEXT NOT NULL CHECK (category IN ('job', 'tax', 'wohnung')),
   sector TEXT CHECK (sector IN ('warehouse', 'production', 'gastro', 'cleaning', 'construction', 'care', 'delivery', 'office')),
