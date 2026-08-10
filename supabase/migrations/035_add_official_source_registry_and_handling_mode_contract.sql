@@ -542,8 +542,8 @@ returns table (
 language plpgsql
 security definer
 set search_path = pg_catalog, public
-set plpgsql.variable_conflict = 'error'
 as $$
+#variable_conflict error
 declare
   v_source public.knowledge_sources%rowtype;
   v_existing public.knowledge_source_authorization_transitions%rowtype;
@@ -721,8 +721,8 @@ returns table (
 language plpgsql
 security definer
 set search_path = pg_catalog, public
-set plpgsql.variable_conflict = 'error'
 as $$
+#variable_conflict error
 declare
   v_source_id uuid;
   v_replayed_source public.knowledge_sources%rowtype;
@@ -873,8 +873,8 @@ returns table (
 language plpgsql
 security definer
 set search_path = pg_catalog, public
-set plpgsql.variable_conflict = 'error'
 as $$
+#variable_conflict error
 declare
   v_source public.knowledge_sources%rowtype;
   v_history public.knowledge_source_registry_history%rowtype;
@@ -1029,8 +1029,8 @@ returns table (
 language plpgsql
 security definer
 set search_path = pg_catalog, public
-set plpgsql.variable_conflict = 'error'
 as $$
+#variable_conflict error
 declare
   v_source public.knowledge_sources%rowtype;
   v_history public.knowledge_source_registry_history%rowtype;
@@ -1137,8 +1137,8 @@ returns table (
 language plpgsql
 security definer
 set search_path = pg_catalog, public
-set plpgsql.variable_conflict = 'error'
 as $$
+#variable_conflict error
 declare
   v_source public.knowledge_sources%rowtype;
   v_history public.knowledge_source_registry_history%rowtype;
@@ -1228,8 +1228,8 @@ returns table (
 language plpgsql
 security definer
 set search_path = pg_catalog, public
-set plpgsql.variable_conflict = 'error'
 as $$
+#variable_conflict error
 declare
   v_source public.knowledge_sources%rowtype;
   v_authority public.knowledge_authorities%rowtype;
@@ -1362,8 +1362,8 @@ returns table (
 language plpgsql
 security definer
 set search_path = pg_catalog, public
-set plpgsql.variable_conflict = 'error'
 as $$
+#variable_conflict error
 begin
   if p_review_record_id is null
      or not exists (
@@ -1400,8 +1400,8 @@ returns table (
 language plpgsql
 security definer
 set search_path = pg_catalog, public
-set plpgsql.variable_conflict = 'error'
 as $$
+#variable_conflict error
 begin
   return query select t.source_id, t.authorization_state, t.authorization_state_version
     from public.knowledge_transition_source_authorization_internal(
@@ -1428,8 +1428,8 @@ returns table (
 language plpgsql
 security definer
 set search_path = pg_catalog, public
-set plpgsql.variable_conflict = 'error'
 as $$
+#variable_conflict error
 begin
   if p_review_record_id is null
      or not exists (
@@ -1466,8 +1466,8 @@ returns table (
 language plpgsql
 security definer
 set search_path = pg_catalog, public
-set plpgsql.variable_conflict = 'error'
 as $$
+#variable_conflict error
 begin
   return query select t.source_id, t.authorization_state, t.authorization_state_version
     from public.knowledge_transition_source_authorization_internal(
@@ -1500,8 +1500,8 @@ returns table (
 language plpgsql
 security definer
 set search_path = pg_catalog, public
-set plpgsql.variable_conflict = 'error'
 as $$
+#variable_conflict error
 declare
   v_source public.knowledge_sources%rowtype;
   v_policy public.knowledge_source_handling_policies%rowtype;
@@ -1673,8 +1673,8 @@ returns table (
 language plpgsql
 security definer
 set search_path = pg_catalog, public
-set plpgsql.variable_conflict = 'error'
 as $$
+#variable_conflict error
 declare
   v_source public.knowledge_sources%rowtype;
   v_attempt public.knowledge_source_acquisition_attempts%rowtype;
