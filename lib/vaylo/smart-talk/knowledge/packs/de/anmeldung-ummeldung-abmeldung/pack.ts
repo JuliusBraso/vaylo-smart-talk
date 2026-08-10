@@ -1,9 +1,9 @@
 /**
  * First source-backed German canonical knowledge pack.
  *
- * This is source-controlled input for LOCAL_DISPOSABLE_VALIDATION only. It is
- * not a runtime route, does not contain user data, and does not enable
- * production ingestion.
+ * This is source-controlled input for local validation and the explicit,
+ * maintenance-only curated ingestion RPC. It is not a runtime route and does
+ * not contain user data.
  */
 
 export const PACK_ID = "anmeldung_ummeldung_abmeldung" as const;

@@ -7,6 +7,7 @@ import {
   CANONICAL_UNITS,
   FEDERAL_JURISDICTION_CODE,
 } from "./pack";
+import { PACK_ENTITY_IDS, stablePackEntityId } from "./identity";
 import { validateCanonicalUnits } from "./validator";
 
 export const LOCAL_DISPOSABLE_VALIDATION = "LOCAL_DISPOSABLE_VALIDATION" as const;
@@ -34,26 +35,9 @@ export type LocalDisposableIngestionResult = Readonly<{
   validationFailures: readonly string[];
 }>;
 
-export const LOCAL_PACK_IDS = Object.freeze({
-  trustDomain: "11111111-1111-4111-8111-111111111111",
-  jurisdiction: "11111111-1111-4111-8111-111111111112",
-  territorialScope: "11111111-1111-4111-8111-111111111113",
-  publisher: "11111111-1111-4111-8111-111111111114",
-  authority: "11111111-1111-4111-8111-111111111115",
-  source: "11111111-1111-4111-8111-111111111116",
-  version: "11111111-1111-4111-8111-111111111117",
-  anmeldungProcess: "11111111-1111-4111-8111-111111111118",
-  ummeldungProcess: "11111111-1111-4111-8111-111111111119",
-  abmeldungProcess: "11111111-1111-4111-8111-111111111120",
-  actorRule: "11111111-1111-4111-8111-111111111121",
-});
-
-export function stableId(value: string): string {
-  const hash = crypto.createHash("sha256").update(value).digest("hex");
-  return `${hash.slice(0, 8)}-${hash.slice(8, 12)}-4${hash.slice(13, 16)}-8${hash.slice(17, 20)}-${hash.slice(20, 32)}`;
-}
-
-const IDS = LOCAL_PACK_IDS;
+export const LOCAL_PACK_IDS = PACK_ENTITY_IDS;
+export const stableId = stablePackEntityId;
+const IDS = PACK_ENTITY_IDS;
 
 function assertLocalDisposable(options: LocalDisposableIngestionOptions): void {
   if (options.capability !== LOCAL_DISPOSABLE_VALIDATION) {

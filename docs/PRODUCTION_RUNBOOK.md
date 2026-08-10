@@ -90,6 +90,35 @@ The URL must not contain SSL/TLS-control query parameters (including
 owns TLS configuration and always requires certificate verification. Unsafe
 TLS parameters are rejected rather than silently removed.
 
+## Curated knowledge ingestion (operator maintenance only)
+
+`local-disposable-adapter.ts` remains local-only and must never receive
+production credentials. The production path is the fixed, source-owned
+`knowledge_ingest_curated_pack(jsonb)` RPC introduced by migration 037.
+
+1. Confirm the ordinary production preflight is `PASS` and verify the committed
+   pack checkpoint.
+2. Deploy migration 037 through the separately authorized migration workflow.
+3. An operator reviews and applies
+   `supabase/bootstrap/002_create_birello_knowledge_ingestor.sql`, then assigns
+   its password outside Git. The caller receives `EXECUTE` on the RPC and
+   read-only migration-ledger access, but no knowledge-table DML or RLS bypass.
+4. Configure the operator-only server environment:
+   `BIRELLO_PRODUCTION_KNOWLEDGE_INGESTION_ENABLED=true`,
+   `BIRELLO_PRODUCTION_KNOWLEDGE_INGESTION_TARGET=production`,
+   `BIRELLO_PRODUCTION_KNOWLEDGE_DATABASE_URL`,
+   `BIRELLO_PRODUCTION_KNOWLEDGE_DATABASE_NAME`, and
+   `BIRELLO_PRODUCTION_KNOWLEDGE_WRITER=birello_knowledge_ingestor`.
+5. Run `npm run knowledge:production:ingest -- --mode=validate`.
+6. Run `npm run knowledge:production:ingest -- --mode=dry-run` and review the
+   sanitized report.
+7. After explicit operator authorization, run
+   `npm run knowledge:production:ingest -- --mode=apply`.
+8. Perform read-only row-count, evidence, and retrieval verification.
+
+The command loads only the committed allowlisted pack. It accepts no pack path,
+stdin payload, uploaded data, remote URL, SQL, or browser/runtime request.
+
 ## Supabase checklist
 
 - [ ] **Auth:** Production redirect URLs and site URL match your deployed domain.

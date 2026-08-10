@@ -1,11 +1,8 @@
 import { Client } from "pg";
 
 import { CANONICAL_UNITS, type HandlingMode } from "./pack";
-import {
-  LOCAL_DISPOSABLE_VALIDATION,
-  LOCAL_PACK_IDS,
-  stableId,
-} from "./local-disposable-adapter";
+import { PACK_ENTITY_IDS, stablePackEntityId } from "./identity";
+import { LOCAL_DISPOSABLE_VALIDATION } from "./local-disposable-adapter";
 
 export type RetrievalProofContext = Readonly<{
   capability: typeof LOCAL_DISPOSABLE_VALIDATION;
@@ -65,20 +62,20 @@ function processForUnit(unitId: string): Readonly<{
 }> {
   if (unitId.includes("abmeldung")) {
     return {
-      id: LOCAL_PACK_IDS.abmeldungProcess,
+      id: PACK_ENTITY_IDS.abmeldungProcess,
       context: "ABMELDUNG",
       deadline: "BMG § 17 Abs. 2",
     };
   }
   if (unitId.includes("domestic-move")) {
     return {
-      id: LOCAL_PACK_IDS.ummeldungProcess,
+      id: PACK_ENTITY_IDS.ummeldungProcess,
       context: "UMMELDUNG / DOMESTIC MOVE",
       deadline: "BMG § 17 Abs. 1–2",
     };
   }
   return {
-    id: LOCAL_PACK_IDS.anmeldungProcess,
+    id: PACK_ENTITY_IDS.anmeldungProcess,
     context: "ANMELDUNG",
     deadline: unitId.includes("deadline") ? "BMG § 17 Abs. 1" : null,
   };
@@ -92,7 +89,7 @@ export async function retrieveEvidencePackets(
   if (!context.jurisdictionCodes.includes("DE")) return Object.freeze([]);
 
   const unitIds = QUESTION_UNITS[questionId];
-  const claimIds = unitIds.map((unitId) => stableId(`claim:${unitId}`));
+  const claimIds = unitIds.map((unitId) => stablePackEntityId(`claim:${unitId}`));
   const client = new Client({ connectionString: context.databaseUrl });
   await client.connect();
   try {
@@ -135,7 +132,7 @@ export async function retrieveEvidencePackets(
     );
     return Object.freeze(
       unitIds.flatMap((unitId, index) => {
-        const row = byClaim.get(stableId(`claim:${unitId}`));
+        const row = byClaim.get(stablePackEntityId(`claim:${unitId}`));
         const unit = CANONICAL_UNITS.find((candidate) => candidate.id === unitId);
         if (!row || !unit) return [];
         const process = processForUnit(unitId);
