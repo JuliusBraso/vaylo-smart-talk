@@ -95,6 +95,10 @@ export const EXPECTED_SCHEMA_MIGRATION_IDS = Object.freeze([
 ] as const);
 
 export const DIAGNOSTIC_MIGRATION_IDS = Object.freeze(["034"] as const);
+const DEDICATED_READONLY_IDENTITIES = new Set([
+  "vaylo_schema_auditor",
+  "birello_preflight_reader",
+]);
 
 const MIGRATION_010_TABLES = new Set<string>([
   "knowledge_topics",
@@ -146,8 +150,8 @@ export const FIXED_SCHEMA_INSPECTION_QUERIES = Object.freeze([
   }),
   Object.freeze({
     id: "MIGRATION_LEDGER",
-    purpose: "List sanitized applied Supabase migration versions.",
-    sql: "select version::text as version from supabase_migrations.schema_migrations order by version",
+    purpose: "Inspect Supabase migration-ledger initialization before listing versions.",
+    sql: "select to_regnamespace('supabase_migrations') is not null as schema_initialized, to_regclass('supabase_migrations.schema_migrations') is not null as ledger_initialized",
   }),
   Object.freeze({
     id: "REQUIRED_SCHEMAS",
@@ -191,6 +195,9 @@ export const FIXED_SCHEMA_INSPECTION_QUERIES = Object.freeze([
   }),
 ] as const);
 
+export const MIGRATION_LEDGER_VERSIONS_SQL =
+  "select version::text as version from supabase_migrations.schema_migrations order by version";
+
 export const TRANSACTION_STATEMENTS = Object.freeze({
   begin: "BEGIN READ ONLY",
   statementTimeout: "SET LOCAL statement_timeout = '10s'",
@@ -227,6 +234,8 @@ type SuccessfulPreflightReport = Readonly<{
   dedicatedReadOnlyIdentityObserved: boolean;
   serverVersionMajor: number | null;
   migrationLedger: Readonly<{
+    schemaInitialized: boolean;
+    initialized: boolean;
     expectedMigrationSet: readonly string[];
     observedMigrationSet: readonly string[];
     pendingMigrationSet: readonly string[];
@@ -277,7 +286,7 @@ export type ProductionSchemaPreflightResult =
   | SuccessfulPreflightReport
   | Readonly<{
       target: "production";
-      connected: false;
+      connected: boolean;
       overall: "FAILED";
       failureCode:
         | "MAINTENANCE_DISABLED"
@@ -322,10 +331,11 @@ function failed(
     ProductionSchemaPreflightResult,
     { overall: "FAILED" }
   >["failureCode"],
+  connected = false,
 ): ProductionSchemaPreflightResult {
   return Object.freeze({
     target: "production" as const,
-    connected: false as const,
+    connected,
     overall: "FAILED" as const,
     failureCode,
   });
@@ -403,7 +413,8 @@ function reportFromRows(
   const session = rowRecord(resultRows.CURRENT_SESSION[0]);
   const readOnly = session?.transaction_read_only === "on";
   const dedicatedReadOnlyIdentityObserved =
-    session?.user_name === "vaylo_schema_auditor";
+    typeof session?.user_name === "string" &&
+    DEDICATED_READONLY_IDENTITIES.has(session.user_name);
   const versionText =
     typeof session?.server_version_num === "string"
       ? session.server_version_num
@@ -412,6 +423,13 @@ function reportFromRows(
     ? Number(versionText.slice(0, 2))
     : null;
 
+  const ledgerObservation = rowRecord(resultRows.MIGRATION_LEDGER[0]);
+  const ledgerObservationValid =
+    typeof ledgerObservation?.schema_initialized === "boolean" &&
+    typeof ledgerObservation?.ledger_initialized === "boolean";
+  const ledgerSchemaInitialized =
+    ledgerObservation?.schema_initialized === true;
+  const ledgerInitialized = ledgerObservation?.ledger_initialized === true;
   const appliedVersions = uniqueSorted(
     strings(resultRows.MIGRATION_LEDGER, "version"),
   );
@@ -528,14 +546,20 @@ function reportFromRows(
     }
   };
 
+  if (!ledgerObservationValid) {
+    addMismatch("MIGRATION_LEDGER_OBSERVATION_INVALID");
+  } else if (ledgerSchemaInitialized && !ledgerInitialized) {
+    addMismatch("MIGRATION_LEDGER_RELATION_MISSING");
+  }
   if (!readOnly) addMismatch("READ_ONLY_TRANSACTION_MISMATCH");
   if (!dedicatedReadOnlyIdentityObserved) {
     addMismatch("DATABASE_IDENTITY_SECURITY_MISMATCH");
   }
   for (const schemaName of missingSchemas) {
     if (schemaName === "extensions" && pendingMigrationSet.has("033")) continue;
+    if (schemaName === "supabase_migrations" && !ledgerInitialized) continue;
     if (schemaName === "vaylo_audit") {
-      addMismatch("VAYLO_AUDIT_SCHEMA_MISSING");
+      if (ledgerInitialized) addMismatch("VAYLO_AUDIT_SCHEMA_MISSING");
     } else {
       addMismatch(`REQUIRED_SCHEMA_MISSING:${schemaName}`);
     }
@@ -561,14 +585,19 @@ function reportFromRows(
     missingSchemas.includes("vaylo_audit") ||
     missingAuditViews.length > 0 ||
     missingAuditFunctions.length > 0;
-  if (missingAuditViews.length > 0) {
+  if (ledgerInitialized && missingAuditViews.length > 0) {
     addMismatch("VAYLO_AUDIT_REQUIRED_VIEWS_MISSING");
   }
-  if (missingAuditFunctions.length > 0) {
+  if (ledgerInitialized && missingAuditFunctions.length > 0) {
     addMismatch("VAYLO_AUDIT_REQUIRED_FUNCTIONS_MISSING");
   }
 
   const warnings: string[] = [];
+  if (!ledgerInitialized) {
+    warnings.push(
+      "The Supabase migration ledger is not initialized; first schema activation remains pending.",
+    );
+  }
   if (dataUpsertReviewRequired) {
     warnings.push(
       "20260423_branching_real_world_expansion.sql is deferred outside the automatic migration chain; separate product/data review is required before any manual execution.",
@@ -602,6 +631,8 @@ function reportFromRows(
     dedicatedReadOnlyIdentityObserved,
     serverVersionMajor,
     migrationLedger: Object.freeze({
+      schemaInitialized: ledgerSchemaInitialized,
+      initialized: ledgerInitialized,
       expectedMigrationSet: EXPECTED_SCHEMA_MIGRATION_IDS,
       observedMigrationSet: appliedVersions,
       pendingMigrationSet: Object.freeze([...pendingVersions]),
@@ -715,8 +746,10 @@ export async function runProductionSchemaPreflight(
     return failed("PREFLIGHT_EXECUTION_FAILED");
   }
   let transactionStarted = false;
+  let connectionEstablished = false;
   try {
     await client.connect();
+    connectionEstablished = true;
     await client.query(TRANSACTION_STATEMENTS.begin);
     transactionStarted = true;
     await client.query(TRANSACTION_STATEMENTS.statementTimeout);
@@ -725,6 +758,17 @@ export async function runProductionSchemaPreflight(
     const collected = {} as Record<QueryId, readonly unknown[]>;
     for (const inspection of FIXED_SCHEMA_INSPECTION_QUERIES) {
       const result = await client.query(inspection.sql);
+      if (inspection.id === "MIGRATION_LEDGER") {
+        const ledgerObservation = rowRecord(result.rows[0]);
+        if (ledgerObservation?.ledger_initialized === true) {
+          const versions = await client.query(MIGRATION_LEDGER_VERSIONS_SQL);
+          collected[inspection.id] = Object.freeze([
+            ...result.rows,
+            ...versions.rows,
+          ]);
+          continue;
+        }
+      }
       collected[inspection.id] = result.rows;
     }
     await client.query(TRANSACTION_STATEMENTS.commit);
@@ -738,7 +782,7 @@ export async function runProductionSchemaPreflight(
         // The original failure remains authoritative and sanitized.
       }
     }
-    return failed("PREFLIGHT_EXECUTION_FAILED");
+    return failed("PREFLIGHT_EXECUTION_FAILED", connectionEstablished);
   } finally {
     try {
       await client.end();

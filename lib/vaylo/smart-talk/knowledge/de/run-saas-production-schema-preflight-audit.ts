@@ -10,6 +10,7 @@ import {
   FIXED_SCHEMA_INSPECTION_QUERIES,
   FORBIDDEN_CONNECTION_URL_TLS_PARAMETERS,
   MAINTENANCE_CONFIGURATION_KEYS,
+  MIGRATION_LEDGER_VERSIONS_SQL,
   PREFLIGHT_MIGRATION_CLASSIFICATIONS,
   TRANSACTION_STATEMENTS,
   deriveProductionSchemaPreflightStatus,
@@ -100,9 +101,9 @@ function healthyRows(): Readonly<Record<string, readonly unknown[]>> {
         transaction_read_only: "on",
       },
     ],
-    MIGRATION_LEDGER: ALL_CLASSIFIED_MIGRATION_IDS.map(
-      (version) => ({ version }),
-    ),
+    MIGRATION_LEDGER: [
+      { schema_initialized: true, ledger_initialized: true },
+    ],
     REQUIRED_SCHEMAS: [
       "public",
       "supabase_migrations",
@@ -135,14 +136,17 @@ function healthyRows(): Readonly<Record<string, readonly unknown[]>> {
       })),
     ],
   };
-  return Object.freeze(
-    Object.fromEntries(
+  return Object.freeze({
+    ...Object.fromEntries(
       FIXED_SCHEMA_INSPECTION_QUERIES.map((entry) => [
         entry.sql,
         byId[entry.id],
       ]),
     ),
-  );
+    [MIGRATION_LEDGER_VERSIONS_SQL]: ALL_CLASSIFIED_MIGRATION_IDS.map(
+      (version) => ({ version }),
+    ),
+  });
 }
 
 function fakeFactory(
@@ -202,6 +206,18 @@ function scenarioRows(
 ): Readonly<Record<string, readonly unknown[]>> {
   const bySql: Record<string, readonly unknown[]> = { ...healthyRows() };
   for (const [id, rows] of Object.entries(overrides)) {
+    if (id === "MIGRATION_LEDGER") {
+      bySql[MIGRATION_LEDGER_VERSIONS_SQL] = rows;
+      continue;
+    }
+    if (id === "MIGRATION_LEDGER_INITIALIZATION") {
+      const query = FIXED_SCHEMA_INSPECTION_QUERIES.find(
+        (entry) => entry.id === "MIGRATION_LEDGER",
+      );
+      if (!query) throw new Error("Migration-ledger query is missing");
+      bySql[query.sql] = rows;
+      continue;
+    }
     const query = FIXED_SCHEMA_INSPECTION_QUERIES.find(
       (entry) => entry.id === id,
     );
@@ -219,6 +235,22 @@ async function runScenario(
     configuration().source,
     fakeFactory(state, [], scenarioRows(overrides)),
   );
+}
+
+async function runScenarioWithState(
+  overrides: Readonly<Record<string, readonly unknown[]>>,
+): Promise<
+  Readonly<{
+    result: Awaited<ReturnType<typeof runProductionSchemaPreflight>>;
+    state: FakeClientState;
+  }>
+> {
+  const state = newState();
+  const result = await runProductionSchemaPreflight(
+    configuration().source,
+    fakeFactory(state, [], scenarioRows(overrides)),
+  );
+  return Object.freeze({ result, state });
 }
 
 function migrationLedgerExcept(
@@ -450,6 +482,8 @@ async function main(): Promise<void> {
     "knowledge_source_acquisition_attempts",
   ] as const;
   const [
+    cleanUninitializedScenario,
+    ledgerRelationMissing,
     dataUpsertPending,
     ordinaryPending,
     multiplePending,
@@ -476,6 +510,34 @@ async function main(): Promise<void> {
     migration034AbsentPlusMismatch,
     migration034AbsentPlusDataUpsertPending,
   ] = await Promise.all([
+    runScenarioWithState({
+      CURRENT_SESSION: [
+        {
+          database_name: "postgres",
+          user_name: "birello_preflight_reader",
+          server_version_num: "170000",
+          transaction_read_only: "on",
+        },
+      ],
+      MIGRATION_LEDGER_INITIALIZATION: [
+        { schema_initialized: false, ledger_initialized: false },
+      ],
+      MIGRATION_LEDGER: [],
+      REQUIRED_SCHEMAS: [{ schema_name: "public" }],
+      REQUIRED_EXTENSIONS: [],
+      KNOWLEDGE_TABLES_AND_RLS: [],
+      KNOWLEDGE_GRANTS: [],
+      KNOWLEDGE_FUNCTIONS: [],
+      KNOWLEDGE_TRIGGERS: [],
+      KNOWLEDGE_INDEXES: [],
+      VAYLO_AUDIT_INTERFACE: [],
+    }),
+    runScenario({
+      MIGRATION_LEDGER_INITIALIZATION: [
+        { schema_initialized: true, ledger_initialized: false },
+      ],
+      MIGRATION_LEDGER: [],
+    }),
     runScenario({ MIGRATION_LEDGER: migrationLedgerExcept("20260423") }),
     runScenario({ MIGRATION_LEDGER: migrationLedgerExcept("032") }),
     runScenario({
@@ -573,6 +635,7 @@ async function main(): Promise<void> {
       MIGRATION_LEDGER: migrationLedgerExcept("034", "20260423"),
     }),
   ]);
+  const cleanUninitialized = cleanUninitializedScenario.result;
 
   const [
     connectFailure,
@@ -618,9 +681,10 @@ async function main(): Promise<void> {
     readFileSync(file, "utf8").includes("production-schema-preflight"),
   );
 
-  const fixedSqlValid = FIXED_SCHEMA_INSPECTION_QUERIES.every((entry) =>
-    isReadOnlyInspectionSql(entry.sql),
-  );
+  const fixedSqlValid =
+    FIXED_SCHEMA_INSPECTION_QUERIES.every((entry) =>
+      isReadOnlyInspectionSql(entry.sql),
+    ) && isReadOnlyInspectionSql(MIGRATION_LEDGER_VERSIONS_SQL);
   const successConfig = successConfigs[0];
   const safeSyntheticClient = successConfig
     ? new Client(successConfig)
@@ -679,9 +743,11 @@ async function main(): Promise<void> {
       migration034Absent.operatorActionRequired === false &&
       migration034Absent.migrationLedger.dataUpsertReviewRequired === false,
     migration034AbsentPendingMigration:
+      migration034Absent.overall !== "FAILED" &&
       migration034Absent.connected === true &&
       migration034Absent.migrationLedger.pendingMigrationSet.includes("034"),
     migration034AbsentOperatorAction:
+      migration034Absent.overall !== "FAILED" &&
       migration034Absent.connected === true &&
       migration034Absent.operatorActionRequired,
     migration035AbsentNeedsMigration:
@@ -695,6 +761,7 @@ async function main(): Promise<void> {
       dataUpsertPending.migrationLedger.pendingMigrationCount === 0 &&
       dataUpsertPending.operatorActionRequired === false,
     migration20260423ReviewRequired:
+      dataUpsertPending.overall !== "FAILED" &&
       dataUpsertPending.connected === true &&
       dataUpsertPending.migrationLedger.dataUpsertReviewRequired,
     migration034AbsentPlusMismatch:
@@ -712,6 +779,26 @@ async function main(): Promise<void> {
 
   const statusDecisionCases = Object.freeze({
     fullyHealthy: successResult.overall === "PASS",
+    cleanUninitializedNeedsMigration:
+      cleanUninitialized.overall === "NEEDS_MIGRATION" &&
+      cleanUninitialized.connected === true &&
+      cleanUninitialized.dedicatedReadOnlyIdentityObserved &&
+      cleanUninitialized.migrationLedger.initialized === false &&
+      cleanUninitialized.migrationLedger.schemaInitialized === false &&
+      cleanUninitialized.migrationLedger.observedMigrationSet.length === 0 &&
+      cleanUninitialized.migrationLedger.pendingMigrationCount === 4 &&
+      cleanUninitialized.operatorActionRequired &&
+      cleanUninitialized.mandatoryMismatchCount === 0 &&
+      cleanUninitialized.auditBootstrapRequired &&
+      !cleanUninitializedScenario.state.queryCalls.includes(
+        MIGRATION_LEDGER_VERSIONS_SQL,
+      ),
+    partialLedgerBootstrapMismatch:
+      ledgerRelationMissing.overall === "MISMATCH" &&
+      ledgerRelationMissing.connected === true &&
+      ledgerRelationMissing.mandatoryMismatchReasons.includes(
+        "MIGRATION_LEDGER_RELATION_MISSING",
+      ),
     dataUpsertDeferredNonBlocking:
       dataUpsertPending.overall === "PASS" &&
       dataUpsertPending.connected === true &&
@@ -786,11 +873,13 @@ async function main(): Promise<void> {
       credentialMissingResult.overall === "FAILED",
     connect:
       connectFailure.result.overall === "FAILED" &&
+      connectFailure.result.connected === false &&
       connectFailure.state.connectCalls === 1 &&
       connectFailure.state.endCalls === 1 &&
       !connectFailure.state.queryCalls.includes(TRANSACTION_STATEMENTS.rollback),
     begin:
       beginFailure.result.overall === "FAILED" &&
+      beginFailure.result.connected === true &&
       beginFailure.state.endCalls === 1 &&
       !beginFailure.state.queryCalls.includes(TRANSACTION_STATEMENTS.rollback),
     statementTimeout:
@@ -807,6 +896,7 @@ async function main(): Promise<void> {
       lockTimeoutFailure.state.endCalls === 1,
     midQuery:
       inspectionFailure.result.overall === "FAILED" &&
+      inspectionFailure.result.connected === true &&
       inspectionFailure.state.queryCalls.includes(
         TRANSACTION_STATEMENTS.rollback,
       ) &&

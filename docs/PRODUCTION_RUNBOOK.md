@@ -55,6 +55,10 @@ path.
    - `NEEDS_MIGRATION`: review every pending migration; do not auto-apply it.
    - `MISMATCH`: live catalog or security state contradicts expected state.
    - `FAILED`: the preflight could not complete.
+   Before first activation, a reachable clean database has no initialized
+   Supabase migration ledger and should report `NEEDS_MIGRATION`. After the
+   controlled migration deployment, rerun the preflight; `PASS` is available
+   only when the required migration and schema conditions are satisfied.
 6. Review the exact pending migration files. The data expansion at
    `supabase/deferred-migrations/20260423_branching_real_world_expansion.sql`
    is intentionally outside the automatic first-activation chain and does not
