@@ -48,8 +48,9 @@ path.
    - `VAYLO_PRODUCTION_BACKUP_CONFIRMED=true`
    - `VAYLO_PRODUCTION_READONLY_DATABASE_URL=<dedicated read-only PostgreSQL URL>`
 4. Run `npm run db:production:preflight`.
-5. Review the sanitized report, including the remote migration ledger,
-   knowledge-table inventory, RLS, grants, `pgcrypto`, and `vaylo_audit`.
+5. Review the sanitized ordinary SaaS preflight report, including the remote
+   migration ledger, knowledge-table inventory, RLS, grants, and `pgcrypto`.
+   The report also exposes the `vaylo_audit` interface when present.
    Interpret its status as follows:
    - `PASS`: no preflight action remains before the next operational stage.
    - `NEEDS_MIGRATION`: review every pending migration; do not auto-apply it.
@@ -59,6 +60,11 @@ path.
    Supabase migration ledger and should report `NEEDS_MIGRATION`. After the
    controlled migration deployment, rerun the preflight; `PASS` is available
    only when the required migration and schema conditions are satisfied.
+   The separately bootstrapped `vaylo_audit` interface is an optional
+   high-assurance diagnostic capability: its absence or incompleteness remains
+   visible in the report but does not block ordinary SaaS preflight `PASS`.
+   Validate or bootstrap that interface only when its stricter diagnostic
+   contract is deliberately required; it is not part of ordinary activation.
 6. Review the exact pending migration files. The data expansion at
    `supabase/deferred-migrations/20260423_branching_real_world_expansion.sql`
    is intentionally outside the automatic first-activation chain and does not

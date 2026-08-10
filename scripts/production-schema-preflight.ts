@@ -306,6 +306,12 @@ const REQUIRED_SCHEMAS = Object.freeze([
   "extensions",
 ] as const);
 
+const MANDATORY_SAAS_SCHEMAS = Object.freeze([
+  "public",
+  "supabase_migrations",
+  "extensions",
+] as const);
+
 function producerMigrationForTable(tableName: string): string {
   if (MIGRATION_010_TABLES.has(tableName)) return "010";
   if (MIGRATION_033_TABLES.has(tableName)) return "033";
@@ -556,13 +562,16 @@ function reportFromRows(
     addMismatch("DATABASE_IDENTITY_SECURITY_MISMATCH");
   }
   for (const schemaName of missingSchemas) {
+    if (
+      !MANDATORY_SAAS_SCHEMAS.includes(
+        schemaName as (typeof MANDATORY_SAAS_SCHEMAS)[number],
+      )
+    ) {
+      continue;
+    }
     if (schemaName === "extensions" && pendingMigrationSet.has("033")) continue;
     if (schemaName === "supabase_migrations" && !ledgerInitialized) continue;
-    if (schemaName === "vaylo_audit") {
-      if (ledgerInitialized) addMismatch("VAYLO_AUDIT_SCHEMA_MISSING");
-    } else {
-      addMismatch(`REQUIRED_SCHEMA_MISSING:${schemaName}`);
-    }
+    addMismatch(`REQUIRED_SCHEMA_MISSING:${schemaName}`);
   }
   if (!pgcrypto) {
     if (!pendingMigrationSet.has("033")) addMismatch("PGCRYPTO_MISSING");
@@ -585,12 +594,6 @@ function reportFromRows(
     missingSchemas.includes("vaylo_audit") ||
     missingAuditViews.length > 0 ||
     missingAuditFunctions.length > 0;
-  if (ledgerInitialized && missingAuditViews.length > 0) {
-    addMismatch("VAYLO_AUDIT_REQUIRED_VIEWS_MISSING");
-  }
-  if (ledgerInitialized && missingAuditFunctions.length > 0) {
-    addMismatch("VAYLO_AUDIT_REQUIRED_FUNCTIONS_MISSING");
-  }
 
   const warnings: string[] = [];
   if (!ledgerInitialized) {
@@ -605,7 +608,7 @@ function reportFromRows(
   }
   if (auditBootstrapRequired) {
     warnings.push(
-      "The separately controlled vaylo_audit bootstrap is missing or incomplete and requires operator repair.",
+      "The optional high-assurance vaylo_audit interface is missing or incomplete; ordinary SaaS schema health is unaffected.",
     );
   }
   warnings.push(

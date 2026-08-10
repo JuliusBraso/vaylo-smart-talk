@@ -495,6 +495,9 @@ async function main(): Promise<void> {
     pgcryptoMissing,
     pgcryptoWrongSchema,
     auditObjectMissing,
+    auditFunctionMissing,
+    auditMixedGap,
+    auditInterfaceAbsent,
     publicationPendingMissing,
     publicationAppliedMissing,
     sourceRegistryPendingMissing,
@@ -588,6 +591,36 @@ async function main(): Promise<void> {
           object_name,
         })),
       ],
+    }),
+    runScenario({
+      VAYLO_AUDIT_INTERFACE: [
+        ...AUDIT_VIEWS.map((object_name) => ({
+          object_kind: "view",
+          object_name,
+        })),
+        ...AUDIT_FUNCTIONS.slice(1).map((object_name) => ({
+          object_kind: "function",
+          object_name,
+        })),
+      ],
+    }),
+    runScenario({
+      VAYLO_AUDIT_INTERFACE: [
+        ...AUDIT_VIEWS.slice(1).map((object_name) => ({
+          object_kind: "view",
+          object_name,
+        })),
+        ...AUDIT_FUNCTIONS.slice(1).map((object_name) => ({
+          object_kind: "function",
+          object_name,
+        })),
+      ],
+    }),
+    runScenario({
+      REQUIRED_SCHEMAS: ["public", "supabase_migrations", "extensions"].map(
+        (schema_name) => ({ schema_name }),
+      ),
+      VAYLO_AUDIT_INTERFACE: [],
     }),
     runScenario({
       MIGRATION_LEDGER: migrationLedgerExcept("033"),
@@ -825,10 +858,44 @@ async function main(): Promise<void> {
       pgcryptoMissing.overall === "MISMATCH",
     pgcryptoWrongSchema: pgcryptoWrongSchema.overall === "MISMATCH",
     auditBootstrapObjectMissing:
-      auditObjectMissing.overall === "MISMATCH" &&
+      auditObjectMissing.overall === "PASS" &&
       auditObjectMissing.connected === true &&
       auditObjectMissing.auditBootstrapRequired &&
-      auditObjectMissing.operatorActionRequired,
+      auditObjectMissing.mandatoryMismatchCount === 0 &&
+      !auditObjectMissing.operatorActionRequired &&
+      auditObjectMissing.auditInterface.missingViews.length === 1,
+    auditBootstrapFunctionMissing:
+      auditFunctionMissing.overall === "PASS" &&
+      auditFunctionMissing.connected === true &&
+      auditFunctionMissing.auditBootstrapRequired &&
+      auditFunctionMissing.mandatoryMismatchCount === 0 &&
+      !auditFunctionMissing.operatorActionRequired &&
+      auditFunctionMissing.auditInterface.missingFunctions.length === 1,
+    auditBootstrapMixedGap:
+      auditMixedGap.overall === "PASS" &&
+      auditMixedGap.connected === true &&
+      auditMixedGap.auditBootstrapRequired &&
+      auditMixedGap.mandatoryMismatchCount === 0 &&
+      auditMixedGap.mandatoryMismatchReasons.length === 0 &&
+      !auditMixedGap.operatorActionRequired &&
+      !auditMixedGap.schemas.missing.includes("vaylo_audit") &&
+      auditMixedGap.auditInterface.missingViews.length === 1 &&
+      auditMixedGap.auditInterface.missingFunctions.length === 1 &&
+      auditMixedGap.auditInterface.missingViews.includes("platform_schemas") &&
+      auditMixedGap.auditInterface.missingFunctions.includes("server_state") &&
+      auditMixedGap.auditInterface.observedViews === AUDIT_VIEWS.length - 1 &&
+      auditMixedGap.auditInterface.observedFunctions === AUDIT_FUNCTIONS.length - 1,
+    auditBootstrapAbsentNonBlocking:
+      auditInterfaceAbsent.overall === "PASS" &&
+      auditInterfaceAbsent.connected === true &&
+      auditInterfaceAbsent.auditBootstrapRequired &&
+      auditInterfaceAbsent.mandatoryMismatchCount === 0 &&
+      !auditInterfaceAbsent.operatorActionRequired &&
+      auditInterfaceAbsent.schemas.missing.includes("vaylo_audit") &&
+      auditInterfaceAbsent.auditInterface.missingViews.length ===
+        AUDIT_VIEWS.length &&
+      auditInterfaceAbsent.auditInterface.missingFunctions.length ===
+        AUDIT_FUNCTIONS.length,
     publicationProducerPending:
       publicationPendingMissing.overall === "NEEDS_MIGRATION",
     publicationProducerApplied:
