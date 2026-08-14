@@ -4,24 +4,75 @@
 -- Set the LOGIN password interactively afterward; never store it in Git.
 
 do $$
+declare
+  v_role pg_catalog.pg_roles%rowtype;
 begin
-  if not exists (
-    select 1
-    from pg_catalog.pg_roles
-    where rolname = 'birello_knowledge_ingestor'
-  ) then
-    create role birello_knowledge_ingestor;
+  select *
+  into v_role
+  from pg_catalog.pg_roles
+  where rolname = 'birello_knowledge_ingestor';
+
+  if not found then
+    create role birello_knowledge_ingestor
+      login
+      nosuperuser
+      nocreatedb
+      nocreaterole
+      noinherit
+      noreplication
+      nobypassrls
+      connection limit 2;
+  else
+    -- PostgreSQL requires SUPERUSER even to restate these restricted
+    -- attributes as false. A managed NOSUPERUSER CREATEROLE administrator
+    -- therefore verifies them and fails closed instead of issuing a
+    -- privileged no-op ALTER ROLE.
+    if v_role.rolsuper then
+      raise exception
+        'birello_knowledge_ingestor must already be NOSUPERUSER';
+    end if;
+    if v_role.rolreplication then
+      raise exception
+        'birello_knowledge_ingestor must already be NOREPLICATION';
+    end if;
+    if v_role.rolbypassrls then
+      raise exception
+        'birello_knowledge_ingestor must already be NOBYPASSRLS';
+    end if;
+
+    -- These attributes are mutable by the managed CREATEROLE administrator
+    -- that created/administers the role. Avoid even safe no-op ALTER ROLE
+    -- operations when the existing role has already converged.
+    if not v_role.rolcanlogin
+       or v_role.rolcreatedb
+       or v_role.rolcreaterole
+       or v_role.rolinherit
+       or v_role.rolconnlimit <> 2 then
+      alter role birello_knowledge_ingestor
+        login
+        nocreatedb
+        nocreaterole
+        noinherit
+        connection limit 2;
+    end if;
   end if;
 
-  alter role birello_knowledge_ingestor
-    login
-    nosuperuser
-    nocreatedb
-    nocreaterole
-    noinherit
-    noreplication
-    nobypassrls
-    connection limit 2;
+  select *
+  into strict v_role
+  from pg_catalog.pg_roles
+  where rolname = 'birello_knowledge_ingestor';
+
+  if not v_role.rolcanlogin
+     or v_role.rolsuper
+     or v_role.rolcreatedb
+     or v_role.rolcreaterole
+     or v_role.rolinherit
+     or v_role.rolreplication
+     or v_role.rolbypassrls
+     or v_role.rolconnlimit <> 2 then
+    raise exception
+      'birello_knowledge_ingestor role attributes did not converge';
+  end if;
 end;
 $$;
 
