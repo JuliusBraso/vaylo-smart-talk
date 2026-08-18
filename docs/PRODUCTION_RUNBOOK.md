@@ -129,7 +129,10 @@ write-only `birello_knowledge_ingestor`.
 1. Deploy migration 038 through the separately authorized migration workflow.
 2. An operator reviews and applies
    `supabase/bootstrap/003_create_birello_knowledge_reader.sql`, then assigns
-   its password outside Git.
+   its password outside Git. The operator needs `CREATEROLE`, `CONNECT` grant
+   option on the current database, `USAGE` grant option on `public`, and
+   `EXECUTE` grant option on the retrieval RPC. Ownership of unrelated public
+   tables/functions, knowledge tables, or the ingestion RPC is not required.
 3. Store that credential only in the server-side Smart Talk environment. It
    must never be used in a browser, a `NEXT_PUBLIC_*` value, or an admin,
    ingestion, or preflight job.
