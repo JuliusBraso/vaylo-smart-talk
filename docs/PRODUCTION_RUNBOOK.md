@@ -143,6 +143,16 @@ The reader has `EXECUTE` only on this bounded RPC. It has no direct
 `knowledge_*` table access, no ingestion-RPC access, no migration-ledger
 access, and no write or schema-creation authority.
 
+The operator-only proof uses
+`BIRELLO_PRODUCTION_KNOWLEDGE_RETRIEVAL_ENABLED=true`,
+`BIRELLO_PRODUCTION_KNOWLEDGE_RETRIEVAL_TARGET=production`,
+`BIRELLO_PRODUCTION_KNOWLEDGE_RETRIEVAL_DATABASE_URL`,
+`BIRELLO_PRODUCTION_KNOWLEDGE_RETRIEVAL_DATABASE_NAME`, and
+`BIRELLO_PRODUCTION_KNOWLEDGE_READER=birello_knowledge_reader`.
+Run `npm run knowledge:production:retrieval-proof -- --mode=validate` before
+the human-approved `--mode=read-only` proof. These variables are server-only;
+no `NEXT_PUBLIC_*` retrieval credential is permitted.
+
 ## Supabase checklist
 
 - [ ] **Auth:** Production redirect URLs and site URL match your deployed domain.
