@@ -20,6 +20,7 @@
     "db:verify": "npx -y tsx@4.19.2 scripts/verify-db-schema.ts",
     "db:production:preflight": "npx -y tsx@4.19.2 scripts/production-schema-preflight.ts",
     "knowledge:production:ingest": "npx -y tsx@4.19.2 scripts/run-production-knowledge-ingestion.ts",
+    "knowledge:local:audit-retrieval-rpc": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/packs/de/anmeldung-ummeldung-abmeldung/run-production-retrieval-rpc-semantic-local-audit.ts",
     "release:check": "npm run db:verify",
     "verify:8.3v": "npx -y tsx@4.19.2 scripts/verify-8-3v-additional-synthetic-live-execution.ts"
   },

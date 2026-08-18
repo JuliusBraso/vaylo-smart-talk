@@ -119,6 +119,27 @@ production credentials. The production path is the fixed, source-owned
 The command loads only the committed allowlisted pack. It accepts no pack path,
 stdin payload, uploaded data, remote URL, SQL, or browser/runtime request.
 
+## Curated knowledge retrieval (server-only)
+
+Migration 038 provides the fixed
+`knowledge_retrieve_evidence_packets(uuid[], text[])` retrieval boundary.
+It is separate from the catalog-only `birello_preflight_reader` and the
+write-only `birello_knowledge_ingestor`.
+
+1. Deploy migration 038 through the separately authorized migration workflow.
+2. An operator reviews and applies
+   `supabase/bootstrap/003_create_birello_knowledge_reader.sql`, then assigns
+   its password outside Git.
+3. Store that credential only in the server-side Smart Talk environment. It
+   must never be used in a browser, a `NEXT_PUBLIC_*` value, or an admin,
+   ingestion, or preflight job.
+4. Before wiring runtime retrieval, perform the separately approved
+   production retrieval proof using only the reader identity.
+
+The reader has `EXECUTE` only on this bounded RPC. It has no direct
+`knowledge_*` table access, no ingestion-RPC access, no migration-ledger
+access, and no write or schema-creation authority.
+
 ## Supabase checklist
 
 - [ ] **Auth:** Production redirect URLs and site URL match your deployed domain.
