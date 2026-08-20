@@ -43,10 +43,18 @@ export type RuntimeKnowledgeEvidence = Readonly<{
 export type ControlledKnowledgeDiagnostics = Readonly<{
   knowledgeRetrievalAttempted: boolean;
   knowledgeRetrievalPerformed: boolean;
+  retrievalConnectionSucceeded: boolean;
+  retrievalRpcInvoked: boolean;
+  retrievalRpcSucceeded: boolean;
+  retrievalZeroRows: boolean;
+  retrievalRowContractRejected: boolean;
+  retrievalFailureStage: RetrievalFailureStage | null;
   packId: typeof PACK_ID;
   jurisdiction: typeof FEDERAL_JURISDICTION_CODE;
   canonicalKnowledgeLanguage: typeof CANONICAL_LANGUAGE;
   requestedOutputLanguage: "sk" | "de" | "en";
+  selectedCanonicalUnitIds: readonly string[];
+  selectedClaimIds: readonly string[];
   selectedCanonicalUnitCount: number;
   retrievedEvidenceCount: number;
   knowledgeGroundedResponse: boolean;
@@ -62,13 +70,38 @@ type RetrievalConfiguration = Readonly<{
   database: string;
 }>;
 
+type RetrievalFailureStage =
+  | "configuration"
+  | "connection"
+  | "identity"
+  | "privilege"
+  | "transaction"
+  | "rpc";
+
+type RetrievalAttemptResult =
+  | Readonly<{
+      ok: true;
+      rows: readonly Record<string, unknown>[];
+      connectionSucceeded: true;
+      rpcInvoked: true;
+      rpcSucceeded: true;
+    }>
+  | Readonly<{
+      ok: false;
+      rows: readonly [];
+      connectionSucceeded: boolean;
+      rpcInvoked: boolean;
+      rpcSucceeded: false;
+      failureStage: RetrievalFailureStage;
+    }>;
+
 type ControlledKnowledgeDependencies = Readonly<{
   selectUnitIds: (text: string) => Promise<unknown>;
   retrieveRows: (
     claimIds: readonly string[],
     jurisdictionCodes: readonly string[],
     configuration: RetrievalConfiguration,
-  ) => Promise<readonly Record<string, unknown>[]>;
+  ) => Promise<RetrievalAttemptResult>;
   report: (diagnostics: ControlledKnowledgeDiagnostics) => void;
 }>;
 
@@ -147,11 +180,16 @@ async function retrieveRowsFromProduction(
   claimIds: readonly string[],
   jurisdictionCodes: readonly string[],
   configuration: RetrievalConfiguration,
-): Promise<readonly Record<string, unknown>[]> {
+): Promise<RetrievalAttemptResult> {
   const client = new Client(configuration.clientConfig);
   let transaction = false;
+  let connectionSucceeded = false;
+  let rpcInvoked = false;
+  let failureStage: RetrievalFailureStage = "connection";
   try {
     await client.connect();
+    connectionSucceeded = true;
+    failureStage = "identity";
     const identity = await client.query(
       `select current_user as reader,current_database() as database_name,
               r.rolsuper,r.rolcreatedb,r.rolcreaterole,r.rolreplication,r.rolbypassrls,
@@ -172,6 +210,7 @@ async function retrieveRowsFromProduction(
       || row.rolbypassrls
       || row.database_owner
     ) throw new Error("Knowledge reader identity rejected");
+    failureStage = "privilege";
     const privilegeResult = await client.query(
       `select
          has_function_privilege(current_user,'public.knowledge_retrieve_evidence_packets(uuid[],text[])','EXECUTE') as retrieval,
@@ -196,17 +235,35 @@ async function retrieveRowsFromProduction(
     if (!privileges?.retrieval || privileges.ingestion || privileges.schema_create || privileges.table_access !== 0) {
       throw new Error("Knowledge reader privilege contract rejected");
     }
+    failureStage = "transaction";
     await client.query("begin read only");
     transaction = true;
     await client.query("set local statement_timeout='8s'");
     await client.query("set local lock_timeout='1s'");
+    failureStage = "rpc";
+    rpcInvoked = true;
     const result = await client.query(
       "select * from public.knowledge_retrieve_evidence_packets($1::uuid[],$2::text[])",
       [claimIds, jurisdictionCodes],
     );
     await client.query("rollback");
     transaction = false;
-    return result.rows as Record<string, unknown>[];
+    return {
+      ok: true,
+      rows: result.rows as Record<string, unknown>[],
+      connectionSucceeded: true,
+      rpcInvoked: true,
+      rpcSucceeded: true,
+    };
+  } catch {
+    return {
+      ok: false,
+      rows: [],
+      connectionSucceeded,
+      rpcInvoked,
+      rpcSucceeded: false,
+      failureStage,
+    };
   } finally {
     if (transaction) await client.query("rollback").catch(() => undefined);
     await client.end().catch(() => undefined);
@@ -217,6 +274,16 @@ function normalizeSelection(value: unknown): readonly string[] | null {
   if (!Array.isArray(value) || value.length > MAX_UNITS) return null;
   if (value.some((id) => typeof id !== "string" || !UNIT_BY_ID.has(id))) return null;
   return [...new Set(value as string[])];
+}
+
+function parseRequiredContextKeys(value: unknown): readonly string[] {
+  if (Array.isArray(value)) {
+    return value.filter((key): key is string => typeof key === "string");
+  }
+  if (typeof value !== "string" || !/^\{(?:[A-Z_]+(?:,[A-Z_]+)*)?\}$/.test(value)) {
+    return [];
+  }
+  return value.length === 2 ? [] : value.slice(1, -1).split(",");
 }
 
 function compactEvidence(
@@ -248,9 +315,7 @@ function compactEvidence(
       handlingMode: handlingMode as HandlingMode,
       canonicalValueUsable: row.canonical_value_usable === true,
       staleBehavior: typeof row.stale_behavior === "string" ? row.stale_behavior : "",
-      requiredContext: Array.isArray(row.required_context_keys)
-        ? row.required_context_keys.filter((key): key is string => typeof key === "string")
-        : [],
+      requiredContext: parseRequiredContextKeys(row.required_context_keys),
       revalidationDueAt: row.revalidation_due_at ? String(row.revalidation_due_at) : null,
     }];
   });
@@ -264,19 +329,36 @@ const PRODUCTION_DEPENDENCIES: ControlledKnowledgeDependencies = {
 
 function diagnostics(
   locale: "sk" | "de" | "en",
-  attempted: boolean,
-  performed: boolean,
-  selected: number,
-  retrieved: number,
+  state: Readonly<{
+    attempted?: boolean;
+    connectionSucceeded?: boolean;
+    rpcInvoked?: boolean;
+    rpcSucceeded?: boolean;
+    zeroRows?: boolean;
+    rowContractRejected?: boolean;
+    failureStage?: RetrievalFailureStage | null;
+    selectedUnitIds?: readonly string[];
+    retrieved?: number;
+  }> = {},
 ): ControlledKnowledgeDiagnostics {
+  const retrieved = state.retrieved ?? 0;
+  const selectedCanonicalUnitIds = state.selectedUnitIds ?? [];
   return Object.freeze({
-    knowledgeRetrievalAttempted: attempted,
-    knowledgeRetrievalPerformed: performed,
+    knowledgeRetrievalAttempted: state.attempted ?? false,
+    knowledgeRetrievalPerformed: state.rpcSucceeded ?? false,
+    retrievalConnectionSucceeded: state.connectionSucceeded ?? false,
+    retrievalRpcInvoked: state.rpcInvoked ?? false,
+    retrievalRpcSucceeded: state.rpcSucceeded ?? false,
+    retrievalZeroRows: state.zeroRows ?? false,
+    retrievalRowContractRejected: state.rowContractRejected ?? false,
+    retrievalFailureStage: state.failureStage ?? null,
     packId: PACK_ID,
     jurisdiction: FEDERAL_JURISDICTION_CODE,
     canonicalKnowledgeLanguage: CANONICAL_LANGUAGE,
     requestedOutputLanguage: locale,
-    selectedCanonicalUnitCount: selected,
+    selectedCanonicalUnitIds,
+    selectedClaimIds: selectedCanonicalUnitIds.map((id) => stablePackEntityId(`claim:${id}`)),
+    selectedCanonicalUnitCount: selectedCanonicalUnitIds.length,
     retrievedEvidenceCount: retrieved,
     knowledgeGroundedResponse: retrieved > 0,
   });
@@ -288,11 +370,14 @@ export async function prepareControlledQuestionKnowledge(
 ): Promise<ControlledKnowledgeResult> {
   const environment = input.environment ?? process.env;
   if (environment[ENV.enabled] !== "true") {
-    return { evidence: [], diagnostics: diagnostics(input.locale, false, false, 0, 0) };
+    return { evidence: [], diagnostics: diagnostics(input.locale) };
   }
   const configuration = configurationFromEnvironment(environment);
   if (!configuration) {
-    const report = diagnostics(input.locale, true, false, 0, 0);
+    const report = diagnostics(input.locale, {
+      attempted: true,
+      failureStage: "configuration",
+    });
     dependencies.report(report);
     return { evidence: [], diagnostics: report };
   }
@@ -303,23 +388,47 @@ export async function prepareControlledQuestionKnowledge(
     selected = null;
   }
   if (!selected?.length) {
-    const report = diagnostics(input.locale, true, false, 0, 0);
+    const report = diagnostics(input.locale, { attempted: true });
     dependencies.report(report);
     return { evidence: [], diagnostics: report };
   }
   const claimIds = selected.map((id) => stablePackEntityId(`claim:${id}`));
   try {
-    const rows = await dependencies.retrieveRows(
+    const retrieval = await dependencies.retrieveRows(
       claimIds,
       [FEDERAL_JURISDICTION_CODE],
       configuration,
     );
-    const evidence = compactEvidence(rows, new Set(claimIds));
-    const report = diagnostics(input.locale, true, true, selected.length, evidence.length);
+    if (!retrieval.ok) {
+      const report = diagnostics(input.locale, {
+        attempted: true,
+        connectionSucceeded: retrieval.connectionSucceeded,
+        rpcInvoked: retrieval.rpcInvoked,
+        failureStage: retrieval.failureStage,
+        selectedUnitIds: selected,
+      });
+      dependencies.report(report);
+      return { evidence: [], diagnostics: report };
+    }
+    const evidence = compactEvidence(retrieval.rows, new Set(claimIds));
+    const report = diagnostics(input.locale, {
+      attempted: true,
+      connectionSucceeded: true,
+      rpcInvoked: true,
+      rpcSucceeded: true,
+      zeroRows: retrieval.rows.length === 0,
+      rowContractRejected: retrieval.rows.length > 0 && evidence.length === 0,
+      selectedUnitIds: selected,
+      retrieved: evidence.length,
+    });
     dependencies.report(report);
     return { evidence, diagnostics: report };
   } catch {
-    const report = diagnostics(input.locale, true, true, selected.length, 0);
+    const report = diagnostics(input.locale, {
+      attempted: true,
+      failureStage: "connection",
+      selectedUnitIds: selected,
+    });
     dependencies.report(report);
     return { evidence: [], diagnostics: report };
   }
