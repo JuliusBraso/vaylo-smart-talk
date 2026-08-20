@@ -17,6 +17,21 @@ export type SmartTalkReasoningProtocol =
   | "bureaucratic_guide"
   | "educational_explainer";
 
+type KnowledgeEvidenceForPrompt = Readonly<{
+  canonicalUnitId: string;
+  proposition: string;
+  jurisdiction: string;
+  canonicalLanguage: string;
+  territorialScope: string | null;
+  locator: string;
+  citation: string;
+  handlingMode: string;
+  canonicalValueUsable: boolean;
+  staleBehavior: string;
+  requiredContext: readonly string[];
+  revalidationDueAt: string | null;
+}>;
+
 const EDUCATIONAL_QUESTION_HINTS: readonly string[] = [
   "čo znamená",
   "čo je ",
@@ -260,6 +275,7 @@ export function buildSmartTalkMessages(params: {
   locale: SmartTalkLocale;
   inputType: SmartTalkInputType;
   source?: SmartTalkTextSource;
+  knowledgeEvidence?: readonly KnowledgeEvidenceForPrompt[];
 }): { system: string; user: string } {
   const localeLine =
     params.locale === "sk"
@@ -331,6 +347,16 @@ export function buildSmartTalkMessages(params: {
     CLASSIFICATION_RULES_COMPACT,
     modeRules,
     ...(params.source === "first_contact" ? [FIRST_CONTACT_RULES] : []),
+    ...(params.knowledgeEvidence?.length
+      ? [
+          "Verified German Knowledge evidence below is authoritative for factual claims within its covered scope. "
+          + "Do not contradict it, invent municipality-specific facts, or present a general rule as a case-specific decision. "
+          + "Respect handlingMode and canonicalValueUsable: FETCH_LIVE is not a stored current fact; "
+          + "CACHE_AND_REVALIDATE must heed staleBehavior and revalidationDueAt; MANUAL_REVIEW_REQUIRED stays qualified; "
+          + "DO_NOT_ANSWER_WITHOUT_CONTEXT requires the listed requiredContext. Answer in the requested output language.",
+          `Verified Knowledge evidence: ${JSON.stringify(params.knowledgeEvidence)}`,
+        ]
+      : []),
     jsonKeysGuide,
   ].join(" ");
 
