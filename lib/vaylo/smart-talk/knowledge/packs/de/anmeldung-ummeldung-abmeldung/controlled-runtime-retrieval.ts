@@ -2,6 +2,15 @@ import "server-only";
 
 import { Client, type ClientConfig } from "pg";
 
+import {
+  retrieveAnmeldungContext,
+  type AnmeldungContextResult,
+  type AnmeldungLocalEvidence,
+} from "./anmeldung-context-retrieval";
+import {
+  ANMELDUNG_KNOWN_LOCALITIES,
+  validateAnmeldungLocalityProposal,
+} from "./anmeldung-locality-selector";
 import { stablePackEntityId } from "./identity";
 import {
   CANONICAL_LANGUAGE,
@@ -43,6 +52,32 @@ export type RuntimeKnowledgeEvidence = Readonly<{
   revalidationDueAt: string | null;
 }>;
 
+export type PromptSafeLocalEvidence = Readonly<{
+  informationClass: string;
+  handlingMode: string;
+  usabilityState: string;
+  answerReady: boolean;
+  canonicalValueUsable: boolean;
+  requiresLiveFetch: boolean;
+  requiresRevalidation: boolean;
+  canonicalUrl: string;
+  publisherName: string;
+  locator: string | null;
+  passageText?: string;
+  currentValueRequiresLiveVerification?: true;
+  currentValueRequiresRevalidation?: true;
+}>;
+
+export type PromptSafeAnmeldungLocalContext = Readonly<{
+  municipalityCode: string;
+  municipalityName: string;
+  authorityName: string | null;
+  authorityType: string | null;
+  competenceVerified: boolean;
+  processTitle: string | null;
+  evidence: readonly PromptSafeLocalEvidence[];
+}>;
+
 export type ControlledKnowledgeDiagnostics = Readonly<{
   knowledgeRetrievalAttempted: boolean;
   knowledgeRetrievalPerformed: boolean;
@@ -61,10 +96,24 @@ export type ControlledKnowledgeDiagnostics = Readonly<{
   selectedCanonicalUnitCount: number;
   retrievedEvidenceCount: number;
   knowledgeGroundedResponse: boolean;
+  localitySelectionAttempted: boolean;
+  localitySelected: boolean;
+  municipalityCode: string | null;
+  localContextAttempted: boolean;
+  localContextRpcInvoked: boolean;
+  localContextRpcSucceeded: boolean;
+  localContextEmpty: boolean;
+  localContextFailureStage: RetrievalFailureStage | null;
+  localEvidenceCount: number;
+  answerReadyLocalEvidenceCount: number;
+  suppressedLiveEvidenceCount: number;
+  suppressedRevalidationEvidenceCount: number;
+  localGroundingApplied: boolean;
 }>;
 
 export type ControlledKnowledgeResult = Readonly<{
   evidence: readonly RuntimeKnowledgeEvidence[];
+  localContext: PromptSafeAnmeldungLocalContext | null;
   diagnostics: ControlledKnowledgeDiagnostics;
 }>;
 
@@ -100,13 +149,36 @@ type RetrievalAttemptResult =
 
 type ControlledKnowledgeDependencies = Readonly<{
   selectUnitIds: (text: string) => Promise<unknown>;
+  selectLocalityKey?: (text: string) => Promise<unknown>;
   retrieveRows: (
     claimIds: readonly string[],
     jurisdictionCodes: readonly string[],
     configuration: RetrievalConfiguration,
   ) => Promise<RetrievalAttemptResult>;
+  retrieveAnmeldungContext?: (
+    claimIds: readonly string[],
+    municipalityCode: string | null,
+    configuration: RetrievalConfiguration,
+  ) => Promise<ContextRetrievalAttemptResult>;
   report: (diagnostics: ControlledKnowledgeDiagnostics) => void;
 }>;
+
+type ContextRetrievalAttemptResult =
+  | Readonly<{
+      ok: true;
+      result: AnmeldungContextResult;
+      connectionSucceeded: true;
+      rpcInvoked: true;
+      rpcSucceeded: true;
+    }>
+  | Readonly<{
+      ok: false;
+      result: null;
+      connectionSucceeded: boolean;
+      rpcInvoked: boolean;
+      rpcSucceeded: false;
+      failureStage: RetrievalFailureStage;
+    }>;
 
 const ENV = Object.freeze({
   enabled: "SMART_TALK_PRODUCTION_KNOWLEDGE_CONTROLLED_ENABLED",
@@ -114,6 +186,11 @@ const ENV = Object.freeze({
   databaseName: "BIRELLO_PRODUCTION_KNOWLEDGE_RETRIEVAL_DATABASE_NAME",
   reader: "BIRELLO_PRODUCTION_KNOWLEDGE_READER",
   forbiddenPublicUrl: "NEXT_PUBLIC_BIRELLO_PRODUCTION_KNOWLEDGE_RETRIEVAL_DATABASE_URL",
+  localContextEnabled: "SMART_TALK_ANMELDUNG_LOCAL_CONTEXT_CONTROLLED_ENABLED",
+  localContextDatabaseUrl: "BIRELLO_ANMELDUNG_LOCAL_CONTEXT_RETRIEVAL_DATABASE_URL",
+  localContextDatabaseName: "BIRELLO_ANMELDUNG_LOCAL_CONTEXT_RETRIEVAL_DATABASE_NAME",
+  localContextReader: "BIRELLO_ANMELDUNG_LOCAL_CONTEXT_READER",
+  localContextForbiddenPublicUrl: "NEXT_PUBLIC_BIRELLO_ANMELDUNG_LOCAL_CONTEXT_RETRIEVAL_DATABASE_URL",
 });
 
 function configurationFromEnvironment(environment: NodeJS.ProcessEnv): RetrievalConfiguration | null {
@@ -146,6 +223,37 @@ function configurationFromEnvironment(environment: NodeJS.ProcessEnv): Retrieval
   };
 }
 
+function localContextConfigurationFromEnvironment(environment: NodeJS.ProcessEnv): RetrievalConfiguration | null {
+  if (environment[ENV.localContextForbiddenPublicUrl]) return null;
+  if (environment[ENV.localContextReader] !== EXPECTED_READER) return null;
+  const databaseUrl = environment[ENV.localContextDatabaseUrl];
+  const database = environment[ENV.localContextDatabaseName]?.trim();
+  if (!databaseUrl || !database) return null;
+  try {
+    const parsed = new URL(databaseUrl);
+    if (!["postgres:", "postgresql:"].includes(parsed.protocol) || !parsed.username || !parsed.password) {
+      return null;
+    }
+    const isLoopback = ["localhost", "127.0.0.1", "::1"].includes(parsed.hostname);
+    if (isLoopback && environment.NODE_ENV !== "test") return null;
+    if (!isLoopback) {
+      for (const key of ["ssl", "sslmode", "sslcert", "sslkey", "sslrootcert", "requiressl"]) {
+        if (parsed.searchParams.has(key)) return null;
+      }
+    }
+    return {
+      database,
+      clientConfig: {
+        connectionString: databaseUrl,
+        connectionTimeoutMillis: 4_000,
+        ...(isLoopback ? {} : { ssl: { rejectUnauthorized: true } }),
+      },
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function selectUnitsWithModel(text: string): Promise<unknown> {
   const key = process.env.OPENAI_API_KEY?.trim();
   if (!key) return [];
@@ -176,6 +284,43 @@ async function selectUnitsWithModel(text: string): Promise<unknown> {
     return (JSON.parse(body.choices?.[0]?.message?.content ?? "{}") as { unitIds?: unknown }).unitIds;
   } catch {
     return [];
+  }
+}
+
+async function selectLocalityKeyWithModel(text: string): Promise<unknown> {
+  const key = process.env.OPENAI_API_KEY?.trim();
+  if (!key) return null;
+  const catalog = ANMELDUNG_KNOWN_LOCALITIES.map((locality) => ({
+    key: locality.key,
+    municipalityName: locality.municipalityName,
+    aliases: locality.aliases,
+  }));
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: process.env.OPENAI_SMART_TALK_MODEL?.trim() || "gpt-4o-mini",
+        temperature: 0,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content:
+              "Select one locality only when the question explicitly names an alias in the supplied catalog. "
+              + "Return JSON {\"localityKey\":string|null} only. Do not infer from a district, Land, "
+              + "authority, postcode, country, user language, or unrelated place.",
+          },
+          { role: "user", content: JSON.stringify({ question: text, catalog }) },
+        ],
+      }),
+      signal: AbortSignal.timeout(6_000),
+    });
+    if (!response.ok) return null;
+    const body = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
+    return (JSON.parse(body.choices?.[0]?.message?.content ?? "{}") as { localityKey?: unknown }).localityKey;
+  } catch {
+    return null;
   }
 }
 
@@ -273,6 +418,72 @@ async function retrieveRowsFromProduction(
   }
 }
 
+async function retrieveAnmeldungContextFromControlledReader(
+  claimIds: readonly string[],
+  municipalityCode: string | null,
+  configuration: RetrievalConfiguration,
+): Promise<ContextRetrievalAttemptResult> {
+  const client = new Client(configuration.clientConfig);
+  let transaction = false;
+  let connectionSucceeded = false;
+  let rpcInvoked = false;
+  let failureStage: RetrievalFailureStage = "connection";
+  try {
+    await client.connect();
+    connectionSucceeded = true;
+    failureStage = "identity";
+    const identity = await client.query(
+      `select current_user as reader,current_database() as database_name,
+              r.rolsuper,r.rolcreatedb,r.rolcreaterole,r.rolreplication,r.rolbypassrls,
+              d.datdba=r.oid as database_owner
+         from pg_catalog.pg_roles r
+         join pg_catalog.pg_database d on d.datname=current_database()
+        where r.rolname=current_user`,
+    );
+    const row = identity.rows[0] as Record<string, unknown> | undefined;
+    if (
+      !row || row.reader !== EXPECTED_READER || row.database_name !== configuration.database
+      || row.rolsuper || row.rolcreatedb || row.rolcreaterole || row.rolreplication
+      || row.rolbypassrls || row.database_owner
+    ) throw new Error("Knowledge reader identity rejected");
+    failureStage = "privilege";
+    const privileges = await client.query(
+      `select
+         has_function_privilege(current_user,'public.knowledge_retrieve_anmeldung_context(uuid[],text)','EXECUTE') as context_retrieval,
+         has_function_privilege(current_user,'public.knowledge_ingest_curated_pack(jsonb)','EXECUTE') as ingestion,
+         has_function_privilege(current_user,'public.knowledge_ingest_curated_locality_pack(jsonb)','EXECUTE') as locality_ingestion,
+         has_schema_privilege(current_user,'public','CREATE') as schema_create`,
+    );
+    const privilege = privileges.rows[0] as Record<string, unknown> | undefined;
+    if (!privilege?.context_retrieval || privilege.ingestion || privilege.locality_ingestion || privilege.schema_create) {
+      throw new Error("Knowledge reader privilege contract rejected");
+    }
+    failureStage = "transaction";
+    await client.query("begin read only");
+    transaction = true;
+    await client.query("set local statement_timeout='8s'");
+    await client.query("set local lock_timeout='1s'");
+    failureStage = "rpc";
+    rpcInvoked = true;
+    const result = await retrieveAnmeldungContext(client, claimIds, municipalityCode);
+    await client.query("rollback");
+    transaction = false;
+    return { ok: true, result, connectionSucceeded: true, rpcInvoked: true, rpcSucceeded: true };
+  } catch {
+    return {
+      ok: false,
+      result: null,
+      connectionSucceeded,
+      rpcInvoked,
+      rpcSucceeded: false,
+      failureStage,
+    };
+  } finally {
+    if (transaction) await client.query("rollback").catch(() => undefined);
+    await client.end().catch(() => undefined);
+  }
+}
+
 function normalizeSelection(value: unknown): readonly string[] | null {
   if (!Array.isArray(value) || value.length > MAX_UNITS) return null;
   if (value.some((id) => typeof id !== "string" || !UNIT_BY_ID.has(id))) return null;
@@ -324,9 +535,85 @@ function compactEvidence(
   });
 }
 
+function compactContextFederalEvidence(
+  result: AnmeldungContextResult,
+  selectedClaimIds: ReadonlySet<string>,
+): readonly RuntimeKnowledgeEvidence[] {
+  return result.federalEvidence.slice(0, MAX_UNITS).flatMap((row) => {
+    const canonicalUnitId = UNIT_ID_BY_CLAIM_ID.get(row.claimId);
+    if (
+      !selectedClaimIds.has(row.claimId)
+      || !canonicalUnitId
+      || row.jurisdictionCode !== FEDERAL_JURISDICTION_CODE
+      || row.canonicalLanguage !== CANONICAL_LANGUAGE
+      || !HANDLING_MODES.has(row.handlingMode as HandlingMode)
+      || !row.canonicalProposition
+    ) return [];
+    return [{
+      canonicalUnitId,
+      proposition: row.canonicalProposition,
+      jurisdiction: FEDERAL_JURISDICTION_CODE,
+      canonicalLanguage: CANONICAL_LANGUAGE,
+      territorialScope: row.territorialScope,
+      locator: row.legalLocator ?? "",
+      citation: row.citationReference ?? "",
+      handlingMode: row.handlingMode as HandlingMode,
+      canonicalValueUsable: row.canonicalValueUsable,
+      staleBehavior: row.staleBehavior,
+      requiredContext: [],
+      revalidationDueAt: null,
+    }];
+  });
+}
+
+function projectLocalEvidence(evidence: AnmeldungLocalEvidence): PromptSafeLocalEvidence {
+  const safe = evidence.answerReady
+    && evidence.canonicalValueUsable
+    && !evidence.requiresLiveFetch
+    && !evidence.requiresRevalidation;
+  return Object.freeze({
+    informationClass: evidence.informationClass,
+    handlingMode: evidence.handlingMode,
+    usabilityState: evidence.usabilityState,
+    answerReady: evidence.answerReady,
+    canonicalValueUsable: evidence.canonicalValueUsable,
+    requiresLiveFetch: evidence.requiresLiveFetch,
+    requiresRevalidation: evidence.requiresRevalidation,
+    canonicalUrl: evidence.canonicalUrl,
+    publisherName: evidence.publisherName,
+    locator: evidence.locator,
+    ...(safe ? { passageText: evidence.passageText.slice(0, 1_600) } : {}),
+    ...(evidence.requiresLiveFetch ? { currentValueRequiresLiveVerification: true as const } : {}),
+    ...(evidence.requiresRevalidation ? { currentValueRequiresRevalidation: true as const } : {}),
+  });
+}
+
+function projectLocalContext(result: AnmeldungContextResult): PromptSafeAnmeldungLocalContext | null {
+  const context = result.localContext;
+  if (
+    result.packId !== PACK_ID
+    || result.countryCode !== FEDERAL_JURISDICTION_CODE
+    || !context
+    || !context.locality.municipalityCode
+  ) return null;
+  return Object.freeze({
+    municipalityCode: context.locality.municipalityCode,
+    municipalityName: context.locality.municipalityName,
+    authorityName: context.authority?.name ?? null,
+    authorityType: context.authority?.type ?? null,
+    competenceVerified: context.competence?.family === "residence_registration_lifecycle"
+      && context.competence.receivesApplication
+      && context.competence.decidesApplication,
+    processTitle: context.process?.title ?? null,
+    evidence: context.evidence.slice(0, MAX_UNITS).map(projectLocalEvidence),
+  });
+}
+
 const PRODUCTION_DEPENDENCIES: ControlledKnowledgeDependencies = {
   selectUnitIds: selectUnitsWithModel,
+  selectLocalityKey: selectLocalityKeyWithModel,
   retrieveRows: retrieveRowsFromProduction,
+  retrieveAnmeldungContext: retrieveAnmeldungContextFromControlledReader,
   report: (diagnostics) => console.info("[smart-talk-controlled-knowledge]", diagnostics),
 };
 
@@ -342,6 +629,18 @@ function diagnostics(
     failureStage?: RetrievalFailureStage | null;
     selectedUnitIds?: readonly string[];
     retrieved?: number;
+    localitySelectionAttempted?: boolean;
+    municipalityCode?: string | null;
+    localContextAttempted?: boolean;
+    localContextRpcInvoked?: boolean;
+    localContextRpcSucceeded?: boolean;
+    localContextEmpty?: boolean;
+    localContextFailureStage?: RetrievalFailureStage | null;
+    localEvidenceCount?: number;
+    answerReadyLocalEvidenceCount?: number;
+    suppressedLiveEvidenceCount?: number;
+    suppressedRevalidationEvidenceCount?: number;
+    localGroundingApplied?: boolean;
   }> = {},
 ): ControlledKnowledgeDiagnostics {
   const retrieved = state.retrieved ?? 0;
@@ -364,6 +663,19 @@ function diagnostics(
     selectedCanonicalUnitCount: selectedCanonicalUnitIds.length,
     retrievedEvidenceCount: retrieved,
     knowledgeGroundedResponse: retrieved > 0,
+    localitySelectionAttempted: state.localitySelectionAttempted ?? false,
+    localitySelected: state.municipalityCode != null,
+    municipalityCode: state.municipalityCode ?? null,
+    localContextAttempted: state.localContextAttempted ?? false,
+    localContextRpcInvoked: state.localContextRpcInvoked ?? false,
+    localContextRpcSucceeded: state.localContextRpcSucceeded ?? false,
+    localContextEmpty: state.localContextEmpty ?? false,
+    localContextFailureStage: state.localContextFailureStage ?? null,
+    localEvidenceCount: state.localEvidenceCount ?? 0,
+    answerReadyLocalEvidenceCount: state.answerReadyLocalEvidenceCount ?? 0,
+    suppressedLiveEvidenceCount: state.suppressedLiveEvidenceCount ?? 0,
+    suppressedRevalidationEvidenceCount: state.suppressedRevalidationEvidenceCount ?? 0,
+    localGroundingApplied: state.localGroundingApplied ?? false,
   });
 }
 
@@ -372,17 +684,21 @@ export async function prepareControlledQuestionKnowledge(
   dependencies: ControlledKnowledgeDependencies = PRODUCTION_DEPENDENCIES,
 ): Promise<ControlledKnowledgeResult> {
   const environment = input.environment ?? process.env;
-  if (environment[ENV.enabled] !== "true") {
-    return { evidence: [], diagnostics: diagnostics(input.locale) };
+  const localContextEnabled = environment[ENV.localContextEnabled] === "true";
+  const federalEnabled = environment[ENV.enabled] === "true";
+  if (!federalEnabled && !localContextEnabled) {
+    return { evidence: [], localContext: null, diagnostics: diagnostics(input.locale) };
   }
-  const configuration = configurationFromEnvironment(environment);
+  const configuration = localContextEnabled
+    ? localContextConfigurationFromEnvironment(environment)
+    : configurationFromEnvironment(environment);
   if (!configuration) {
     const report = diagnostics(input.locale, {
       attempted: true,
       failureStage: "configuration",
     });
     dependencies.report(report);
-    return { evidence: [], diagnostics: report };
+    return { evidence: [], localContext: null, diagnostics: report };
   }
   let selected: readonly string[] | null;
   try {
@@ -393,9 +709,78 @@ export async function prepareControlledQuestionKnowledge(
   if (!selected?.length) {
     const report = diagnostics(input.locale, { attempted: true });
     dependencies.report(report);
-    return { evidence: [], diagnostics: report };
+    return { evidence: [], localContext: null, diagnostics: report };
   }
   const claimIds = selected.map((id) => stablePackEntityId(`claim:${id}`));
+  if (localContextEnabled) {
+    let localityProposal: unknown = null;
+    try {
+      localityProposal = await (dependencies.selectLocalityKey ?? selectLocalityKeyWithModel)(input.text);
+    } catch {
+      localityProposal = null;
+    }
+    const locality = validateAnmeldungLocalityProposal(localityProposal);
+    const municipalityCode = locality?.municipalityCode ?? null;
+    try {
+      const retrieval = await (dependencies.retrieveAnmeldungContext ?? retrieveAnmeldungContextFromControlledReader)(
+        claimIds,
+        municipalityCode,
+        configuration,
+      );
+      if (!retrieval.ok) {
+        const report = diagnostics(input.locale, {
+          attempted: true,
+          selectedUnitIds: selected,
+          localitySelectionAttempted: true,
+          municipalityCode,
+          localContextAttempted: true,
+          localContextRpcInvoked: retrieval.rpcInvoked,
+          localContextFailureStage: retrieval.failureStage,
+        });
+        dependencies.report(report);
+        return { evidence: [], localContext: null, diagnostics: report };
+      }
+      const evidence = compactContextFederalEvidence(retrieval.result, new Set(claimIds));
+      const localContext = projectLocalContext(retrieval.result);
+      const localEvidence = retrieval.result.localContext?.evidence ?? [];
+      const report = diagnostics(input.locale, {
+        attempted: true,
+        connectionSucceeded: true,
+        rpcInvoked: true,
+        rpcSucceeded: true,
+        zeroRows: retrieval.result.federalEvidence.length === 0,
+        rowContractRejected: retrieval.result.federalEvidence.length > 0 && evidence.length === 0,
+        selectedUnitIds: selected,
+        retrieved: evidence.length,
+        localitySelectionAttempted: true,
+        municipalityCode,
+        localContextAttempted: true,
+        localContextRpcInvoked: true,
+        localContextRpcSucceeded: true,
+        localContextEmpty: municipalityCode !== null && retrieval.result.localContext === null,
+        localEvidenceCount: localEvidence.length,
+        answerReadyLocalEvidenceCount: localEvidence.filter((item) =>
+          item.answerReady && item.canonicalValueUsable
+        ).length,
+        suppressedLiveEvidenceCount: localEvidence.filter((item) => item.requiresLiveFetch).length,
+        suppressedRevalidationEvidenceCount: localEvidence.filter((item) => item.requiresRevalidation).length,
+        localGroundingApplied: localContext !== null,
+      });
+      dependencies.report(report);
+      return { evidence, localContext, diagnostics: report };
+    } catch {
+      const report = diagnostics(input.locale, {
+        attempted: true,
+        selectedUnitIds: selected,
+        localitySelectionAttempted: true,
+        municipalityCode,
+        localContextAttempted: true,
+        localContextFailureStage: "connection",
+      });
+      dependencies.report(report);
+      return { evidence: [], localContext: null, diagnostics: report };
+    }
+  }
   try {
     const retrieval = await dependencies.retrieveRows(
       claimIds,
@@ -411,7 +796,7 @@ export async function prepareControlledQuestionKnowledge(
         selectedUnitIds: selected,
       });
       dependencies.report(report);
-      return { evidence: [], diagnostics: report };
+      return { evidence: [], localContext: null, diagnostics: report };
     }
     const evidence = compactEvidence(retrieval.rows, new Set(claimIds));
     const report = diagnostics(input.locale, {
@@ -425,7 +810,7 @@ export async function prepareControlledQuestionKnowledge(
       retrieved: evidence.length,
     });
     dependencies.report(report);
-    return { evidence, diagnostics: report };
+    return { evidence, localContext: null, diagnostics: report };
   } catch {
     const report = diagnostics(input.locale, {
       attempted: true,
@@ -433,7 +818,7 @@ export async function prepareControlledQuestionKnowledge(
       selectedUnitIds: selected,
     });
     dependencies.report(report);
-    return { evidence: [], diagnostics: report };
+    return { evidence: [], localContext: null, diagnostics: report };
   }
 }
 

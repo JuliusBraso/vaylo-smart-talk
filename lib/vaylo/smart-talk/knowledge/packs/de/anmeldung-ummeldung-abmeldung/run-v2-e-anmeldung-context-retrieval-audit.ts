@@ -109,7 +109,8 @@ function staticChecks(): boolean {
     && !/weiltingen|ansbach|userlocale|user_locale/i.test(rpcSql)
     && migration038.includes("knowledge_retrieve_evidence_packets")
     && !migration038.includes("knowledge_retrieve_anmeldung_context")
-    && !controlled.includes("knowledge_retrieve_anmeldung_context")
+    && controlled.includes('localContextEnabled: "SMART_TALK_ANMELDUNG_LOCAL_CONTEXT_CONTROLLED_ENABLED"')
+    && controlled.includes('environment[ENV.localContextEnabled] === "true"')
     && CANONICAL_UNITS.length === 41
     && FIRST_PACK_CANONICAL_UNIT_IDS.length === 28;
 }

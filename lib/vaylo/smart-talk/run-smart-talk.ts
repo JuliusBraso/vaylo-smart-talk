@@ -6,7 +6,7 @@ import {
   type SmartTalkReasoningProtocol,
   type SmartTalkTextSource,
 } from "./build-smart-talk-prompt";
-import { retrieveControlledQuestionKnowledge } from "./knowledge/packs/de/anmeldung-ummeldung-abmeldung/controlled-runtime-retrieval";
+import { prepareControlledQuestionKnowledge } from "./knowledge/packs/de/anmeldung-ummeldung-abmeldung/controlled-runtime-retrieval";
 // [TD-002] containment seam import — disabled-by-default — no production authorization
 import { runEvidenceGatesRuntimeAdapterDryRun } from "./reality-matrix/live-input/run-controlled-real-document-evidence-gates-runtime-adapter-dry-run-implementation";
 
@@ -947,11 +947,15 @@ export async function runSmartTalk(params: {
   }
 
   const model = process.env.OPENAI_SMART_TALK_MODEL?.trim() || DEFAULT_MODEL;
-  const knowledgeEvidence =
+  const knowledge =
     params.inputType === "question"
-      ? await retrieveControlledQuestionKnowledge(params.text, params.locale)
-      : [];
-  const { system, user } = buildSmartTalkMessages({ ...params, knowledgeEvidence });
+      ? await prepareControlledQuestionKnowledge({ text: params.text, locale: params.locale })
+      : { evidence: [], localContext: null };
+  const { system, user } = buildSmartTalkMessages({
+    ...params,
+    knowledgeEvidence: knowledge.evidence,
+    localContext: knowledge.localContext,
+  });
 
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), 55_000);
