@@ -61,6 +61,13 @@ $$;
 grant usage on schema public to birello_knowledge_reader;
 grant execute on function public.knowledge_retrieve_evidence_packets(uuid[], text[])
   to birello_knowledge_reader;
+do $$
+begin
+  if pg_catalog.to_regprocedure('public.knowledge_retrieve_anmeldung_context(uuid[],text)') is not null then
+    execute 'grant execute on function public.knowledge_retrieve_anmeldung_context(uuid[], text) to birello_knowledge_reader';
+  end if;
+end;
+$$;
 
 -- Effective privilege checks include grants inherited through PUBLIC. Existing
 -- unsafe ACLs fail closed rather than requiring broad ownership to clean up.
@@ -89,6 +96,13 @@ begin
     'birello_knowledge_reader',
     'public.knowledge_retrieve_evidence_packets(uuid[],text[])',
     'EXECUTE'
+  ) or (
+    pg_catalog.to_regprocedure('public.knowledge_retrieve_anmeldung_context(uuid[],text)') is not null
+    and not pg_catalog.has_function_privilege(
+      'birello_knowledge_reader',
+      'public.knowledge_retrieve_anmeldung_context(uuid[],text)',
+      'EXECUTE'
+    )
   ) or pg_catalog.has_function_privilege(
     'birello_knowledge_reader',
     'public.knowledge_ingest_curated_pack(jsonb)',
