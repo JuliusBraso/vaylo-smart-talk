@@ -93,6 +93,13 @@ begin
     'birello_knowledge_reader',
     'public.knowledge_ingest_curated_pack(jsonb)',
     'EXECUTE'
+  ) or (
+    pg_catalog.to_regprocedure('public.knowledge_ingest_curated_locality_pack(jsonb)') is not null
+    and pg_catalog.has_function_privilege(
+      'birello_knowledge_reader',
+      'public.knowledge_ingest_curated_locality_pack(jsonb)',
+      'EXECUTE'
+    )
   ) then
     raise exception 'birello_knowledge_reader function privileges are unsafe';
   end if;
