@@ -56,6 +56,19 @@ const categoryByUnit: Readonly<Record<string, readonly Category[]>> = {
   "late-anmeldung-offence": ["sanctions", "move-in"],
   "late-abmeldung-offence": ["sanctions", "move-out"],
   "ordinary-registration-fine-framework": ["sanctions"],
+  "official-meldebestätigung": ["procedure", "evidence/document requirement"],
+  "meldebescheinigung-on-request": ["procedure", "evidence/document requirement"],
+  "electronic-meldebescheinigung-unentgeltlich": ["procedure", "evidence/document requirement"],
+  "electronic-anmeldung-federal-procedure": ["procedure"],
+  "electronic-anmeldung-code-may-replace-confirmation": ["Wohnungsgeberbestätigung", "procedure"],
+  "abmeldung-abroad-written-or-electronic": ["move-out", "procedure"],
+  "authority-may-collect-verification-hints": ["identity", "evidence/document requirement"],
+  "cooperation-duties-on-authority-request": ["duty", "identity"],
+  "diplomatic-or-treaty-exemption": ["exemptions", "foreign/EU arrival"],
+  "adult-carer-registration-responsibility": ["duty", "special cases"],
+  "newborn-registration-if-other-dwelling": ["exemptions", "special cases"],
+  "prefilled-meldeschein-at-new-authority": ["domestic move", "procedure"],
+  "fictitious-address-fine-framework": ["sanctions", "special cases"],
 };
 
 const localFacts = [
@@ -120,7 +133,37 @@ function main(): void {
   const missing = Object.values(files).filter((file) => !exists(file));
   assert(missing.length === 0, `Required committed files missing: ${missing.join(", ")}`);
   assert(PACK_ID === "anmeldung_ummeldung_abmeldung", "Unexpected pack identity");
-  assert(CANONICAL_UNITS.length === 28, `Expected 28 canonical units, found ${CANONICAL_UNITS.length}`);
+  assert(CANONICAL_UNITS.length >= 28, `Expected at least the original 28 canonical units, found ${CANONICAL_UNITS.length}`);
+  assert(CANONICAL_UNITS.slice(0, 28).every((unit, index) => unit.id === [
+    "anmeldung-duty",
+    "anmeldung-deadline-two-weeks",
+    "domestic-move-new-registration",
+    "abmeldung-duty-no-new-domestic-home",
+    "abmeldung-deadline-two-weeks",
+    "abmeldung-earliest-one-week",
+    "under-16-registration-responsibility",
+    "landlord-participation",
+    "landlord-confirmation",
+    "landlord-confirmation-missing-notice",
+    "landlord-confirmation-contents",
+    "electronic-landlord-reference",
+    "fictitious-address-prohibition",
+    "definition-wohnung",
+    "multiple-residences-main-home",
+    "multiple-residences-secondary-home",
+    "multiple-residences-notification",
+    "main-home-change-notification",
+    "main-home-special-case-context",
+    "identity-and-confirmation",
+    "electronic-or-meldeschein-model",
+    "family-common-meldeschein",
+    "temporary-stay-exception",
+    "temporary-stay-six-month-threshold",
+    "foreign-resident-three-month-threshold",
+    "late-anmeldung-offence",
+    "late-abmeldung-offence",
+    "ordinary-registration-fine-framework",
+  ][index]), "Original first-pack identities must remain intact");
   assert(CANONICAL_UNITS.every((unit) => categoryByUnit[unit.id]?.length), "Coverage inventory does not classify every current unit");
 
   const schema = read(files.schema);

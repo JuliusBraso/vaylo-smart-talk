@@ -7,6 +7,7 @@ import {
   CANONICAL_LANGUAGE,
   CANONICAL_UNITS,
   FEDERAL_JURISDICTION_CODE,
+  FIRST_PACK_CANONICAL_UNIT_IDS,
   PACK_ID,
   type HandlingMode,
 } from "./pack";
@@ -21,8 +22,10 @@ const HANDLING_MODES = new Set<HandlingMode>([
   "DO_NOT_ANSWER_WITHOUT_CONTEXT",
 ]);
 const UNIT_BY_ID = new Map(CANONICAL_UNITS.map((unit) => [unit.id, unit]));
+const PRODUCTION_DEPLOYED_UNIT_IDS = new Set<string>(FIRST_PACK_CANONICAL_UNIT_IDS);
+const PRODUCTION_DEPLOYED_UNITS = CANONICAL_UNITS.filter((unit) => PRODUCTION_DEPLOYED_UNIT_IDS.has(unit.id));
 const UNIT_ID_BY_CLAIM_ID = new Map(
-  CANONICAL_UNITS.map((unit) => [stablePackEntityId(`claim:${unit.id}`), unit.id]),
+  PRODUCTION_DEPLOYED_UNITS.map((unit) => [stablePackEntityId(`claim:${unit.id}`), unit.id]),
 );
 
 export type RuntimeKnowledgeEvidence = Readonly<{
@@ -146,7 +149,7 @@ function configurationFromEnvironment(environment: NodeJS.ProcessEnv): Retrieval
 async function selectUnitsWithModel(text: string): Promise<unknown> {
   const key = process.env.OPENAI_API_KEY?.trim();
   if (!key) return [];
-  const catalog = CANONICAL_UNITS.map((unit) => ({ id: unit.id, text: unit.text }));
+  const catalog = PRODUCTION_DEPLOYED_UNITS.map((unit) => ({ id: unit.id, text: unit.text }));
   try {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -273,7 +276,7 @@ async function retrieveRowsFromProduction(
 function normalizeSelection(value: unknown): readonly string[] | null {
   if (!Array.isArray(value) || value.length > MAX_UNITS) return null;
   if (value.some((id) => typeof id !== "string" || !UNIT_BY_ID.has(id))) return null;
-  return [...new Set(value as string[])];
+  return [...new Set(value as string[])].filter((id) => PRODUCTION_DEPLOYED_UNIT_IDS.has(id));
 }
 
 function parseRequiredContextKeys(value: unknown): readonly string[] {

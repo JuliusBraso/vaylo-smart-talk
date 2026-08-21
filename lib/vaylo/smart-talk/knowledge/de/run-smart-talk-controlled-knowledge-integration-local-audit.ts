@@ -7,7 +7,8 @@ import {
   type ControlledKnowledgeDiagnostics,
 } from "../packs/de/anmeldung-ummeldung-abmeldung/controlled-runtime-retrieval";
 import { stablePackEntityId } from "../packs/de/anmeldung-ummeldung-abmeldung/identity";
-import { CANONICAL_UNITS } from "../packs/de/anmeldung-ummeldung-abmeldung/pack";
+import { CANONICAL_UNITS, FIRST_PACK_CANONICAL_UNIT_IDS, V2A_ADDED_CANONICAL_UNIT_IDS } from "../packs/de/anmeldung-ummeldung-abmeldung/pack";
+import { runProductionRetrievalProof } from "../packs/de/anmeldung-ummeldung-abmeldung/production-rpc-retrieval-proof";
 
 const ROOT = path.resolve(__dirname, "../../../../..");
 const ADAPTER_PATH = path.join(
@@ -373,6 +374,101 @@ async function main(): Promise<void> {
     )
     && JSON.stringify(contextResult.evidence[0]?.requiredContext)
       === JSON.stringify(["RESIDENCE_STATE", "EVENT_DATE"]);
+  const productionValidate = await runProductionRetrievalProof({ mode: "validate" });
+  const p1 = productionValidate.canonicalUnitCount === 28
+    && FIRST_PACK_CANONICAL_UNIT_IDS.length === 28;
+  const p2 = CANONICAL_UNITS.length === 41;
+  const p3 = FIRST_PACK_CANONICAL_UNIT_IDS.every((id) => CANONICAL_UNITS.some((unit) => unit.id === id));
+
+  const deployedState = freshState();
+  let deployedClaimPayload: readonly string[] = [];
+  const deployed = await prepareControlledQuestionKnowledge(
+    {
+      text: "What is the Anmeldung deadline?",
+      locale: "en",
+      environment: ENABLED_ENVIRONMENT,
+    },
+    dependencies(
+      ["anmeldung-deadline-two-weeks"],
+      async (claimIds) => {
+        deployedClaimPayload = claimIds;
+        return ["anmeldung-deadline-two-weeks"].map(row);
+      },
+      deployedState,
+    ),
+  );
+  const p4 =
+    deployedState.retrievalCalls === 1
+    && deployed.diagnostics.selectedCanonicalUnitIds.join() === "anmeldung-deadline-two-weeks"
+    && JSON.stringify(deployedClaimPayload) === JSON.stringify([stablePackEntityId("claim:anmeldung-deadline-two-weeks")]);
+
+  const undeployedState = freshState();
+  const undeployedOnly = await prepareControlledQuestionKnowledge(
+    {
+      text: "What do I receive after Anmeldung?",
+      locale: "en",
+      environment: ENABLED_ENVIRONMENT,
+    },
+    dependencies(["official-meldebestätigung"], async () => [row("official-meldebestätigung")], undeployedState),
+  );
+  const p5 =
+    V2A_ADDED_CANONICAL_UNIT_IDS.includes("official-meldebestätigung")
+    && undeployedState.retrievalCalls === 0
+    && undeployedOnly.diagnostics.selectedCanonicalUnitCount === 0
+    && undeployedOnly.diagnostics.retrievalRpcInvoked === false
+    && undeployedOnly.diagnostics.knowledgeGroundedResponse === false
+    && undeployedOnly.diagnostics.retrievalFailureStage === null;
+
+  const mixedState = freshState();
+  let mixedClaimPayload: readonly string[] = [];
+  const mixed = await prepareControlledQuestionKnowledge(
+    {
+      text: "What is the Anmeldung deadline and confirmation?",
+      locale: "en",
+      environment: ENABLED_ENVIRONMENT,
+    },
+    dependencies(
+      ["anmeldung-deadline-two-weeks", "official-meldebestätigung"],
+      async (claimIds) => {
+        mixedClaimPayload = claimIds;
+        return ["anmeldung-deadline-two-weeks"].map(row);
+      },
+      mixedState,
+    ),
+  );
+  const p6 =
+    mixedState.retrievalCalls === 1
+    && mixed.diagnostics.selectedCanonicalUnitIds.join() === "anmeldung-deadline-two-weeks"
+    && JSON.stringify(mixedClaimPayload) === JSON.stringify([stablePackEntityId("claim:anmeldung-deadline-two-weeks")])
+    && !JSON.stringify(mixedClaimPayload).includes(stablePackEntityId("claim:official-meldebestätigung"));
+
+  const onlyNewState = freshState();
+  const onlyNew = await prepareControlledQuestionKnowledge(
+    {
+      text: "Can I request a Meldebescheinigung?",
+      locale: "en",
+      environment: ENABLED_ENVIRONMENT,
+    },
+    dependencies(
+      ["official-meldebestätigung", "meldebescheinigung-on-request"],
+      async () => [row("official-meldebestätigung")],
+      onlyNewState,
+    ),
+  );
+  const p7 =
+    onlyNewState.retrievalCalls === 0
+    && onlyNew.diagnostics.selectedCanonicalUnitCount === 0
+    && onlyNew.diagnostics.retrievalRpcInvoked === false
+    && onlyNew.diagnostics.knowledgeGroundedResponse === false
+    && onlyNew.diagnostics.retrievalFailureStage === null
+    && onlyNew.evidence.length === 0;
+
+  const p8 =
+    inventedState.retrievalCalls === 0
+    && invented.diagnostics.selectedCanonicalUnitCount === 0
+    && invented.diagnostics.knowledgeGroundedResponse === false;
+
+  const boundaryProofs = { P1: p1, P2: p2, P3: p3, P4: p4, P5: p5, P6: p6, P7: p7, P8: p8 };
   const cases = { T1: t1, T2: t2, T3: t3, T4: t4, T5: t5, T6: t6, T7: t7 };
   const closureProofs = {
     identityParityProof,
@@ -381,11 +477,14 @@ async function main(): Promise<void> {
     zeroEvidenceRegression,
   };
   const report = {
-    result: Object.values(cases).every(Boolean) && Object.values(closureProofs).every(Boolean)
+    result: Object.values(cases).every(Boolean)
+      && Object.values(closureProofs).every(Boolean)
+      && Object.values(boundaryProofs).every(Boolean)
       ? "PASS"
       : "FAILED",
     cases,
     closureProofs,
+    boundaryProofs,
     q1: {
       selectedCanonicalUnitIds: supportedUnits,
       productionProofClaimIds: productionProofClaimPayload,
@@ -396,7 +495,9 @@ async function main(): Promise<void> {
       selectedCanonicalUnitIds: slovakSelectedUnits,
       expectedQ1UnitsPresent: supportedUnits.every((id) => slovakSelectedUnits.includes(id)),
     },
-    allPassed: Object.values(cases).every(Boolean) && Object.values(closureProofs).every(Boolean),
+    allPassed: Object.values(cases).every(Boolean)
+      && Object.values(closureProofs).every(Boolean)
+      && Object.values(boundaryProofs).every(Boolean),
     productionConnectionAttempted: false,
     productionRetrievalAttempted: false,
     productionWriteAttempted: false,

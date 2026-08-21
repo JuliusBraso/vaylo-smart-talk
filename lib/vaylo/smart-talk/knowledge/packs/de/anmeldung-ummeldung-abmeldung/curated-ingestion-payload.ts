@@ -11,9 +11,9 @@ import {
 } from "./pack";
 
 const processes = [
-  { id: IDS.anmeldungProcess, title: "Anmeldung einer Wohnung", trigger: "Einzug in eine Wohnung", firstStep: "Anmeldung innerhalb der gesetzlichen Frist vorbereiten." },
-  { id: IDS.ummeldungProcess, title: "Ummeldung bei Umzug innerhalb Deutschlands", trigger: "Bezug einer neuen Wohnung im Inland", firstStep: "Anmeldung bei der neuen Meldebehörde vorbereiten." },
-  { id: IDS.abmeldungProcess, title: "Abmeldung bei Wegzug ohne neue Wohnung im Inland", trigger: "Auszug ohne neue Wohnung im Inland", firstStep: "Abmeldung innerhalb der gesetzlichen Frist vorbereiten." },
+  { id: IDS.anmeldungProcess, title: "Anmeldung einer Wohnung", trigger: "Einzug in eine Wohnung", firstStep: "Wohnungsgeberbestätigung oder Mitteilung bei fehlender Bestätigung vorbereiten und Anmeldung bei der Meldebehörde innerhalb der Frist vornehmen." },
+  { id: IDS.ummeldungProcess, title: "Ummeldung bei Umzug innerhalb Deutschlands", trigger: "Bezug einer neuen Wohnung im Inland", firstStep: "Anmeldung bei der neuen Meldebehörde vorbereiten; eine gesonderte Abmeldung der bisherigen Inlandwohnung ist nach § 17 Absatz 2 nicht der gesetzliche Wegzugstatbestand." },
+  { id: IDS.abmeldungProcess, title: "Abmeldung bei Wegzug ohne neue Wohnung im Inland", trigger: "Auszug ohne neue Wohnung im Inland", firstStep: "Abmeldung bei der Meldebehörde innerhalb der Frist vorbereiten; bei Wegzug ins Ausland ist schriftliche oder elektronische Abmeldung vorgesehen." },
 ] as const;
 
 const stepSpecs = [
@@ -56,6 +56,9 @@ export function buildCuratedIngestionPayload(): Readonly<Record<string, unknown>
       { id: stableId("term:Wohnungsgeberbestätigung"), term: "Wohnungsgeberbestätigung", definition: "Bestätigung des Wohnungsgebers über den Einzug mit den gesetzlich vorgesehenen Angaben.", passageId: stableId("bmg-19-3") },
       { id: stableId("term:Hauptwohnung"), term: "Hauptwohnung", definition: "Bei mehreren Wohnungen im Inland die vorwiegend benutzte Wohnung.", passageId: stableId("bmg-21-1-3") },
       { id: stableId("term:Nebenwohnung"), term: "Nebenwohnung", definition: "Jede weitere Wohnung eines Einwohners im Inland.", passageId: stableId("bmg-21-1-3") },
+      { id: stableId("term:Meldebehörde"), term: "Meldebehörde", definition: "Die für die An- und Abmeldung nach dem Bundesmeldegesetz zuständige Behörde.", passageId: stableId("bmg-17-1") },
+      { id: stableId("term:Meldebescheinigung"), term: "Meldebescheinigung", definition: "Auf Antrag erteilte schriftliche oder elektronische Bescheinigung der Meldebehörde über gesetzlich bezeichnete Meldeangaben.", passageId: stableId("bmg-18-1") },
+      { id: stableId("term:amtliche Meldebestätigung"), term: "amtliche Meldebestätigung", definition: "Unentgeltliche Bestätigung der Meldebehörde über die erfolgte An- oder Abmeldung.", passageId: stableId("bmg-24-2") },
     ],
   });
 }

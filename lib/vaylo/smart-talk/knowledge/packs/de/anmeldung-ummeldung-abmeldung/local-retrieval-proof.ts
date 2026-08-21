@@ -1,6 +1,6 @@
 import { Client } from "pg";
 
-import { CANONICAL_UNITS, type HandlingMode } from "./pack";
+import { CANONICAL_UNITS, FIRST_PACK_CANONICAL_UNIT_IDS, V2A_ADDED_CANONICAL_UNIT_IDS, type HandlingMode } from "./pack";
 import { PACK_ENTITY_IDS, stablePackEntityId } from "./identity";
 import { LOCAL_DISPOSABLE_VALIDATION } from "./local-disposable-adapter";
 
@@ -40,6 +40,14 @@ const QUESTION_UNITS = Object.freeze({
   MUNICH: ["anmeldung-duty", "identity-and-confirmation"],
   BERLIN: ["anmeldung-duty", "identity-and-confirmation"],
   SLOVAK_UI: ["anmeldung-duty", "anmeldung-deadline-two-weeks"],
+  F1: ["official-meldebestätigung"],
+  F2: ["meldebescheinigung-on-request", "electronic-meldebescheinigung-unentgeltlich"],
+  F3: ["electronic-anmeldung-federal-procedure", "electronic-anmeldung-code-may-replace-confirmation"],
+  F4: ["landlord-confirmation-missing-notice", "landlord-participation", "landlord-confirmation"],
+  F5: ["cooperation-duties-on-authority-request", "authority-may-collect-verification-hints"],
+  F6: ["diplomatic-or-treaty-exemption", "temporary-stay-exception", "newborn-registration-if-other-dwelling"],
+  F7: ["ordinary-registration-fine-framework", "late-anmeldung-offence"],
+  F8: ["domestic-move-new-registration", "abmeldung-duty-no-new-domestic-home"],
 } as const);
 
 function assertLocal(context: RetrievalProofContext): void {
@@ -67,7 +75,7 @@ function processForUnit(unitId: string): Readonly<{
       deadline: "BMG § 17 Abs. 2",
     };
   }
-  if (unitId.includes("domestic-move")) {
+  if (unitId.includes("domestic-move") || unitId.includes("prefilled-meldeschein")) {
     return {
       id: PACK_ENTITY_IDS.ummeldungProcess,
       context: "UMMELDUNG / DOMESTIC MOVE",
@@ -180,3 +188,71 @@ export const HANDLING_MODE_RETRIEVAL_MATRIX = Object.freeze({
   MANUAL_REVIEW_REQUIRED: "BLOCK_CONFIDENT_CANONICAL_CONCLUSION",
   DO_NOT_ANSWER_WITHOUT_CONTEXT: "RETURN_RULE_AND_REQUIRED_CONTEXT_NOT_CASE_CONCLUSION",
 });
+
+function unitById(id: string) {
+  return CANONICAL_UNITS.find((unit) => unit.id === id);
+}
+
+function packText(): string {
+  return CANONICAL_UNITS.map((unit) => `${unit.id}\n${unit.text}`).join("\n").toLocaleLowerCase("de-DE");
+}
+
+export function evaluateSourceControlledFederalProof(): Readonly<{
+  firstPackRegression: Readonly<Record<"Q1" | "Q2" | "Q3" | "Q4" | "Q5" | "MUNICH" | "BERLIN" | "SLOVAK_UI", boolean>>;
+  federalScenarios: Readonly<Record<"F1" | "F2" | "F3" | "F4" | "F5" | "F6" | "F7" | "F8", boolean>>;
+  semanticNegatives: Readonly<Record<string, boolean>>;
+  identityStable: boolean;
+  allPassed: boolean;
+}> {
+  const known = new Set(CANONICAL_UNITS.map((unit) => unit.id));
+  const casePassed = (name: keyof typeof QUESTION_UNITS): boolean =>
+    QUESTION_UNITS[name].length > 0
+    && QUESTION_UNITS[name].every((id) => known.has(id) && Boolean(unitById(id)?.jurisdictionCode === "DE"));
+  const firstPackRegression = Object.freeze({
+    Q1: casePassed("Q1"),
+    Q2: casePassed("Q2"),
+    Q3: casePassed("Q3"),
+    Q4: casePassed("Q4"),
+    Q5: casePassed("Q5"),
+    MUNICH: casePassed("MUNICH") && QUESTION_UNITS.MUNICH.join() === QUESTION_UNITS.BERLIN.join(),
+    BERLIN: casePassed("BERLIN"),
+    SLOVAK_UI: casePassed("SLOVAK_UI"),
+  });
+  const confirmation = unitById("official-meldebestätigung");
+  const certificate = unitById("meldebescheinigung-on-request");
+  const electronic = unitById("electronic-anmeldung-federal-procedure");
+  const cooperation = unitById("cooperation-duties-on-authority-request");
+  const ordinaryFine = unitById("ordinary-registration-fine-framework");
+  const fictitiousFine = unitById("fictitious-address-fine-framework");
+  const corpus = packText();
+  const federalScenarios = Object.freeze({
+    F1: casePassed("F1") && Boolean(confirmation?.text.includes("amtliche Meldebestätigung")),
+    F2: casePassed("F2") && Boolean(certificate?.text.includes("Meldebescheinigung")) && certificate?.id !== confirmation?.id,
+    F3: casePassed("F3") && Boolean(electronic?.text.includes("bundesrechtlich")) && !/jede(?:r|n)? gemeinde|universell|überall online/i.test(electronic?.text ?? ""),
+    F4: casePassed("F4") && Boolean(unitById("landlord-confirmation-missing-notice")?.text.includes("Meldebehörde")),
+    F5: casePassed("F5") && Boolean(cooperation?.text.includes("Auf Verlangen")),
+    F6: casePassed("F6") && (unitById("diplomatic-or-treaty-exemption")?.handlingMode === "DO_NOT_ANSWER_WITHOUT_CONTEXT"),
+    F7: casePassed("F7") && Boolean(ordinaryFine?.text.includes("eintausend") && ordinaryFine?.text.includes("kein automatischer Einzelfallbetrag")),
+    F8: casePassed("F8") && Boolean(unitById("domestic-move-new-registration")?.text.includes("§ 17 Absatz 2")),
+  });
+  const semanticNegatives = Object.freeze({
+    confirmationIsNotCertificate: Boolean(confirmation && certificate && confirmation.text !== certificate.text && !confirmation.text.includes("Meldebescheinigung") && !certificate.text.includes("Meldebestätigung")),
+    electronicIsNotUniversalLocal: Boolean(electronic && !/weiltingen|ansbach|bayern|wilburgstetten|jede gemeinde bietet/i.test(electronic.text)),
+    cooperationIsOnDemand: Boolean(cooperation?.text.includes("Auf Verlangen") && !/stets alle dokumente|immer vorzulegen/i.test(cooperation.text)),
+    ordinaryFineIsNotAutomaticMaximum: Boolean(ordinaryFine?.text.includes("kein automatischer Einzelfallbetrag") && !ordinaryFine.text.includes("fünfzigtausend")),
+    fictitiousFineIsDistinct: Boolean(fictitiousFine && ordinaryFine && fictitiousFine.passageId !== ordinaryFine.passageId && fictitiousFine.text.includes("fünfzigtausend")),
+    slovakNationalityIsNotJurisdiction: CANONICAL_UNITS.every((unit) => unit.jurisdictionCode === "DE") && !corpus.includes("jurisdiction sk"),
+    noLocalSpecialCases: !/(weiltingen|wilburgstetten|ansbach|bürgeramt weiltingen)/i.test(corpus),
+  });
+  const identityStable =
+    FIRST_PACK_CANONICAL_UNIT_IDS.length === 28
+    && FIRST_PACK_CANONICAL_UNIT_IDS.every((id) => known.has(id))
+    && V2A_ADDED_CANONICAL_UNIT_IDS.every((id) => known.has(id))
+    && V2A_ADDED_CANONICAL_UNIT_IDS.every((id) => !(FIRST_PACK_CANONICAL_UNIT_IDS as readonly string[]).includes(id));
+  const allPassed =
+    Object.values(firstPackRegression).every(Boolean)
+    && Object.values(federalScenarios).every(Boolean)
+    && Object.values(semanticNegatives).every(Boolean)
+    && identityStable;
+  return Object.freeze({ firstPackRegression, federalScenarios, semanticNegatives, identityStable, allPassed });
+}

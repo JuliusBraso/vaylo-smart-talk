@@ -181,9 +181,9 @@ async function upsertProcessModel(client: Client): Promise<void> {
     [IDS.actorRule, IDS.jurisdiction, IDS.territorialScope],
   );
   const processes = [
-    [IDS.anmeldungProcess, "Anmeldung einer Wohnung", "Einzug in eine Wohnung", "Anmeldung innerhalb der gesetzlichen Frist vorbereiten."],
-    [IDS.ummeldungProcess, "Ummeldung bei Umzug innerhalb Deutschlands", "Bezug einer neuen Wohnung im Inland", "Anmeldung bei der neuen Meldebehörde vorbereiten."],
-    [IDS.abmeldungProcess, "Abmeldung bei Wegzug ohne neue Wohnung im Inland", "Auszug ohne neue Wohnung im Inland", "Abmeldung innerhalb der gesetzlichen Frist vorbereiten."],
+    [IDS.anmeldungProcess, "Anmeldung einer Wohnung", "Einzug in eine Wohnung", "Wohnungsgeberbestätigung oder Mitteilung bei fehlender Bestätigung vorbereiten und Anmeldung bei der Meldebehörde innerhalb der Frist vornehmen."],
+    [IDS.ummeldungProcess, "Ummeldung bei Umzug innerhalb Deutschlands", "Bezug einer neuen Wohnung im Inland", "Anmeldung bei der neuen Meldebehörde vorbereiten; eine gesonderte Abmeldung der bisherigen Inlandwohnung ist nach § 17 Absatz 2 nicht der gesetzliche Wegzugstatbestand."],
+    [IDS.abmeldungProcess, "Abmeldung bei Wegzug ohne neue Wohnung im Inland", "Auszug ohne neue Wohnung im Inland", "Abmeldung bei der Meldebehörde innerhalb der Frist vorbereiten; bei Wegzug ins Ausland ist schriftliche oder elektronische Abmeldung vorgesehen."],
   ] as const;
   for (const [id, title, trigger, firstStep] of processes) {
     await client.query(
@@ -291,6 +291,9 @@ async function upsertHandlingAndRetrievalMetadata(client: Client): Promise<void>
     ["Wohnungsgeberbestätigung", "Bestätigung des Wohnungsgebers über den Einzug mit den gesetzlich vorgesehenen Angaben.", "bmg-19-3"],
     ["Hauptwohnung", "Bei mehreren Wohnungen im Inland die vorwiegend benutzte Wohnung.", "bmg-21-1-3"],
     ["Nebenwohnung", "Jede weitere Wohnung eines Einwohners im Inland.", "bmg-21-1-3"],
+    ["Meldebehörde", "Die für die An- und Abmeldung nach dem Bundesmeldegesetz zuständige Behörde.", "bmg-17-1"],
+    ["Meldebescheinigung", "Auf Antrag erteilte schriftliche oder elektronische Bescheinigung der Meldebehörde über gesetzlich bezeichnete Meldeangaben.", "bmg-18-1"],
+    ["amtliche Meldebestätigung", "Unentgeltliche Bestätigung der Meldebehörde über die erfolgte An- oder Abmeldung.", "bmg-24-2"],
   ] as const) {
     await client.query(
       `insert into public.knowledge_terminology (

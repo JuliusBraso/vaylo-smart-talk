@@ -1,6 +1,6 @@
 import { Client, type ClientConfig } from "pg";
 
-import { CANONICAL_LANGUAGE, CANONICAL_UNITS, PACK_ID } from "./pack";
+import { CANONICAL_LANGUAGE, CANONICAL_UNITS, FIRST_PACK_CANONICAL_UNIT_IDS, PACK_ID } from "./pack";
 import { stablePackEntityId } from "./identity";
 
 export const PRODUCTION_RETRIEVAL_ENV = Object.freeze({
@@ -77,8 +77,11 @@ function validateUrl(databaseUrl: string, target: "production" | "local-managed-
 }
 
 function validateDefinitions(): void {
-  if (PACK_ID !== "anmeldung_ummeldung_abmeldung" || CANONICAL_LANGUAGE !== "de" || CANONICAL_UNITS.length !== 28) {
+  if (PACK_ID !== "anmeldung_ummeldung_abmeldung" || CANONICAL_LANGUAGE !== "de" || FIRST_PACK_CANONICAL_UNIT_IDS.length !== 28) {
     throw new Error("Committed first-pack identity is invalid");
+  }
+  if (FIRST_PACK_CANONICAL_UNIT_IDS.some((id) => !CANONICAL_UNITS.some((unit) => unit.id === id))) {
+    throw new Error("Original first-pack canonical identities are missing");
   }
   for (const units of Object.values(CASES)) {
     if (!units.length || units.some((id) => !CANONICAL_UNITS.some((unit) => unit.id === id))) {
@@ -134,7 +137,7 @@ export async function runProductionRetrievalProof(
     rpcInvoked: false,
     packId: PACK_ID,
     canonicalLanguage: CANONICAL_LANGUAGE,
-    canonicalUnitCount: CANONICAL_UNITS.length,
+    canonicalUnitCount: FIRST_PACK_CANONICAL_UNIT_IDS.length,
     productionWritesPerformed: false,
     productionIngestionPerformed: false,
     publicRuntimeAuthorized: false,
