@@ -11,6 +11,13 @@ import {
   ANMELDUNG_KNOWN_LOCALITIES,
   validateAnmeldungLocalityProposal,
 } from "./anmeldung-locality-selector";
+import { WEILTINGEN_PILOT } from "./bayern-weiltingen-locality-pilot";
+import {
+  fetchLiveOpeningHours,
+  type LiveOperationalDependencies,
+  type LiveOperationalFailureStage,
+  type LiveSourceAuthorization,
+} from "./live-operational-evidence";
 import { stablePackEntityId } from "./identity";
 import {
   CANONICAL_LANGUAGE,
@@ -61,6 +68,8 @@ export type PromptSafeLocalEvidence = Readonly<{
   requiresLiveFetch: boolean;
   requiresRevalidation: boolean;
   canonicalUrl: string;
+  officialDomain: string;
+  normalizedOrigin: string;
   publisherName: string;
   locator: string | null;
   passageText?: string;
@@ -76,7 +85,17 @@ export type PromptSafeAnmeldungLocalContext = Readonly<{
   competenceVerified: boolean;
   processTitle: string | null;
   evidence: readonly PromptSafeLocalEvidence[];
+  liveOpeningHours?: Readonly<{ valueText: string; sourceUrl: string; officialDomain: string; fetchedAt: string; liveVerified: true }>;
+  liveOpeningHoursVerification?: Readonly<{
+    requested: true;
+    verified: false;
+    sourceUrl: string | null;
+    failureStage: LiveRuntimeFailureStage;
+  }>;
 }>;
+
+export type LiveOperationalInformationClass = "OPENING_HOURS";
+export type LiveRuntimeFailureStage = LiveOperationalFailureStage | "gate_disabled" | "source_missing";
 
 export type ControlledKnowledgeDiagnostics = Readonly<{
   knowledgeRetrievalAttempted: boolean;
@@ -109,6 +128,15 @@ export type ControlledKnowledgeDiagnostics = Readonly<{
   suppressedLiveEvidenceCount: number;
   suppressedRevalidationEvidenceCount: number;
   localGroundingApplied: boolean;
+  liveOperationalIntentAttempted: boolean;
+  liveOperationalInformationClass: "OPENING_HOURS" | null;
+  liveOperationalFetchAttempted: boolean;
+  liveOperationalFetchSucceeded: boolean;
+  liveOperationalSourceValidated: boolean;
+  liveOperationalExtractionSucceeded: boolean;
+  liveOperationalEvidenceApplied: boolean;
+  liveOperationalFailureStage: LiveRuntimeFailureStage | null;
+  liveOperationalFetchedAt: string | null;
 }>;
 
 export type ControlledKnowledgeResult = Readonly<{
@@ -160,6 +188,7 @@ type ControlledKnowledgeDependencies = Readonly<{
     municipalityCode: string | null,
     configuration: RetrievalConfiguration,
   ) => Promise<ContextRetrievalAttemptResult>;
+  liveOperational?: LiveOperationalDependencies;
   report: (diagnostics: ControlledKnowledgeDiagnostics) => void;
 }>;
 
@@ -191,6 +220,7 @@ const ENV = Object.freeze({
   localContextDatabaseName: "BIRELLO_ANMELDUNG_LOCAL_CONTEXT_RETRIEVAL_DATABASE_NAME",
   localContextReader: "BIRELLO_ANMELDUNG_LOCAL_CONTEXT_READER",
   localContextForbiddenPublicUrl: "NEXT_PUBLIC_BIRELLO_ANMELDUNG_LOCAL_CONTEXT_RETRIEVAL_DATABASE_URL",
+  liveOperationalEnabled: "SMART_TALK_LIVE_OPERATIONAL_EVIDENCE_CONTROLLED_ENABLED",
 });
 
 function configurationFromEnvironment(environment: NodeJS.ProcessEnv): RetrievalConfiguration | null {
@@ -566,11 +596,54 @@ function compactContextFederalEvidence(
   });
 }
 
+function liveSourceAuthorization(canonicalUrl: string): LiveSourceAuthorization | null {
+  try {
+    const url = new URL(canonicalUrl);
+    return {
+      canonicalUrl: url.toString(),
+      officialDomain: url.hostname.toLowerCase(),
+      normalizedOrigin: url.origin,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function sourceOwnedOpeningHoursAuthorization(
+  municipalityCode: string | null,
+  canonicalUrl: string,
+): LiveSourceAuthorization | null {
+  if (municipalityCode !== WEILTINGEN_PILOT.municipalityCode) return null;
+  try {
+    const grounded = new URL(canonicalUrl);
+    const sourceOwned = new URL(WEILTINGEN_PILOT.urls.vgHours);
+    if (grounded.toString() !== sourceOwned.toString()) return null;
+    return {
+      canonicalUrl: grounded.toString(),
+      officialDomain: "www.vg-wilburgstetten.de",
+      normalizedOrigin: "https://www.vg-wilburgstetten.de",
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function selectLiveOperationalInformationClass(text: string): LiveOperationalInformationClass | null {
+  const normalized = text.normalize("NFKD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+  return [
+    "offnungszeiten", "geoffnet", "offen hat", "otvaracie hodiny", "otvorene",
+    "opening hours", "office open", "when is the office open",
+  ].some((cue) => normalized.includes(cue))
+    ? "OPENING_HOURS"
+    : null;
+}
+
 function projectLocalEvidence(evidence: AnmeldungLocalEvidence): PromptSafeLocalEvidence {
   const safe = evidence.answerReady
     && evidence.canonicalValueUsable
     && !evidence.requiresLiveFetch
     && !evidence.requiresRevalidation;
+  const authorization = liveSourceAuthorization(evidence.canonicalUrl);
   return Object.freeze({
     informationClass: evidence.informationClass,
     handlingMode: evidence.handlingMode,
@@ -580,6 +653,8 @@ function projectLocalEvidence(evidence: AnmeldungLocalEvidence): PromptSafeLocal
     requiresLiveFetch: evidence.requiresLiveFetch,
     requiresRevalidation: evidence.requiresRevalidation,
     canonicalUrl: evidence.canonicalUrl,
+    officialDomain: authorization?.officialDomain ?? "",
+    normalizedOrigin: authorization?.normalizedOrigin ?? "",
     publisherName: evidence.publisherName,
     locator: evidence.locator,
     ...(safe ? { passageText: evidence.passageText.slice(0, 1_600) } : {}),
@@ -641,6 +716,15 @@ function diagnostics(
     suppressedLiveEvidenceCount?: number;
     suppressedRevalidationEvidenceCount?: number;
     localGroundingApplied?: boolean;
+    liveOperationalIntentAttempted?: boolean;
+    liveOperationalInformationClass?: LiveOperationalInformationClass | null;
+    liveOperationalFetchAttempted?: boolean;
+    liveOperationalFetchSucceeded?: boolean;
+    liveOperationalSourceValidated?: boolean;
+    liveOperationalExtractionSucceeded?: boolean;
+    liveOperationalEvidenceApplied?: boolean;
+    liveOperationalFailureStage?: LiveRuntimeFailureStage | null;
+    liveOperationalFetchedAt?: string | null;
   }> = {},
 ): ControlledKnowledgeDiagnostics {
   const retrieved = state.retrieved ?? 0;
@@ -676,6 +760,15 @@ function diagnostics(
     suppressedLiveEvidenceCount: state.suppressedLiveEvidenceCount ?? 0,
     suppressedRevalidationEvidenceCount: state.suppressedRevalidationEvidenceCount ?? 0,
     localGroundingApplied: state.localGroundingApplied ?? false,
+    liveOperationalIntentAttempted: state.liveOperationalIntentAttempted ?? false,
+    liveOperationalInformationClass: state.liveOperationalInformationClass ?? null,
+    liveOperationalFetchAttempted: state.liveOperationalFetchAttempted ?? false,
+    liveOperationalFetchSucceeded: state.liveOperationalFetchSucceeded ?? false,
+    liveOperationalSourceValidated: state.liveOperationalSourceValidated ?? false,
+    liveOperationalExtractionSucceeded: state.liveOperationalExtractionSucceeded ?? false,
+    liveOperationalEvidenceApplied: state.liveOperationalEvidenceApplied ?? false,
+    liveOperationalFailureStage: state.liveOperationalFailureStage ?? null,
+    liveOperationalFetchedAt: state.liveOperationalFetchedAt ?? null,
   });
 }
 
@@ -741,7 +834,81 @@ export async function prepareControlledQuestionKnowledge(
         return { evidence: [], localContext: null, diagnostics: report };
       }
       const evidence = compactContextFederalEvidence(retrieval.result, new Set(claimIds));
-      const localContext = projectLocalContext(retrieval.result);
+      let localContext = projectLocalContext(retrieval.result);
+      const liveInformationClass = localContext
+        ? selectLiveOperationalInformationClass(input.text)
+        : null;
+      const liveIntentAttempted = localContext !== null;
+      const liveEnabled = environment[ENV.liveOperationalEnabled] === "true";
+      let liveSourceValidated = false;
+      let liveFetchAttempted = false;
+      let liveFetchSucceeded = false;
+      let liveExtractionSucceeded = false;
+      let liveEvidenceApplied = false;
+      let liveFailureStage: LiveRuntimeFailureStage | null =
+        liveInformationClass && !liveEnabled ? "gate_disabled" : null;
+      let liveFetchedAt: string | null = null;
+      if (liveEnabled && liveInformationClass === "OPENING_HOURS" && localContext) {
+        const source = localContext.evidence.find((item) =>
+          item.informationClass === "OPENING_HOURS"
+          && item.requiresLiveFetch
+          && item.handlingMode === "FETCH_LIVE"
+          && item.canonicalUrl,
+        );
+        if (source) {
+          const authorization = sourceOwnedOpeningHoursAuthorization(municipalityCode, source.canonicalUrl);
+          const live = authorization
+            ? await fetchLiveOpeningHours(authorization, dependencies.liveOperational)
+            : {
+                ok: false as const,
+                failureStage: "source_validation" as const,
+                sourceValidated: false,
+                fetchAttempted: false,
+                fetchSucceeded: false,
+                extractionSucceeded: false as const,
+              };
+          liveSourceValidated = live.sourceValidated;
+          liveFetchAttempted = live.fetchAttempted;
+          liveFetchSucceeded = live.fetchSucceeded;
+          liveExtractionSucceeded = live.extractionSucceeded;
+          if (live.ok) {
+            liveEvidenceApplied = true;
+            liveFetchedAt = live.fetchedAt;
+            localContext = Object.freeze({
+              ...localContext,
+              liveOpeningHours: Object.freeze({
+                valueText: live.valueText,
+                sourceUrl: live.sourceUrl,
+                officialDomain: live.officialDomain,
+                fetchedAt: live.fetchedAt,
+                liveVerified: true as const,
+              }),
+            });
+          } else {
+            liveFailureStage = live.failureStage;
+            localContext = Object.freeze({
+              ...localContext,
+              liveOpeningHoursVerification: Object.freeze({
+                requested: true as const,
+                verified: false as const,
+                sourceUrl: source.canonicalUrl,
+                failureStage: live.failureStage,
+              }),
+            });
+          }
+        } else {
+          liveFailureStage = "source_missing";
+          localContext = Object.freeze({
+            ...localContext,
+            liveOpeningHoursVerification: Object.freeze({
+              requested: true as const,
+              verified: false as const,
+              sourceUrl: null,
+              failureStage: "source_missing" as const,
+            }),
+          });
+        }
+      }
       const localEvidence = retrieval.result.localContext?.evidence ?? [];
       const report = diagnostics(input.locale, {
         attempted: true,
@@ -765,6 +932,15 @@ export async function prepareControlledQuestionKnowledge(
         suppressedLiveEvidenceCount: localEvidence.filter((item) => item.requiresLiveFetch).length,
         suppressedRevalidationEvidenceCount: localEvidence.filter((item) => item.requiresRevalidation).length,
         localGroundingApplied: localContext !== null,
+        liveOperationalIntentAttempted: liveIntentAttempted,
+        liveOperationalInformationClass: liveInformationClass,
+        liveOperationalFetchAttempted: liveFetchAttempted,
+        liveOperationalFetchSucceeded: liveFetchSucceeded,
+        liveOperationalSourceValidated: liveSourceValidated,
+        liveOperationalExtractionSucceeded: liveExtractionSucceeded,
+        liveOperationalEvidenceApplied: liveEvidenceApplied,
+        liveOperationalFailureStage: liveFailureStage,
+        liveOperationalFetchedAt: liveFetchedAt,
       });
       dependencies.report(report);
       return { evidence, localContext, diagnostics: report };
