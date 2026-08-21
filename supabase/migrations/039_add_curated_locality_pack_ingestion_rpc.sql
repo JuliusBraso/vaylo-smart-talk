@@ -41,11 +41,15 @@ declare
   v_authority_level public.knowledge_authority_level;
   v_info_class public.knowledge_information_class;
   v_subject text;
+  v_source_publisher_id uuid;
+  v_add_publisher_id uuid;
+  v_add_authority_id uuid;
+  v_supports text[];
   v_allowed_keys constant text[] := array[
     'packId','family','countryCode','trustDomain','countryJurisdiction',
     'landJurisdiction','districtJurisdiction','locality','territorialScope',
     'publisher','authority','source','sourceVersion','passage','competence',
-    'processBinding','handlingPolicies'
+    'processBinding','handlingPolicies','additionalEvidence'
   ];
   v_allowed_subjects constant text[] := array[
     'residence_registration_lifecycle','anmeldung','ummeldung','abmeldung','meldewesen'
@@ -174,11 +178,16 @@ begin
      or p_payload#>>'{competence,territorialScopeId}' <> p_payload#>>'{territorialScope,id}'
      or p_payload#>>'{competence,sourceVersionId}' <> p_payload#>>'{sourceVersion,id}'
      or p_payload#>>'{competence,passageId}' <> p_payload#>>'{passage,id}'
-     or p_payload#>>'{competence,family}' <> 'residence_registration_lifecycle'
-     or nullif(p_payload#>>'{competence,effectiveFrom}','') is null then
+     or p_payload#>>'{competence,family}' <> 'residence_registration_lifecycle' then
     raise exception 'CURATED_LOCALITY_COMPETENCE_INVALID';
   end if;
-  if p_payload#>>'{competence,effectiveUntil}' is not null
+  if p_payload->'competence' ? 'effectiveFrom'
+     and jsonb_typeof(p_payload->'competence'->'effectiveFrom') is distinct from 'null'
+     and jsonb_typeof(p_payload->'competence'->'effectiveFrom') is distinct from 'string' then
+    raise exception 'CURATED_LOCALITY_COMPETENCE_INVALID';
+  end if;
+  if nullif(p_payload#>>'{competence,effectiveFrom}','') is not null
+     and p_payload#>>'{competence,effectiveUntil}' is not null
      and (p_payload#>>'{competence,effectiveUntil}')::timestamptz
        < (p_payload#>>'{competence,effectiveFrom}')::timestamptz then
     raise exception 'CURATED_LOCALITY_COMPETENCE_INVALID';
@@ -191,7 +200,7 @@ begin
      or v_canonical_url !~ '^https://[^[:space:]/@#]+(/[^[:space:]#]*)?$'
      or v_official_domain !~ '^[a-z0-9.-]+\.[a-z]{2,24}$'
      or v_normalized_origin <> ('https://' || v_official_domain)
-     or p_payload#>>'{source,publisherId}' <> p_payload#>>'{publisher,id}'
+     or p_payload#>>'{source,publisherId}' !~ v_uuid_re
      or p_payload#>>'{source,authorityId}' <> p_payload#>>'{authority,id}'
      or p_payload#>>'{source,jurisdictionId}' <> p_payload#>>'{locality,id}'
      or p_payload#>>'{source,territorialScopeId}' <> p_payload#>>'{territorialScope,id}'
@@ -234,6 +243,20 @@ begin
      or p_payload#>>'{publisher,territorialScopeId}' <> p_payload#>>'{territorialScope,id}'
      or p_payload#>>'{publisher,trustDomainId}' <> p_payload#>>'{trustDomain,id}' then
     raise exception 'CURATED_LOCALITY_IDENTITY_INVALID';
+  end if;
+  -- additionalEvidence is a required array key. Empty is valid. Absent or JSON
+  -- null is invalid. Presence is tested with ? / IS NULL / IS DISTINCT FROM so
+  -- SQL three-valued logic cannot treat a missing key as a valid empty array.
+  if not (p_payload ? 'additionalEvidence')
+     or p_payload->'additionalEvidence' is null
+     or jsonb_typeof(p_payload->'additionalEvidence') is distinct from 'array'
+     or jsonb_array_length(p_payload->'additionalEvidence') > 10 then
+    raise exception 'CURATED_LOCALITY_SOURCE_REQUIRED';
+  end if;
+  v_source_publisher_id := (p_payload#>>'{source,publisherId}')::uuid;
+  if v_source_publisher_id is distinct from v_publisher_id
+     and nullif(p_payload#>>'{source,publisherName}','') is null then
+    raise exception 'CURATED_LOCALITY_SOURCE_REQUIRED';
   end if;
 
   insert into public.knowledge_trust_domains (id, code, name, review_status)
@@ -373,6 +396,26 @@ begin
       and p.trust_domain_id=(p_payload#>>'{trustDomain,id}')::uuid
   ) then raise exception 'CURATED_LOCALITY_CONFLICT:publisher'; end if;
 
+  if v_source_publisher_id is distinct from v_publisher_id then
+    insert into public.knowledge_publishers
+      (id, publisher_name, publisher_type, official_status, subject_matter_competence,
+       territorial_competence_id, trust_domain_id, review_status)
+    values (
+      v_source_publisher_id, p_payload#>>'{source,publisherName}', 'municipal_authority', true,
+      array['Melderecht'], v_scope_id,
+      (p_payload#>>'{trustDomain,id}')::uuid, 'expert_reviewed'
+    ) on conflict (id) do nothing;
+    get diagnostics v_created = row_count;
+    v_total_created := v_total_created + v_created;
+    if not exists (
+      select 1 from public.knowledge_publishers p
+      where p.id=v_source_publisher_id
+        and p.publisher_name=p_payload#>>'{source,publisherName}'
+        and p.territorial_competence_id=v_scope_id
+        and p.trust_domain_id=(p_payload#>>'{trustDomain,id}')::uuid
+    ) then raise exception 'CURATED_LOCALITY_CONFLICT:source_publisher'; end if;
+  end if;
+
   insert into public.knowledge_authorities
     (id, publisher_id, authority_name, authority_type, jurisdiction_id,
      territorial_scope_id, official_portal_url, status, review_status)
@@ -403,7 +446,7 @@ begin
     active_status, trust_status, authorization_state, default_handling_mode,
     freshness_class, stale_behavior
   ) values (
-    v_source_id, v_publisher_id, 'authority_portal', 'local_registration_competence',
+    v_source_id, v_source_publisher_id, 'authority_portal', 'local_registration_competence',
     v_canonical_url, v_official_domain, 'verified', v_locality_id, v_scope_id, 'de',
     coalesce(v_municipality_code, v_land_code || ':' || v_district_code),
     array['authority_competence'], false, v_canonical_url, v_normalized_origin,
@@ -417,7 +460,7 @@ begin
   v_total_created := v_total_created + v_created;
   if not exists (
     select 1 from public.knowledge_sources s
-    where s.id=v_source_id and s.publisher_id=v_publisher_id
+    where s.id=v_source_id and s.publisher_id=v_source_publisher_id
       and s.canonical_url=v_canonical_url and s.jurisdiction_id=v_locality_id
       and s.issuing_authority_id=v_authority_id
       and s.authorization_state='AUTHORIZED'
@@ -470,7 +513,7 @@ begin
     coalesce((p_payload#>>'{competence,receivesApplication}')::boolean, true),
     coalesce((p_payload#>>'{competence,decidesApplication}')::boolean, true),
     false, v_version_id, v_passage_id,
-    (p_payload#>>'{competence,effectiveFrom}')::timestamptz,
+    nullif(p_payload#>>'{competence,effectiveFrom}','')::timestamptz,
     nullif(p_payload#>>'{competence,effectiveUntil}','')::timestamptz,
     'expert_reviewed', 'none'
   ) on conflict (id) do nothing;
@@ -484,7 +527,8 @@ begin
       and c.personal_scope='residence_registration_lifecycle'
       and c.competence_source_version_id=v_version_id
       and c.competence_passage_id=v_passage_id
-      and c.effective_from=(p_payload#>>'{competence,effectiveFrom}')::timestamptz
+      and c.effective_from is not distinct from
+        nullif(p_payload#>>'{competence,effectiveFrom}','')::timestamptz
   ) then raise exception 'CURATED_LOCALITY_CONFLICT:competence'; end if;
 
   insert into public.knowledge_processes (
@@ -544,6 +588,187 @@ begin
     ) then raise exception 'CURATED_LOCALITY_CONFLICT:handling_policy:%', v_row->>'id'; end if;
   end loop;
   v_counts := v_counts || jsonb_build_object('handlingPolicies', v_created);
+  v_total_created := v_total_created + v_created;
+
+  v_created := 0;
+  for v_row in select value from jsonb_array_elements(p_payload->'additionalEvidence') loop
+    v_canonical_url := v_row#>>'{source,canonicalUrl}';
+    v_official_domain := lower(v_row#>>'{source,officialDomain}');
+    v_normalized_origin := lower(v_row#>>'{source,normalizedOrigin}');
+    v_add_publisher_id := coalesce(
+      nullif(v_row#>>'{publisher,id}','')::uuid,
+      v_publisher_id
+    );
+    if v_row ? 'publisher' then
+      if jsonb_typeof(v_row->'publisher') is distinct from 'object'
+         or v_row#>>'{publisher,id}' !~ v_uuid_re
+         or nullif(v_row#>>'{publisher,name}','') is null then
+        raise exception 'CURATED_LOCALITY_SOURCE_REQUIRED';
+      end if;
+    end if;
+    if v_row#>>'{source,publisherId}' !~ v_uuid_re
+       or (v_row#>>'{source,publisherId}')::uuid is distinct from v_add_publisher_id then
+      raise exception 'CURATED_LOCALITY_SOURCE_REQUIRED';
+    end if;
+    if v_row->'source' ? 'authorityId'
+       and jsonb_typeof(v_row->'source'->'authorityId') is distinct from 'null'
+       and v_row#>>'{source,authorityId}' is distinct from p_payload#>>'{authority,id}' then
+      raise exception 'CURATED_LOCALITY_AUTHORITY_INVALID';
+    end if;
+    v_add_authority_id := case
+      when jsonb_typeof(v_row->'source'->'authorityId') = 'null' then null
+      else v_authority_id
+    end;
+    if jsonb_typeof(v_row#>'{source,supportsClaimTypes}') is distinct from 'array'
+       and v_row#>'{source,supportsClaimTypes}' is not null then
+      raise exception 'CURATED_LOCALITY_SOURCE_REQUIRED';
+    end if;
+    if jsonb_typeof(v_row#>'{source,supportsClaimTypes}') = 'array' then
+      select coalesce(array_agg(t.x), '{}'::text[]) into v_supports
+      from jsonb_array_elements_text(v_row#>'{source,supportsClaimTypes}') as t(x);
+    else
+      v_supports := '{}'::text[];
+    end if;
+    if exists (
+      select 1 from unnest(v_supports) as t(x)
+      where t.x not in ('procedure')
+    ) or 'authority_competence' = any(v_supports) then
+      raise exception 'CURATED_LOCALITY_SOURCE_REQUIRED';
+    end if;
+    if v_canonical_url is null or v_official_domain is null or v_normalized_origin is null
+       or v_canonical_url !~ '^https://[^[:space:]/@#]+(/[^[:space:]#]*)?$'
+       or v_official_domain !~ '^[a-z0-9.-]+\.[a-z]{2,24}$'
+       or v_normalized_origin <> ('https://' || v_official_domain)
+       or lower(substring(v_canonical_url from '^https://([^/:]+)')) is distinct from v_official_domain
+       or v_row#>>'{source,id}' !~ v_uuid_re
+       or v_row#>>'{sourceVersion,id}' !~ v_uuid_re
+       or v_row#>>'{passage,id}' !~ v_uuid_re
+       or nullif(v_row#>>'{sourceVersion,contentHash}','') is null
+       or nullif(v_row#>>'{passage,text}','') is null
+       or nullif(v_row#>>'{passage,textHash}','') is null then
+      raise exception 'CURATED_LOCALITY_SOURCE_REQUIRED';
+    end if;
+    begin
+      v_source_class := (v_row#>>'{source,sourceClass}')::public.knowledge_source_class;
+      v_authority_level := (v_row#>>'{source,authorityLevel}')::public.knowledge_authority_level;
+      v_handling_mode := (v_row#>>'{source,handlingMode}')::public.knowledge_handling_mode;
+      v_freshness_class := (v_row#>>'{source,freshnessClass}')::public.knowledge_freshness_class;
+      v_stale_behavior := (v_row#>>'{source,staleBehavior}')::public.knowledge_stale_behavior;
+    exception
+      when invalid_text_representation then
+        raise exception 'CURATED_LOCALITY_HANDLING_INVALID';
+    end;
+    if v_source_class is null or not (v_source_class = any(v_allowed_source_classes))
+       or v_authority_level not in ('MUNICIPALITY','SPECIFIC_AUTHORITY','LAND')
+       or v_handling_mode is null then
+      raise exception 'CURATED_LOCALITY_HANDLING_INVALID';
+    end if;
+    if v_add_publisher_id is distinct from v_publisher_id then
+      insert into public.knowledge_publishers
+        (id, publisher_name, publisher_type, official_status, subject_matter_competence,
+         territorial_competence_id, trust_domain_id, review_status)
+      values (
+        v_add_publisher_id, v_row#>>'{publisher,name}', 'municipal_authority', true,
+        '{}'::text[], v_scope_id,
+        (p_payload#>>'{trustDomain,id}')::uuid, 'expert_reviewed'
+      ) on conflict (id) do nothing;
+      if not exists (
+        select 1 from public.knowledge_publishers p
+        where p.id=v_add_publisher_id
+          and p.publisher_name=v_row#>>'{publisher,name}'
+          and p.trust_domain_id=(p_payload#>>'{trustDomain,id}')::uuid
+      ) then raise exception 'CURATED_LOCALITY_CONFLICT:additional_publisher:%', v_add_publisher_id; end if;
+    end if;
+    insert into public.knowledge_sources (
+      id, publisher_id, source_type, source_purpose, canonical_url, official_domain,
+      official_domain_verification_status, jurisdiction_id, territorial_scope_id,
+      source_language, publication_identifier, supports_claim_types, high_risk_use_allowed,
+      normalized_canonical_url, normalized_origin, source_class, evidence_eligibility,
+      issuing_authority_id, authority_level, process_scope, retrieval_method,
+      terms_or_license_review_status, robots_review_status, first_verified_at, last_verified_at,
+      active_status, trust_status, authorization_state, default_handling_mode,
+      freshness_class, stale_behavior
+    ) values (
+      (v_row#>>'{source,id}')::uuid, v_add_publisher_id, 'authority_portal', 'local_operational_evidence',
+      v_canonical_url, v_official_domain, 'verified', v_locality_id, v_scope_id, 'de',
+      coalesce(v_municipality_code, v_land_code || ':' || v_district_code),
+      v_supports, false, v_canonical_url, v_normalized_origin,
+      v_source_class, 'PUBLICATION_EVIDENCE_ELIGIBLE', v_add_authority_id, v_authority_level,
+      array['anmeldung_ummeldung_abmeldung'], 'HTML_DOCUMENT', 'ALLOWED', 'ALLOWED',
+      now(), now(), 'ACTIVE', 'VERIFIED', 'AUTHORIZED', v_handling_mode,
+      v_freshness_class, v_stale_behavior
+    ) on conflict (id) do nothing;
+    if found then v_created := v_created + 1; end if;
+    if not exists (
+      select 1 from public.knowledge_sources s
+      where s.id=(v_row#>>'{source,id}')::uuid and s.canonical_url=v_canonical_url
+        and s.jurisdiction_id=v_locality_id
+        and s.publisher_id=v_add_publisher_id
+        and s.issuing_authority_id is not distinct from v_add_authority_id
+        and s.supports_claim_types=v_supports
+    ) then raise exception 'CURATED_LOCALITY_CONFLICT:additional_source:%', v_row#>>'{source,id}'; end if;
+    insert into public.knowledge_source_versions (
+      id, source_id, version_sequence, content_hash, review_status,
+      freshness_status, change_status, immutable, historical_use_allowed, current_use_allowed
+    ) values (
+      (v_row#>>'{sourceVersion,id}')::uuid, (v_row#>>'{source,id}')::uuid, 1,
+      v_row#>>'{sourceVersion,contentHash}', 'expert_reviewed', 'fresh', 'unchanged', true, true, true
+    ) on conflict (id) do nothing;
+    if not exists (
+      select 1 from public.knowledge_source_versions v
+      where v.id=(v_row#>>'{sourceVersion,id}')::uuid
+        and v.source_id=(v_row#>>'{source,id}')::uuid
+        and v.content_hash=v_row#>>'{sourceVersion,contentHash}'
+    ) then raise exception 'CURATED_LOCALITY_CONFLICT:additional_source_version:%', v_row#>>'{sourceVersion,id}'; end if;
+    insert into public.knowledge_source_passages (
+      id, source_version_id, passage_order, heading_path, section_identifier,
+      text, text_hash, language, citation_ready, review_status
+    ) values (
+      (v_row#>>'{passage,id}')::uuid, (v_row#>>'{sourceVersion,id}')::uuid, 0,
+      array['local-operational'], v_row#>>'{passage,locator}', v_row#>>'{passage,text}',
+      v_row#>>'{passage,textHash}', 'de', true, 'expert_reviewed'
+    ) on conflict (id) do nothing;
+    if not exists (
+      select 1 from public.knowledge_source_passages p
+      where p.id=(v_row#>>'{passage,id}')::uuid
+        and p.source_version_id=(v_row#>>'{sourceVersion,id}')::uuid
+        and p.text=v_row#>>'{passage,text}'
+    ) then raise exception 'CURATED_LOCALITY_CONFLICT:additional_passage:%', v_row#>>'{passage,id}'; end if;
+    if jsonb_typeof(v_row->'handlingPolicies') = 'array' then
+      declare
+        v_policy jsonb;
+      begin
+        for v_policy in select value from jsonb_array_elements(v_row->'handlingPolicies') loop
+          begin
+            v_info_class := (v_policy->>'informationClass')::public.knowledge_information_class;
+            v_handling_mode := (v_policy->>'handlingMode')::public.knowledge_handling_mode;
+            v_freshness_class := (v_policy->>'freshnessClass')::public.knowledge_freshness_class;
+            v_stale_behavior := (v_policy->>'staleBehavior')::public.knowledge_stale_behavior;
+          exception
+            when invalid_text_representation then
+              raise exception 'CURATED_LOCALITY_HANDLING_INVALID';
+          end;
+          if v_policy->>'id' !~ v_uuid_re then
+            raise exception 'CURATED_LOCALITY_HANDLING_INVALID';
+          end if;
+          insert into public.knowledge_source_handling_policies (
+            id, source_id, information_class, process_scope, handling_mode,
+            freshness_class, stale_behavior, required_context_keys, risk_class, state_version
+          ) values (
+            (v_policy->>'id')::uuid, (v_row#>>'{source,id}')::uuid, v_info_class,
+            'anmeldung_ummeldung_abmeldung', v_handling_mode, v_freshness_class,
+            v_stale_behavior, '{}', coalesce(v_policy->>'riskClass','MEDIUM'), 1
+          ) on conflict (source_id, information_class, process_scope) do nothing;
+          if not exists (
+            select 1 from public.knowledge_source_handling_policies h
+            where h.id=(v_policy->>'id')::uuid and h.source_id=(v_row#>>'{source,id}')::uuid
+              and h.handling_mode=v_handling_mode
+          ) then raise exception 'CURATED_LOCALITY_CONFLICT:additional_handling:%', v_policy->>'id'; end if;
+        end loop;
+      end;
+    end if;
+  end loop;
+  v_counts := v_counts || jsonb_build_object('additionalEvidence', v_created);
   v_total_created := v_total_created + v_created;
 
   return jsonb_build_object(

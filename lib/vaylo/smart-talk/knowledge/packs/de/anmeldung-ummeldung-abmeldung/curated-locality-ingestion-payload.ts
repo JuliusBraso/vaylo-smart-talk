@@ -158,5 +158,7 @@ export function buildSyntheticLocalityIngestionPayload(): Readonly<Record<string
         riskClass: "MEDIUM",
       },
     ],
+    // Required key. Empty array is valid; omitting the key is invalid.
+    additionalEvidence: [],
   });
 }
