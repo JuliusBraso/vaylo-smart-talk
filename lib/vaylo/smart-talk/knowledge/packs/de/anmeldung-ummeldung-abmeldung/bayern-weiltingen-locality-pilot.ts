@@ -69,7 +69,9 @@ function evidence(
  */
 export const WEILTINGEN_PILOT = Object.freeze({
   retrievedAt: "2026-08-21",
-  productionEligible: false,
+  // Technical readiness only. Production mutation still requires the separate,
+  // operation-specific A2 authorization enforced by the fixed executor.
+  productionEligible: true,
   country: "DE",
   landName: "Freistaat Bayern",
   landCode: "09",
@@ -324,4 +326,10 @@ export function buildWeiltingenLocalityPilotPayload(): Readonly<Record<string, u
     handlingPolicies: primary.handlingPolicies,
     additionalEvidence: [hours, appointments],
   });
+}
+
+export function weiltingenPayloadFingerprint(
+  payload: Readonly<Record<string, unknown>> = buildWeiltingenLocalityPilotPayload(),
+): string {
+  return sha256(JSON.stringify(payload));
 }
