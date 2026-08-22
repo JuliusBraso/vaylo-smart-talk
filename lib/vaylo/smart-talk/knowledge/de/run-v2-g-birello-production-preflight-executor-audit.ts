@@ -6,11 +6,14 @@ import path from "node:path";
 import { Client } from "pg";
 
 import {
+  BIRELLO_PREFLIGHT_FIXED_QUERIES,
   BIRELLO_PREFLIGHT_ROLE,
   IMPLEMENTED_BIRELLO_REMOTE_PREFLIGHT_EXECUTOR,
   configurationFromBirelloPreflightEnvironment,
   runBirelloProductionPreflight,
+  type BirelloPreflightClientFactory,
   type BirelloPreflightConfiguration,
+  type BirelloPreflightQueryId,
 } from "../source-registry/birello-production-preflight-executor";
 import { buildCuratedIngestionPayload } from "../packs/de/anmeldung-ummeldung-abmeldung/curated-ingestion-payload";
 import { buildWeiltingenLocalityPilotPayload } from "../packs/de/anmeldung-ummeldung-abmeldung/bayern-weiltingen-locality-pilot";
@@ -49,6 +52,30 @@ function localConfiguration(url: string, database: string): BirelloPreflightConf
     verifiedTls: false,
     caMechanism: "LOCAL_TEST_ONLY",
   });
+}
+
+function connectionFailure(code: string, message: string): BirelloPreflightClientFactory {
+  return () => ({
+    connect: () => Promise.reject(Object.assign(new Error(message), { code })),
+    query: () => Promise.reject(new Error("query must not run")),
+    end: () => Promise.resolve(),
+  });
+}
+
+function fixedQueryFailure(
+  failedQueryId: BirelloPreflightQueryId,
+  rawMessage: string,
+): BirelloPreflightClientFactory {
+  return (configuration) => {
+    const client = new Client({ connectionString: configuration.connectionString });
+    return {
+      connect: () => client.connect().then(() => undefined),
+      query: (query) => query === BIRELLO_PREFLIGHT_FIXED_QUERIES[failedQueryId]
+        ? Promise.reject(Object.assign(new Error(rawMessage), { code: "42501" }))
+        : client.query(query).then((result) => ({ rows: result.rows })),
+      end: () => client.end(),
+    };
+  };
 }
 
 async function fingerprint(client: Client): Promise<string> {
@@ -247,6 +274,18 @@ async function main(): Promise<void> {
       database,
     ));
     const encodedFailure = JSON.stringify(failed);
+    const dnsFailure = await runBirelloProductionPreflight(
+      configuration, connectionFailure("ENOTFOUND", "bounded DNS fixture"));
+    const tlsFailure = await runBirelloProductionPreflight(
+      configuration, connectionFailure("UNABLE_TO_VERIFY_LEAF_SIGNATURE", "bounded TLS fixture"));
+    const timeoutFailure = await runBirelloProductionPreflight(
+      configuration, connectionFailure("ETIMEDOUT", "bounded timeout fixture"));
+    const rawDeniedMessage = `RAW_DB_ERROR_${randomUUID()} ${badSecret}`;
+    const firstQueryFailure = await runBirelloProductionPreflight(
+      configuration, fixedQueryFailure("session", rawDeniedMessage));
+    const laterQueryFailure = await runBirelloProductionPreflight(
+      configuration, fixedQueryFailure("roles", rawDeniedMessage));
+    const encodedQueryFailures = JSON.stringify([firstQueryFailure, laterQueryFailure]);
 
     const readOnlyClient = new Client({ connectionString: readerUrl });
     await readOnlyClient.connect();
@@ -294,7 +333,7 @@ async function main(): Promise<void> {
         });
     const cases = {
       P1: valid.result === "PASS" && valid.target.transactionReadOnly,
-      P2: wrongUser.result === "REJECTED" && wrongUser.failureCode === "ROLE_IDENTITY_MISMATCH",
+      P2: wrongUser.result === "REJECTED" && wrongUser.failureCode === "SESSION_IDENTITY_MISMATCH",
       P3: wrongTarget.result === "REJECTED" && wrongTarget.failureCode === "TARGET_IDENTITY_MISMATCH",
       P4: missingSafe,
       P5: failed.result === "REJECTED" && !encodedFailure.includes(badSecret) && !encodedFailure.includes("postgresql://"),
@@ -338,13 +377,58 @@ async function main(): Promise<void> {
       S5: rejectedConfiguration(postgresPoolerRole),
       S6: rejectedConfiguration(extraSuffix),
       S7: poolerSession.result === "PASS" && poolerSession.target.role === BIRELLO_PREFLIGHT_ROLE,
-      S8: wrongUser.result === "REJECTED" && wrongUser.failureCode === "ROLE_IDENTITY_MISMATCH",
+      S8: wrongUser.result === "REJECTED" && wrongUser.failureCode === "SESSION_IDENTITY_MISMATCH",
       S9: legacyIsolated,
       S10: retrievalIsolated,
       S11: cases.P5 && cases.P18,
       S12: pAllPassed,
     };
-    const allPassed = pAllPassed && Object.values(sharedPoolerCases).every(Boolean);
+    const priorCasesPassed = pAllPassed && Object.values(sharedPoolerCases).every(Boolean);
+    const connectionCases = {
+      C1: failed.result === "REJECTED"
+        && failed.failureCode === "AUTHENTICATION_FAILED"
+        && failed.failureStage === "connect"
+        && failed.sqlState === "28P01",
+      C2: dnsFailure.result === "REJECTED"
+        && dnsFailure.failureCode === "DNS_FAILED"
+        && dnsFailure.driverCode === "ENOTFOUND",
+      C3: tlsFailure.result === "REJECTED"
+        && tlsFailure.failureCode === "TLS_FAILED"
+        && tlsFailure.driverCode === "UNABLE_TO_VERIFY_LEAF_SIGNATURE",
+      C4: timeoutFailure.result === "REJECTED"
+        && timeoutFailure.failureCode === "CONNECTION_TIMEOUT"
+        && timeoutFailure.driverCode === "ETIMEDOUT",
+      C5: wrongUser.result === "REJECTED"
+        && wrongUser.failureCode === "SESSION_IDENTITY_MISMATCH"
+        && wrongUser.failureStage === "identity",
+      C6: !encodedFailure.includes(badSecret),
+      C7: !encodedFailure.includes("postgresql://"),
+      C8: legacyIsolated,
+      C9: retrievalIsolated,
+      C10: priorCasesPassed,
+    };
+    const connectionCasesPassed = Object.values(connectionCases).every(Boolean);
+    const queryCases = {
+      Q1: firstQueryFailure.result === "REJECTED"
+        && firstQueryFailure.failedQueryId === "session",
+      Q2: laterQueryFailure.result === "REJECTED"
+        && laterQueryFailure.failedQueryId === "roles",
+      Q3: firstQueryFailure.result === "REJECTED"
+        && firstQueryFailure.sqlState === "42501",
+      Q4: !encodedQueryFailures.includes("select "),
+      Q5: !encodedQueryFailures.includes(rawDeniedMessage),
+      Q6: !encodedQueryFailures.includes(badSecret)
+        && !encodedQueryFailures.includes("postgresql://"),
+      Q7: laterQueryFailure.result === "REJECTED"
+        && laterQueryFailure.completedQueryIds.join(",")
+          === "session,migrations,columns,enums,functions",
+      Q8: connectionCasesPassed,
+      Q9: Object.values(sharedPoolerCases).every(Boolean),
+      Q10: pAllPassed,
+    };
+    const allPassed = priorCasesPassed
+      && connectionCasesPassed
+      && Object.values(queryCases).every(Boolean);
     process.stdout.write(`${JSON.stringify({
       phaseResult: allPassed ? "PASS" : "FAILED",
       pgVersion: 17,
@@ -366,6 +450,8 @@ async function main(): Promise<void> {
       },
       cases,
       sharedPoolerCases,
+      connectionCases,
+      queryCases,
       allPassed,
       productionConnectionAttempted: false,
       productionWritePerformed: false,

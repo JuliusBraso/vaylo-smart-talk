@@ -40,6 +40,10 @@ async function main(): Promise<void> {
 }
 
 void main().catch(() => {
-  process.stderr.write('{"result":"REJECTED","failureCode":"EXECUTION_FAILED","secretsPrinted":false}\n');
+  process.stderr.write(
+    '{"result":"REJECTED","failureCode":"EXECUTION_FAILED_UNKNOWN","failureStage":"cli",'
+    + '"sqlState":null,"driverCode":null,"failedQueryId":null,"completedQueryIds":[],'
+    + '"connectionAttempted":false,"secretsPrinted":false}\n',
+  );
   process.exitCode = 1;
 });

@@ -11,6 +11,11 @@ import { WEILTINGEN_PILOT } from "../packs/de/anmeldung-ummeldung-abmeldung/baye
 
 export const IMPLEMENTED_BIRELLO_REMOTE_PREFLIGHT_EXECUTOR = true as const;
 export const BIRELLO_PREFLIGHT_ROLE = "birello_preflight_reader" as const;
+export const BIRELLO_PREFLIGHT_QUERY_ORDER = Object.freeze([
+  "session", "migrations", "columns", "enums", "functions",
+  "roles", "privileges", "firstPack", "duplicates", "weiltingen",
+] as const);
+export type BirelloPreflightQueryId = typeof BIRELLO_PREFLIGHT_QUERY_ORDER[number];
 export const BIRELLO_PREFLIGHT_ENV = Object.freeze({
   enabled: "BIRELLO_PRODUCTION_PREFLIGHT_ENABLED",
   target: "BIRELLO_PRODUCTION_PREFLIGHT_TARGET",
@@ -53,10 +58,25 @@ export type BirelloPreflightReport =
       failureCode:
         | "CONFIGURATION_INVALID"
         | "TARGET_IDENTITY_MISMATCH"
-        | "ROLE_IDENTITY_MISMATCH"
+        | "SESSION_IDENTITY_MISMATCH"
         | "READ_ONLY_MISMATCH"
         | "QUERY_CONTRACT_MISMATCH"
-        | "EXECUTION_FAILED";
+        | "DNS_FAILED"
+        | "CONNECTION_REFUSED"
+        | "CONNECTION_TIMEOUT"
+        | "TLS_FAILED"
+        | "AUTHENTICATION_FAILED"
+        | "ROLE_LOGIN_REJECTED"
+        | "DATABASE_NOT_FOUND"
+        | "POOLER_REJECTED"
+        | "READ_ONLY_SETUP_FAILED"
+        | "QUERY_EXECUTION_FAILED"
+        | "EXECUTION_FAILED_UNKNOWN";
+      failureStage: "configuration" | "connect" | "read_only_setup" | "identity" | "query";
+      sqlState: string | null;
+      driverCode: string | null;
+      failedQueryId: BirelloPreflightQueryId | null;
+      completedQueryIds: readonly BirelloPreflightQueryId[];
       connectionAttempted: boolean;
       secretsPrinted: false;
     }>
@@ -280,6 +300,8 @@ export function configurationFromBirelloPreflightEnvironment(
   if (environment[BIRELLO_PREFLIGHT_ENV.forbiddenPublicUrl]) {
     return Object.freeze({
       result: "REJECTED" as const, failureCode: "CONFIGURATION_INVALID" as const,
+      failureStage: "configuration" as const, sqlState: null, driverCode: null,
+      failedQueryId: null, completedQueryIds: Object.freeze([]),
       connectionAttempted: false, secretsPrinted: false,
     });
   }
@@ -330,6 +352,8 @@ export function configurationFromBirelloPreflightEnvironment(
   } catch {
     return Object.freeze({
       result: "REJECTED" as const, failureCode: "CONFIGURATION_INVALID" as const,
+      failureStage: "configuration" as const, sqlState: null, driverCode: null,
+      failedQueryId: null, completedQueryIds: Object.freeze([]),
       connectionAttempted: false, secretsPrinted: false,
     });
   }
@@ -344,6 +368,61 @@ function valuesFor(rows: readonly Record<string, unknown>[], key: string): strin
   return rows.map((row) => row[key]).filter((value): value is string => typeof value === "string");
 }
 
+type ExecutionFailureStage = "connect" | "read_only_setup" | "identity" | "query";
+
+function safeErrorField(error: unknown, key: "code" | "message"): string {
+  if (typeof error !== "object" || error === null || !(key in error)) return "";
+  const value = (error as Record<string, unknown>)[key];
+  return typeof value === "string" ? value : "";
+}
+
+function classifyExecutionFailure(
+  error: unknown,
+  stage: ExecutionFailureStage,
+  currentQueryId: BirelloPreflightQueryId | null,
+  completedQueryIds: readonly BirelloPreflightQueryId[],
+): Extract<BirelloPreflightReport, { result: "REJECTED" }> {
+  const code = safeErrorField(error, "code").toUpperCase();
+  const message = safeErrorField(error, "message");
+  const lowerMessage = message.toLowerCase();
+  const sqlState = /^[0-9A-Z]{5}$/.test(code) ? code : null;
+  const driverCode = /^[A-Z][A-Z0-9_]{1,63}$/.test(code) && sqlState === null
+    ? code
+    : null;
+  const failureCode =
+    message === "TARGET_IDENTITY_MISMATCH" ? "TARGET_IDENTITY_MISMATCH"
+    : message === "ROLE_IDENTITY_MISMATCH" ? "SESSION_IDENTITY_MISMATCH"
+    : message === "READ_ONLY_MISMATCH" ? "READ_ONLY_MISMATCH"
+    : message === "QUERY_CONTRACT_MISMATCH" ? "QUERY_CONTRACT_MISMATCH"
+    : code === "28P01" ? "AUTHENTICATION_FAILED"
+    : code === "28000" ? "ROLE_LOGIN_REJECTED"
+    : code === "3D000" ? "DATABASE_NOT_FOUND"
+    : code === "ENOTFOUND" || code === "EAI_AGAIN" ? "DNS_FAILED"
+    : code === "ECONNREFUSED" ? "CONNECTION_REFUSED"
+    : code === "ETIMEDOUT" || code === "ESOCKETTIMEDOUT" ? "CONNECTION_TIMEOUT"
+    : [
+        "UNABLE_TO_VERIFY_LEAF_SIGNATURE", "CERT_HAS_EXPIRED",
+        "DEPTH_ZERO_SELF_SIGNED_CERT", "SELF_SIGNED_CERT_IN_CHAIN",
+        "ERR_TLS_CERT_ALTNAME_INVALID", "UNABLE_TO_GET_ISSUER_CERT_LOCALLY",
+      ].includes(code) ? "TLS_FAILED"
+    : stage === "connect" && /(tenant|pooler|supavisor|user not found)/i.test(lowerMessage)
+      ? "POOLER_REJECTED"
+    : stage === "read_only_setup" ? "READ_ONLY_SETUP_FAILED"
+    : stage === "identity" || stage === "query" ? "QUERY_EXECUTION_FAILED"
+    : "EXECUTION_FAILED_UNKNOWN";
+  return Object.freeze({
+    result: "REJECTED" as const,
+    failureCode,
+    failureStage: stage,
+    sqlState,
+    driverCode,
+    failedQueryId: failureCode === "QUERY_EXECUTION_FAILED" ? currentQueryId : null,
+    completedQueryIds: Object.freeze([...completedQueryIds]),
+    connectionAttempted: true,
+    secretsPrinted: false as const,
+  });
+}
+
 export async function runBirelloProductionPreflight(
   configurationOrReport: BirelloPreflightConfiguration | BirelloPreflightReport,
   clientFactory: BirelloPreflightClientFactory = productionClientFactory,
@@ -353,19 +432,26 @@ export async function runBirelloProductionPreflight(
   let connected = false;
   let transaction = false;
   let client: BirelloPreflightClient;
+  let failureStage: ExecutionFailureStage = "connect";
+  let currentQueryId: BirelloPreflightQueryId | null = null;
+  const completedQueryIds: BirelloPreflightQueryId[] = [];
   try {
     client = clientFactory(configuration);
     await client.connect();
     connected = true;
+    failureStage = "read_only_setup";
     await client.query("BEGIN READ ONLY");
     transaction = true;
     await client.query("SET LOCAL statement_timeout = '10s'");
     await client.query("SET LOCAL lock_timeout = '1s'");
     await client.query("SET LOCAL idle_in_transaction_session_timeout = '15s'");
 
+    failureStage = "identity";
+    currentQueryId = "session";
     const results: Record<string, readonly Record<string, unknown>[]> = {
       session: (await client.query(BIRELLO_PREFLIGHT_FIXED_QUERIES.session)).rows,
     };
+    completedQueryIds.push("session");
     const session = results.session[0];
     if (session?.database !== configuration.database) {
       throw new Error("TARGET_IDENTITY_MISMATCH");
@@ -376,8 +462,11 @@ export async function runBirelloProductionPreflight(
     if (session?.transaction_read_only !== "on") {
       throw new Error("READ_ONLY_MISMATCH");
     }
-    for (const [id, sql] of Object.entries(BIRELLO_PREFLIGHT_FIXED_QUERIES)) {
-      if (id !== "session") results[id] = (await client.query(sql)).rows;
+    failureStage = "query";
+    for (const id of BIRELLO_PREFLIGHT_QUERY_ORDER.slice(1)) {
+      currentQueryId = id;
+      results[id] = (await client.query(BIRELLO_PREFLIGHT_FIXED_QUERIES[id])).rows;
+      completedQueryIds.push(id);
     }
 
     const columnRows = results.columns ?? [];
@@ -450,17 +539,9 @@ export async function runBirelloProductionPreflight(
     if (transaction) {
       try { await client!.query("ROLLBACK"); } catch { /* sanitized primary failure */ }
     }
-    const message = error instanceof Error ? error.message : "";
-    const failureCode =
-      message === "TARGET_IDENTITY_MISMATCH" ? "TARGET_IDENTITY_MISMATCH"
-      : message === "ROLE_IDENTITY_MISMATCH" ? "ROLE_IDENTITY_MISMATCH"
-      : message === "READ_ONLY_MISMATCH" ? "READ_ONLY_MISMATCH"
-      : message === "QUERY_CONTRACT_MISMATCH" ? "QUERY_CONTRACT_MISMATCH"
-      : "EXECUTION_FAILED";
-    return Object.freeze({
-      result: "REJECTED" as const, failureCode,
-      connectionAttempted: connected, secretsPrinted: false as const,
-    });
+    const classified = classifyExecutionFailure(
+      error, failureStage, currentQueryId, completedQueryIds);
+    return Object.freeze({ ...classified, connectionAttempted: connected || failureStage === "connect" });
   } finally {
     if (connected) {
       try { await client!.end(); } catch { /* sanitized cleanup */ }
