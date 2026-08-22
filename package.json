@@ -29,6 +29,7 @@
     "knowledge:local:audit-retrieval-rpc": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/packs/de/anmeldung-ummeldung-abmeldung/run-production-retrieval-rpc-semantic-local-audit.ts",
     "knowledge:local:audit-reader-bootstrap": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-knowledge-reader-managed-bootstrap-local-audit.ts",
     "knowledge:local:audit-production-retrieval-runner": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-production-retrieval-proof-runner-local-audit.ts",
+    "knowledge:local:audit-expansion-foundation": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-knowledge-expansion-foundation-audit.ts",
     "release:check": "npm run db:verify",
     "verify:8.3v": "npx -y tsx@4.19.2 scripts/verify-8-3v-additional-synthetic-live-execution.ts"
   },
