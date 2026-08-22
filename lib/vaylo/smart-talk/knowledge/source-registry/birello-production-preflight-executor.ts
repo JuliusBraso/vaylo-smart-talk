@@ -16,6 +16,18 @@ export const BIRELLO_PREFLIGHT_QUERY_ORDER = Object.freeze([
   "roles", "privileges", "firstPack", "duplicates", "weiltingen",
 ] as const);
 export type BirelloPreflightQueryId = typeof BIRELLO_PREFLIGHT_QUERY_ORDER[number];
+export const BIRELLO_PREFLIGHT_REQUIRED_TABLES = Object.freeze([
+  "knowledge_claims",
+  "knowledge_jurisdictions",
+  "knowledge_territorial_scopes",
+  "knowledge_authorities",
+  "knowledge_authority_competences",
+  "knowledge_sources",
+] as const);
+export type BirelloPreflightRequiredTable =
+  typeof BIRELLO_PREFLIGHT_REQUIRED_TABLES[number];
+export type BirelloPreflightRequiredTablePrivileges =
+  Readonly<Record<BirelloPreflightRequiredTable, boolean>>;
 export const BIRELLO_PREFLIGHT_ENV = Object.freeze({
   enabled: "BIRELLO_PRODUCTION_PREFLIGHT_ENABLED",
   target: "BIRELLO_PRODUCTION_PREFLIGHT_TARGET",
@@ -77,6 +89,9 @@ export type BirelloPreflightReport =
       driverCode: string | null;
       failedQueryId: BirelloPreflightQueryId | null;
       completedQueryIds: readonly BirelloPreflightQueryId[];
+      preflightPublicSchemaUsage: boolean | null;
+      preflightRequiredTablePrivileges: BirelloPreflightRequiredTablePrivileges | null;
+      preflightRequiredRlsPolicies: BirelloPreflightRequiredTablePrivileges | null;
       connectionAttempted: boolean;
       secretsPrinted: false;
     }>
@@ -133,6 +148,9 @@ export type BirelloPreflightReport =
         sources: number;
       }>;
       fixedQueryCount: number;
+      preflightPublicSchemaUsage: boolean;
+      preflightRequiredTablePrivileges: BirelloPreflightRequiredTablePrivileges;
+      preflightRequiredRlsPolicies: BirelloPreflightRequiredTablePrivileges;
       secretsPrinted: false;
     }>;
 
@@ -203,12 +221,14 @@ export const BIRELLO_PREFLIGHT_FIXED_QUERIES = Object.freeze({
     current_setting('transaction_read_only') as transaction_read_only`,
   migrations: `select version::text as version
     from supabase_migrations.schema_migrations order by version::text`,
-  columns: `select table_name, column_name
-    from information_schema.columns
-    where table_schema='public'
-      and table_name = any(array[${Object.keys(REQUIRED_TABLE_COLUMNS)
+  columns: `select c.relname as table_name,a.attname as column_name
+    from pg_catalog.pg_class c
+    join pg_catalog.pg_namespace n on n.oid=c.relnamespace
+    join pg_catalog.pg_attribute a on a.attrelid=c.oid
+    where n.nspname='public' and a.attnum>0 and not a.attisdropped
+      and c.relname = any(array[${Object.keys(REQUIRED_TABLE_COLUMNS)
         .map((name) => `'${name}'`).join(",")}])
-    order by table_name, ordinal_position`,
+    order by c.relname,a.attnum`,
   enums: `select t.typname as enum_name, e.enumlabel as enum_value
     from pg_catalog.pg_type t
     join pg_catalog.pg_namespace n on n.oid=t.typnamespace
@@ -234,6 +254,7 @@ export const BIRELLO_PREFLIGHT_FIXED_QUERIES = Object.freeze({
     ]) order by rolname`,
   privileges: `select r.rolname as role,
       pg_catalog.has_schema_privilege(r.rolname,'public','CREATE') as schema_create,
+      pg_catalog.has_schema_privilege(r.rolname,'public','USAGE') as preflight_public_schema_usage,
       exists(select 1 from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid=c.relnamespace
         where n.nspname='public' and c.relname like 'knowledge\\_%' escape '\\'
           and c.relkind in ('r','p','v','m','f')
@@ -245,6 +266,22 @@ export const BIRELLO_PREFLIGHT_FIXED_QUERIES = Object.freeze({
         from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid=p.pronamespace
         where n.nspname='public' and p.proname like 'knowledge\\_%' escape '\\'
           and pg_catalog.has_function_privilege(r.rolname,p.oid,'EXECUTE')),'[]'::jsonb) as executable
+      ,jsonb_build_object(
+        'knowledge_claims',pg_catalog.has_table_privilege(r.rolname,'public.knowledge_claims','SELECT'),
+        'knowledge_jurisdictions',pg_catalog.has_table_privilege(r.rolname,'public.knowledge_jurisdictions','SELECT'),
+        'knowledge_territorial_scopes',pg_catalog.has_table_privilege(r.rolname,'public.knowledge_territorial_scopes','SELECT'),
+        'knowledge_authorities',pg_catalog.has_table_privilege(r.rolname,'public.knowledge_authorities','SELECT'),
+        'knowledge_authority_competences',pg_catalog.has_table_privilege(r.rolname,'public.knowledge_authority_competences','SELECT'),
+        'knowledge_sources',pg_catalog.has_table_privilege(r.rolname,'public.knowledge_sources','SELECT')
+      ) as preflight_required_table_privileges
+      ,jsonb_build_object(
+        'knowledge_claims',exists(select 1 from pg_catalog.pg_policies x where x.schemaname='public' and x.tablename='knowledge_claims' and x.policyname='birello_preflight_reader_select' and x.roles @> array['birello_preflight_reader'::name] and x.cmd in ('SELECT','ALL') and x.qual='true'),
+        'knowledge_jurisdictions',exists(select 1 from pg_catalog.pg_policies x where x.schemaname='public' and x.tablename='knowledge_jurisdictions' and x.policyname='birello_preflight_reader_select' and x.roles @> array['birello_preflight_reader'::name] and x.cmd in ('SELECT','ALL') and x.qual='true'),
+        'knowledge_territorial_scopes',exists(select 1 from pg_catalog.pg_policies x where x.schemaname='public' and x.tablename='knowledge_territorial_scopes' and x.policyname='birello_preflight_reader_select' and x.roles @> array['birello_preflight_reader'::name] and x.cmd in ('SELECT','ALL') and x.qual='true'),
+        'knowledge_authorities',exists(select 1 from pg_catalog.pg_policies x where x.schemaname='public' and x.tablename='knowledge_authorities' and x.policyname='birello_preflight_reader_select' and x.roles @> array['birello_preflight_reader'::name] and x.cmd in ('SELECT','ALL') and x.qual='true'),
+        'knowledge_authority_competences',exists(select 1 from pg_catalog.pg_policies x where x.schemaname='public' and x.tablename='knowledge_authority_competences' and x.policyname='birello_preflight_reader_select' and x.roles @> array['birello_preflight_reader'::name] and x.cmd in ('SELECT','ALL') and x.qual='true'),
+        'knowledge_sources',exists(select 1 from pg_catalog.pg_policies x where x.schemaname='public' and x.tablename='knowledge_sources' and x.policyname='birello_preflight_reader_select' and x.roles @> array['birello_preflight_reader'::name] and x.cmd in ('SELECT','ALL') and x.qual='true')
+      ) as preflight_required_rls_policies
     from pg_catalog.pg_roles r where r.rolname = any(array[
       'birello_preflight_reader','birello_knowledge_ingestor','birello_knowledge_reader'
     ]) order by r.rolname`,
@@ -302,6 +339,8 @@ export function configurationFromBirelloPreflightEnvironment(
       result: "REJECTED" as const, failureCode: "CONFIGURATION_INVALID" as const,
       failureStage: "configuration" as const, sqlState: null, driverCode: null,
       failedQueryId: null, completedQueryIds: Object.freeze([]),
+      preflightPublicSchemaUsage: null,
+      preflightRequiredTablePrivileges: null, preflightRequiredRlsPolicies: null,
       connectionAttempted: false, secretsPrinted: false,
     });
   }
@@ -354,6 +393,8 @@ export function configurationFromBirelloPreflightEnvironment(
       result: "REJECTED" as const, failureCode: "CONFIGURATION_INVALID" as const,
       failureStage: "configuration" as const, sqlState: null, driverCode: null,
       failedQueryId: null, completedQueryIds: Object.freeze([]),
+      preflightPublicSchemaUsage: null,
+      preflightRequiredTablePrivileges: null, preflightRequiredRlsPolicies: null,
       connectionAttempted: false, secretsPrinted: false,
     });
   }
@@ -366,6 +407,15 @@ function isReport(value: BirelloPreflightConfiguration | BirelloPreflightReport)
 
 function valuesFor(rows: readonly Record<string, unknown>[], key: string): string[] {
   return rows.map((row) => row[key]).filter((value): value is string => typeof value === "string");
+}
+
+function requiredTableBooleans(value: unknown): BirelloPreflightRequiredTablePrivileges {
+  const record = typeof value === "object" && value !== null
+    ? value as Record<string, unknown>
+    : {};
+  return Object.freeze(Object.fromEntries(BIRELLO_PREFLIGHT_REQUIRED_TABLES.map(
+    (table) => [table, record[table] === true],
+  )) as Record<BirelloPreflightRequiredTable, boolean>);
 }
 
 type ExecutionFailureStage = "connect" | "read_only_setup" | "identity" | "query";
@@ -381,6 +431,9 @@ function classifyExecutionFailure(
   stage: ExecutionFailureStage,
   currentQueryId: BirelloPreflightQueryId | null,
   completedQueryIds: readonly BirelloPreflightQueryId[],
+  publicSchemaUsage: boolean | null,
+  tablePrivileges: BirelloPreflightRequiredTablePrivileges | null,
+  rlsPolicies: BirelloPreflightRequiredTablePrivileges | null,
 ): Extract<BirelloPreflightReport, { result: "REJECTED" }> {
   const code = safeErrorField(error, "code").toUpperCase();
   const message = safeErrorField(error, "message");
@@ -418,6 +471,9 @@ function classifyExecutionFailure(
     driverCode,
     failedQueryId: failureCode === "QUERY_EXECUTION_FAILED" ? currentQueryId : null,
     completedQueryIds: Object.freeze([...completedQueryIds]),
+    preflightPublicSchemaUsage: publicSchemaUsage,
+    preflightRequiredTablePrivileges: tablePrivileges,
+    preflightRequiredRlsPolicies: rlsPolicies,
     connectionAttempted: true,
     secretsPrinted: false as const,
   });
@@ -435,6 +491,9 @@ export async function runBirelloProductionPreflight(
   let failureStage: ExecutionFailureStage = "connect";
   let currentQueryId: BirelloPreflightQueryId | null = null;
   const completedQueryIds: BirelloPreflightQueryId[] = [];
+  let publicSchemaUsage: boolean | null = null;
+  let tablePrivileges: BirelloPreflightRequiredTablePrivileges | null = null;
+  let rlsPolicies: BirelloPreflightRequiredTablePrivileges | null = null;
   try {
     client = clientFactory(configuration);
     await client.connect();
@@ -467,6 +526,13 @@ export async function runBirelloProductionPreflight(
       currentQueryId = id;
       results[id] = (await client.query(BIRELLO_PREFLIGHT_FIXED_QUERIES[id])).rows;
       completedQueryIds.push(id);
+      if (id === "privileges") {
+        const preflightRow = results[id].find((row) => row.role === BIRELLO_PREFLIGHT_ROLE);
+        publicSchemaUsage = preflightRow?.preflight_public_schema_usage === true;
+        tablePrivileges = requiredTableBooleans(
+          preflightRow?.preflight_required_table_privileges);
+        rlsPolicies = requiredTableBooleans(preflightRow?.preflight_required_rls_policies);
+      }
     }
 
     const columnRows = results.columns ?? [];
@@ -533,6 +599,10 @@ export async function runBirelloProductionPreflight(
         sources: Number(results.weiltingen?.[0]?.sources ?? -1),
       }),
       fixedQueryCount: Object.keys(BIRELLO_PREFLIGHT_FIXED_QUERIES).length,
+      preflightPublicSchemaUsage: publicSchemaUsage === true,
+      preflightRequiredTablePrivileges: tablePrivileges
+        ?? requiredTableBooleans(null),
+      preflightRequiredRlsPolicies: rlsPolicies ?? requiredTableBooleans(null),
       secretsPrinted: false as const,
     });
   } catch (error) {
@@ -540,7 +610,8 @@ export async function runBirelloProductionPreflight(
       try { await client!.query("ROLLBACK"); } catch { /* sanitized primary failure */ }
     }
     const classified = classifyExecutionFailure(
-      error, failureStage, currentQueryId, completedQueryIds);
+      error, failureStage, currentQueryId, completedQueryIds,
+      publicSchemaUsage, tablePrivileges, rlsPolicies);
     return Object.freeze({ ...classified, connectionAttempted: connected || failureStage === "connect" });
   } finally {
     if (connected) {

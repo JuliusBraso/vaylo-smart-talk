@@ -7,6 +7,7 @@ import { Client } from "pg";
 
 import {
   BIRELLO_PREFLIGHT_FIXED_QUERIES,
+  BIRELLO_PREFLIGHT_REQUIRED_TABLES,
   BIRELLO_PREFLIGHT_ROLE,
   IMPLEMENTED_BIRELLO_REMOTE_PREFLIGHT_EXECUTOR,
   configurationFromBirelloPreflightEnvironment,
@@ -39,6 +40,10 @@ function sql(container: string, database: string, text: string) {
 
 function migration(name: string): string {
   return readFileSync(path.join(ROOT, "supabase", "migrations", name), "utf8");
+}
+
+function bootstrap(name: string): string {
+  return readFileSync(path.join(ROOT, "supabase", "bootstrap", name), "utf8");
 }
 
 function localConfiguration(url: string, database: string): BirelloPreflightConfiguration {
@@ -78,6 +83,15 @@ function fixedQueryFailure(
   };
 }
 
+async function denied(client: Client, query: string): Promise<boolean> {
+  try {
+    await client.query(query);
+    return false;
+  } catch {
+    return true;
+  }
+}
+
 async function fingerprint(client: Client): Promise<string> {
   const result = await client.query(`select jsonb_build_object(
     'claims',(select count(*) from public.knowledge_claims),
@@ -88,6 +102,57 @@ async function fingerprint(client: Client): Promise<string> {
     'policies',(select count(*) from public.knowledge_source_handling_policies)
   )::text as value`);
   return String(result.rows[0]?.value);
+}
+
+async function preflightSecuritySnapshot(client: Client): Promise<Record<string, unknown>> {
+  const result = await client.query(`
+    select
+      r.rolcanlogin,r.rolsuper,r.rolcreatedb,r.rolcreaterole,r.rolinherit,
+      r.rolreplication,r.rolbypassrls,r.rolconnlimit,
+      pg_catalog.has_database_privilege(r.rolname,current_database(),'CONNECT') as db_connect,
+      pg_catalog.has_database_privilege(r.rolname,current_database(),'CREATE') as db_create,
+      pg_catalog.has_schema_privilege(r.rolname,'public','USAGE') as public_usage,
+      pg_catalog.has_schema_privilege(r.rolname,'public','CREATE') as public_create,
+      pg_catalog.has_schema_privilege(r.rolname,'supabase_migrations','USAGE') as ledger_usage,
+      pg_catalog.has_schema_privilege(r.rolname,'supabase_migrations','CREATE') as ledger_create,
+      pg_catalog.has_table_privilege(
+        r.rolname,'supabase_migrations.schema_migrations','SELECT') as ledger_select,
+      (select array_agg(c.relname::text order by c.relname)
+       from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid=c.relnamespace
+       where n.nspname='public' and c.relname like 'knowledge\\_%' escape '\\'
+         and c.relkind in ('r','p','v','m','f')
+         and pg_catalog.has_table_privilege(r.rolname,c.oid,'SELECT')) as selected_tables,
+      (select count(*)::int
+       from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid=c.relnamespace
+       where n.nspname='public' and c.relname like 'knowledge\\_%' escape '\\'
+         and c.relkind in ('r','p','v','m','f') and (
+           pg_catalog.has_table_privilege(r.rolname,c.oid,'INSERT')
+           or pg_catalog.has_table_privilege(r.rolname,c.oid,'UPDATE')
+           or pg_catalog.has_table_privilege(r.rolname,c.oid,'DELETE')
+           or pg_catalog.has_table_privilege(r.rolname,c.oid,'TRUNCATE'))) as write_count,
+      (select array_agg(p.tablename::text order by p.tablename)
+       from pg_catalog.pg_policies p
+       where p.schemaname='public'
+         and p.policyname='birello_preflight_reader_select'
+         and p.roles=array['birello_preflight_reader'::name]
+         and p.cmd='SELECT' and p.qual='true') as policy_tables,
+      (select count(*)::int
+       from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid=c.relnamespace
+       where n.nspname='public' and c.relname=any($2::text[])
+         and c.relrowsecurity) as rls_enabled_count,
+      pg_catalog.has_function_privilege(
+        r.rolname,'public.knowledge_ingest_curated_pack(jsonb)','EXECUTE') as ingest_037,
+      pg_catalog.has_function_privilege(
+        r.rolname,'public.knowledge_ingest_curated_locality_pack(jsonb)','EXECUTE') as ingest_039,
+      pg_catalog.has_function_privilege(
+        r.rolname,'public.knowledge_retrieve_evidence_packets(uuid[],text[])','EXECUTE') as retrieve_038,
+      pg_catalog.has_function_privilege(
+        r.rolname,'public.knowledge_retrieve_anmeldung_context(uuid[],text)','EXECUTE') as retrieve_040,
+      (select count(*)::int from pg_catalog.pg_auth_members m where m.member=r.oid)
+        as membership_count
+    from pg_catalog.pg_roles r where r.rolname=$1
+  `, [BIRELLO_PREFLIGHT_ROLE, BIRELLO_PREFLIGHT_REQUIRED_TABLES]);
+  return result.rows[0] as Record<string, unknown>;
 }
 
 async function main(): Promise<void> {
@@ -125,8 +190,6 @@ async function main(): Promise<void> {
       create role anon nologin;
       create role authenticated nologin;
       create role service_role nologin;
-      create role ${BIRELLO_PREFLIGHT_ROLE} login password '${readerPassword}'
-        nosuperuser nocreatedb nocreaterole noinherit noreplication nobypassrls;
       create role birello_knowledge_ingestor login password '${ingestorPassword}'
         nosuperuser nocreatedb nocreaterole noinherit noreplication nobypassrls;
       create role birello_knowledge_reader login password '${runtimePassword}'
@@ -143,26 +206,9 @@ async function main(): Promise<void> {
       create table if not exists supabase_migrations.schema_migrations(version text primary key);
       insert into supabase_migrations.schema_migrations(version)
       select lpad(value::text,3,'0') from generate_series(1,40) value on conflict do nothing;
-      grant connect on database ${database} to ${BIRELLO_PREFLIGHT_ROLE};
-      grant usage on schema public,supabase_migrations to ${BIRELLO_PREFLIGHT_ROLE};
-      grant select on all tables in schema public to ${BIRELLO_PREFLIGHT_ROLE};
-      grant select on supabase_migrations.schema_migrations to ${BIRELLO_PREFLIGHT_ROLE};
-      do $policy$
-      declare relation_name text;
-      begin
-        for relation_name in
-          select c.relname from pg_catalog.pg_class c
-          join pg_catalog.pg_namespace n on n.oid=c.relnamespace
-          where n.nspname='public' and c.relkind in ('r','p')
-            and c.relname like 'knowledge\\_%' escape '\\'
-        loop
-          execute pg_catalog.format(
-            'create policy v2g_preflight_select on public.%I for select to ${BIRELLO_PREFLIGHT_ROLE} using (true)',
-            relation_name
-          );
-        end loop;
-      end;
-      $policy$;
+      ${bootstrap("004_create_birello_preflight_reader.sql")}
+      ${bootstrap("004_create_birello_preflight_reader.sql")}
+      alter role ${BIRELLO_PREFLIGHT_ROLE} password '${readerPassword}';
       grant usage on schema public to birello_knowledge_ingestor,birello_knowledge_reader;
       grant execute on function public.knowledge_ingest_curated_pack(jsonb) to birello_knowledge_ingestor;
       grant execute on function public.knowledge_retrieve_evidence_packets(uuid[],text[]) to birello_knowledge_reader;
@@ -191,6 +237,23 @@ async function main(): Promise<void> {
     const before = await fingerprint(admin);
     const valid = await runBirelloProductionPreflight(configuration);
     const after = await fingerprint(admin);
+    const securityBeforeRepeat = await preflightSecuritySnapshot(admin);
+    const repeatBootstrap = sql(
+      container, database, bootstrap("004_create_birello_preflight_reader.sql"));
+    const securityAfterRepeat = await preflightSecuritySnapshot(admin);
+    const bootstrapIdempotent = repeatBootstrap.status === 0
+      && JSON.stringify(securityBeforeRepeat) === JSON.stringify(securityAfterRepeat);
+    const privilegeClient = new Client({ connectionString: readerUrl });
+    await privilegeClient.connect();
+    const insertDenied = await denied(privilegeClient,
+      "insert into public.knowledge_claims(id,claim_type,claim_text_canonical,jurisdiction_id) values(gen_random_uuid(),'forbidden','forbidden',gen_random_uuid())");
+    const updateDenied = await denied(privilegeClient,
+      "update public.knowledge_claims set claim_text_canonical='forbidden' where false");
+    const deleteDenied = await denied(privilegeClient,
+      "delete from public.knowledge_claims where false");
+    const schemaCreateDenied = await denied(privilegeClient,
+      "create table public.birello_preflight_forbidden(id integer)");
+    await privilegeClient.end();
     const wrongUser = await runBirelloProductionPreflight({
       ...configuration, connectionString: wrongUserUrl,
     });
@@ -313,6 +376,10 @@ async function main(): Promise<void> {
       "utf8",
     );
     const cliSource = readFileSync(path.join(ROOT, "scripts/run-birello-production-preflight.ts"), "utf8");
+    const preflightBootstrapSource = bootstrap("004_create_birello_preflight_reader.sql");
+    const legacyBootstrapSource = bootstrap("001_create_vaylo_audit_infrastructure.sql");
+    const ingestorBootstrapSource = bootstrap("002_create_birello_knowledge_ingestor.sql");
+    const retrievalBootstrapSource = bootstrap("003_create_birello_knowledge_reader.sql");
     const missingSafe = "result" in missing && missing.result === "CONFIGURATION_REQUIRED"
       && missing.missing.every((name: string) => name.startsWith("BIRELLO_"));
     const legacyIsolated = "result" in legacyOnly && legacyOnly.result === "CONFIGURATION_REQUIRED";
@@ -426,15 +493,83 @@ async function main(): Promise<void> {
       Q9: Object.values(sharedPoolerCases).every(Boolean),
       Q10: pAllPassed,
     };
-    const allPassed = priorCasesPassed
+    const priorDiagnosticCasesPassed = priorCasesPassed
       && connectionCasesPassed
       && Object.values(queryCases).every(Boolean);
+    const expectedSelectedTables = [...BIRELLO_PREFLIGHT_REQUIRED_TABLES].sort();
+    const selectedTables = Array.isArray(securityAfterRepeat.selected_tables)
+      ? [...securityAfterRepeat.selected_tables].map(String).sort()
+      : [];
+    const policyTables = Array.isArray(securityAfterRepeat.policy_tables)
+      ? [...securityAfterRepeat.policy_tables].map(String).sort()
+      : [];
+    const roleAttributesSafe = securityAfterRepeat.rolcanlogin === true
+      && securityAfterRepeat.rolsuper === false
+      && securityAfterRepeat.rolcreatedb === false
+      && securityAfterRepeat.rolcreaterole === false
+      && securityAfterRepeat.rolinherit === false
+      && securityAfterRepeat.rolreplication === false
+      && securityAfterRepeat.rolbypassrls === false
+      && securityAfterRepeat.rolconnlimit === 2
+      && securityAfterRepeat.membership_count === 0;
+    const fixedPrivilegeVisibility = valid.result === "PASS"
+      && valid.preflightPublicSchemaUsage
+      && Object.values(valid.preflightRequiredTablePrivileges).every(Boolean)
+      && Object.values(valid.preflightRequiredRlsPolicies).every(Boolean);
+    const reproduciblePrivilegeCases = {
+      R1: valid.result === "PASS",
+      R2: valid.result === "PASS" && valid.target.transactionReadOnly,
+      R3: valid.result === "PASS" && valid.migrationLedger.includes("040")
+        && securityAfterRepeat.ledger_usage === true
+        && securityAfterRepeat.ledger_create === false
+        && securityAfterRepeat.ledger_select === true,
+      R4: valid.result === "PASS" && valid.roles.length === 3
+        && valid.functions.length >= 4 && valid.privileges.length === 3,
+      R5: valid.result === "PASS" && valid.firstPack.observedIds.length === 28,
+      R6: valid.result === "PASS" && valid.firstPack.duplicateSemanticCount === 0,
+      R7: withPilot.result === "PASS"
+        && Object.values(withPilot.weiltingen).every((count) => count > 0),
+      R8: JSON.stringify(selectedTables) === JSON.stringify(expectedSelectedTables)
+        && fixedPrivilegeVisibility,
+      R9: selectedTables.length === BIRELLO_PREFLIGHT_REQUIRED_TABLES.length,
+      R10: insertDenied,
+      R11: updateDenied,
+      R12: deleteDenied,
+      R13: schemaCreateDenied && securityAfterRepeat.public_create === false,
+      R14: securityAfterRepeat.ingest_037 === false,
+      R15: securityAfterRepeat.ingest_039 === false,
+      R16: securityAfterRepeat.retrieve_038 === false,
+      R17: securityAfterRepeat.retrieve_040 === false,
+      R18: roleAttributesSafe,
+      R19: bootstrapIdempotent,
+      R20: valid.result === "PASS" && withPilot.result === "PASS",
+      R21: before === after,
+      R22: !/password\s+'|password\s+"|SECRET_|postgresql:\/\//i.test(preflightBootstrapSource),
+      R23: !legacyBootstrapSource.includes(BIRELLO_PREFLIGHT_ROLE),
+      R24: !ingestorBootstrapSource.includes(BIRELLO_PREFLIGHT_ROLE),
+      R25: !retrievalBootstrapSource.includes(BIRELLO_PREFLIGHT_ROLE),
+      R26: priorDiagnosticCasesPassed,
+    };
+    const allPassed = priorDiagnosticCasesPassed
+      && Object.values(reproduciblePrivilegeCases).every(Boolean);
     process.stdout.write(`${JSON.stringify({
       phaseResult: allPassed ? "PASS" : "FAILED",
       pgVersion: 17,
       safeDiagnostic: {
-        valid: valid.result === "REJECTED" ? valid.failureCode : valid.result,
-        withPilot: withPilot.result === "REJECTED" ? withPilot.failureCode : withPilot.result,
+        valid: valid.result === "REJECTED"
+          ? {
+              failureCode: valid.failureCode,
+              failedQueryId: valid.failedQueryId,
+              sqlState: valid.sqlState,
+            }
+          : valid.result,
+        withPilot: withPilot.result === "REJECTED"
+          ? {
+              failureCode: withPilot.failureCode,
+              failedQueryId: withPilot.failedQueryId,
+              sqlState: withPilot.sqlState,
+            }
+          : withPilot.result,
         ...(valid.result === "PASS" ? {
           catalog039: valid.catalog039,
           firstPack: {
@@ -452,6 +587,17 @@ async function main(): Promise<void> {
       sharedPoolerCases,
       connectionCases,
       queryCases,
+      reproduciblePrivilegeCases,
+      privilegeContract: {
+        selectedTables,
+        policyTables,
+        noKnowledgeWrites: securityAfterRepeat.write_count === 0,
+        noRpcExecution: securityAfterRepeat.ingest_037 === false
+          && securityAfterRepeat.ingest_039 === false
+          && securityAfterRepeat.retrieve_038 === false
+          && securityAfterRepeat.retrieve_040 === false,
+        idempotent: bootstrapIdempotent,
+      },
       allPassed,
       productionConnectionAttempted: false,
       productionWritePerformed: false,
