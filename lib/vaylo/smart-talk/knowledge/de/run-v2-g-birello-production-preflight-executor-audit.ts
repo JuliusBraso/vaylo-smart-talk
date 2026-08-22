@@ -19,6 +19,7 @@ import {
 } from "../packs/de/anmeldung-ummeldung-abmeldung/pack";
 
 const ROOT = process.cwd();
+const PROJECT_REF = "cdztcnfjxheudqhvepbq";
 
 function docker(args: readonly string[], input?: string, timeout = 180_000) {
   return spawnSync("docker", [...args], {
@@ -177,7 +178,26 @@ async function main(): Promise<void> {
         `postgresql://${BIRELLO_PREFLIGHT_ROLE}:${readerPassword}@db.birello.example/${database}`,
       BIRELLO_PRODUCTION_PREFLIGHT_DATABASE_NAME: database,
       BIRELLO_PRODUCTION_PREFLIGHT_EXPECTED_HOST: "db.birello.example",
+      BIRELLO_PRODUCTION_PREFLIGHT_PROJECT_REF: PROJECT_REF,
       NODE_EXTRA_CA_CERTS: "C:\\operator-owned\\birello-ca.pem",
+    });
+    const poolerConfig = configurationFromBirelloPreflightEnvironment({
+      BIRELLO_PRODUCTION_PREFLIGHT_ENABLED: "true",
+      BIRELLO_PRODUCTION_PREFLIGHT_TARGET: "production",
+      BIRELLO_PRODUCTION_PREFLIGHT_DATABASE_URL:
+        `postgresql://${BIRELLO_PREFLIGHT_ROLE}.${PROJECT_REF}:${readerPassword}@db.birello.example/${database}`,
+      BIRELLO_PRODUCTION_PREFLIGHT_DATABASE_NAME: database,
+      BIRELLO_PRODUCTION_PREFLIGHT_EXPECTED_HOST: "db.birello.example",
+      BIRELLO_PRODUCTION_PREFLIGHT_PROJECT_REF: PROJECT_REF,
+    });
+    const wrongProjectRef = configurationFromBirelloPreflightEnvironment({
+      BIRELLO_PRODUCTION_PREFLIGHT_ENABLED: "true",
+      BIRELLO_PRODUCTION_PREFLIGHT_TARGET: "production",
+      BIRELLO_PRODUCTION_PREFLIGHT_DATABASE_URL:
+        `postgresql://${BIRELLO_PREFLIGHT_ROLE}.aaaaaaaaaaaaaaaaaaaa:${readerPassword}@db.birello.example/${database}`,
+      BIRELLO_PRODUCTION_PREFLIGHT_DATABASE_NAME: database,
+      BIRELLO_PRODUCTION_PREFLIGHT_EXPECTED_HOST: "db.birello.example",
+      BIRELLO_PRODUCTION_PREFLIGHT_PROJECT_REF: PROJECT_REF,
     });
     const wrongConfiguredRole = configurationFromBirelloPreflightEnvironment({
       BIRELLO_PRODUCTION_PREFLIGHT_ENABLED: "true",
@@ -186,6 +206,34 @@ async function main(): Promise<void> {
         `postgresql://birello_knowledge_reader:${readerPassword}@db.birello.example/${database}`,
       BIRELLO_PRODUCTION_PREFLIGHT_DATABASE_NAME: database,
       BIRELLO_PRODUCTION_PREFLIGHT_EXPECTED_HOST: "db.birello.example",
+      BIRELLO_PRODUCTION_PREFLIGHT_PROJECT_REF: PROJECT_REF,
+    });
+    const postgresPoolerRole = configurationFromBirelloPreflightEnvironment({
+      BIRELLO_PRODUCTION_PREFLIGHT_ENABLED: "true",
+      BIRELLO_PRODUCTION_PREFLIGHT_TARGET: "production",
+      BIRELLO_PRODUCTION_PREFLIGHT_DATABASE_URL:
+        `postgresql://postgres.${PROJECT_REF}:${readerPassword}@db.birello.example/${database}`,
+      BIRELLO_PRODUCTION_PREFLIGHT_DATABASE_NAME: database,
+      BIRELLO_PRODUCTION_PREFLIGHT_EXPECTED_HOST: "db.birello.example",
+      BIRELLO_PRODUCTION_PREFLIGHT_PROJECT_REF: PROJECT_REF,
+    });
+    const retrievalPoolerRole = configurationFromBirelloPreflightEnvironment({
+      BIRELLO_PRODUCTION_PREFLIGHT_ENABLED: "true",
+      BIRELLO_PRODUCTION_PREFLIGHT_TARGET: "production",
+      BIRELLO_PRODUCTION_PREFLIGHT_DATABASE_URL:
+        `postgresql://birello_knowledge_reader.${PROJECT_REF}:${readerPassword}@db.birello.example/${database}`,
+      BIRELLO_PRODUCTION_PREFLIGHT_DATABASE_NAME: database,
+      BIRELLO_PRODUCTION_PREFLIGHT_EXPECTED_HOST: "db.birello.example",
+      BIRELLO_PRODUCTION_PREFLIGHT_PROJECT_REF: PROJECT_REF,
+    });
+    const extraSuffix = configurationFromBirelloPreflightEnvironment({
+      BIRELLO_PRODUCTION_PREFLIGHT_ENABLED: "true",
+      BIRELLO_PRODUCTION_PREFLIGHT_TARGET: "production",
+      BIRELLO_PRODUCTION_PREFLIGHT_DATABASE_URL:
+        `postgresql://${BIRELLO_PREFLIGHT_ROLE}.evil.extra:${readerPassword}@db.birello.example/${database}`,
+      BIRELLO_PRODUCTION_PREFLIGHT_DATABASE_NAME: database,
+      BIRELLO_PRODUCTION_PREFLIGHT_EXPECTED_HOST: "db.birello.example",
+      BIRELLO_PRODUCTION_PREFLIGHT_PROJECT_REF: PROJECT_REF,
     });
     const legacyOnly = configurationFromBirelloPreflightEnvironment({
       VAYLO_PRODUCTION_READONLY_DATABASE_URL: readerUrl,
@@ -233,6 +281,17 @@ async function main(): Promise<void> {
     const wrongRoleRejected = "result" in wrongConfiguredRole
       && wrongConfiguredRole.result === "REJECTED"
       && wrongConfiguredRole.failureCode === "CONFIGURATION_INVALID";
+    const poolerSession = "result" in poolerConfig
+      ? poolerConfig
+      : await runBirelloProductionPreflight({
+          ...poolerConfig,
+          target: "local-disposable-proof",
+          connectionString: readerUrl,
+          host: "127.0.0.1",
+          port: Number(port),
+          verifiedTls: false,
+          caMechanism: "LOCAL_TEST_ONLY",
+        });
     const cases = {
       P1: valid.result === "PASS" && valid.target.transactionReadOnly,
       P2: wrongUser.result === "REJECTED" && wrongUser.failureCode === "ROLE_IDENTITY_MISMATCH",
@@ -267,7 +326,25 @@ async function main(): Promise<void> {
         && Object.hasOwn(valid, "weiltingen"),
       P20: true,
     };
-    const allPassed = Object.values(cases).every(Boolean);
+    const pAllPassed = Object.values(cases).every(Boolean);
+    const rejectedConfiguration = (value: unknown): boolean =>
+      typeof value === "object" && value !== null
+      && "result" in value && value.result === "REJECTED";
+    const sharedPoolerCases = {
+      S1: !("result" in productionConfig),
+      S2: !("result" in poolerConfig),
+      S3: rejectedConfiguration(wrongProjectRef),
+      S4: rejectedConfiguration(retrievalPoolerRole),
+      S5: rejectedConfiguration(postgresPoolerRole),
+      S6: rejectedConfiguration(extraSuffix),
+      S7: poolerSession.result === "PASS" && poolerSession.target.role === BIRELLO_PREFLIGHT_ROLE,
+      S8: wrongUser.result === "REJECTED" && wrongUser.failureCode === "ROLE_IDENTITY_MISMATCH",
+      S9: legacyIsolated,
+      S10: retrievalIsolated,
+      S11: cases.P5 && cases.P18,
+      S12: pAllPassed,
+    };
+    const allPassed = pAllPassed && Object.values(sharedPoolerCases).every(Boolean);
     process.stdout.write(`${JSON.stringify({
       phaseResult: allPassed ? "PASS" : "FAILED",
       pgVersion: 17,
@@ -288,6 +365,7 @@ async function main(): Promise<void> {
         ...(withPilot.result === "PASS" ? { weiltingenPresent: withPilot.weiltingen } : {}),
       },
       cases,
+      sharedPoolerCases,
       allPassed,
       productionConnectionAttempted: false,
       productionWritePerformed: false,

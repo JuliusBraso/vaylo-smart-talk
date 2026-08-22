@@ -17,6 +17,7 @@ export const BIRELLO_PREFLIGHT_ENV = Object.freeze({
   databaseUrl: "BIRELLO_PRODUCTION_PREFLIGHT_DATABASE_URL",
   databaseName: "BIRELLO_PRODUCTION_PREFLIGHT_DATABASE_NAME",
   expectedHost: "BIRELLO_PRODUCTION_PREFLIGHT_EXPECTED_HOST",
+  projectRef: "BIRELLO_PRODUCTION_PREFLIGHT_PROJECT_REF",
   forbiddenPublicUrl: "NEXT_PUBLIC_BIRELLO_PRODUCTION_PREFLIGHT_DATABASE_URL",
 } as const);
 
@@ -269,6 +270,7 @@ function requiredEnvironmentNames(): readonly string[] {
     BIRELLO_PREFLIGHT_ENV.databaseUrl,
     BIRELLO_PREFLIGHT_ENV.databaseName,
     BIRELLO_PREFLIGHT_ENV.expectedHost,
+    BIRELLO_PREFLIGHT_ENV.projectRef,
   ];
 }
 
@@ -294,13 +296,19 @@ export function configurationFromBirelloPreflightEnvironment(
     const url = new URL(environment[BIRELLO_PREFLIGHT_ENV.databaseUrl]!);
     const database = environment[BIRELLO_PREFLIGHT_ENV.databaseName]!.trim();
     const expectedHost = environment[BIRELLO_PREFLIGHT_ENV.expectedHost]!.trim().toLowerCase();
+    const projectRef = environment[BIRELLO_PREFLIGHT_ENV.projectRef]!.trim().toLowerCase();
+    const acceptedUsernames = new Set([
+      BIRELLO_PREFLIGHT_ROLE,
+      `${BIRELLO_PREFLIGHT_ROLE}.${projectRef}`,
+    ]);
     const forbiddenParameters = [...url.searchParams.keys()].some((key) =>
       key.toLowerCase().startsWith("ssl") || ["requiressl", "uselibpqcompat"].includes(key.toLowerCase()));
     if (
       environment[BIRELLO_PREFLIGHT_ENV.enabled] !== "true"
       || environment[BIRELLO_PREFLIGHT_ENV.target] !== "production"
+      || !/^[a-z0-9]{20}$/.test(projectRef)
       || !["postgres:", "postgresql:"].includes(url.protocol)
-      || url.username !== BIRELLO_PREFLIGHT_ROLE
+      || !acceptedUsernames.has(url.username)
       || !url.password
       || url.hostname.toLowerCase() !== expectedHost
       || url.pathname.slice(1) !== database
