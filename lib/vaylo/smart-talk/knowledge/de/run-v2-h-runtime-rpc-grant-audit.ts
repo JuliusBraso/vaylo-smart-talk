@@ -12,6 +12,9 @@ import {
   runBirelloProductionMaintenance,
 } from "../source-registry/birello-production-maintenance-executor";
 import {
+  BIRELLO_KNOWLEDGE_FACTORY_RPC_GRANT_COUNT,
+  BIRELLO_KNOWLEDGE_FACTORY_RPC_GRANT_OPERATION,
+  BIRELLO_KNOWLEDGE_FACTORY_RPC_GRANT_STATEMENTS,
   BIRELLO_RUNTIME_RPC_GRANT_COUNT,
   BIRELLO_RUNTIME_RPC_GRANT_INSPECTION_SQL,
   BIRELLO_RUNTIME_RPC_GRANT_OPERATION,
@@ -22,6 +25,7 @@ import {
   type BirelloRuntimeRpcGrantClientFactory,
   type BirelloRuntimeRpcGrantConfiguration,
   type BirelloRuntimeRpcGrantReport,
+  type BirelloRuntimeRpcGrantOperation,
 } from "../source-registry/birello-runtime-rpc-grant-executor";
 
 const ROOT = process.cwd();
@@ -29,6 +33,7 @@ const DATABASE = "birello_rpc_grant_proof";
 const PROJECT_REF = "cdztcnfjxheudqhvepbq";
 const MIGRATION_039 = "039_add_curated_locality_pack_ingestion_rpc.sql";
 const MIGRATION_040 = "040_add_anmeldung_context_retrieval_rpc.sql";
+const MIGRATION_041 = "041_add_generalized_curated_knowledge_ingestion.sql";
 
 function docker(args: readonly string[], input?: string, timeout = 180_000) {
   return spawnSync("docker", [...args], {
@@ -59,8 +64,12 @@ function repositoryBlobHash(content: string): string {
     .digest("hex");
 }
 
-function localConfiguration(url: string): BirelloRuntimeRpcGrantConfiguration {
+function localConfiguration(
+  url: string,
+  operation: BirelloRuntimeRpcGrantOperation = BIRELLO_RUNTIME_RPC_GRANT_OPERATION,
+): BirelloRuntimeRpcGrantConfiguration {
   return Object.freeze({
+    operation,
     target: "local-disposable-proof",
     connectionString: url,
     host: "127.0.0.1",
@@ -121,6 +130,17 @@ async function resetNewGrants(client: Client): Promise<void> {
       birello_preflight_reader,anon,authenticated,service_role`);
   await client.query(`revoke execute on function
     public.knowledge_retrieve_anmeldung_context(uuid[],text)
+    from public,birello_knowledge_ingestor,birello_knowledge_reader,
+      birello_preflight_reader,anon,authenticated,service_role`);
+}
+
+async function resetKnowledgeFactoryGrants(client: Client): Promise<void> {
+  await client.query(`revoke execute on function
+    public.knowledge_ingest_curated_domain_pack(jsonb)
+    from public,birello_knowledge_ingestor,birello_knowledge_reader,
+      birello_preflight_reader,anon,authenticated,service_role`);
+  await client.query(`revoke execute on function
+    public.knowledge_ingest_curated_service_area_pack(jsonb)
     from public,birello_knowledge_ingestor,birello_knowledge_reader,
       birello_preflight_reader,anon,authenticated,service_role`);
 }
@@ -436,6 +456,75 @@ async function main(): Promise<void> {
       BIRELLO_PRODUCTION_INGESTION_DATABASE_URL: url,
     });
 
+    const factoryConfiguration = localConfiguration(
+      url, BIRELLO_KNOWLEDGE_FACTORY_RPC_GRANT_OPERATION);
+    tests.G51 = failureCode(await runBirelloRuntimeRpcGrantOperation(
+      factoryConfiguration, "validate")) === "FUNCTIONS_NOT_DEPLOYED";
+    const migration041 = migration(MIGRATION_041);
+    tests.G52 = repositoryBlobHash(migration041)
+      === "7d488115488e131326d39160980a59090a092282";
+    await admin.query(migration041);
+    const factoryBefore = await knowledgeFingerprint(admin);
+    const factoryValidate = await runBirelloRuntimeRpcGrantOperation(
+      factoryConfiguration, "validate");
+    tests.G53 = ready(factoryValidate);
+    tests.G54 = factoryValidate.result === "PASS"
+      && factoryValidate.operationId === BIRELLO_KNOWLEDGE_FACTORY_RPC_GRANT_OPERATION
+      && factoryValidate.mutationCount === 0 && !factoryValidate.transactionBegan;
+    const factoryApplied = await runBirelloRuntimeRpcGrantOperation(
+      factoryConfiguration, "apply");
+    const factoryState = factoryApplied.result === "PASS" ? factoryApplied.state : null;
+    tests.G55 = factoryApplied.result === "PASS"
+      && factoryApplied.mutationCount === BIRELLO_KNOWLEDGE_FACTORY_RPC_GRANT_COUNT
+      && factoryApplied.transactionBegan && factoryApplied.transactionCommitted;
+    tests.G56 = factoryState?.rpc041Domain.execute.birello_knowledge_ingestor === true;
+    tests.G57 = factoryState?.rpc041ServiceArea.execute.birello_knowledge_ingestor === true;
+    tests.G58 = factoryState !== null
+      && ["rpc041Domain", "rpc041ServiceArea"].every((key) => {
+        const state = factoryState[key as "rpc041Domain" | "rpc041ServiceArea"];
+        return state.execute.birello_knowledge_reader === false
+          && state.execute.birello_preflight_reader === false
+          && state.execute.PUBLIC === false && state.execute.anon === false
+          && state.execute.authenticated === false && state.execute.service_role === false;
+      });
+    tests.G59 = BIRELLO_KNOWLEDGE_FACTORY_RPC_GRANT_STATEMENTS[0]
+      === "GRANT EXECUTE ON FUNCTION public.knowledge_ingest_curated_domain_pack(jsonb) TO birello_knowledge_ingestor"
+      && BIRELLO_KNOWLEDGE_FACTORY_RPC_GRANT_STATEMENTS[1]
+      === "GRANT EXECUTE ON FUNCTION public.knowledge_ingest_curated_service_area_pack(jsonb) TO birello_knowledge_ingestor";
+    tests.G60 = factoryState?.rpc037Baseline === true
+      && factoryState.rpc038Baseline === true
+      && factoryState.rpc039Baseline === true
+      && factoryState.rpc040Baseline === true;
+    tests.G61 = factoryBefore === await knowledgeFingerprint(admin);
+    await resetKnowledgeFactoryGrants(admin);
+    await admin.query(BIRELLO_KNOWLEDGE_FACTORY_RPC_GRANT_STATEMENTS[0]);
+    const factoryPartial = await runBirelloRuntimeRpcGrantOperation(
+      factoryConfiguration, "validate");
+    tests.G62 = failureCode(factoryPartial) === "PARTIAL_STATE";
+    await resetKnowledgeFactoryGrants(admin);
+    tests.G63 = !/--role|--function|--schema|--sql/u.test(cliSource)
+      && BIRELLO_KNOWLEDGE_FACTORY_RPC_GRANT_STATEMENTS.length === 2;
+    const factoryEnvironment = {
+      ...productionEnvironment,
+      [BIRELLO_MAINTENANCE_ENV.authorization]:
+        BIRELLO_KNOWLEDGE_FACTORY_RPC_GRANT_OPERATION,
+    };
+    const factoryProductionConfig = configurationFromBirelloRuntimeRpcGrantEnvironment(
+      factoryEnvironment, BIRELLO_KNOWLEDGE_FACTORY_RPC_GRANT_OPERATION);
+    tests.G64 = !("result" in factoryProductionConfig)
+      && factoryProductionConfig.operation === BIRELLO_KNOWLEDGE_FACTORY_RPC_GRANT_OPERATION;
+    const preflightSource = source(
+      "lib", "vaylo", "smart-talk", "knowledge", "source-registry",
+      "birello-production-preflight-executor.ts");
+    tests.G65 = preflightSource.includes("knowledge_ingest_curated_domain_pack")
+      && preflightSource.includes("knowledge_ingest_curated_service_area_pack");
+    tests.G66 = BIRELLO_KNOWLEDGE_FACTORY_RPC_GRANT_STATEMENTS.every((statement) =>
+      bootstrap002.toUpperCase().replace(/\s+/gu, " ").includes(
+        statement.toUpperCase().replace(/\s+/gu, " "),
+      ))
+      && !bootstrap003.includes("knowledge_ingest_curated_domain_pack")
+      && !bootstrap003.includes("knowledge_ingest_curated_service_area_pack");
+
     await resetNewGrants(admin);
     const existingRegression = await runBirelloProductionMaintenance(
       configuration, "validate");
@@ -443,7 +532,7 @@ async function main(): Promise<void> {
     tests.G50 = rowBefore === rowAfter;
     await admin.end();
 
-    const allPassed = Array.from({ length: 50 }, (_, index) =>
+    const allPassed = Array.from({ length: 66 }, (_, index) =>
       tests[`G${String(index + 1).padStart(2, "0")}`] === true).every(Boolean);
     process.stdout.write(`${JSON.stringify({
       phaseResult: allPassed ? "PASS" : "FAILED",
@@ -453,6 +542,7 @@ async function main(): Promise<void> {
       migrationHashes: {
         "039": repositoryBlobHash(migration039),
         "040": repositoryBlobHash(migration040),
+        "041": repositoryBlobHash(migration041),
       },
       tests,
       allPassed,

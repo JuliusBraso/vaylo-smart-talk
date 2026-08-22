@@ -245,7 +245,9 @@ export const BIRELLO_PREFLIGHT_FIXED_QUERIES = Object.freeze({
       'knowledge_retrieve_evidence_packets',
       'knowledge_ingest_curated_pack',
       'knowledge_ingest_curated_locality_pack',
-      'knowledge_retrieve_anmeldung_context'
+      'knowledge_retrieve_anmeldung_context',
+      'knowledge_ingest_curated_domain_pack',
+      'knowledge_ingest_curated_service_area_pack'
     ]) order by p.proname`,
   roles: `select rolname as role,rolcanlogin as login,rolsuper as superuser,
       rolcreatedb as create_db,rolcreaterole as create_role,rolbypassrls as bypass_rls

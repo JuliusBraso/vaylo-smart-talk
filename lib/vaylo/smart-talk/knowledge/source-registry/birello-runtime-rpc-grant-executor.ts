@@ -29,6 +29,31 @@ export const BIRELLO_RUNTIME_RPC_GRANT_STATEMENTS = Object.freeze(
     ({ signature, role }) => `GRANT EXECUTE ON FUNCTION ${signature} TO ${role}`,
   ),
 );
+export const BIRELLO_KNOWLEDGE_FACTORY_RPC_GRANT_OPERATION =
+  "BIRELLO_KNOWLEDGE_FACTORY_RPC_GRANTS_V1" as const;
+export const BIRELLO_KNOWLEDGE_FACTORY_RPC_GRANT_COUNT = 2 as const;
+export const BIRELLO_KNOWLEDGE_FACTORY_RPC_GRANTS = Object.freeze([
+  Object.freeze({
+    id: "G3",
+    signature: "public.knowledge_ingest_curated_domain_pack(jsonb)",
+    name: "knowledge_ingest_curated_domain_pack",
+    role: "birello_knowledge_ingestor",
+  }),
+  Object.freeze({
+    id: "G4",
+    signature: "public.knowledge_ingest_curated_service_area_pack(jsonb)",
+    name: "knowledge_ingest_curated_service_area_pack",
+    role: "birello_knowledge_ingestor",
+  }),
+] as const);
+export const BIRELLO_KNOWLEDGE_FACTORY_RPC_GRANT_STATEMENTS = Object.freeze(
+  BIRELLO_KNOWLEDGE_FACTORY_RPC_GRANTS.map(
+    ({ signature, role }) => `GRANT EXECUTE ON FUNCTION ${signature} TO ${role}`,
+  ),
+);
+export type BirelloRuntimeRpcGrantOperation =
+  | typeof BIRELLO_RUNTIME_RPC_GRANT_OPERATION
+  | typeof BIRELLO_KNOWLEDGE_FACTORY_RPC_GRANT_OPERATION;
 
 const APPLICATION_ROLES = Object.freeze([
   "birello_knowledge_ingestor",
@@ -45,6 +70,7 @@ const EXPECTED_038 = "public.knowledge_retrieve_evidence_packets(uuid[],text[])"
 
 export type BirelloRuntimeRpcGrantMode = "validate" | "apply";
 export type BirelloRuntimeRpcGrantConfiguration = Readonly<{
+  operation: BirelloRuntimeRpcGrantOperation;
   target: "production" | "local-disposable-proof";
   connectionString: string;
   host: string;
@@ -77,8 +103,12 @@ export type BirelloRuntimeRpcGrantState = Readonly<{
   maintenanceUser: string;
   rpc039: FunctionState;
   rpc040: FunctionState;
+  rpc041Domain: FunctionState;
+  rpc041ServiceArea: FunctionState;
   rpc037Baseline: boolean;
   rpc038Baseline: boolean;
+  rpc039Baseline: boolean;
+  rpc040Baseline: boolean;
   roleSafetyBaseline: boolean;
   safetyFingerprint: string;
 }>;
@@ -121,7 +151,7 @@ export type BirelloRuntimeRpcGrantReport =
     }>
   | Readonly<{
       result: "PASS";
-      operationId: typeof BIRELLO_RUNTIME_RPC_GRANT_OPERATION;
+      operationId: BirelloRuntimeRpcGrantOperation;
       mode: BirelloRuntimeRpcGrantMode;
       readyForApply: boolean;
       target: Readonly<{
@@ -170,7 +200,7 @@ function intendedBaselineExpression(
 }
 
 function functionColumns(
-  prefix: "rpc039" | "rpc040",
+  prefix: "rpc039" | "rpc040" | "rpc041_domain" | "rpc041_service_area",
   name: string,
   signature: string,
 ): string {
@@ -192,10 +222,28 @@ export const BIRELLO_RUNTIME_RPC_GRANT_INSPECTION_SQL = `select
   current_database() as database,current_user as maintenance_user,
   ${functionColumns("rpc039", BIRELLO_RUNTIME_RPC_GRANTS[0].name, BIRELLO_RUNTIME_RPC_GRANTS[0].signature)},
   ${functionColumns("rpc040", BIRELLO_RUNTIME_RPC_GRANTS[1].name, BIRELLO_RUNTIME_RPC_GRANTS[1].signature)},
+  ${functionColumns(
+    "rpc041_domain",
+    BIRELLO_KNOWLEDGE_FACTORY_RPC_GRANTS[0].name,
+    BIRELLO_KNOWLEDGE_FACTORY_RPC_GRANTS[0].signature,
+  )},
+  ${functionColumns(
+    "rpc041_service_area",
+    BIRELLO_KNOWLEDGE_FACTORY_RPC_GRANTS[1].name,
+    BIRELLO_KNOWLEDGE_FACTORY_RPC_GRANTS[1].signature,
+  )},
   ${intendedBaselineExpression(EXPECTED_037, "birello_knowledge_ingestor")}
     as rpc037_baseline,
   ${intendedBaselineExpression(EXPECTED_038, "birello_knowledge_reader")}
     as rpc038_baseline,
+  ${intendedBaselineExpression(
+    BIRELLO_RUNTIME_RPC_GRANTS[0].signature,
+    "birello_knowledge_ingestor",
+  )} as rpc039_baseline,
+  ${intendedBaselineExpression(
+    BIRELLO_RUNTIME_RPC_GRANTS[1].signature,
+    "birello_knowledge_reader",
+  )} as rpc040_baseline,
   (select bool_and(not r.rolsuper and not r.rolcreatedb and not r.rolcreaterole
       and not r.rolbypassrls and not pg_catalog.has_schema_privilege(r.rolname,'public','CREATE')
       and not exists(select 1 from pg_catalog.pg_auth_members m where m.member=r.oid))
@@ -236,6 +284,7 @@ function requiredNames(): readonly string[] {
 
 export function configurationFromBirelloRuntimeRpcGrantEnvironment(
   environment: Readonly<Record<string, string | undefined>> = process.env,
+  operation: BirelloRuntimeRpcGrantOperation = BIRELLO_RUNTIME_RPC_GRANT_OPERATION,
 ): BirelloRuntimeRpcGrantConfiguration | BirelloRuntimeRpcGrantReport {
   const missing = requiredNames().filter((name) => !environment[name]?.trim());
   if (missing.length) {
@@ -264,7 +313,7 @@ export function configurationFromBirelloRuntimeRpcGrantEnvironment(
       environment[BIRELLO_MAINTENANCE_ENV.enabled] !== "true"
       || environment[BIRELLO_MAINTENANCE_ENV.target] !== "production"
       || environment[BIRELLO_MAINTENANCE_ENV.authorization]
-        !== BIRELLO_RUNTIME_RPC_GRANT_OPERATION
+        !== operation
       || environment[BIRELLO_MAINTENANCE_ENV.forbiddenPublicUrl]
       || !["postgres:", "postgresql:"].includes(url.protocol)
       || !url.password || !/^[a-zA-Z0-9_@.-]{1,63}$/.test(expectedUser)
@@ -277,6 +326,7 @@ export function configurationFromBirelloRuntimeRpcGrantEnvironment(
       || /vaylo|dna/i.test(host) || forbiddenParameters
     ) throw new Error("invalid");
     return Object.freeze({
+      operation,
       target: "production" as const,
       connectionString: url.toString(),
       host: url.hostname,
@@ -300,7 +350,9 @@ function productionClientFactory(
   const clientConfig: ClientConfig = {
     connectionString: configuration.connectionString,
     ssl: configuration.verifiedTls ? { rejectUnauthorized: true } : undefined,
-    application_name: "birello_locality_runtime_rpc_grants_v1",
+    application_name: configuration.operation === BIRELLO_RUNTIME_RPC_GRANT_OPERATION
+      ? "birello_locality_runtime_rpc_grants_v1"
+      : "birello_knowledge_factory_rpc_grants_v1",
   };
   const client = new Client(clientConfig);
   return {
@@ -321,7 +373,7 @@ function executeMatrix(value: unknown): ExecuteMatrix {
 
 function functionState(
   row: Record<string, unknown>,
-  prefix: "rpc039" | "rpc040",
+  prefix: "rpc039" | "rpc040" | "rpc041_domain" | "rpc041_service_area",
 ): FunctionState {
   return Object.freeze({
     nameCount: Number(row[`${prefix}_name_count`]),
@@ -342,8 +394,12 @@ function stateFromRow(row: Record<string, unknown> | undefined): BirelloRuntimeR
     maintenanceUser: String(row.maintenance_user),
     rpc039: functionState(row, "rpc039"),
     rpc040: functionState(row, "rpc040"),
+    rpc041Domain: functionState(row, "rpc041_domain"),
+    rpc041ServiceArea: functionState(row, "rpc041_service_area"),
     rpc037Baseline: row.rpc037_baseline === true,
     rpc038Baseline: row.rpc038_baseline === true,
+    rpc039Baseline: row.rpc039_baseline === true,
+    rpc040Baseline: row.rpc040_baseline === true,
     roleSafetyBaseline: row.role_safety_baseline === true,
     safetyFingerprint: String(row.safety_fingerprint),
   });
@@ -357,7 +413,35 @@ function prohibitedExposure(fn: FunctionState, intendedRole: string): boolean {
 function preconditionFailure(
   state: BirelloRuntimeRpcGrantState,
   expectedUser: string,
+  operation: BirelloRuntimeRpcGrantOperation,
 ): BirelloRuntimeRpcGrantFailureCode | null {
+  if (operation === BIRELLO_KNOWLEDGE_FACTORY_RPC_GRANT_OPERATION) {
+    const targets = [state.rpc041Domain, state.rpc041ServiceArea] as const;
+    if (targets.some((target) => target.nameCount === 0)) return "FUNCTIONS_NOT_DEPLOYED";
+    if (targets.some((target) => !target.exactExists || target.nameCount !== 1)) {
+      return "FUNCTION_SIGNATURE_MISMATCH";
+    }
+    if (targets.some((target) => !target.securityDefiner || !target.fixedSearchPath)) {
+      return "FUNCTION_SECURITY_MISMATCH";
+    }
+    if (targets.some((target) => target.owner !== expectedUser)) {
+      return "MAINTENANCE_AUTHORITY_INSUFFICIENT";
+    }
+    if (targets.some((target) =>
+      prohibitedExposure(target, "birello_knowledge_ingestor"))) {
+      return "UNEXPECTED_EXECUTE_EXPOSURE";
+    }
+    if (!state.rpc037Baseline || !state.rpc038Baseline
+      || !state.rpc039Baseline || !state.rpc040Baseline
+      || !state.roleSafetyBaseline) {
+      return "BASELINE_MISMATCH";
+    }
+    const g3 = state.rpc041Domain.execute.birello_knowledge_ingestor;
+    const g4 = state.rpc041ServiceArea.execute.birello_knowledge_ingestor;
+    if (g3 && g4) return "ALREADY_APPLIED";
+    if (g3 || g4) return "PARTIAL_STATE";
+    return null;
+  }
   if (state.rpc039.nameCount === 0 || state.rpc040.nameCount === 0) {
     return "FUNCTIONS_NOT_DEPLOYED";
   }
@@ -390,8 +474,9 @@ function postconditionsPass(
   state: BirelloRuntimeRpcGrantState,
   expectedUser: string,
   safetyFingerprint: string,
+  operation: BirelloRuntimeRpcGrantOperation,
 ): boolean {
-  return preconditionFailure(state, expectedUser) === "ALREADY_APPLIED"
+  return preconditionFailure(state, expectedUser, operation) === "ALREADY_APPLIED"
     && state.safetyFingerprint === safetyFingerprint;
 }
 
@@ -458,14 +543,15 @@ export async function runBirelloRuntimeRpcGrantOperation(
       return rejected("MAINTENANCE_IDENTITY_MISMATCH", stage, true, { state });
     }
     baselineFingerprint = state.safetyFingerprint;
-    const initialFailure = preconditionFailure(state, configuration.expectedUser);
+    const initialFailure = preconditionFailure(
+      state, configuration.expectedUser, configuration.operation);
     if (mode === "validate") {
       if (initialFailure && initialFailure !== "ALREADY_APPLIED") {
         return rejected(initialFailure, "precondition", true, { state });
       }
       return Object.freeze({
         result: "PASS" as const,
-        operationId: BIRELLO_RUNTIME_RPC_GRANT_OPERATION,
+        operationId: configuration.operation,
         mode,
         readyForApply: initialFailure === null,
         target: Object.freeze({
@@ -489,22 +575,31 @@ export async function runBirelloRuntimeRpcGrantOperation(
     stage = "precondition";
     state = stateFromRow((await client.query(
       BIRELLO_RUNTIME_RPC_GRANT_INSPECTION_SQL)).rows[0]);
-    const transactionFailure = preconditionFailure(state, configuration.expectedUser);
+    const transactionFailure = preconditionFailure(
+      state, configuration.expectedUser, configuration.operation);
     if (transactionFailure || state.safetyFingerprint !== baselineFingerprint) {
       throw Object.assign(new Error("PRECONDITION_CHANGED"), {
         boundedFailureCode: transactionFailure ?? "BASELINE_MISMATCH",
       });
     }
     stage = "mutation";
-    for (const statement of BIRELLO_RUNTIME_RPC_GRANT_STATEMENTS) {
+    const statements = configuration.operation === BIRELLO_RUNTIME_RPC_GRANT_OPERATION
+      ? BIRELLO_RUNTIME_RPC_GRANT_STATEMENTS
+      : BIRELLO_KNOWLEDGE_FACTORY_RPC_GRANT_STATEMENTS;
+    const expectedMutationCount =
+      configuration.operation === BIRELLO_RUNTIME_RPC_GRANT_OPERATION
+        ? BIRELLO_RUNTIME_RPC_GRANT_COUNT
+        : BIRELLO_KNOWLEDGE_FACTORY_RPC_GRANT_COUNT;
+    for (const statement of statements) {
       await client.query(statement);
       mutationCount += 1;
     }
     stage = "postcondition";
     state = stateFromRow((await client.query(
       BIRELLO_RUNTIME_RPC_GRANT_INSPECTION_SQL)).rows[0]);
-    if (mutationCount !== BIRELLO_RUNTIME_RPC_GRANT_COUNT
-      || !postconditionsPass(state, configuration.expectedUser, baselineFingerprint)) {
+    if (mutationCount !== expectedMutationCount
+      || !postconditionsPass(
+        state, configuration.expectedUser, baselineFingerprint, configuration.operation)) {
       throw Object.assign(new Error("POSTCONDITION_FAILED"), {
         boundedFailureCode: "POSTCONDITION_FAILED",
       });
@@ -514,7 +609,7 @@ export async function runBirelloRuntimeRpcGrantOperation(
     began = false;
     return Object.freeze({
       result: "PASS" as const,
-      operationId: BIRELLO_RUNTIME_RPC_GRANT_OPERATION,
+      operationId: configuration.operation,
       mode,
       readyForApply: false,
       target: Object.freeze({

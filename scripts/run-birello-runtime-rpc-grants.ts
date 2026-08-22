@@ -1,26 +1,43 @@
 import {
+  BIRELLO_KNOWLEDGE_FACTORY_RPC_GRANT_OPERATION,
+  BIRELLO_RUNTIME_RPC_GRANT_OPERATION,
   configurationFromBirelloRuntimeRpcGrantEnvironment,
   runBirelloRuntimeRpcGrantOperation,
   type BirelloRuntimeRpcGrantMode,
+  type BirelloRuntimeRpcGrantOperation,
 } from "../lib/vaylo/smart-talk/knowledge/source-registry/birello-runtime-rpc-grant-executor";
 
-function argumentsContract(argumentsList: readonly string[]): BirelloRuntimeRpcGrantMode {
+type ArgumentsContract = Readonly<{
+  mode: BirelloRuntimeRpcGrantMode;
+  operation: BirelloRuntimeRpcGrantOperation;
+}>;
+
+function argumentsContract(argumentsList: readonly string[]): ArgumentsContract {
+  const operation = argumentsList[0] === "--operation=locality-runtime-rpc-grants"
+    ? BIRELLO_RUNTIME_RPC_GRANT_OPERATION
+    : argumentsList[0] === "--operation=knowledge-factory-rpc-grants"
+      ? BIRELLO_KNOWLEDGE_FACTORY_RPC_GRANT_OPERATION
+      : null;
   if (
     argumentsList.length !== 2
-    || argumentsList[0] !== "--operation=locality-runtime-rpc-grants"
+    || operation === null
     || !["--mode=validate", "--mode=apply"].includes(argumentsList[1]!)
   ) {
     throw new Error(
-      "Specify --operation=locality-runtime-rpc-grants and --mode=validate or --mode=apply",
+      "Specify --operation=locality-runtime-rpc-grants or "
+      + "--operation=knowledge-factory-rpc-grants and --mode=validate or --mode=apply",
     );
   }
-  return argumentsList[1]!.slice("--mode=".length) as BirelloRuntimeRpcGrantMode;
+  return Object.freeze({
+    operation,
+    mode: argumentsList[1]!.slice("--mode=".length) as BirelloRuntimeRpcGrantMode,
+  });
 }
 
 async function main(): Promise<void> {
-  const mode = argumentsContract(process.argv.slice(2));
+  const { mode, operation } = argumentsContract(process.argv.slice(2));
   const report = await runBirelloRuntimeRpcGrantOperation(
-    configurationFromBirelloRuntimeRpcGrantEnvironment(),
+    configurationFromBirelloRuntimeRpcGrantEnvironment(process.env, operation),
     mode,
   );
   process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);

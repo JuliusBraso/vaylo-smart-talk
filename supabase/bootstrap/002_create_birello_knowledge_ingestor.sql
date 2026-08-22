@@ -103,6 +103,10 @@ grant execute on function public.knowledge_ingest_curated_pack(jsonb)
   to birello_knowledge_ingestor;
 grant execute on function public.knowledge_ingest_curated_locality_pack(jsonb)
   to birello_knowledge_ingestor;
+grant execute on function public.knowledge_ingest_curated_domain_pack(jsonb)
+  to birello_knowledge_ingestor;
+grant execute on function public.knowledge_ingest_curated_service_area_pack(jsonb)
+  to birello_knowledge_ingestor;
 
 revoke all privileges on schema supabase_migrations
   from birello_knowledge_ingestor;
