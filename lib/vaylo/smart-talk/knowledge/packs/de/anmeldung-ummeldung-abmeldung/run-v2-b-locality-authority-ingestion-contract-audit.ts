@@ -107,7 +107,7 @@ function staticChecks(): Record<string, boolean> {
     sourceUnits41: CANONICAL_UNITS.length === 41,
     deployedUnits28: FIRST_PACK_CANONICAL_UNIT_IDS.length === 28
       && FIRST_PACK_CANONICAL_UNIT_IDS.every((id) => CANONICAL_UNITS.some((unit) => unit.id === id)),
-    controlledSelector28: controlled.includes("FIRST_PACK_CANONICAL_UNIT_IDS")
+    controlledSelector41: controlled.includes("CURRENT_PRODUCTION_ANMELDUNG_CANONICAL_UNIT_IDS")
       && controlled.includes("PRODUCTION_DEPLOYED_UNIT_IDS")
       && /PRODUCTION_DEPLOYED_UNITS\.map/.test(controlled),
   };
@@ -122,7 +122,7 @@ async function main(): Promise<void> {
     staticPackBound: staticResult.packBound && staticResult.noPilotHardcode && staticResult.allowlistPresent,
     staticCompetence: staticResult.competenceExplicit,
     staticBootstrap: staticResult.bootstrapGrant,
-    B12: staticResult.sourceUnits41 && staticResult.deployedUnits28 && staticResult.controlledSelector28
+    B12: staticResult.sourceUnits41 && staticResult.deployedUnits28 && staticResult.controlledSelector41
       && staticResult.migration037Untouched && staticResult.migration038Untouched,
   });
 

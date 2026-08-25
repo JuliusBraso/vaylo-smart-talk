@@ -347,3 +347,8 @@ export const V2A_ADDED_CANONICAL_UNIT_IDS = Object.freeze([
   "prefilled-meldeschein-at-new-authority",
   "fictitious-address-fine-framework",
 ] as const);
+
+export const CURRENT_PRODUCTION_ANMELDUNG_CANONICAL_UNIT_IDS = Object.freeze([
+  ...FIRST_PACK_CANONICAL_UNIT_IDS,
+  ...V2A_ADDED_CANONICAL_UNIT_IDS,
+] as const);

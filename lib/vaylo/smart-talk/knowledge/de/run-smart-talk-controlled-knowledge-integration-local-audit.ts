@@ -413,11 +413,12 @@ async function main(): Promise<void> {
   );
   const p5 =
     V2A_ADDED_CANONICAL_UNIT_IDS.includes("official-meldebestätigung")
-    && undeployedState.retrievalCalls === 0
-    && undeployedOnly.diagnostics.selectedCanonicalUnitCount === 0
-    && undeployedOnly.diagnostics.retrievalRpcInvoked === false
-    && undeployedOnly.diagnostics.knowledgeGroundedResponse === false
-    && undeployedOnly.diagnostics.retrievalFailureStage === null;
+    && undeployedState.retrievalCalls === 1
+    && undeployedOnly.diagnostics.selectedCanonicalUnitIds.join() === "official-meldebestätigung"
+    && undeployedOnly.diagnostics.selectedCanonicalUnitCount === 1
+    && undeployedOnly.diagnostics.retrievalRpcInvoked === true
+    && undeployedOnly.diagnostics.knowledgeGroundedResponse === true
+    && undeployedOnly.evidence.some((item) => item.canonicalUnitId === "official-meldebestätigung");
 
   const mixedState = freshState();
   let mixedClaimPayload: readonly string[] = [];
@@ -431,16 +432,18 @@ async function main(): Promise<void> {
       ["anmeldung-deadline-two-weeks", "official-meldebestätigung"],
       async (claimIds) => {
         mixedClaimPayload = claimIds;
-        return ["anmeldung-deadline-two-weeks"].map(row);
+        return ["anmeldung-deadline-two-weeks", "official-meldebestätigung"].map(row);
       },
       mixedState,
     ),
   );
   const p6 =
     mixedState.retrievalCalls === 1
-    && mixed.diagnostics.selectedCanonicalUnitIds.join() === "anmeldung-deadline-two-weeks"
-    && JSON.stringify(mixedClaimPayload) === JSON.stringify([stablePackEntityId("claim:anmeldung-deadline-two-weeks")])
-    && !JSON.stringify(mixedClaimPayload).includes(stablePackEntityId("claim:official-meldebestätigung"));
+    && mixed.diagnostics.selectedCanonicalUnitIds.join() === "anmeldung-deadline-two-weeks,official-meldebestätigung"
+    && JSON.stringify(mixedClaimPayload) === JSON.stringify([
+      stablePackEntityId("claim:anmeldung-deadline-two-weeks"),
+      stablePackEntityId("claim:official-meldebestätigung"),
+    ]);
 
   const onlyNewState = freshState();
   const onlyNew = await prepareControlledQuestionKnowledge(
@@ -451,17 +454,17 @@ async function main(): Promise<void> {
     },
     dependencies(
       ["official-meldebestätigung", "meldebescheinigung-on-request"],
-      async () => [row("official-meldebestätigung")],
+      async () => ["official-meldebestätigung", "meldebescheinigung-on-request"].map(row),
       onlyNewState,
     ),
   );
   const p7 =
-    onlyNewState.retrievalCalls === 0
-    && onlyNew.diagnostics.selectedCanonicalUnitCount === 0
-    && onlyNew.diagnostics.retrievalRpcInvoked === false
-    && onlyNew.diagnostics.knowledgeGroundedResponse === false
-    && onlyNew.diagnostics.retrievalFailureStage === null
-    && onlyNew.evidence.length === 0;
+    onlyNewState.retrievalCalls === 1
+    && onlyNew.diagnostics.selectedCanonicalUnitCount === 2
+    && onlyNew.diagnostics.retrievalRpcInvoked === true
+    && onlyNew.diagnostics.knowledgeGroundedResponse === true
+    && onlyNew.evidence.some((item) => item.canonicalUnitId === "official-meldebestätigung")
+    && onlyNew.evidence.some((item) => item.canonicalUnitId === "meldebescheinigung-on-request");
 
   const p8 =
     inventedState.retrievalCalls === 0

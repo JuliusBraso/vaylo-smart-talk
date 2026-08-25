@@ -31,6 +31,7 @@
     "knowledge:local:audit-production-retrieval-runner": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-production-retrieval-proof-runner-local-audit.ts",
     "knowledge:local:audit-expansion-foundation": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-knowledge-expansion-foundation-audit.ts",
     "knowledge:local:audit-anmeldung-v2-federal-28-to-41": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/packs/de/anmeldung-ummeldung-abmeldung/run-anmeldung-v2-federal-28-to-41-expansion-audit.ts",
+    "knowledge:local:audit-anmeldung-v2-runtime-visibility": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/packs/de/anmeldung-ummeldung-abmeldung/run-anmeldung-v2-runtime-visibility-28-to-41-audit.ts",
     "release:check": "npm run db:verify",
     "verify:8.3v": "npx -y tsx@4.19.2 scripts/verify-8-3v-additional-synthetic-live-execution.ts"
   },

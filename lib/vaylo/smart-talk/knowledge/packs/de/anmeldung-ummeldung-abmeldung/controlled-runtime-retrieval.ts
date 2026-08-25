@@ -22,8 +22,8 @@ import { stablePackEntityId } from "./identity";
 import {
   CANONICAL_LANGUAGE,
   CANONICAL_UNITS,
+  CURRENT_PRODUCTION_ANMELDUNG_CANONICAL_UNIT_IDS,
   FEDERAL_JURISDICTION_CODE,
-  FIRST_PACK_CANONICAL_UNIT_IDS,
   PACK_ID,
   type HandlingMode,
 } from "./pack";
@@ -38,7 +38,7 @@ const HANDLING_MODES = new Set<HandlingMode>([
   "DO_NOT_ANSWER_WITHOUT_CONTEXT",
 ]);
 const UNIT_BY_ID = new Map(CANONICAL_UNITS.map((unit) => [unit.id, unit]));
-const PRODUCTION_DEPLOYED_UNIT_IDS = new Set<string>(FIRST_PACK_CANONICAL_UNIT_IDS);
+const PRODUCTION_DEPLOYED_UNIT_IDS = new Set<string>(CURRENT_PRODUCTION_ANMELDUNG_CANONICAL_UNIT_IDS);
 const PRODUCTION_DEPLOYED_UNITS = CANONICAL_UNITS.filter((unit) => PRODUCTION_DEPLOYED_UNIT_IDS.has(unit.id));
 const UNIT_ID_BY_CLAIM_ID = new Map(
   PRODUCTION_DEPLOYED_UNITS.map((unit) => [stablePackEntityId(`claim:${unit.id}`), unit.id]),
@@ -520,16 +520,6 @@ function normalizeSelection(value: unknown): readonly string[] | null {
   return [...new Set(value as string[])].filter((id) => PRODUCTION_DEPLOYED_UNIT_IDS.has(id));
 }
 
-function parseRequiredContextKeys(value: unknown): readonly string[] {
-  if (Array.isArray(value)) {
-    return value.filter((key): key is string => typeof key === "string");
-  }
-  if (typeof value !== "string" || !/^\{(?:[A-Z_]+(?:,[A-Z_]+)*)?\}$/.test(value)) {
-    return [];
-  }
-  return value.length === 2 ? [] : value.slice(1, -1).split(",");
-}
-
 function compactEvidence(
   rows: readonly Record<string, unknown>[],
   selectedClaimIds: ReadonlySet<string>,
@@ -538,9 +528,11 @@ function compactEvidence(
     const claimId = String(row.claim_id ?? "");
     const canonicalUnitId = UNIT_ID_BY_CLAIM_ID.get(claimId);
     const handlingMode = row.handling_mode;
+    const packUnit = canonicalUnitId ? UNIT_BY_ID.get(canonicalUnitId) : undefined;
     if (
       !selectedClaimIds.has(claimId)
       || !canonicalUnitId
+      || !packUnit
       || row.jurisdiction_code !== FEDERAL_JURISDICTION_CODE
       || row.canonical_language !== CANONICAL_LANGUAGE
       || typeof row.canonical_proposition !== "string"
@@ -556,10 +548,10 @@ function compactEvidence(
       territorialScope: typeof row.territorial_scope === "string" ? row.territorial_scope : null,
       locator: typeof row.legal_locator === "string" ? row.legal_locator : "",
       citation: typeof row.citation_reference === "string" ? row.citation_reference : "",
-      handlingMode: handlingMode as HandlingMode,
+      handlingMode: packUnit.handlingMode,
       canonicalValueUsable: row.canonical_value_usable === true,
       staleBehavior: typeof row.stale_behavior === "string" ? row.stale_behavior : "",
-      requiredContext: parseRequiredContextKeys(row.required_context_keys),
+      requiredContext: packUnit.requiredContext ?? [],
       revalidationDueAt: row.revalidation_due_at ? String(row.revalidation_due_at) : null,
     }];
   });
@@ -571,9 +563,11 @@ function compactContextFederalEvidence(
 ): readonly RuntimeKnowledgeEvidence[] {
   return result.federalEvidence.slice(0, MAX_UNITS).flatMap((row) => {
     const canonicalUnitId = UNIT_ID_BY_CLAIM_ID.get(row.claimId);
+    const packUnit = canonicalUnitId ? UNIT_BY_ID.get(canonicalUnitId) : undefined;
     if (
       !selectedClaimIds.has(row.claimId)
       || !canonicalUnitId
+      || !packUnit
       || row.jurisdictionCode !== FEDERAL_JURISDICTION_CODE
       || row.canonicalLanguage !== CANONICAL_LANGUAGE
       || !HANDLING_MODES.has(row.handlingMode as HandlingMode)
@@ -587,10 +581,10 @@ function compactContextFederalEvidence(
       territorialScope: row.territorialScope,
       locator: row.legalLocator ?? "",
       citation: row.citationReference ?? "",
-      handlingMode: row.handlingMode as HandlingMode,
+      handlingMode: packUnit.handlingMode,
       canonicalValueUsable: row.canonicalValueUsable,
       staleBehavior: row.staleBehavior,
-      requiredContext: [],
+      requiredContext: packUnit.requiredContext ?? [],
       revalidationDueAt: null,
     }];
   });
