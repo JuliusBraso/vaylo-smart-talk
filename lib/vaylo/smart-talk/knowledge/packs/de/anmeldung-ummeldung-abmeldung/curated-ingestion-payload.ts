@@ -1,3 +1,13 @@
+/**
+ * Federal Anmeldung curated pack uses the historical migration 037 ingestion
+ * contract: PACK_ENTITY_IDS and stablePackEntityId. Knowledge Factory 041 uses a
+ * different deterministic identity namespace and does not write retrieval
+ * metadata. Do not mix the two for this pack.
+ *
+ * LEGACY_ANMELDUNG_037_TO_FACTORY_041_COMPATIBILITY — non-blocking technical
+ * debt. A reconciliation bridge is out of scope until there is a concrete
+ * reason to migrate this historical pack onto the Factory contract.
+ */
 import crypto from "node:crypto";
 
 import { PACK_ENTITY_IDS as IDS, stablePackEntityId as stableId } from "./identity";
@@ -7,13 +17,15 @@ import {
   CANONICAL_LANGUAGE,
   CANONICAL_UNITS,
   FEDERAL_JURISDICTION_CODE,
+  FIRST_PACK_CANONICAL_UNIT_IDS,
   PACK_ID,
+  type CanonicalUnit,
 } from "./pack";
 
 const processes = [
-  { id: IDS.anmeldungProcess, title: "Anmeldung einer Wohnung", trigger: "Einzug in eine Wohnung", firstStep: "Wohnungsgeberbestätigung oder Mitteilung bei fehlender Bestätigung vorbereiten und Anmeldung bei der Meldebehörde innerhalb der Frist vornehmen." },
-  { id: IDS.ummeldungProcess, title: "Ummeldung bei Umzug innerhalb Deutschlands", trigger: "Bezug einer neuen Wohnung im Inland", firstStep: "Anmeldung bei der neuen Meldebehörde vorbereiten; eine gesonderte Abmeldung der bisherigen Inlandwohnung ist nach § 17 Absatz 2 nicht der gesetzliche Wegzugstatbestand." },
-  { id: IDS.abmeldungProcess, title: "Abmeldung bei Wegzug ohne neue Wohnung im Inland", trigger: "Auszug ohne neue Wohnung im Inland", firstStep: "Abmeldung bei der Meldebehörde innerhalb der Frist vorbereiten; bei Wegzug ins Ausland ist schriftliche oder elektronische Abmeldung vorgesehen." },
+  { id: IDS.anmeldungProcess, title: "Anmeldung einer Wohnung", trigger: "Einzug in eine Wohnung", firstStep: "Anmeldung innerhalb der gesetzlichen Frist vorbereiten." },
+  { id: IDS.ummeldungProcess, title: "Ummeldung bei Umzug innerhalb Deutschlands", trigger: "Bezug einer neuen Wohnung im Inland", firstStep: "Anmeldung bei der neuen Meldebehörde vorbereiten." },
+  { id: IDS.abmeldungProcess, title: "Abmeldung bei Wegzug ohne neue Wohnung im Inland", trigger: "Auszug ohne neue Wohnung im Inland", firstStep: "Abmeldung innerhalb der gesetzlichen Frist vorbereiten." },
 ] as const;
 
 const stepSpecs = [
@@ -22,8 +34,23 @@ const stepSpecs = [
   { processId: IDS.abmeldungProcess, type: "abmeldung", title: "Wegzug abmelden" },
 ] as const;
 
+const FIRST_PACK_UNIT_ID_SET = new Set<string>(FIRST_PACK_CANONICAL_UNIT_IDS);
+
+function firstPackUnits(): readonly CanonicalUnit[] {
+  return CANONICAL_UNITS.filter((unit) => FIRST_PACK_UNIT_ID_SET.has(unit.id));
+}
+
+function firstPackPassages() {
+  const passageIds = new Set(firstPackUnits().map((unit) => unit.passageId));
+  return BMG_PASSAGES.filter((passage) => passageIds.has(passage.id));
+}
+
+function firstPackVersionContentHash(): string {
+  return crypto.createHash("sha256").update(firstPackPassages().map((item) => item.text).join("\n")).digest("hex");
+}
+
 export function buildCuratedIngestionPayload(): Readonly<Record<string, unknown>> {
-  const versionHash = crypto.createHash("sha256").update(BMG_PASSAGES.map((item) => item.text).join("\n")).digest("hex");
+  const versionHash = firstPackVersionContentHash();
   return Object.freeze({
     packId: PACK_ID,
     canonicalLanguage: CANONICAL_LANGUAGE,
@@ -65,4 +92,20 @@ export function buildCuratedIngestionPayload(): Readonly<Record<string, unknown>
 
 export function curatedPackFingerprint(payload = buildCuratedIngestionPayload()): string {
   return crypto.createHash("sha256").update(JSON.stringify(payload)).digest("hex");
+}
+
+export function buildFirstPackIngestionPayload(): Readonly<Record<string, unknown>> {
+  const payload = structuredClone(buildCuratedIngestionPayload()) as Record<string, unknown>;
+  const claimRows = (payload.claims as Record<string, unknown>[]).filter((claim) =>
+    FIRST_PACK_UNIT_ID_SET.has(String(claim.unitId)));
+  const claimIds = new Set(claimRows.map((claim) => String(claim.id)));
+  const passageIds = new Set(firstPackPassages().map((passage) => stableId(passage.id)));
+  payload.claims = claimRows;
+  payload.passages = (payload.passages as Record<string, unknown>[]).filter((passage) =>
+    passageIds.has(String(passage.id)));
+  payload.retrievalMetadata = (payload.retrievalMetadata as Record<string, unknown>[]).filter((item) =>
+    claimIds.has(String(item.claimId)));
+  payload.terminology = (payload.terminology as Record<string, unknown>[]).filter((item) =>
+    passageIds.has(String(item.passageId)));
+  return Object.freeze(payload);
 }
