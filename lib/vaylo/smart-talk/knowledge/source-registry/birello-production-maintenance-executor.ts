@@ -11,10 +11,21 @@ import {
 
 export const BIRELLO_MAINTENANCE_OPERATION =
   "BIRELLO_PREFLIGHT_READER_PRIVILEGE_REMEDIATION_V1" as const;
+export const BIRELLO_FIT_VISIBILITY_OPERATION =
+  "PREFLIGHT_READER_KNOWLEDGE_FIT_VISIBILITY" as const;
+export type BirelloMaintenanceOperation =
+  | typeof BIRELLO_MAINTENANCE_OPERATION
+  | typeof BIRELLO_FIT_VISIBILITY_OPERATION;
+export const BIRELLO_FIT_VISIBILITY_TABLES = Object.freeze([
+  "knowledge_retrieval_metadata",
+  "knowledge_trust_domains",
+] as const);
+type BirelloFitVisibilityTable = typeof BIRELLO_FIT_VISIBILITY_TABLES[number];
 export const BIRELLO_MAINTENANCE_POLICY_NAME =
   "birello_preflight_reader_select" as const;
 export const BIRELLO_MAINTENANCE_POLICY_USING = "true" as const;
 export const BIRELLO_MAINTENANCE_LOGICAL_MUTATION_COUNT = 12 as const;
+export const BIRELLO_FIT_VISIBILITY_LOGICAL_MUTATION_COUNT = 4 as const;
 export const BIRELLO_MAINTENANCE_ENV = Object.freeze({
   enabled: "BIRELLO_PRODUCTION_MAINTENANCE_ENABLED",
   target: "BIRELLO_PRODUCTION_MAINTENANCE_TARGET",
@@ -135,6 +146,64 @@ export type BirelloMaintenanceReport =
       secretsPrinted: false;
     }>;
 
+export type BirelloFitVisibilityState = Readonly<{
+  database: string;
+  maintenanceUser: string;
+  existingTableSelect: BooleanMap;
+  existingCanonicalPolicies: BooleanMap;
+  targetTableSelect: Readonly<Record<BirelloFitVisibilityTable, boolean>>;
+  targetCanonicalPolicies: Readonly<Record<BirelloFitVisibilityTable, boolean>>;
+  targetPolicyCollisions: Readonly<Record<BirelloFitVisibilityTable, boolean>>;
+  targetRlsEnabled: Readonly<Record<BirelloFitVisibilityTable, boolean>>;
+  maintenanceOwnsTargets: Readonly<Record<BirelloFitVisibilityTable, boolean>>;
+  extraKnowledgeSelectCount: number;
+  knowledgeWritePrivilegeCount: number;
+  schemaCreate: boolean;
+  superuser: boolean;
+  createDb: boolean;
+  createRole: boolean;
+  bypassRls: boolean;
+  executableFunctionCount: number;
+  membershipCount: number;
+}>;
+
+export type BirelloFitVisibilityReport =
+  | Extract<BirelloMaintenanceReport, { result: "CONFIGURATION_REQUIRED" }>
+  | Readonly<{
+      result: "REJECTED";
+      failureCode: FailureCode;
+      failureStage: "configuration" | "connect" | "identity" | "precondition"
+        | "mutation" | "postcondition" | "commit";
+      sqlState: string | null;
+      connectionAttempted: boolean;
+      transactionBegan: boolean;
+      transactionCommitted: false;
+      transactionRolledBack: boolean;
+      mutationCount: number;
+      state: BirelloFitVisibilityState | null;
+      secretsPrinted: false;
+    }>
+  | Readonly<{
+      result: "PASS";
+      operationId: typeof BIRELLO_FIT_VISIBILITY_OPERATION;
+      mode: BirelloMaintenanceMode;
+      target: Readonly<{
+        host: string;
+        port: number;
+        database: string;
+        projectRef: string;
+        maintenanceUser: string;
+        verifiedTls: boolean;
+        caMechanism: BirelloMaintenanceConfiguration["caMechanism"];
+      }>;
+      state: BirelloFitVisibilityState;
+      transactionBegan: boolean;
+      transactionCommitted: boolean;
+      transactionRolledBack: false;
+      mutationCount: number;
+      secretsPrinted: false;
+    }>;
+
 function sqlMap(expression: (table: BirelloPreflightRequiredTable) => string): string {
   return `jsonb_build_object(${BIRELLO_PREFLIGHT_REQUIRED_TABLES
     .map((table) => `'${table}',${expression(table)}`).join(",")})`;
@@ -142,7 +211,7 @@ function sqlMap(expression: (table: BirelloPreflightRequiredTable) => string): s
 
 const requiredTableSqlList = BIRELLO_PREFLIGHT_REQUIRED_TABLES
   .map((table) => `'${table}'`).join(",");
-const validPolicy = (table: BirelloPreflightRequiredTable): string =>
+const validPolicy = (table: string): string =>
   `x.schemaname='public' and x.tablename='${table}'`
   + ` and x.policyname='${BIRELLO_MAINTENANCE_POLICY_NAME}'`
   + ` and x.permissive='PERMISSIVE' and x.cmd='SELECT'`
@@ -192,6 +261,61 @@ export const BIRELLO_MAINTENANCE_POLICY_STATEMENTS = Object.freeze(
   ),
 );
 
+const fitVisibilitySqlMap = (
+  expression: (table: BirelloFitVisibilityTable) => string,
+): string => `jsonb_build_object(${BIRELLO_FIT_VISIBILITY_TABLES
+  .map((table) => `'${table}',${expression(table)}`).join(",")})`;
+
+const allVisibleTableSqlList = [
+  ...BIRELLO_PREFLIGHT_REQUIRED_TABLES,
+  ...BIRELLO_FIT_VISIBILITY_TABLES,
+].map((table) => `'${table}'`).join(",");
+
+export const BIRELLO_FIT_VISIBILITY_INSPECTION_SQL = `select
+  current_database() as database,current_user as maintenance_user,
+  ${sqlMap((table) => `pg_catalog.has_table_privilege('${BIRELLO_PREFLIGHT_ROLE}','public.${table}','SELECT')`)} as existing_table_select,
+  ${sqlMap((table) => `exists(select 1 from pg_catalog.pg_policies x where ${validPolicy(table)})`)} as existing_canonical_policies,
+  ${fitVisibilitySqlMap((table) => `pg_catalog.has_table_privilege('${BIRELLO_PREFLIGHT_ROLE}','public.${table}','SELECT')`)} as target_table_select,
+  ${fitVisibilitySqlMap((table) => `exists(select 1 from pg_catalog.pg_policies x where ${validPolicy(table)})`)} as target_canonical_policies,
+  ${fitVisibilitySqlMap((table) => `exists(select 1 from pg_catalog.pg_policies x where x.schemaname='public' and x.tablename='${table}' and x.policyname='${BIRELLO_MAINTENANCE_POLICY_NAME}' and not (${validPolicy(table)}))`)} as target_policy_collisions,
+  ${fitVisibilitySqlMap((table) => `exists(select 1 from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relname='${table}' and c.relrowsecurity)`)} as target_rls_enabled,
+  ${fitVisibilitySqlMap((table) => `exists(select 1 from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid=c.relnamespace join pg_catalog.pg_roles o on o.oid=c.relowner where n.nspname='public' and c.relname='${table}' and o.rolname=current_user)`)} as maintenance_owns_targets,
+  (select count(*)::int from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid=c.relnamespace
+    where n.nspname='public' and c.relname like 'knowledge\\_%' escape '\\'
+      and c.relkind in ('r','p','v','m','f') and c.relname not in (${allVisibleTableSqlList})
+      and pg_catalog.has_table_privilege('${BIRELLO_PREFLIGHT_ROLE}',c.oid,'SELECT')) as extra_knowledge_select_count,
+  (select count(*)::int from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid=c.relnamespace
+    where n.nspname='public' and c.relname like 'knowledge\\_%' escape '\\'
+      and c.relkind in ('r','p','v','m','f') and (
+        pg_catalog.has_table_privilege('${BIRELLO_PREFLIGHT_ROLE}',c.oid,'INSERT')
+        or pg_catalog.has_table_privilege('${BIRELLO_PREFLIGHT_ROLE}',c.oid,'UPDATE')
+        or pg_catalog.has_table_privilege('${BIRELLO_PREFLIGHT_ROLE}',c.oid,'DELETE')
+        or pg_catalog.has_table_privilege('${BIRELLO_PREFLIGHT_ROLE}',c.oid,'TRUNCATE')
+        or pg_catalog.has_table_privilege('${BIRELLO_PREFLIGHT_ROLE}',c.oid,'REFERENCES')
+        or pg_catalog.has_table_privilege('${BIRELLO_PREFLIGHT_ROLE}',c.oid,'TRIGGER'))) as knowledge_write_privilege_count,
+  pg_catalog.has_schema_privilege('${BIRELLO_PREFLIGHT_ROLE}','public','CREATE') as schema_create,
+  r.rolsuper as superuser,r.rolcreatedb as create_db,r.rolcreaterole as create_role,
+  r.rolbypassrls as bypass_rls,
+  (select count(*)::int from pg_catalog.pg_proc p
+    join pg_catalog.pg_namespace n on n.oid=p.pronamespace
+    where n.nspname='public' and p.proname like 'knowledge\\_%' escape '\\'
+      and pg_catalog.has_function_privilege('${BIRELLO_PREFLIGHT_ROLE}',p.oid,'EXECUTE'))
+    as executable_function_count,
+  (select count(*)::int from pg_catalog.pg_auth_members m where m.member=r.oid) as membership_count
+from pg_catalog.pg_roles r where r.rolname='${BIRELLO_PREFLIGHT_ROLE}'`;
+
+export const BIRELLO_FIT_VISIBILITY_GRANT_STATEMENTS = Object.freeze(
+  BIRELLO_FIT_VISIBILITY_TABLES.map(
+    (table) => `GRANT SELECT ON TABLE public.${table} TO ${BIRELLO_PREFLIGHT_ROLE}`,
+  ),
+);
+export const BIRELLO_FIT_VISIBILITY_POLICY_STATEMENTS = Object.freeze(
+  BIRELLO_FIT_VISIBILITY_TABLES.map(
+    (table) => `CREATE POLICY ${BIRELLO_MAINTENANCE_POLICY_NAME} ON public.${table}`
+      + ` FOR SELECT TO ${BIRELLO_PREFLIGHT_ROLE} USING (${BIRELLO_MAINTENANCE_POLICY_USING})`,
+  ),
+);
+
 function requiredNames(): readonly string[] {
   return [
     BIRELLO_MAINTENANCE_ENV.enabled,
@@ -207,6 +331,7 @@ function requiredNames(): readonly string[] {
 
 export function configurationFromBirelloMaintenanceEnvironment(
   environment: Readonly<Record<string, string | undefined>> = process.env,
+  operation: BirelloMaintenanceOperation = BIRELLO_MAINTENANCE_OPERATION,
 ): BirelloMaintenanceConfiguration | BirelloMaintenanceReport {
   const missing = requiredNames().filter((name) => !environment[name]?.trim());
   if (missing.length) {
@@ -235,7 +360,7 @@ export function configurationFromBirelloMaintenanceEnvironment(
     if (
       environment[BIRELLO_MAINTENANCE_ENV.enabled] !== "true"
       || environment[BIRELLO_MAINTENANCE_ENV.target] !== "production"
-      || environment[BIRELLO_MAINTENANCE_ENV.authorization] !== BIRELLO_MAINTENANCE_OPERATION
+      || environment[BIRELLO_MAINTENANCE_ENV.authorization] !== operation
       || environment[BIRELLO_MAINTENANCE_ENV.forbiddenPublicUrl]
       || !["postgres:", "postgresql:"].includes(url.protocol)
       || !url.password || !/^[a-zA-Z0-9_@.-]{1,63}$/.test(expectedUser)
@@ -263,6 +388,81 @@ export function configurationFromBirelloMaintenanceEnvironment(
   } catch {
     return rejected("CONFIGURATION_INVALID", "configuration", false);
   }
+}
+
+function visibilityBoolMap(
+  value: unknown,
+): Readonly<Record<BirelloFitVisibilityTable, boolean>> {
+  const record = typeof value === "object" && value !== null
+    ? value as Record<string, unknown>
+    : {};
+  return Object.freeze(Object.fromEntries(BIRELLO_FIT_VISIBILITY_TABLES.map(
+    (table) => [table, record[table] === true],
+  )) as Record<BirelloFitVisibilityTable, boolean>);
+}
+
+function visibilityStateFromRow(
+  row: Record<string, unknown> | undefined,
+): BirelloFitVisibilityState {
+  if (!row) throw new Error("STATE_UNAVAILABLE");
+  return Object.freeze({
+    database: String(row.database),
+    maintenanceUser: String(row.maintenance_user),
+    existingTableSelect: boolMap(row.existing_table_select),
+    existingCanonicalPolicies: boolMap(row.existing_canonical_policies),
+    targetTableSelect: visibilityBoolMap(row.target_table_select),
+    targetCanonicalPolicies: visibilityBoolMap(row.target_canonical_policies),
+    targetPolicyCollisions: visibilityBoolMap(row.target_policy_collisions),
+    targetRlsEnabled: visibilityBoolMap(row.target_rls_enabled),
+    maintenanceOwnsTargets: visibilityBoolMap(row.maintenance_owns_targets),
+    extraKnowledgeSelectCount: Number(row.extra_knowledge_select_count),
+    knowledgeWritePrivilegeCount: Number(row.knowledge_write_privilege_count),
+    schemaCreate: row.schema_create === true,
+    superuser: row.superuser === true,
+    createDb: row.create_db === true,
+    createRole: row.create_role === true,
+    bypassRls: row.bypass_rls === true,
+    executableFunctionCount: Number(row.executable_function_count),
+    membershipCount: Number(row.membership_count),
+  });
+}
+
+function allVisibility(
+  map: Readonly<Record<BirelloFitVisibilityTable, boolean>>,
+  expected: boolean,
+): boolean {
+  return BIRELLO_FIT_VISIBILITY_TABLES.every((table) => map[table] === expected);
+}
+
+function visibilityProhibitedSafe(state: BirelloFitVisibilityState): boolean {
+  return all(state.existingTableSelect, true)
+    && all(state.existingCanonicalPolicies, true)
+    && allVisibility(state.targetRlsEnabled, true)
+    && state.extraKnowledgeSelectCount === 0
+    && state.knowledgeWritePrivilegeCount === 0
+    && !state.schemaCreate && !state.superuser && !state.createDb
+    && !state.createRole && !state.bypassRls
+    && state.executableFunctionCount === 0
+    && state.membershipCount === 0;
+}
+
+function visibilityBaselineFailure(
+  state: BirelloFitVisibilityState,
+): FailureCode | null {
+  if (Object.values(state.targetPolicyCollisions).some(Boolean)) return "POLICY_COLLISION";
+  if (!visibilityProhibitedSafe(state)) return "BASELINE_MISMATCH";
+  const selected = Object.values(state.targetTableSelect).filter(Boolean).length;
+  const policies = Object.values(state.targetCanonicalPolicies).filter(Boolean).length;
+  if (selected === 2 && policies === 2) return "ALREADY_APPLIED";
+  if (selected !== 0 || policies !== 0) return "PARTIAL_STATE";
+  return null;
+}
+
+function visibilityPostconditionsPass(state: BirelloFitVisibilityState): boolean {
+  return visibilityProhibitedSafe(state)
+    && allVisibility(state.targetTableSelect, true)
+    && allVisibility(state.targetCanonicalPolicies, true)
+    && !Object.values(state.targetPolicyCollisions).some(Boolean);
 }
 
 function productionClientFactory(
@@ -508,6 +708,207 @@ export async function runBirelloProductionMaintenance(
   } finally {
     if (connected) {
       try { await client.end(); } catch { /* sanitized cleanup */ }
+    }
+  }
+}
+
+function visibilityRejected(
+  failureCode: FailureCode,
+  failureStage: Extract<BirelloFitVisibilityReport, { result: "REJECTED" }>["failureStage"],
+  connectionAttempted: boolean,
+  additions: Partial<Extract<BirelloFitVisibilityReport, { result: "REJECTED" }>> = {},
+): Extract<BirelloFitVisibilityReport, { result: "REJECTED" }> {
+  return Object.freeze({
+    result: "REJECTED" as const,
+    failureCode,
+    failureStage,
+    sqlState: null,
+    connectionAttempted,
+    transactionBegan: false,
+    transactionCommitted: false as const,
+    transactionRolledBack: false,
+    mutationCount: 0,
+    state: null,
+    secretsPrinted: false as const,
+    ...additions,
+  });
+}
+
+export async function runBirelloFitVisibilityMaintenance(
+  configurationOrReport: BirelloMaintenanceConfiguration | BirelloMaintenanceReport,
+  mode: BirelloMaintenanceMode,
+  clientFactory: BirelloMaintenanceClientFactory = productionClientFactory,
+): Promise<BirelloFitVisibilityReport> {
+  if (isReport(configurationOrReport)) {
+    if (configurationOrReport.result === "CONFIGURATION_REQUIRED") {
+      return configurationOrReport;
+    }
+    if (configurationOrReport.result === "REJECTED") {
+      return visibilityRejected(
+        configurationOrReport.failureCode,
+        configurationOrReport.failureStage,
+        configurationOrReport.connectionAttempted,
+        {
+          sqlState: configurationOrReport.sqlState,
+          transactionBegan: configurationOrReport.transactionBegan,
+          transactionRolledBack: configurationOrReport.transactionRolledBack,
+          mutationCount: configurationOrReport.mutationCount,
+        },
+      );
+    }
+    return visibilityRejected("CONFIGURATION_INVALID", "configuration", false);
+  }
+  const configuration = configurationOrReport;
+  const client = clientFactory(configuration);
+  let connected = false;
+  let began = false;
+  let mutationCount = 0;
+  let stage: Extract<BirelloFitVisibilityReport, { result: "REJECTED" }>["failureStage"] =
+    "connect";
+  let lastState: BirelloFitVisibilityState | null = null;
+  try {
+    await client.connect();
+    connected = true;
+    stage = "identity";
+    lastState = visibilityStateFromRow(
+      (await client.query(BIRELLO_FIT_VISIBILITY_INSPECTION_SQL)).rows[0],
+    );
+    if (lastState.database !== configuration.database) {
+      return visibilityRejected("TARGET_IDENTITY_MISMATCH", stage, true, {
+        state: lastState,
+      });
+    }
+    if (lastState.maintenanceUser !== configuration.expectedUser) {
+      return visibilityRejected("MAINTENANCE_IDENTITY_MISMATCH", stage, true, {
+        state: lastState,
+      });
+    }
+    if (!allVisibility(lastState.maintenanceOwnsTargets, true)) {
+      return visibilityRejected("MAINTENANCE_AUTHORITY_INSUFFICIENT", stage, true, {
+        state: lastState,
+      });
+    }
+    const initialFailure = visibilityBaselineFailure(lastState);
+    if (mode === "validate") {
+      if (initialFailure && initialFailure !== "ALREADY_APPLIED") {
+        return visibilityRejected(initialFailure, "precondition", true, {
+          state: lastState,
+        });
+      }
+      return Object.freeze({
+        result: "PASS" as const,
+        operationId: BIRELLO_FIT_VISIBILITY_OPERATION,
+        mode,
+        target: Object.freeze({
+          host: configuration.host,
+          port: configuration.port,
+          database: configuration.database,
+          projectRef: configuration.projectRef,
+          maintenanceUser: configuration.expectedUser,
+          verifiedTls: configuration.verifiedTls,
+          caMechanism: configuration.caMechanism,
+        }),
+        state: lastState,
+        transactionBegan: false,
+        transactionCommitted: false,
+        transactionRolledBack: false as const,
+        mutationCount: 0,
+        secretsPrinted: false as const,
+      });
+    }
+    if (initialFailure) {
+      return visibilityRejected(initialFailure, "precondition", true, {
+        state: lastState,
+      });
+    }
+
+    await client.query("BEGIN");
+    began = true;
+    stage = "precondition";
+    lastState = visibilityStateFromRow(
+      (await client.query(BIRELLO_FIT_VISIBILITY_INSPECTION_SQL)).rows[0],
+    );
+    const transactionFailure = visibilityBaselineFailure(lastState);
+    if (
+      transactionFailure
+      || lastState.database !== configuration.database
+      || lastState.maintenanceUser !== configuration.expectedUser
+      || !allVisibility(lastState.maintenanceOwnsTargets, true)
+    ) {
+      throw Object.assign(new Error("PRECONDITION_CHANGED"), {
+        boundedFailureCode: transactionFailure ?? "BASELINE_MISMATCH",
+      });
+    }
+
+    stage = "mutation";
+    for (const statement of BIRELLO_FIT_VISIBILITY_GRANT_STATEMENTS) {
+      await client.query(statement);
+      mutationCount += 1;
+    }
+    for (const statement of BIRELLO_FIT_VISIBILITY_POLICY_STATEMENTS) {
+      await client.query(statement);
+      mutationCount += 1;
+    }
+
+    stage = "postcondition";
+    lastState = visibilityStateFromRow(
+      (await client.query(BIRELLO_FIT_VISIBILITY_INSPECTION_SQL)).rows[0],
+    );
+    if (
+      mutationCount !== BIRELLO_FIT_VISIBILITY_LOGICAL_MUTATION_COUNT
+      || !visibilityPostconditionsPass(lastState)
+    ) {
+      throw Object.assign(new Error("POSTCONDITION_FAILED"), {
+        boundedFailureCode: "POSTCONDITION_FAILED",
+      });
+    }
+    stage = "commit";
+    await client.query("COMMIT");
+    began = false;
+    return Object.freeze({
+      result: "PASS" as const,
+      operationId: BIRELLO_FIT_VISIBILITY_OPERATION,
+      mode,
+      target: Object.freeze({
+        host: configuration.host,
+        port: configuration.port,
+        database: configuration.database,
+        projectRef: configuration.projectRef,
+        maintenanceUser: configuration.expectedUser,
+        verifiedTls: configuration.verifiedTls,
+        caMechanism: configuration.caMechanism,
+      }),
+      state: lastState,
+      transactionBegan: true,
+      transactionCommitted: true,
+      transactionRolledBack: false as const,
+      mutationCount,
+      secretsPrinted: false as const,
+    });
+  } catch (error) {
+    let rolledBack = false;
+    if (began) {
+      try {
+        await client.query("ROLLBACK");
+        rolledBack = true;
+      } catch { /* primary failure remains bounded */ }
+    }
+    const bounded = typeof error === "object" && error !== null
+      && "boundedFailureCode" in error
+      ? (error as { boundedFailureCode: FailureCode }).boundedFailureCode
+      : "EXECUTION_FAILED";
+    return visibilityRejected(bounded, stage, connected, {
+      sqlState: safeSqlState(error),
+      transactionBegan: began || rolledBack,
+      transactionRolledBack: rolledBack,
+      mutationCount,
+      state: lastState,
+    });
+  } finally {
+    if (connected) {
+      try {
+        await client.end();
+      } catch { /* sanitized cleanup */ }
     }
   }
 }

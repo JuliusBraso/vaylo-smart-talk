@@ -431,6 +431,20 @@ async function main(): Promise<void> {
         && valid.roles.length === 3 && valid.firstPack.expectedIds.length === 28
         && Object.hasOwn(valid, "weiltingen"),
       P20: true,
+      P21: valid.result === "PASS" && valid.fixedQueryCount === 15
+        && valid.catalogFit.retrievalMetadataTable
+        && valid.catalogFit.trustDomainTable
+        && valid.catalogFit.sourceNormalizedUrlUniqueIndex
+        && valid.sourceUniqueness.duplicateNormalizedUrlCount === 0
+        && valid.fit.missingSelect.includes("knowledge_retrieval_metadata.SELECT")
+        && valid.fit.missingSelect.includes("knowledge_trust_domains.SELECT")
+        && valid.retrievalMetadata.selectVisible === false
+        && valid.trustDomain.selectVisible === false,
+      P22: withPilot.result === "PASS"
+        && withPilot.deJurisdiction.parentRootValid
+        && withPilot.deByWeiltingen.parentChainValid
+        && withPilot.deByWeiltingen.municipalityScopeValid
+        && withPilot.deByWeiltingen.competenceFamilyValid,
     };
     const pAllPassed = Object.values(cases).every(Boolean);
     const rejectedConfiguration = (value: unknown): boolean =>

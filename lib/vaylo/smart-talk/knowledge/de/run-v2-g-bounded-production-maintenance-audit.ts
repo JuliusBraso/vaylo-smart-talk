@@ -7,6 +7,11 @@ import { Client } from "pg";
 
 import {
   BIRELLO_MAINTENANCE_ENV,
+  BIRELLO_FIT_VISIBILITY_GRANT_STATEMENTS,
+  BIRELLO_FIT_VISIBILITY_LOGICAL_MUTATION_COUNT,
+  BIRELLO_FIT_VISIBILITY_OPERATION,
+  BIRELLO_FIT_VISIBILITY_POLICY_STATEMENTS,
+  BIRELLO_FIT_VISIBILITY_TABLES,
   BIRELLO_MAINTENANCE_GRANT_STATEMENTS,
   BIRELLO_MAINTENANCE_LOGICAL_MUTATION_COUNT,
   BIRELLO_MAINTENANCE_OPERATION,
@@ -14,6 +19,7 @@ import {
   BIRELLO_MAINTENANCE_POLICY_STATEMENTS,
   BIRELLO_MAINTENANCE_POLICY_USING,
   configurationFromBirelloMaintenanceEnvironment,
+  runBirelloFitVisibilityMaintenance,
   runBirelloProductionMaintenance,
   type BirelloMaintenanceClientFactory,
   type BirelloMaintenanceConfiguration,
@@ -22,6 +28,8 @@ import {
 import {
   BIRELLO_PREFLIGHT_REQUIRED_TABLES,
   BIRELLO_PREFLIGHT_ROLE,
+  runBirelloProductionPreflight,
+  type BirelloPreflightConfiguration,
 } from "../source-registry/birello-production-preflight-executor";
 
 const ROOT = process.cwd();
@@ -54,6 +62,19 @@ function localConfiguration(url: string): BirelloMaintenanceConfiguration {
     database: DATABASE,
     projectRef: PROJECT_REF,
     expectedUser: "postgres",
+    verifiedTls: false,
+    caMechanism: "LOCAL_TEST_ONLY",
+  });
+}
+
+function localPreflightConfiguration(url: string): BirelloPreflightConfiguration {
+  return Object.freeze({
+    target: "local-disposable-proof",
+    connectionString: url,
+    host: "127.0.0.1",
+    port: Number(new URL(url).port),
+    database: DATABASE,
+    user: BIRELLO_PREFLIGHT_ROLE,
     verifiedTls: false,
     caMechanism: "LOCAL_TEST_ONLY",
   });
@@ -170,6 +191,8 @@ async function main(): Promise<void> {
       create role anon nologin;
       create role authenticated nologin;
       create role service_role nologin;
+      create role birello_knowledge_ingestor nologin;
+      create role birello_knowledge_reader nologin;
       create role ${BIRELLO_PREFLIGHT_ROLE} login password '${readerPassword}'
         nosuperuser nocreatedb nocreaterole noinherit noreplication nobypassrls;
       ${migration("032_create_minimal_knowledge_schema.sql")}
@@ -180,7 +203,17 @@ async function main(): Promise<void> {
       ${migration("038_add_curated_knowledge_retrieval_rpc.sql")}
       ${migration("039_add_curated_locality_pack_ingestion_rpc.sql")}
       ${migration("040_add_anmeldung_context_retrieval_rpc.sql")}
+      create schema if not exists supabase_migrations;
+      create table if not exists supabase_migrations.schema_migrations(
+        version text primary key
+      );
+      insert into supabase_migrations.schema_migrations(version)
+      select lpad(value::text,3,'0') from generate_series(1,40) value
+      on conflict do nothing;
       grant usage on schema public to ${BIRELLO_PREFLIGHT_ROLE};
+      grant usage on schema supabase_migrations to ${BIRELLO_PREFLIGHT_ROLE};
+      grant select on table supabase_migrations.schema_migrations
+        to ${BIRELLO_PREFLIGHT_ROLE};
     `);
     if (setup.status !== 0) throw new Error(`Setup failed: ${setup.stderr.slice(-2_000)}`);
 
@@ -208,6 +241,12 @@ async function main(): Promise<void> {
       [BIRELLO_MAINTENANCE_ENV.projectRef]: PROJECT_REF,
       [BIRELLO_MAINTENANCE_ENV.expectedUser]: "postgres",
     };
+    const visibilityProductionConfiguration =
+      configurationFromBirelloMaintenanceEnvironment({
+        ...productionEnvironment,
+        [BIRELLO_MAINTENANCE_ENV.authorization]:
+          BIRELLO_FIT_VISIBILITY_OPERATION,
+      }, BIRELLO_FIT_VISIBILITY_OPERATION);
     const wrongTarget = configurationFromBirelloMaintenanceEnvironment({
       ...productionEnvironment,
       [BIRELLO_MAINTENANCE_ENV.target]: "staging",
@@ -253,11 +292,51 @@ async function main(): Promise<void> {
     const applied = await runBirelloProductionMaintenance(configuration, "apply");
     const secondApply = await runBirelloProductionMaintenance(configuration, "apply");
     const compliantValidation = await runBirelloProductionMaintenance(configuration, "validate");
-    const finalFingerprint = await fingerprint(admin);
     const appliedState = applied.result === "PASS" ? applied.state : null;
+
+    const readerBefore = new Client({ connectionString: readerUrl });
+    await readerBefore.connect();
+    const metadataSelectBefore = await denied(
+      readerBefore,
+      "select count(*) from public.knowledge_retrieval_metadata",
+    );
+    const trustSelectBefore = await denied(
+      readerBefore,
+      "select count(*) from public.knowledge_trust_domains",
+    );
+    await readerBefore.end();
+
+    const visibilityValidation = await runBirelloFitVisibilityMaintenance(
+      configuration,
+      "validate",
+    );
+    const visibilityApplied = await runBirelloFitVisibilityMaintenance(
+      configuration,
+      "apply",
+    );
+    const visibilitySecondApply = await runBirelloFitVisibilityMaintenance(
+      configuration,
+      "apply",
+    );
+    const visibilityCompliantValidation = await runBirelloFitVisibilityMaintenance(
+      configuration,
+      "validate",
+    );
+    const extendedPreflight = await runBirelloProductionPreflight(
+      localPreflightConfiguration(readerUrl),
+    );
+    const finalFingerprint = await fingerprint(admin);
 
     const reader = new Client({ connectionString: readerUrl });
     await reader.connect();
+    const metadataSelectAfter = !await denied(
+      reader,
+      "select count(*) from public.knowledge_retrieval_metadata",
+    );
+    const trustSelectAfter = !await denied(
+      reader,
+      "select count(*) from public.knowledge_trust_domains",
+    );
     const insertDenied = await denied(reader,
       "insert into public.knowledge_claims(id,claim_type,claim_text_canonical,jurisdiction_id) values(gen_random_uuid(),'x','x',gen_random_uuid())");
     const updateDenied = await denied(reader,
@@ -265,9 +344,50 @@ async function main(): Promise<void> {
     const deleteDenied = await denied(reader,
       "delete from public.knowledge_claims where false");
     const truncateDenied = await denied(reader, "truncate public.knowledge_claims");
+    const metadataInsertDenied = await denied(
+      reader,
+      "insert into public.knowledge_retrieval_metadata(entity_type,entity_id) values('claim',gen_random_uuid())",
+    );
+    const metadataUpdateDenied = await denied(
+      reader,
+      "update public.knowledge_retrieval_metadata set full_text_indexed=false where false",
+    );
+    const metadataDeleteDenied = await denied(
+      reader,
+      "delete from public.knowledge_retrieval_metadata where false",
+    );
+    const trustInsertDenied = await denied(
+      reader,
+      "insert into public.knowledge_trust_domains(code,name) values('sk','forbidden')",
+    );
     const schemaCreateDenied = await denied(reader,
       "create table public.maintenance_forbidden(id integer)");
     await reader.end();
+
+    const unaffectedRoles = await admin.query(`
+      select r.rolname,
+        pg_catalog.has_table_privilege(
+          r.rolname,'public.knowledge_retrieval_metadata','SELECT'
+        ) metadata_select,
+        pg_catalog.has_table_privilege(
+          r.rolname,'public.knowledge_trust_domains','SELECT'
+        ) trust_select
+      from pg_catalog.pg_roles r
+      where r.rolname=any(array['anon','authenticated'])
+      order by r.rolname
+    `);
+    const publicSelectGrantCount = Number((await admin.query(`
+      select count(*)::int count
+      from pg_catalog.pg_class c
+      join pg_catalog.pg_namespace n on n.oid=c.relnamespace
+      cross join lateral pg_catalog.aclexplode(coalesce(c.relacl,'{}'::aclitem[])) acl
+      where n.nspname='public'
+        and c.relname=any(array[
+          'knowledge_retrieval_metadata','knowledge_trust_domains'
+        ])
+        and acl.grantee=0
+        and acl.privilege_type='SELECT'
+    `)).rows[0]?.count);
     await admin.end();
 
     const executorPath = path.join(
@@ -302,6 +422,7 @@ async function main(): Promise<void> {
     const parityPassed = Object.values(parity).every(Boolean);
     const encodedReports = JSON.stringify([
       baselineBefore, policyRollback, grantRollback, applied, compliantValidation,
+      visibilityValidation, visibilityApplied, visibilityCompliantValidation,
     ]);
     const legacyIsolated = "result" in configurationFromBirelloMaintenanceEnvironment({
       VAYLO_PRODUCTION_READONLY_DATABASE_URL: adminUrl,
@@ -378,6 +499,52 @@ async function main(): Promise<void> {
       M38: retrievalIsolated,
       M39: executorSource.includes("BIRELLO_PREFLIGHT_REQUIRED_TABLES"),
       M40: initialFingerprint === finalFingerprint,
+      M41: visibilityValidation.result === "PASS"
+        && visibilityValidation.mutationCount === 0
+        && Object.values(visibilityValidation.state.targetTableSelect).every(
+          (value) => value === false,
+        )
+        && Object.values(visibilityValidation.state.targetCanonicalPolicies).every(
+          (value) => value === false,
+        ),
+      M42: visibilityApplied.result === "PASS"
+        && visibilityApplied.operationId === BIRELLO_FIT_VISIBILITY_OPERATION
+        && visibilityApplied.mutationCount
+          === BIRELLO_FIT_VISIBILITY_LOGICAL_MUTATION_COUNT
+        && Object.values(visibilityApplied.state.targetTableSelect).every(Boolean)
+        && Object.values(visibilityApplied.state.targetCanonicalPolicies).every(Boolean),
+      M43: visibilitySecondApply.result === "REJECTED"
+        && visibilitySecondApply.failureCode === "ALREADY_APPLIED"
+        && !visibilitySecondApply.transactionBegan,
+      M44: visibilityCompliantValidation.result === "PASS"
+        && visibilityCompliantValidation.mutationCount === 0
+        && visibilityCompliantValidation.state.knowledgeWritePrivilegeCount === 0
+        && visibilityCompliantValidation.state.executableFunctionCount === 0,
+      M45: metadataSelectBefore && trustSelectBefore
+        && metadataSelectAfter && trustSelectAfter,
+      M46: metadataInsertDenied && metadataUpdateDenied && metadataDeleteDenied
+        && trustInsertDenied,
+      M47: unaffectedRoles.rows.length === 2
+        && unaffectedRoles.rows.every((row) =>
+          row.metadata_select === false && row.trust_select === false)
+        && publicSelectGrantCount === 0,
+      M48: extendedPreflight.result === "PASS"
+        && extendedPreflight.fit.missingSelect.length === 0
+        && extendedPreflight.retrievalMetadata.selectVisible
+        && extendedPreflight.trustDomain.selectVisible
+        && extendedPreflight.retrievalMetadata.metadataCount === 0
+        && extendedPreflight.trustDomain.semanticDeCount === 0,
+      M49: BIRELLO_FIT_VISIBILITY_TABLES.length === 2
+        && BIRELLO_FIT_VISIBILITY_GRANT_STATEMENTS.length === 2
+        && BIRELLO_FIT_VISIBILITY_POLICY_STATEMENTS.length === 2
+        && BIRELLO_FIT_VISIBILITY_GRANT_STATEMENTS.every((statement) =>
+          statement.startsWith("GRANT SELECT ON TABLE public."))
+        && BIRELLO_FIT_VISIBILITY_POLICY_STATEMENTS.every((statement) =>
+          statement.includes(` FOR SELECT TO ${BIRELLO_PREFLIGHT_ROLE} USING (true)`)),
+      M50: !("result" in visibilityProductionConfiguration)
+        && cliSource.includes("--operation=preflight-reader-fit-visibility")
+        && !cliSource.includes("--table")
+        && !cliSource.includes("--role"),
     };
     const allPassed = Object.values(cases).every(Boolean) && parityPassed;
     process.stdout.write(`${JSON.stringify({
@@ -395,6 +562,14 @@ async function main(): Promise<void> {
           && policyRollback.transactionRolledBack,
         rollbackGrant4: grantRollback.result === "REJECTED"
           && grantRollback.transactionRolledBack,
+        visibilityOperationId: BIRELLO_FIT_VISIBILITY_OPERATION,
+        visibilityTables: BIRELLO_FIT_VISIBILITY_TABLES,
+        visibilityMutationCount: visibilityApplied.result === "PASS"
+          ? visibilityApplied.mutationCount
+          : 0,
+        extendedPreflightMissingSelect: extendedPreflight.result === "PASS"
+          ? extendedPreflight.fit.missingSelect
+          : null,
       },
       productionConnectionAttempted: false,
       productionMutationPerformed: false,

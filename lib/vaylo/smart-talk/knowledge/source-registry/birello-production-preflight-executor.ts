@@ -14,6 +14,8 @@ export const BIRELLO_PREFLIGHT_ROLE = "birello_preflight_reader" as const;
 export const BIRELLO_PREFLIGHT_QUERY_ORDER = Object.freeze([
   "session", "migrations", "columns", "enums", "functions",
   "roles", "privileges", "firstPack", "duplicates", "weiltingen",
+  "catalogFit", "semanticRoots", "sourceUniqueness",
+  "retrievalMetadata", "trustDomains",
 ] as const);
 export type BirelloPreflightQueryId = typeof BIRELLO_PREFLIGHT_QUERY_ORDER[number];
 export const BIRELLO_PREFLIGHT_REQUIRED_TABLES = Object.freeze([
@@ -116,8 +118,13 @@ export type BirelloPreflightReport =
       functions: readonly Readonly<{
         name: string;
         arguments: string;
+        resultType: string;
+        owner: string;
         securityDefiner: boolean;
         fixedSearchPath: boolean;
+        executeIngestor: boolean;
+        executeReader: boolean;
+        executePreflight: boolean;
       }>[];
       roles: readonly Readonly<{
         role: string;
@@ -147,6 +154,63 @@ export type BirelloPreflightReport =
         competence: number;
         sources: number;
       }>;
+      catalogFit: Readonly<{
+        retrievalMetadataTable: boolean;
+        retrievalMetadataColumnsPresent: boolean;
+        retrievalMetadataUnique: boolean;
+        retrievalMetadataSelect: boolean;
+        trustDomainTable: boolean;
+        trustDomainCodeUnique: boolean;
+        trustDomainSelect: boolean;
+        sourceNormalizedUrlUniqueIndex: boolean;
+        scopeTypeUnconstrained: boolean;
+      }>;
+      retrievalMetadata: Readonly<{
+        selectVisible: boolean;
+        federalClaimCount: number;
+        metadataCount: number | null;
+        missingMetadata: number | null;
+        duplicateMetadata: number | null;
+      }>;
+      trustDomain: Readonly<{
+        selectVisible: boolean;
+        semanticDeCount: number | null;
+        duplicateCodeCount: number | null;
+      }>;
+      deJurisdiction: Readonly<{
+        semanticDeCount: number;
+        duplicateCount: number;
+        parentRootValid: boolean;
+      }>;
+      deByWeiltingen: Readonly<{
+        landCount: number;
+        kreisCount: number;
+        municipalityCount: number;
+        parentChainValid: boolean;
+        municipalityScopeValid: boolean;
+        competenceFamilyValid: boolean;
+      }>;
+      sourceUniqueness: Readonly<{
+        uniqueIndexPresent: boolean;
+        sourceCount: number;
+        duplicateNormalizedUrlCount: number;
+      }>;
+      grantFit: Readonly<{
+        migration042GrantFit: boolean;
+        migration043GrantFit: boolean;
+        ingestorHasG3: boolean;
+        ingestorHasG4: boolean;
+        readerHas038: boolean;
+        readerHas040: boolean;
+        preflightHasMutationExecute: boolean;
+      }>;
+      fit: Readonly<{
+        missingSelect: readonly string[];
+        migration042Ready: boolean;
+        migration043Ready: boolean;
+        ledger042: "APPLIED" | "PENDING" | "UNEXPECTED";
+        ledger043: "APPLIED" | "PENDING" | "UNEXPECTED";
+      }>;
       fixedQueryCount: number;
       preflightPublicSchemaUsage: boolean;
       preflightRequiredTablePrivileges: BirelloPreflightRequiredTablePrivileges;
@@ -169,13 +233,13 @@ const REQUIRED_TABLE_COLUMNS = Object.freeze({
     "territorial_scope_id", "official_portal_url",
   ],
   knowledge_authority_competences: [
-    "id", "authority_id", "territorial_scope_id", "subject_matter",
+    "id", "authority_id", "territorial_scope_id", "subject_matter", "personal_scope",
     "effective_from", "effective_until", "competence_source_version_id", "competence_passage_id",
   ],
   knowledge_sources: [
     "id", "publisher_id", "canonical_url", "official_domain", "normalized_origin",
-    "jurisdiction_id", "territorial_scope_id", "issuing_authority_id", "source_class",
-    "authority_level", "default_handling_mode",
+    "normalized_canonical_url", "jurisdiction_id", "territorial_scope_id",
+    "issuing_authority_id", "source_class", "authority_level", "default_handling_mode",
   ],
   knowledge_source_versions: ["id", "source_id", "content_hash"],
   knowledge_source_passages: ["id", "source_version_id", "section_identifier", "text"],
@@ -183,6 +247,13 @@ const REQUIRED_TABLE_COLUMNS = Object.freeze({
   knowledge_source_handling_policies: [
     "id", "source_id", "information_class", "process_scope", "handling_mode",
     "freshness_class", "stale_behavior",
+  ],
+  knowledge_retrieval_metadata: [
+    "id", "entity_type", "entity_id", "full_text_indexed", "vector_indexed",
+    "jurisdiction_filter_required", "effective_date_filter_required",
+    "review_status_filter_required", "trust_domain_filter_required",
+    "authoritative_by_vector_similarity", "source_authorization_filter_required",
+    "handling_policy_filter_required", "stale_policy_filter_required",
   ],
 } as const);
 
@@ -239,7 +310,15 @@ export const BIRELLO_PREFLIGHT_FIXED_QUERIES = Object.freeze({
     order by t.typname,e.enumsortorder`,
   functions: `select p.proname as name,
       pg_catalog.pg_get_function_identity_arguments(p.oid) as arguments,
-      p.prosecdef as security_definer, coalesce(p.proconfig,'{}'::text[]) as config
+      pg_catalog.pg_get_function_result(p.oid) as result_type,
+      pg_catalog.pg_get_userbyid(p.proowner) as owner,
+      p.prosecdef as security_definer, coalesce(p.proconfig,'{}'::text[]) as config,
+      pg_catalog.has_function_privilege(
+        'birello_knowledge_ingestor', p.oid, 'EXECUTE') as execute_ingestor,
+      pg_catalog.has_function_privilege(
+        'birello_knowledge_reader', p.oid, 'EXECUTE') as execute_reader,
+      pg_catalog.has_function_privilege(
+        'birello_preflight_reader', p.oid, 'EXECUTE') as execute_preflight
     from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid=p.pronamespace
     where n.nspname='public' and p.proname = any(array[
       'knowledge_retrieve_evidence_packets',
@@ -306,6 +385,140 @@ export const BIRELLO_PREFLIGHT_FIXED_QUERIES = Object.freeze({
         where id='${PILOT_IDS.competence}'::uuid) as competence,
       (select count(*)::int from public.knowledge_sources
         where id = any(${sqlUuidArray(PILOT_IDS.sources)})) as sources`,
+  catalogFit: `select
+      exists(select 1 from pg_catalog.pg_class c
+        join pg_catalog.pg_namespace n on n.oid=c.relnamespace
+        where n.nspname='public' and c.relname='knowledge_retrieval_metadata'
+          and c.relkind='r') as retrieval_metadata_table,
+      (select count(*)::int from pg_catalog.pg_class c
+        join pg_catalog.pg_namespace n on n.oid=c.relnamespace
+        join pg_catalog.pg_attribute a on a.attrelid=c.oid
+        where n.nspname='public' and c.relname='knowledge_retrieval_metadata'
+          and a.attnum>0 and not a.attisdropped
+          and a.attname = any(array[
+            'id','entity_type','entity_id','full_text_indexed','vector_indexed',
+            'jurisdiction_filter_required','effective_date_filter_required',
+            'review_status_filter_required','trust_domain_filter_required',
+            'authoritative_by_vector_similarity',
+            'source_authorization_filter_required',
+            'handling_policy_filter_required','stale_policy_filter_required'
+          ])) = 13 as retrieval_metadata_columns_present,
+      exists(select 1 from pg_catalog.pg_constraint x
+        join pg_catalog.pg_class c on c.oid=x.conrelid
+        join pg_catalog.pg_namespace n on n.oid=c.relnamespace
+        where n.nspname='public' and c.relname='knowledge_retrieval_metadata'
+          and x.contype='u'
+          and pg_catalog.pg_get_constraintdef(x.oid)
+            like '%(entity_type, entity_id)%') as retrieval_metadata_unique,
+      pg_catalog.has_table_privilege(
+        'birello_preflight_reader','public.knowledge_retrieval_metadata','SELECT')
+        as retrieval_metadata_select,
+      exists(select 1 from pg_catalog.pg_class c
+        join pg_catalog.pg_namespace n on n.oid=c.relnamespace
+        where n.nspname='public' and c.relname='knowledge_trust_domains'
+          and c.relkind='r') as trust_domain_table,
+      exists(select 1 from pg_catalog.pg_constraint x
+        join pg_catalog.pg_class c on c.oid=x.conrelid
+        join pg_catalog.pg_namespace n on n.oid=c.relnamespace
+        where n.nspname='public' and c.relname='knowledge_trust_domains'
+          and x.contype='u'
+          and pg_catalog.pg_get_constraintdef(x.oid) like '%(code)%')
+        as trust_domain_code_unique,
+      pg_catalog.has_table_privilege(
+        'birello_preflight_reader','public.knowledge_trust_domains','SELECT')
+        as trust_domain_select,
+      exists(select 1 from pg_catalog.pg_indexes
+        where schemaname='public' and tablename='knowledge_sources'
+          and indexname='ux_sources_normalized_canonical_url')
+        as source_normalized_url_unique_index,
+      not exists(select 1 from pg_catalog.pg_constraint x
+        join pg_catalog.pg_class c on c.oid=x.conrelid
+        join pg_catalog.pg_namespace n on n.oid=c.relnamespace
+        where n.nspname='public' and c.relname='knowledge_territorial_scopes'
+          and x.contype='c'
+          and pg_catalog.pg_get_constraintdef(x.oid) ilike '%scope_type%')
+        as scope_type_unconstrained`,
+  semanticRoots: `with federal as (
+      select id from public.knowledge_jurisdictions
+       where country_code='DE' and jurisdiction_level='de_federal'
+         and jurisdiction_code='DE' and parent_jurisdiction_id is null
+         and status='active'
+    ), land as (
+      select id, parent_jurisdiction_id from public.knowledge_jurisdictions
+       where country_code='DE' and jurisdiction_level='de_land'
+         and jurisdiction_code in ('09','DE-BY') and status='active'
+    ), kreis as (
+      select id, parent_jurisdiction_id from public.knowledge_jurisdictions
+       where country_code='DE' and jurisdiction_level='de_kreis'
+         and jurisdiction_code='09571' and status='active'
+    ), municipality as (
+      select id, parent_jurisdiction_id from public.knowledge_jurisdictions
+       where id='${PILOT_IDS.municipality}'::uuid
+         and jurisdiction_code='${WEILTINGEN_PILOT.municipalityCode}'
+         and jurisdiction_level='de_gemeinde' and status='active'
+    )
+    select
+      (select count(*)::int from federal) as federal_de_count,
+      greatest((select count(*)::int from public.knowledge_jurisdictions
+        where country_code='DE' and jurisdiction_level='de_federal'
+          and jurisdiction_code='DE' and parent_jurisdiction_id is null) - 1, 0)
+        as federal_de_duplicate_count,
+      (select count(*)::int from land) as land_by_count,
+      (select count(*)::int from kreis) as kreis_count,
+      (select count(*)::int from municipality) as municipality_count,
+      exists (
+        select 1 from municipality m
+        join kreis k on k.id = m.parent_jurisdiction_id
+        join land l on l.id = k.parent_jurisdiction_id
+        join federal f on f.id = l.parent_jurisdiction_id
+      ) as parent_chain_valid,
+      exists (
+        select 1 from public.knowledge_territorial_scopes ts
+         where ts.id='${PILOT_IDS.scope}'::uuid
+           and ts.scope_type='municipality'
+           and ts.municipality_codes = array['${WEILTINGEN_PILOT.municipalityCode}']
+      ) as municipality_scope_valid,
+      exists (
+        select 1 from public.knowledge_authority_competences c
+         where c.id='${PILOT_IDS.competence}'::uuid
+           and c.personal_scope='residence_registration_lifecycle'
+           and c.subject_matter='residence_registration_lifecycle'
+      ) as competence_family_valid`,
+  sourceUniqueness: `select
+      exists(select 1 from pg_catalog.pg_indexes
+        where schemaname='public' and tablename='knowledge_sources'
+          and indexname='ux_sources_normalized_canonical_url') as unique_index_present,
+      (select count(*)::int from public.knowledge_sources) as source_count,
+      (select count(*)::int from (
+        select normalized_canonical_url from public.knowledge_sources
+         where normalized_canonical_url is not null
+         group by 1 having count(*)>1
+      ) duplicates) as duplicate_normalized_url_count`,
+  retrievalMetadata: `select
+      (select count(*)::int from public.knowledge_claims
+        where id = any(${sqlUuidArray([...FIRST_PACK_CLAIM_IDS, ...SOURCE_ONLY_CLAIM_IDS])}))
+        as federal_claim_count,
+      (select count(*)::int from public.knowledge_retrieval_metadata r
+        where r.entity_type='claim'
+          and r.entity_id = any(${sqlUuidArray([...FIRST_PACK_CLAIM_IDS, ...SOURCE_ONLY_CLAIM_IDS])}))
+        as metadata_count,
+      (select count(*)::int from unnest(${sqlUuidArray([...FIRST_PACK_CLAIM_IDS, ...SOURCE_ONLY_CLAIM_IDS])}) claim(id)
+        where not exists (
+          select 1 from public.knowledge_retrieval_metadata r
+           where r.entity_type='claim' and r.entity_id=claim.id
+        )) as missing_metadata,
+      (select count(*)::int from (
+        select r.entity_id from public.knowledge_retrieval_metadata r
+         where r.entity_type='claim'
+           and r.entity_id = any(${sqlUuidArray([...FIRST_PACK_CLAIM_IDS, ...SOURCE_ONLY_CLAIM_IDS])})
+         group by r.entity_id having count(*)>1
+      ) duplicates) as duplicate_metadata`,
+  trustDomains: `select
+      (select count(*)::int from public.knowledge_trust_domains where code='de')
+        as semantic_de_count,
+      (select count(*)::int from (
+        select code from public.knowledge_trust_domains group by code having count(*)>1
+      ) duplicates) as duplicate_code_count`,
 } as const);
 
 function productionClientFactory(configuration: BirelloPreflightConfiguration): BirelloPreflightClient {
@@ -420,6 +633,33 @@ function requiredTableBooleans(value: unknown): BirelloPreflightRequiredTablePri
   )) as Record<BirelloPreflightRequiredTable, boolean>);
 }
 
+function ledgerStatus(
+  versions: readonly string[],
+  prefix: "042" | "043",
+): "APPLIED" | "PENDING" | "UNEXPECTED" {
+  const matches = versions.filter((version) =>
+    version === prefix || version.startsWith(`${prefix}_`));
+  if (matches.length === 1) return "APPLIED";
+  if (matches.length === 0) return "PENDING";
+  return "UNEXPECTED";
+}
+
+function functionByName(
+  rows: readonly Readonly<{
+    name: string;
+    arguments: string;
+    resultType: string;
+    securityDefiner: boolean;
+    fixedSearchPath: boolean;
+    executeIngestor: boolean;
+    executeReader: boolean;
+    executePreflight: boolean;
+  }>[],
+  name: string,
+) {
+  return rows.find((row) => row.name === name);
+}
+
 type ExecutionFailureStage = "connect" | "read_only_setup" | "identity" | "query";
 
 function safeErrorField(error: unknown, key: "code" | "message"): string {
@@ -526,6 +766,17 @@ export async function runBirelloProductionPreflight(
     failureStage = "query";
     for (const id of BIRELLO_PREFLIGHT_QUERY_ORDER.slice(1)) {
       currentQueryId = id;
+      if (id === "retrievalMetadata" || id === "trustDomains") {
+        const catalog = results.catalogFit?.[0];
+        const visible = id === "retrievalMetadata"
+          ? catalog?.retrieval_metadata_select === true
+          : catalog?.trust_domain_select === true;
+        if (!visible) {
+          results[id] = Object.freeze([{ select_visible: false }]);
+          completedQueryIds.push(id);
+          continue;
+        }
+      }
       results[id] = (await client.query(BIRELLO_PREFLIGHT_FIXED_QUERIES[id])).rows;
       completedQueryIds.push(id);
       if (id === "privileges") {
@@ -553,6 +804,151 @@ export async function runBirelloProductionPreflight(
     const observedClaimIds = valuesFor(results.firstPack ?? [], "id");
     const expectedClaimIds = [...FIRST_PACK_CLAIM_IDS].sort();
     const sourceOnlyPresent = SOURCE_ONLY_CLAIM_IDS.filter((id) => observedClaimIds.includes(id));
+    const functions = Object.freeze(functionRows.map((row) => Object.freeze({
+      name: String(row.name), arguments: String(row.arguments),
+      resultType: String(row.result_type ?? ""),
+      owner: String(row.owner ?? ""),
+      securityDefiner: row.security_definer === true,
+      fixedSearchPath: Array.isArray(row.config)
+        && row.config.some((value) => value === "search_path=pg_catalog, public"),
+      executeIngestor: row.execute_ingestor === true,
+      executeReader: row.execute_reader === true,
+      executePreflight: row.execute_preflight === true,
+    })));
+    const catalog = results.catalogFit?.[0];
+    const roots = results.semanticRoots?.[0];
+    const sources = results.sourceUniqueness?.[0];
+    const metadataRow = results.retrievalMetadata?.[0];
+    const trustRow = results.trustDomains?.[0];
+    const retrievalMetadataSelect = catalog?.retrieval_metadata_select === true;
+    const trustDomainSelect = catalog?.trust_domain_select === true;
+    const missingSelect = [
+      ...(retrievalMetadataSelect ? [] : ["knowledge_retrieval_metadata.SELECT"]),
+      ...(trustDomainSelect ? [] : ["knowledge_trust_domains.SELECT"]),
+    ];
+    const retrievalMetadata = Object.freeze({
+      selectVisible: retrievalMetadataSelect,
+      federalClaimCount: retrievalMetadataSelect
+        ? Number(metadataRow?.federal_claim_count ?? -1)
+        : observedClaimIds.length,
+      metadataCount: retrievalMetadataSelect ? Number(metadataRow?.metadata_count ?? -1) : null,
+      missingMetadata: retrievalMetadataSelect ? Number(metadataRow?.missing_metadata ?? -1) : null,
+      duplicateMetadata: retrievalMetadataSelect
+        ? Number(metadataRow?.duplicate_metadata ?? -1) : null,
+    });
+    const trustDomain = Object.freeze({
+      selectVisible: trustDomainSelect,
+      semanticDeCount: trustDomainSelect ? Number(trustRow?.semantic_de_count ?? -1) : null,
+      duplicateCodeCount: trustDomainSelect ? Number(trustRow?.duplicate_code_count ?? -1) : null,
+    });
+    const deJurisdiction = Object.freeze({
+      semanticDeCount: Number(roots?.federal_de_count ?? -1),
+      duplicateCount: Number(roots?.federal_de_duplicate_count ?? -1),
+      parentRootValid: Number(roots?.federal_de_count) === 1
+        && Number(roots?.federal_de_duplicate_count) === 0,
+    });
+    const deByWeiltingen = Object.freeze({
+      landCount: Number(roots?.land_by_count ?? -1),
+      kreisCount: Number(roots?.kreis_count ?? -1),
+      municipalityCount: Number(roots?.municipality_count ?? -1),
+      parentChainValid: roots?.parent_chain_valid === true,
+      municipalityScopeValid: roots?.municipality_scope_valid === true,
+      competenceFamilyValid: roots?.competence_family_valid === true,
+    });
+    const sourceUniqueness = Object.freeze({
+      uniqueIndexPresent: sources?.unique_index_present === true
+        || catalog?.source_normalized_url_unique_index === true,
+      sourceCount: Number(sources?.source_count ?? -1),
+      duplicateNormalizedUrlCount: Number(sources?.duplicate_normalized_url_count ?? -1),
+    });
+    const g3 = functionByName(functions, "knowledge_ingest_curated_domain_pack");
+    const g4 = functionByName(functions, "knowledge_ingest_curated_service_area_pack");
+    const rpc038 = functionByName(functions, "knowledge_retrieve_evidence_packets");
+    const rpc040 = functionByName(functions, "knowledge_retrieve_anmeldung_context");
+    const g3Compatible = Boolean(
+      g3
+      && g3.arguments === "p_payload jsonb"
+      && g3.resultType.toLowerCase().includes("jsonb")
+      && g3.securityDefiner
+      && g3.fixedSearchPath,
+    );
+    const g4Compatible = Boolean(
+      g4
+      && g4.arguments === "p_payload jsonb"
+      && g4.resultType.toLowerCase().includes("jsonb")
+      && g4.securityDefiner
+      && g4.fixedSearchPath,
+    );
+    const rpc038Compatible = Boolean(
+      rpc038
+      && rpc038.arguments === "p_claim_ids uuid[], p_jurisdiction_codes text[]"
+      && rpc038.securityDefiner
+      && rpc038.fixedSearchPath,
+    );
+    const rpc040Compatible = Boolean(
+      rpc040
+      && rpc040.arguments === "p_claim_ids uuid[], p_municipality_code text"
+      && rpc040.resultType.toLowerCase().includes("jsonb")
+      && rpc040.securityDefiner
+      && rpc040.fixedSearchPath,
+    );
+    const grantFit = Object.freeze({
+      migration042GrantFit: g3?.executeIngestor === true && g4?.executeIngestor === true
+        && g3.executeReader === false && g4.executeReader === false
+        && g3.executePreflight === false && g4.executePreflight === false,
+      migration043GrantFit: rpc038?.executeReader === true && rpc040?.executeReader === true
+        && rpc038.executeIngestor === false && rpc040.executeIngestor === false
+        && rpc038.executePreflight === false && rpc040.executePreflight === false,
+      ingestorHasG3: g3?.executeIngestor === true,
+      ingestorHasG4: g4?.executeIngestor === true,
+      readerHas038: rpc038?.executeReader === true,
+      readerHas040: rpc040?.executeReader === true,
+      preflightHasMutationExecute: g3?.executePreflight === true
+        || g4?.executePreflight === true
+        || rpc038?.executePreflight === true
+        || rpc040?.executePreflight === true,
+    });
+    const catalogFit = Object.freeze({
+      retrievalMetadataTable: catalog?.retrieval_metadata_table === true,
+      retrievalMetadataColumnsPresent: catalog?.retrieval_metadata_columns_present === true,
+      retrievalMetadataUnique: catalog?.retrieval_metadata_unique === true,
+      retrievalMetadataSelect: retrievalMetadataSelect,
+      trustDomainTable: catalog?.trust_domain_table === true,
+      trustDomainCodeUnique: catalog?.trust_domain_code_unique === true,
+      trustDomainSelect: trustDomainSelect,
+      sourceNormalizedUrlUniqueIndex: catalog?.source_normalized_url_unique_index === true,
+      scopeTypeUnconstrained: catalog?.scope_type_unconstrained === true,
+    });
+    const migrationLedger = Object.freeze(valuesFor(results.migrations ?? [], "version"));
+    const ledger042 = ledgerStatus(migrationLedger, "042");
+    const ledger043 = ledgerStatus(migrationLedger, "043");
+    const firstPackComplete = expectedClaimIds.every((id) => observedClaimIds.includes(id))
+      && sourceOnlyPresent.length === SOURCE_ONLY_CLAIM_IDS.length;
+    const migration042Ready = ledger042 === "PENDING"
+      && missingSelect.filter((name) => name.startsWith("knowledge_trust_domains")).length === 0
+      && catalogFit.trustDomainTable && catalogFit.trustDomainCodeUnique
+      && trustDomain.semanticDeCount === 1 && trustDomain.duplicateCodeCount === 0
+      && deJurisdiction.parentRootValid
+      && sourceUniqueness.uniqueIndexPresent
+      && sourceUniqueness.duplicateNormalizedUrlCount === 0
+      && g3Compatible === true && g4Compatible === true
+      && grantFit.migration042GrantFit
+      && !grantFit.preflightHasMutationExecute;
+    const migration043Ready = ledger042 === "PENDING" && ledger043 === "PENDING"
+      && missingSelect.filter((name) => name.startsWith("knowledge_retrieval_metadata")).length === 0
+      && catalogFit.retrievalMetadataTable
+      && catalogFit.retrievalMetadataColumnsPresent
+      && catalogFit.retrievalMetadataUnique
+      && retrievalMetadata.federalClaimCount === 41
+      && retrievalMetadata.metadataCount === 41
+      && retrievalMetadata.missingMetadata === 0
+      && retrievalMetadata.duplicateMetadata === 0
+      && rpc038Compatible === true && rpc040Compatible === true
+      && catalogFit.scopeTypeUnconstrained
+      && deByWeiltingen.municipalityScopeValid
+      && deByWeiltingen.competenceFamilyValid
+      && grantFit.migration043GrantFit
+      && firstPackComplete;
 
     await client.query("COMMIT");
     transaction = false;
@@ -564,16 +960,11 @@ export async function runBirelloProductionPreflight(
         role: BIRELLO_PREFLIGHT_ROLE, verifiedTls: configuration.verifiedTls,
         caMechanism: configuration.caMechanism, transactionReadOnly: true as const,
       }),
-      migrationLedger: Object.freeze(valuesFor(results.migrations ?? [], "version")),
+      migrationLedger,
       catalog039: Object.freeze({
         requiredTablesPresent, requiredColumnsPresent, requiredEnumValuesPresent,
       }),
-      functions: Object.freeze(functionRows.map((row) => Object.freeze({
-        name: String(row.name), arguments: String(row.arguments),
-        securityDefiner: row.security_definer === true,
-        fixedSearchPath: Array.isArray(row.config)
-          && row.config.some((value) => value === "search_path=pg_catalog, public"),
-      }))),
+      functions,
       roles: Object.freeze(roleRows.map((row) => Object.freeze({
         role: String(row.role), login: row.login === true, superuser: row.superuser === true,
         createDb: row.create_db === true, createRole: row.create_role === true,
@@ -599,6 +990,20 @@ export async function runBirelloProductionPreflight(
         authority: Number(results.weiltingen?.[0]?.authority ?? -1),
         competence: Number(results.weiltingen?.[0]?.competence ?? -1),
         sources: Number(results.weiltingen?.[0]?.sources ?? -1),
+      }),
+      catalogFit,
+      retrievalMetadata,
+      trustDomain,
+      deJurisdiction,
+      deByWeiltingen,
+      sourceUniqueness,
+      grantFit,
+      fit: Object.freeze({
+        missingSelect: Object.freeze(missingSelect),
+        migration042Ready,
+        migration043Ready,
+        ledger042,
+        ledger043,
       }),
       fixedQueryCount: Object.keys(BIRELLO_PREFLIGHT_FIXED_QUERIES).length,
       preflightPublicSchemaUsage: publicSchemaUsage === true,
