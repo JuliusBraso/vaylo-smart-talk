@@ -15,11 +15,15 @@ import { buildSyntheticFederalKindergeldPack } from "../../../source-registry/kn
 import { buildCityStateServiceAreaPacks } from "../anmeldung-ummeldung-abmeldung/anmeldung-city-state-service-area-packs";
 import {
   KINDERGELD_DOMAIN,
+  KINDERGELD_FORMS,
   KINDERGELD_FUTURE_CHANGE_WATCH_ITEMS,
   KINDERGELD_FUTURE_WATCH_SOURCE,
+  KINDERGELD_G3_PROCESS_STEP_LIMITATION,
   KINDERGELD_OFFICIAL_SOURCES,
+  KINDERGELD_PROCESSES,
   KINDERGELD_UNITS,
   buildKindergeldFederalCorePack,
+  evaluateKindergeldProcessCompleteness,
   kindergeldPackSummary,
 } from "./kindergeld-federal-core-pack";
 
@@ -81,6 +85,7 @@ async function main(): Promise<void> {
   const pack = buildKindergeldFederalCorePack();
   const summary = kindergeldPackSummary(pack);
   const validation = validateCuratedDomainPack(pack);
+  const completeness = evaluateKindergeldProcessCompleteness(pack);
   const packSource = source(
     "lib", "vaylo", "smart-talk", "knowledge", "packs", "de",
     "familienkasse-kindergeld", "kindergeld-federal-core-pack.ts",
@@ -94,6 +99,7 @@ async function main(): Promise<void> {
   const watchKeys = new Set(KINDERGELD_FUTURE_CHANGE_WATCH_ITEMS.map((item) => item.key));
   const ingestibleClaimKeys = pack.claims.map((claim) => String(claim.key));
   const ingestibleClaimIds = pack.claims.map((claim) => String(claim.id));
+  const claimText = (key: string) => String(pack.claims.find((claim) => claim.key === key)?.text ?? "");
   const staticCases = {
     domainReused: pack.domain === KINDERGELD_DOMAIN && pack.packId === KINDERGELD_DOMAIN,
     structurallyValid: validation.valid,
@@ -102,8 +108,8 @@ async function main(): Promise<void> {
     officialHostsOnly: pack.sources.every((item) => OFFICIAL_HOSTS.has(String(item.officialDomain)))
       && KINDERGELD_OFFICIAL_SOURCES.every((item) => OFFICIAL_HOSTS.has(item.officialDomain)),
     noUnofficialSources: !/wikipedia|forum|blog|steuerklassen|smartsteuer|finanztip/i.test(packSource),
-    ingestibleCurrentClaimCount: pack.claims.length === 40
-      && KINDERGELD_UNITS.length === 40
+    ingestibleCurrentClaimsOnly2026: pack.claims.length === KINDERGELD_UNITS.length
+      && KINDERGELD_UNITS.length > 40
       && KINDERGELD_UNITS.every((unit) => unit.temporal === "current_2026"),
     futureWatchCount: KINDERGELD_FUTURE_CHANGE_WATCH_ITEMS.length === 3,
     futureWatchOfficialProvenance: KINDERGELD_FUTURE_CHANGE_WATCH_ITEMS.every((item) =>
@@ -129,26 +135,69 @@ async function main(): Promise<void> {
       && !/userLocale|user_locale/.test(packSource),
     noAustriaOrV4Jurisdiction: !pack.jurisdictions.some((item) =>
       ["AT", "SK", "CZ", "PL", "HU", "DE-AT"].includes(String(item.code))),
-    current2026Complete: pack.claims.length === 40
+    current2026Complete: pack.claims.length === KINDERGELD_UNITS.length
       && pack.claims.every((claim) =>
         claim.temporalClass === "current_2026"
         && claim.requiresEffectiveDate !== true
         && !watchKeys.has(String(claim.key)))
       && !pack.claims.some((claim) => /antragslos/i.test(String(claim.text))),
-    currentProcessOnly2026: pack.processes.length === 1
-      && String(pack.processes[0]?.title).includes("2026")
-      && !/2027|antragslos/i.test(String(pack.processes[0]?.title)),
+    currentProcessesOnly2026: pack.processes.length === KINDERGELD_PROCESSES.length
+      && pack.processes.every((process) => String(process.title).includes("2026"))
+      && !pack.processes.some((process) => /2027|antragslos/i.test(`${process.title} ${process.trigger}`)),
+    processGraphUsesFactoryBindings: pack.processClaimLinks.length > 0
+      && pack.processClaimLinks.every((link) =>
+        pack.processes.some((process) => process.id === link.processId)
+        && pack.claims.some((claim) => claim.id === link.claimId))
+      && KINDERGELD_G3_PROCESS_STEP_LIMITATION.includes("process_step_id null"),
+    processCompletenessCovered: completeness.blockedScenarioCount === 0
+      && completeness.coveredScenarioCount >= 29
+      && completeness.outOfScopeScenarioCount === 4
+      && completeness.rows.every((row) => row.satisfied && row.derived === row.coverage),
+    competenceRoutingModeled: pack.processes.some((process) => process.key === "kindergeld-competent-authority-resolution")
+      && /nicht in jedem Fall zuständig/u.test(claimText("competent-familienkasse-is-residence-office"))
+      && /nicht die örtliche Familienkasse am Wohnsitz/u.test(claimText("zkgs-federal-public-service"))
+      && /Auskunftssperre/u.test(claimText("zkgs-protected-data-auskunftssperre"))
+      && /nicht die regionalen Familienkassen/u.test(claimText("zkgs-disability-not-regional"))
+      && /nicht automatisch die wohnsitznahe Familienkasse/u.test(claimText("cross-border-competence-not-from-residence"))
+      && /keine konkrete Familienkasse/u.test(claimText("insufficient-facts-no-competent-office"))
+      && pack.actorRules.some((rule) => rule.actorState === "competent_familienkasse_undetermined_without_facts"),
+    under18AndAdultPathsDistinct: pack.processes.some((process) => process.key === "kindergeld-antrag-2026")
+      && pack.processes.some((process) => process.key === "application-age-18-plus")
+      && /im Regelfall nur die steuerlichen Identifikationsnummern/u.test(claimText("under-18-regular-tax-ids-suffice"))
+      && /nicht als eine universelle Nachweisliste/u.test(claimText("adult-evidence-is-category-specific"))
+      && /nicht allgemein für Kinder unter 18/u.test(claimText("adult-forms-not-for-under-18")),
     crossBorderFailClosed: pack.claims.some((claim) =>
       claim.key === "paying-state-not-inferred"
       && claim.requiresAuthorityResolution === true
       && /nicht.*vorrangig leistende Stelle/u.test(String(claim.text)))
       && pack.actorRules.some((rule) => rule.actorState === "paying_state_undetermined_without_coordination")
       && !/arbeitet in Deutschland.*zahlt Deutschland immer/i.test(corpus)
-      && !/lebt in der Slowakei.*entscheidet die Slowakei/i.test(corpus),
+      && !/lebt in der Slowakei.*entscheidet die Slowakei/i.test(corpus)
+      && !/deutsche Sprache.*zahlende Stelle/i.test(corpus),
     amountAndRetroLimitPresent: pack.claims.some((claim) =>
       claim.key === "amount-259-from-2026" && String(claim.text).includes("259"))
       && pack.claims.some((claim) =>
         claim.key === "retroactive-six-months" && String(claim.text).includes("sechs Monate")),
+    negativeControls: /eine andere Behörde/u.test(claimText("other-authority-notice-insufficient"))
+      && /nicht.*abgeleitet werden/u.test(claimText("requested-deadline-is-case-specific"))
+      && /keine individuelle Rechtsbehelfsempfehlung/u.test(claimText("legal-remedy-requires-bescheid-and-basis"))
+      && /keine Ablehnung/u.test(claimText("review-questionnaire-is-not-rejection"))
+      && /weder Vorsatz noch eine Straftat/u.test(claimText("overpayment-not-automatically-fraud"))
+      && /nicht der einzige Antragsweg/u.test(claimText("bundid-optional-not-exclusive"))
+      && /kostenlos/u.test(claimText("application-free-of-charge"))
+      && /Einspruch/u.test(claimText("objection-one-month"))
+      && /Widerspruch/u.test(claimText("objection-one-month"))
+      && !/Einspruch oder Widerspruch sind dasselbe/u.test(claimText("objection-one-month"))
+      && /nicht in jedem Fall zuständig/u.test(claimText("competent-familienkasse-is-residence-office"))
+      && /nicht die örtliche Familienkasse am Wohnsitz/u.test(claimText("zkgs-federal-public-service"))
+      && /nicht automatisch die wohnsitznahe Familienkasse/u.test(claimText("cross-border-competence-not-from-residence"))
+      && /ersetzt keine EU-Koordinierung/u.test(claimText("special-competence-is-not-eu-coordination"))
+      && !/deutsche Sprache.*zuständige Familienkasse/i.test(corpus)
+      && !/userLocale|user_locale/.test(packSource)
+      && !/Kinderzuschlag/u.test(corpus),
+    formsRepresented: KINDERGELD_FORMS.length === 6
+      && ["KG1", "KG1-AnK", "KG 51", "KG 5a", "KG 5b", "KG 11a"].every((identifier) =>
+        pack.forms.some((form) => form.identifier === identifier)),
     factoryIdsDeterministic: pack.trustDomain.id
       === buildKindergeldFederalCorePack().trustDomain.id
       && pack.jurisdictions[0]!.id === buildKindergeldFederalCorePack().jurisdictions[0]!.id,
@@ -266,6 +315,23 @@ async function main(): Promise<void> {
            or id::text = any($1::text[])`,
       [[...watchIds]],
     );
+    const processesIngested = await admin.query(
+      `select count(*)::int n from public.knowledge_processes
+        where process_group_id=$1`,
+      [KINDERGELD_DOMAIN],
+    );
+    const processLinksIngested = await admin.query(
+      `select count(*)::int n from public.knowledge_process_claim_links l
+        join public.knowledge_processes p on p.id=l.process_id
+       where p.process_group_id=$1
+         and l.process_step_id is null`,
+      [KINDERGELD_DOMAIN],
+    );
+    const formsIngested = await admin.query(
+      `select count(*)::int n from public.knowledge_forms
+        where form_identifier=any($1::text[])`,
+      [KINDERGELD_FORMS.map((item) => item.identifier)],
+    );
     const berlin = buildCityStateServiceAreaPacks()[0];
     await ingestor.query(SERVICE_RPC, [berlin]);
     const trustAfter = await admin.query("select count(*)::int n from public.knowledge_trust_domains where code='de'");
@@ -287,8 +353,11 @@ async function main(): Promise<void> {
     live.noDuplicateSources = sourceDupes.rowCount === 0;
     live.noDuplicateClaims = claimDupes.rowCount === 0;
     live.retrievalMetadataComplete = Number(metadata.rows[0]?.n) === pack.claims.length
-      && pack.claims.length === 40;
+      && pack.claims.length === KINDERGELD_UNITS.length;
     live.zeroFutureClaimsCreated = Number(futureCreated.rows[0]?.n) === 0;
+    live.processBindingsSurvived = Number(processesIngested.rows[0]?.n) === pack.processes.length
+      && Number(processLinksIngested.rows[0]?.n) === pack.processClaimLinks.length
+      && Number(formsIngested.rows[0]?.n) === pack.forms.length;
     live.syntheticCoexistsWithoutDuplicatingOfficialSources = Number(syntheticSources.rows[0]?.n) === 1
       && Number(trustAfter.rows[0]?.n) === 1;
   } finally {
@@ -309,6 +378,8 @@ async function main(): Promise<void> {
     secondCreated,
     officialSources: KINDERGELD_OFFICIAL_SOURCES.map((item) => item.url),
     futureWatchItems: KINDERGELD_FUTURE_CHANGE_WATCH_ITEMS.map((item) => item.id),
+    processCompleteness: completeness,
+    g3ProcessStepLimitation: KINDERGELD_G3_PROCESS_STEP_LIMITATION,
     temporalG3EffectiveDatePassthroughImplemented: false,
     futureRulesSafelyExcludedFromCurrentIngestion: true,
     publicRuntimeAuthorized: false,
