@@ -12,6 +12,7 @@ export const KNOWLEDGE_FACTORY_DOMAINS = Object.freeze([
   "auslaenderbehoerde_limited_orientation",
   "vehicle_registration_and_driving_licence",
   "housing_orientation",
+  "arbeitslosengeld",
 ] as const);
 export type KnowledgeFactoryDomain = typeof KNOWLEDGE_FACTORY_DOMAINS[number];
 
