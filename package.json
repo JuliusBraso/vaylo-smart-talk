@@ -42,6 +42,7 @@
     "knowledge:local:audit-production-migration-operations": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-v2-l-bounded-production-migration-operations-audit.ts",
     "knowledge:local:audit-production-city-state-operations": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/packs/de/anmeldung-ummeldung-abmeldung/run-v2-m-city-state-production-operations-audit.ts",
     "knowledge:local:audit-prod-02a-sequence": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-prod-02a-representative-production-041-sequence-audit.ts",
+    "knowledge:local:audit-b8-city-state-selector": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/packs/de/anmeldung-ummeldung-abmeldung/run-b8-controlled-runtime-city-state-selector-audit.ts",
     "release:check": "npm run db:verify",
     "verify:8.3v": "npx -y tsx@4.19.2 scripts/verify-8-3v-additional-synthetic-live-execution.ts"
   },

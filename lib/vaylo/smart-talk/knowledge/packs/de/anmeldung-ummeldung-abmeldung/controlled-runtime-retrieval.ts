@@ -806,7 +806,7 @@ export async function prepareControlledQuestionKnowledge(
     } catch {
       localityProposal = null;
     }
-    const locality = validateAnmeldungLocalityProposal(localityProposal);
+    const locality = validateAnmeldungLocalityProposal(localityProposal, input.text);
     const municipalityCode = locality?.municipalityCode ?? null;
     try {
       const retrieval = await (dependencies.retrieveAnmeldungContext ?? retrieveAnmeldungContextFromControlledReader)(
