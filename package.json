@@ -44,6 +44,7 @@
     "knowledge:local:audit-prod-02a-sequence": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-prod-02a-representative-production-041-sequence-audit.ts",
     "knowledge:local:audit-b8-city-state-selector": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/packs/de/anmeldung-ummeldung-abmeldung/run-b8-controlled-runtime-city-state-selector-audit.ts",
     "knowledge:local:audit-kindergeld-federal-core": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/packs/de/familienkasse-kindergeld/run-kindergeld-federal-core-pack-audit.ts",
+    "knowledge:local:audit-steuer-id-federal-core": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/packs/de/steuer-id-and-basic-finanzamt-letters/run-steuer-id-federal-core-pack-audit.ts",
     "release:check": "npm run db:verify",
     "verify:8.3v": "npx -y tsx@4.19.2 scripts/verify-8-3v-additional-synthetic-live-execution.ts"
   },
