@@ -342,12 +342,13 @@ async function main(): Promise<void> {
     ].every((group) => groupDefinition.includes(group));
     cases.F52 = groupDefinition.includes("vehicle_registration_and_driving_licence");
     cases.F53 = groupDefinition.includes("housing_orientation");
-    cases.F54 = KNOWLEDGE_FACTORY_DOMAINS.length === 15
+    cases.F54 = KNOWLEDGE_FACTORY_DOMAINS.length === 16
       && (KNOWLEDGE_FACTORY_DOMAINS as readonly string[]).includes("arbeitslosengeld")
       && (KNOWLEDGE_FACTORY_DOMAINS as readonly string[]).includes("einkommensteuer_steuererklaerung")
       && (KNOWLEDGE_FACTORY_DOMAINS as readonly string[]).includes("wohngeld")
       && (KNOWLEDGE_FACTORY_DOMAINS as readonly string[]).includes("versicherungsvertraege_versicherungsschreiben")
-      && (KNOWLEDGE_FACTORY_DOMAINS as readonly string[]).includes("banking_zahlungsverkehr");
+      && (KNOWLEDGE_FACTORY_DOMAINS as readonly string[]).includes("banking_zahlungsverkehr")
+      && (KNOWLEDGE_FACTORY_DOMAINS as readonly string[]).includes("verkehrsordnungswidrigkeiten_bussgeldverfahren");
 
     const legacyClient = await client("foundation_legacy");
     const legacyFederal = await legacyClient.query(

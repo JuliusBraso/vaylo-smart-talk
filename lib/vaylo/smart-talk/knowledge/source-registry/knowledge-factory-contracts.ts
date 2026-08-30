@@ -17,6 +17,7 @@ export const KNOWLEDGE_FACTORY_DOMAINS = Object.freeze([
   "wohngeld",
   "versicherungsvertraege_versicherungsschreiben",
   "banking_zahlungsverkehr",
+  "verkehrsordnungswidrigkeiten_bussgeldverfahren",
 ] as const);
 export type KnowledgeFactoryDomain = typeof KNOWLEDGE_FACTORY_DOMAINS[number];
 
