@@ -15,6 +15,7 @@ export const KNOWLEDGE_FACTORY_DOMAINS = Object.freeze([
   "arbeitslosengeld",
   "einkommensteuer_steuererklaerung",
   "wohngeld",
+  "versicherungsvertraege_versicherungsschreiben",
 ] as const);
 export type KnowledgeFactoryDomain = typeof KNOWLEDGE_FACTORY_DOMAINS[number];
 
