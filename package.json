@@ -55,6 +55,7 @@
     "knowledge:local:audit-versicherungsvertraege-federal-core": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/packs/de/versicherungsvertraege-versicherungsschreiben/run-versicherungsvertraege-federal-core-pack-audit.ts",
     "knowledge:local:audit-banking-zahlungsverkehr-federal-core": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/packs/de/banking-zahlungsverkehr/run-banking-zahlungsverkehr-federal-core-pack-audit.ts",
     "knowledge:local:audit-verkehr-bussgeld-federal-core": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/packs/de/verkehrsordnungswidrigkeiten-bussgeldverfahren/run-verkehr-bussgeld-federal-core-pack-audit.ts",
+    "knowledge:local:audit-elterngeld-federal-core": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/packs/de/elterngeld/run-elterngeld-federal-core-pack-audit.ts",
     "release:check": "npm run db:verify",
     "verify:8.3v": "npx -y tsx@4.19.2 scripts/verify-8-3v-additional-synthetic-live-execution.ts"
   },
