@@ -50,6 +50,7 @@
     "knowledge:local:audit-jobcenter-buergergeld-federal-core": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/packs/de/jobcenter-grundsicherungsgeld/run-jobcenter-federal-core-pack-audit.ts",
     "knowledge:local:audit-arbeitslosengeld-federal-core": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/packs/de/arbeitslosengeld/run-arbeitslosengeld-federal-core-pack-audit.ts",
     "knowledge:local:audit-auslaenderbehoerde-federal-core": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/packs/de/auslaenderbehoerde-aufenthalt/run-auslaenderbehoerde-federal-core-pack-audit.ts",
+    "knowledge:local:audit-einkommensteuer-federal-core": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/packs/de/einkommensteuer-steuererklaerung/run-einkommensteuer-federal-core-pack-audit.ts",
     "release:check": "npm run db:verify",
     "verify:8.3v": "npx -y tsx@4.19.2 scripts/verify-8-3v-additional-synthetic-live-execution.ts"
   },
