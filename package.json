@@ -39,6 +39,7 @@
     "knowledge:local:audit-anmeldung-v2-federal-28-to-41": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/packs/de/anmeldung-ummeldung-abmeldung/run-anmeldung-v2-federal-28-to-41-expansion-audit.ts",
     "knowledge:local:audit-anmeldung-v2-runtime-visibility": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/packs/de/anmeldung-ummeldung-abmeldung/run-anmeldung-v2-runtime-visibility-28-to-41-audit.ts",
     "knowledge:local:audit-anmeldung-city-state-service-area": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/packs/de/anmeldung-ummeldung-abmeldung/run-anmeldung-city-state-service-area-content-audit.ts",
+    "knowledge:local:audit-anmeldung-federal-core-process-complete": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/packs/de/anmeldung-ummeldung-abmeldung/run-anmeldung-federal-core-process-complete-audit.ts",
     "knowledge:local:audit-production-migration-operations": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-v2-l-bounded-production-migration-operations-audit.ts",
     "knowledge:local:audit-production-city-state-operations": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/packs/de/anmeldung-ummeldung-abmeldung/run-v2-m-city-state-production-operations-audit.ts",
     "knowledge:local:audit-prod-02a-sequence": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-prod-02a-representative-production-041-sequence-audit.ts",
