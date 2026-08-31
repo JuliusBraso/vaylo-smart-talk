@@ -92,12 +92,34 @@ export type CrossBorderHealthcareFacts = Readonly<{
   materialChangeDate?: string | null;
 }>;
 
+export type CrossBorderFamilyBenefitChildFacts = Readonly<{
+  childKey?: string | null;
+  residenceState?: string | null;
+  familyRelationship?: string | null;
+  relevantPeriod?: string | null;
+}>;
+
+export type CrossBorderFamilyBenefitFacts = Readonly<{
+  primaryBenefitState?: string | null;
+  secondaryBenefitState?: string | null;
+  childResidenceKnown?: boolean | null;
+  secondParentActivityKnown?: boolean | null;
+  overlapSamePeriod?: boolean | null;
+  overlapSameFamilyMember?: boolean | null;
+  entitlementBasis?: "ACTIVITY" | "PENSION" | "RESIDENCE" | "UNCLEAR" | null;
+  nationalEntitlementVerified?: boolean | null;
+  amountKnown?: boolean | null;
+  applicantIsBeneficiary?: boolean | null;
+  children?: readonly CrossBorderFamilyBenefitChildFacts[] | null;
+}>;
+
 export type CrossBorderCaseContext = Readonly<{
   persons: readonly CrossBorderPersonFacts[];
   period?: Readonly<{ from: string; to?: string | null }> | null;
   overlappingBenefits?: readonly string[] | null;
   workerPostingStatus?: "WORKER" | "POSTED" | "UNCLEAR" | null;
   healthcare?: CrossBorderHealthcareFacts | null;
+  familyBenefits?: CrossBorderFamilyBenefitFacts | null;
 }>;
 
 export type CrossBorderActorSemantics = Readonly<{
@@ -241,6 +263,21 @@ export function validateCrossBorderCaseContext(
     }
   }
   if (context.period && !context.period.from) issues.push("CASE_CONTEXT_PERIOD_INVALID");
+  if (context.familyBenefits) {
+    rejectLocaleFields(issues, context.familyBenefits, "familyBenefits");
+    for (const [index, child] of (context.familyBenefits.children ?? []).entries()) {
+      rejectLocaleFields(issues, child, `familyBenefits.children.${index}`);
+      if (child.residenceState != null && child.residenceState !== "" && !ISO2.test(child.residenceState)) {
+        issues.push(`INVALID_CASE_STATE:familyBenefits.children.${index}.residenceState`);
+      }
+    }
+    for (const stateKey of ["primaryBenefitState", "secondaryBenefitState"] as const) {
+      const value = context.familyBenefits[stateKey];
+      if (value != null && value !== "" && !ISO2.test(value)) {
+        issues.push(`INVALID_CASE_STATE:familyBenefits.${stateKey}`);
+      }
+    }
+  }
   return Object.freeze({
     valid: issues.length === 0,
     issues: Object.freeze(issues),
