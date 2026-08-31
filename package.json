@@ -59,6 +59,7 @@
     "knowledge:local:audit-cross-border-connector-foundation": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-cross-border-connector-foundation-audit.ts",
     "knowledge:local:audit-eu-applicable-legislation-core": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-eu-applicable-legislation-core-pack-audit.ts",
     "knowledge:local:audit-de-sk-applicable-legislation-connector": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-de-sk-applicable-legislation-connector-audit.ts",
+    "knowledge:local:audit-eu-health-insurance-coordination": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-eu-health-insurance-coordination-core-pack-audit.ts",
     "release:check": "npm run db:verify",
     "verify:8.3v": "npx -y tsx@4.19.2 scripts/verify-8-3v-additional-synthetic-live-execution.ts"
   },

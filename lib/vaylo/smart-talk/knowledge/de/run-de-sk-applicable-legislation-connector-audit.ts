@@ -86,6 +86,7 @@ const MIGRATIONS = [
   "supabase/migrations/051_add_cross_border_connector_ingestion.sql",
   "supabase/migrations/052_expand_eu_jurisdiction_foundation_ingestion.sql",
   "supabase/migrations/053_add_sk_national_adapter_and_de_sk_connector_ingestion.sql",
+  "supabase/migrations/054_add_eu_health_insurance_coordination_ingestion.sql",
 ];
 const DOMAIN_RPC = "select public.knowledge_ingest_curated_domain_pack($1::jsonb) as result";
 const EU_RPC = "select public.knowledge_ingest_curated_eu_jurisdiction_anchor($1::jsonb) as result";
