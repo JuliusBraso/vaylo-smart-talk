@@ -43,8 +43,12 @@ export type CrossBorderTrustDomainCode = typeof CROSS_BORDER_TRUST_DOMAINS[numbe
 export const CROSS_BORDER_ENTITY_CLASSES = Object.freeze(["claims", "processes"] as const);
 export type CrossBorderEntityClass = typeof CROSS_BORDER_ENTITY_CLASSES[number];
 
-export const CROSS_BORDER_CONNECTOR_STATUSES = Object.freeze(["planned"] as const);
+export const CROSS_BORDER_CONNECTOR_STATUSES = Object.freeze(["planned", "prepared"] as const);
 export type CrossBorderConnectorStatus = typeof CROSS_BORDER_CONNECTOR_STATUSES[number];
+
+export const FOREIGN_NATIONAL_ADAPTER_COUNTRIES = Object.freeze(["SK"] as const);
+export type ForeignNationalAdapterCountry = typeof FOREIGN_NATIONAL_ADAPTER_COUNTRIES[number];
+export const FOREIGN_NATIONAL_ADAPTER_TRUST_DOMAIN = "sk" as const;
 
 const KEY = /^[a-z0-9][a-z0-9:_-]{1,80}$/u;
 const ISO2 = /^[A-Z]{2}$/u;
@@ -81,6 +85,23 @@ export type CrossBorderActorSemantics = Readonly<{
   institutionExchangeExpected: boolean;
 }>;
 
+export type ForeignNationalStableReference = Readonly<{
+  entityClass: CrossBorderEntityClass;
+  key: string;
+  sourceJurisdiction: ForeignNationalAdapterCountry;
+  trustDomain: typeof FOREIGN_NATIONAL_ADAPTER_TRUST_DOMAIN;
+  temporalClass: CrossBorderTemporalClass;
+}>;
+
+export type CorridorProcessBinding = Readonly<{
+  key: string;
+  title: string;
+  trigger: string;
+  safeFirstStep: string;
+  riskLevel: "medium" | "high";
+  claimRefs: readonly (StableKnowledgeReference | ForeignNationalStableReference)[];
+}>;
+
 export type CuratedCrossBorderConnectorPack = Readonly<{
   schemaVersion: typeof CROSS_BORDER_CONNECTOR_SCHEMA_VERSION;
   packId: string;
@@ -94,13 +115,14 @@ export type CuratedCrossBorderConnectorPack = Readonly<{
   germanProcessRef: StableKnowledgeReference;
   germanClaimRefs: readonly StableKnowledgeReference[];
   euClaimRefs: readonly StableKnowledgeReference[];
-  foreignClaimRefs: readonly StableKnowledgeReference[];
+  foreignClaimRefs: readonly (StableKnowledgeReference | ForeignNationalStableReference)[];
   foreignProcessReference: string | null;
   actorRule: CrossBorderActorSemantics;
   requiredCaseRoles: readonly CrossBorderPersonRole[];
   requiredCaseStates: readonly CrossBorderCaseState[];
   handlingMode: "STORE_CANONICALLY" | "DO_NOT_ANSWER_WITHOUT_CONTEXT";
   freshnessClass: "LEGAL_CHANGE_MONITORED" | "EVENT_DRIVEN";
+  corridorProcesses?: readonly CorridorProcessBinding[];
 }>;
 
 export type CrossBorderContractValidation = Readonly<{
@@ -235,7 +257,9 @@ export function validateCuratedCrossBorderConnectorPack(
   if (!(CROSS_BORDER_CONNECTED_COUNTRIES as readonly string[]).includes(pack.connectedCountry)) {
     issues.push("UNKNOWN_CORRIDOR");
   }
-  if (pack.status !== "planned") issues.push("CONNECTOR_NOT_PLANNED");
+  const status = pack.status as string;
+  if (status !== "planned" && status !== "prepared") issues.push("CONNECTOR_NOT_PLANNED");
+  if (status === "active") issues.push("CONNECTOR_ACTIVE_FORBIDDEN");
   if (pack.activationFromLocaleAllowed !== false) issues.push("LOCALE_ACTIVATION_FORBIDDEN");
   if (pack.activationRequiresVerifiedCaseContext !== true) {
     issues.push("VERIFIED_CASE_CONTEXT_REQUIRED");
@@ -256,7 +280,14 @@ export function validateCuratedCrossBorderConnectorPack(
     issues.push("GERMAN_PROCESS_JURISDICTION_INVALID");
   }
   if (!pack.germanClaimRefs.length) issues.push("MISSING_GERMAN_REFERENCE");
-  if (pack.foreignClaimRefs.length) issues.push("FOREIGN_NATIONAL_INGEST_NOT_AUTHORIZED");
+  const skForeignAuthorized = pack.connectedCountry === "SK"
+    && pack.foreignClaimRefs.length > 0
+    && pack.foreignClaimRefs.every((ref) => (
+      ref.sourceJurisdiction === "SK" && ref.trustDomain === "sk"
+    ));
+  if (pack.foreignClaimRefs.length && !skForeignAuthorized) {
+    issues.push("FOREIGN_NATIONAL_INGEST_NOT_AUTHORIZED");
+  }
   const seen = new Set<string>();
   for (const [index, ref] of pack.germanClaimRefs.entries()) {
     validateStableRef(issues, ref, `germanClaimRefs.${index}`, "claims");
@@ -275,6 +306,21 @@ export function validateCuratedCrossBorderConnectorPack(
     const token = `${ref.entityClass}:${ref.key}`;
     if (seen.has(token)) issues.push(`DUPLICATE_REFERENCE:${token}`);
     seen.add(token);
+  }
+  if (skForeignAuthorized) {
+    for (const [index, ref] of pack.foreignClaimRefs.entries()) {
+      rejectLocaleFields(issues, ref, `foreignClaimRefs.${index}`);
+      if (ref.entityClass !== "claims") issues.push(`ENTITY_CLASS_MISMATCH:foreignClaimRefs.${index}`);
+      if (!KEY.test(ref.key)) issues.push(`INVALID_STABLE_KEY:foreignClaimRefs.${index}`);
+      if (ref.temporalClass === "PROPOSED_NOT_CURRENT") {
+        issues.push(`PROPOSED_NOT_CURRENT_FORBIDDEN:foreignClaimRefs.${index}`);
+      }
+      if (ref.temporalClass !== "CURRENT") issues.push(`NON_CURRENT_REFERENCE:foreignClaimRefs.${index}`);
+      if ("id" in (ref as object)) issues.push(`AUTHORING_DATABASE_UUID_FORBIDDEN:foreignClaimRefs.${index}`);
+      const token = `${ref.entityClass}:${ref.key}`;
+      if (seen.has(token)) issues.push(`DUPLICATE_REFERENCE:${token}`);
+      seen.add(token);
+    }
   }
   if (!pack.actorRule.actorState) issues.push("ACTOR_STATE_REQUIRED");
   if (!pack.requiredCaseRoles.length || !pack.requiredCaseStates.length) {
