@@ -70,11 +70,34 @@ export type CrossBorderPersonFacts = Readonly<{
   postingState?: string | null;
 }>;
 
+export type CrossBorderHealthcareFacts = Readonly<{
+  competentState?: string | null;
+  applicableLegislationVerified?: boolean | null;
+  insuranceSystemType?: "STATUTORY" | "PRIVATE" | "UNCLEAR" | null;
+  competentHealthInsurerKnown?: boolean | null;
+  residenceVerified?: boolean | null;
+  temporaryStayState?: string | null;
+  treatmentState?: string | null;
+  s1Status?: string | null;
+  s1ResidenceRegistrationStatus?: string | null;
+  ehicStatus?: string | null;
+  prcStatus?: string | null;
+  s2Status?: string | null;
+  familyMemberRole?: string | null;
+  familyMemberStatusKnown?: boolean | null;
+  familyMemberHasOwnEntitlement?: boolean | null;
+  treatmentIsPlanned?: boolean | null;
+  treatmentWasPurposeOfTravel?: boolean | null;
+  providerSystemType?: "PUBLIC" | "PRIVATE" | "UNCLEAR" | null;
+  materialChangeDate?: string | null;
+}>;
+
 export type CrossBorderCaseContext = Readonly<{
   persons: readonly CrossBorderPersonFacts[];
   period?: Readonly<{ from: string; to?: string | null }> | null;
   overlappingBenefits?: readonly string[] | null;
   workerPostingStatus?: "WORKER" | "POSTED" | "UNCLEAR" | null;
+  healthcare?: CrossBorderHealthcareFacts | null;
 }>;
 
 export type CrossBorderActorSemantics = Readonly<{

@@ -14,16 +14,29 @@ import {
 export const FOREIGN_NATIONAL_ADAPTER_SCHEMA_VERSION = KNOWLEDGE_FACTORY_SCHEMA_VERSION;
 export const SK_ADAPTER_PACK_ID = "sk_applicable_legislation_adapter" as const;
 export const SK_ADAPTER_PROCESS_GROUP = "sk_applicable_legislation_adapter" as const;
+export const SK_HEALTH_ADAPTER_PACK_ID = "sk_health_insurance_coordination_adapter" as const;
+export const SK_HEALTH_ADAPTER_PROCESS_GROUP = "sk_health_insurance_coordination_adapter" as const;
 export const DE_ROUTING_PACK_ID = "de_applicable_legislation_routing" as const;
 export const DE_ROUTING_PROCESS_GROUP = "de_applicable_legislation_routing" as const;
+export const DE_HEALTH_ROUTING_PACK_ID = "de_health_insurance_coordination_routing" as const;
+export const DE_HEALTH_ROUTING_PROCESS_GROUP = "de_health_insurance_coordination_routing" as const;
 export const DE_SK_CONNECTOR_PROCESS_GROUP = "de_sk_applicable_legislation_connector" as const;
+export const DE_SK_HEALTH_CONNECTOR_PROCESS_GROUP = "de_sk_health_insurance_coordination_connector" as const;
+export const AUTHORIZED_SK_ADAPTER_PACK_IDS = Object.freeze([
+  SK_ADAPTER_PACK_ID,
+  SK_HEALTH_ADAPTER_PACK_ID,
+] as const);
+export const AUTHORIZED_DE_ROUTING_PACK_IDS = Object.freeze([
+  DE_ROUTING_PACK_ID,
+  DE_HEALTH_ROUTING_PACK_ID,
+] as const);
 export const SK_EMPLOYER_EFILING_EFFECTIVE = "2026-09-01" as const;
 
 type Entity = Readonly<Record<string, unknown> & { key: string; id: string }>;
 
 export type CuratedForeignNationalAdapterPack = Readonly<{
   schemaVersion: 1;
-  packId: typeof SK_ADAPTER_PACK_ID;
+  packId: typeof SK_ADAPTER_PACK_ID | typeof SK_HEALTH_ADAPTER_PACK_ID;
   countryCode: ForeignNationalAdapterCountry;
   canonicalLanguage: "de";
   trustDomain: Readonly<{ key: string; id: string; code: typeof FOREIGN_NATIONAL_ADAPTER_TRUST_DOMAIN; name: string }>;
@@ -52,7 +65,10 @@ export function validateForeignNationalAdapterPack(
   pack: CuratedForeignNationalAdapterPack,
 ): Readonly<{ valid: boolean; issues: readonly string[]; productionEligible: false }> {
   const issues: string[] = [];
-  if (pack.schemaVersion !== 1 || pack.packId !== SK_ADAPTER_PACK_ID) issues.push("SK_ADAPTER_IDENTITY_INVALID");
+  if (pack.schemaVersion !== 1
+      || !(AUTHORIZED_SK_ADAPTER_PACK_IDS as readonly string[]).includes(pack.packId)) {
+    issues.push("SK_ADAPTER_IDENTITY_INVALID");
+  }
   if (pack.canonicalLanguage !== "de") issues.push("INVALID_CANONICAL_LANGUAGE");
   if (pack.trustDomain.code !== "sk") issues.push("SK_TRUST_DOMAIN_REQUIRED");
   const country = pack.countryCode as string;
