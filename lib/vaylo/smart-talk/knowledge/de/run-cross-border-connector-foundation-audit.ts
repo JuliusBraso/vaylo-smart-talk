@@ -75,6 +75,7 @@ const MIGRATIONS = [
   "supabase/migrations/049_add_verkehrsordnungswidrigkeiten_knowledge_factory_domain.sql",
   "supabase/migrations/050_add_elterngeld_knowledge_factory_domain.sql",
   "supabase/migrations/051_add_cross_border_connector_ingestion.sql",
+  "supabase/migrations/052_expand_eu_jurisdiction_foundation_ingestion.sql",
 ];
 const DOMAIN_RPC = "select public.knowledge_ingest_curated_domain_pack($1::jsonb) as result";
 const EU_RPC = "select public.knowledge_ingest_curated_eu_jurisdiction_anchor($1::jsonb) as result";
