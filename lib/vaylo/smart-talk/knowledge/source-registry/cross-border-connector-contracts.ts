@@ -182,6 +182,18 @@ export type CrossBorderUnemploymentPeriod = Readonly<{
   overlapStatus?: "NONE" | "OVERLAP" | "UNCLEAR" | null;
 }>;
 
+export const CROSS_BORDER_UNEMPLOYMENT_ACTIVITY_TYPES = Object.freeze([
+  "EMPLOYED",
+  "SELF_EMPLOYED",
+  "MIXED_EMPLOYED_SELF_EMPLOYED",
+  "FORMER_EMPLOYED",
+  "FORMER_SELF_EMPLOYED",
+  "ACTIVITY_STATUS_CHANGED",
+  "UNKNOWN",
+] as const);
+export type CrossBorderUnemploymentActivityType =
+  typeof CROSS_BORDER_UNEMPLOYMENT_ACTIVITY_TYPES[number];
+
 export type CrossBorderUnemploymentFacts = Readonly<{
   unemploymentStatus?: "WHOLE" | "PARTIAL" | "INTERMITTENT" | "UNCLEAR" | null;
   employmentRelationshipExists?: boolean | null;
@@ -193,6 +205,7 @@ export type CrossBorderUnemploymentFacts = Readonly<{
   frontierWorkerStatus?: "FRONTIER" | "NON_FRONTIER" | "UNCLEAR" | null;
   returnFrequency?: "DAILY" | "WEEKLY" | "LESS_THAN_WEEKLY" | "UNCLEAR" | null;
   lastActivityType?: "EMPLOYED" | "SELF_EMPLOYED" | "SPECIAL_CIVIL_SERVANT" | "UNKNOWN" | null;
+  activityType?: CrossBorderUnemploymentActivityType | null;
   continuesInResidenceState?: boolean | null;
   returnedToResidenceState?: boolean | null;
   remainedInLastActivityState?: boolean | null;
@@ -200,6 +213,7 @@ export type CrossBorderUnemploymentFacts = Readonly<{
   insurancePeriods?: readonly CrossBorderUnemploymentPeriod[] | null;
   employmentPeriods?: readonly CrossBorderUnemploymentPeriod[] | null;
   selfEmploymentPeriods?: readonly CrossBorderUnemploymentPeriod[] | null;
+  voluntaryUnemploymentInsuranceVerified?: boolean | null;
   lastSalaryState?: string | null;
   lastSalaryKnown?: boolean | null;
   currentBenefitState?: string | null;
@@ -207,10 +221,13 @@ export type CrossBorderUnemploymentFacts = Readonly<{
   exportDestinationState?: string | null;
   exportPurposeIsJobSearch?: boolean | null;
   unemploymentRegistrationDate?: string | null;
+  registrationState?: string | null;
   exportDepartureDate?: string | null;
   u1Status?: "PRESENT" | "ABSENT" | "UNCLEAR" | null;
   u2Status?: "PRESENT" | "ABSENT" | "UNCLEAR" | null;
   u3Status?: "PRESENT" | "ABSENT" | "UNCLEAR" | null;
+  u1Required?: boolean | null;
+  u2Required?: boolean | null;
   article65aNotificationVerified?: boolean | null;
 }>;
 
@@ -407,11 +424,20 @@ export function validateCrossBorderCaseContext(
     for (const stateKey of [
       "lastActivityState", "lastApplicableLegislationState", "residenceState",
       "lastSalaryState", "currentBenefitState", "exportDestinationState",
+      "registrationState",
     ] as const) {
       const value = context.unemployment[stateKey];
       if (value != null && value !== "" && !ISO2.test(value)) {
         issues.push(`INVALID_CASE_STATE:unemployment.${stateKey}`);
       }
+    }
+    if (
+      context.unemployment.activityType != null
+      && !(CROSS_BORDER_UNEMPLOYMENT_ACTIVITY_TYPES as readonly string[]).includes(
+        context.unemployment.activityType,
+      )
+    ) {
+      issues.push(`UNKNOWN_UNEMPLOYMENT_ACTIVITY_TYPE:${context.unemployment.activityType}`);
     }
   }
   if (context.healthcare) {
