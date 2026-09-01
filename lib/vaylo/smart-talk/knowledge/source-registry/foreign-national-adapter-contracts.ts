@@ -16,19 +16,26 @@ export const SK_ADAPTER_PACK_ID = "sk_applicable_legislation_adapter" as const;
 export const SK_ADAPTER_PROCESS_GROUP = "sk_applicable_legislation_adapter" as const;
 export const SK_HEALTH_ADAPTER_PACK_ID = "sk_health_insurance_coordination_adapter" as const;
 export const SK_HEALTH_ADAPTER_PROCESS_GROUP = "sk_health_insurance_coordination_adapter" as const;
+export const SK_FAMILY_ADAPTER_PACK_ID = "sk_family_benefits_adapter" as const;
+export const SK_FAMILY_ADAPTER_PROCESS_GROUP = "sk_family_benefits_adapter" as const;
 export const DE_ROUTING_PACK_ID = "de_applicable_legislation_routing" as const;
 export const DE_ROUTING_PROCESS_GROUP = "de_applicable_legislation_routing" as const;
 export const DE_HEALTH_ROUTING_PACK_ID = "de_health_insurance_coordination_routing" as const;
 export const DE_HEALTH_ROUTING_PROCESS_GROUP = "de_health_insurance_coordination_routing" as const;
+export const DE_FAMILY_ROUTING_PACK_ID = "de_family_benefits_coordination_routing" as const;
+export const DE_FAMILY_ROUTING_PROCESS_GROUP = "de_family_benefits_coordination_routing" as const;
 export const DE_SK_CONNECTOR_PROCESS_GROUP = "de_sk_applicable_legislation_connector" as const;
 export const DE_SK_HEALTH_CONNECTOR_PROCESS_GROUP = "de_sk_health_insurance_coordination_connector" as const;
+export const DE_SK_FAMILY_CONNECTOR_PROCESS_GROUP = "de_sk_family_benefits_coordination_connector" as const;
 export const AUTHORIZED_SK_ADAPTER_PACK_IDS = Object.freeze([
   SK_ADAPTER_PACK_ID,
   SK_HEALTH_ADAPTER_PACK_ID,
+  SK_FAMILY_ADAPTER_PACK_ID,
 ] as const);
 export const AUTHORIZED_DE_ROUTING_PACK_IDS = Object.freeze([
   DE_ROUTING_PACK_ID,
   DE_HEALTH_ROUTING_PACK_ID,
+  DE_FAMILY_ROUTING_PACK_ID,
 ] as const);
 export const SK_EMPLOYER_EFILING_EFFECTIVE = "2026-09-01" as const;
 
@@ -36,7 +43,7 @@ type Entity = Readonly<Record<string, unknown> & { key: string; id: string }>;
 
 export type CuratedForeignNationalAdapterPack = Readonly<{
   schemaVersion: 1;
-  packId: typeof SK_ADAPTER_PACK_ID | typeof SK_HEALTH_ADAPTER_PACK_ID;
+  packId: typeof SK_ADAPTER_PACK_ID | typeof SK_HEALTH_ADAPTER_PACK_ID | typeof SK_FAMILY_ADAPTER_PACK_ID;
   countryCode: ForeignNationalAdapterCountry;
   canonicalLanguage: "de";
   trustDomain: Readonly<{ key: string; id: string; code: typeof FOREIGN_NATIONAL_ADAPTER_TRUST_DOMAIN; name: string }>;

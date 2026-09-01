@@ -99,6 +99,21 @@ export type CrossBorderFamilyBenefitChildFacts = Readonly<{
   relevantPeriod?: string | null;
 }>;
 
+export type FamilyBenefitBasket = Readonly<{
+  familyMember?: string | null;
+  state?: string | null;
+  nationalBenefitRefs?: readonly string[] | null;
+  verifiedEntitlements?: readonly string[] | null;
+  currentAmounts?: readonly string[] | null;
+  paymentPeriods?: readonly string[] | null;
+  classificationStatus?:
+    | "CLASSIFIED"
+    | "EXCLUDED_ANNEX_I"
+    | "CLASSIFICATION_REQUIRES_AUTHORITY"
+    | "UNCLEAR"
+    | null;
+}>;
+
 export type CrossBorderFamilyBenefitFacts = Readonly<{
   primaryBenefitState?: string | null;
   secondaryBenefitState?: string | null;
@@ -111,6 +126,10 @@ export type CrossBorderFamilyBenefitFacts = Readonly<{
   amountKnown?: boolean | null;
   applicantIsBeneficiary?: boolean | null;
   children?: readonly CrossBorderFamilyBenefitChildFacts[] | null;
+  f3BasketComplete?: boolean | null;
+  periodAlignmentKnown?: boolean | null;
+  calendarMonthVsLebensmonat?: "INCOMPATIBLE" | "ALIGNED" | "UNCLEAR" | null;
+  f3Baskets?: readonly FamilyBenefitBasket[] | null;
 }>;
 
 export type CrossBorderCaseContext = Readonly<{

@@ -35,6 +35,7 @@ import {
   EU_SHARED_ART67_CLAIM_KEY,
   EU_SHARED_ART682_CLAIM_KEY,
   EU_SHARED_ART69_CLAIM_KEY,
+  EU_SHARED_F3_CLAIM_KEY,
   GERMAN_ELTERNGELD_PACK_BOUNDARY,
   GERMAN_KINDERGELD_PACK_BOUNDARY,
   buildEuFamilyBenefitsCoordinationPack,
@@ -74,6 +75,7 @@ const MIGRATIONS = [
   "supabase/migrations/054_add_eu_health_insurance_coordination_ingestion.sql",
   "supabase/migrations/055_add_de_sk_health_insurance_coordination_ingestion.sql",
   "supabase/migrations/056_add_eu_family_benefits_coordination_ingestion.sql",
+  "supabase/migrations/057_add_de_sk_family_benefits_coordination_ingestion.sql",
 ];
 const DOMAIN_RPC = "select public.knowledge_ingest_curated_domain_pack($1::jsonb) as result";
 const EU_RPC = "select public.knowledge_ingest_curated_eu_jurisdiction_anchor($1::jsonb) as result";
@@ -174,7 +176,9 @@ async function main(): Promise<void> {
       && /Nachrang bedeutet nicht fehlenden Anspruch/.test(claimText("fb-secondary-benefit-state-model")),
     differential: /Unterschiedsbetrag kann für den überschießenden Teil/.test(claimText(EU_SHARED_ART682_CLAIM_KEY))
       && /Artikel 68 Absatz 2 Satz 2/.test(claimText("fb-residence-only-supplement-exception"))
-      && /ohne verifizierte nationale Ansprüche/.test(claimText("fb-exact-amount-fail-closed")),
+      && /ohne verifizierte nationale Ansprüche/.test(claimText("fb-exact-amount-fail-closed"))
+      && /für jedes Familienmitglied/.test(claimText(EU_SHARED_F3_CLAIM_KEY))
+      && /keinen universellen Einzelleistungsvergleich/.test(claimText("fb-f3-not-one-benefit-pair")),
     forwarding: /ursprüngliche Antragsdatum bleibt erhalten/.test(claimText("fb-filing-date-preserved"))
       && /nicht den Verlust des Antrags/.test(claimText("fb-filed-secondary-not-lost")),
     article60: /Lage der gesamten Familie/.test(claimText(EU_SHARED_ART60_CLAIM_KEY))
@@ -198,12 +202,12 @@ async function main(): Promise<void> {
     elterngeldNotDuplicated: keyOverlap.filter((key) => elterngeldKeys.has(key)).length === 0
       && GERMAN_ELTERNGELD_PACK_BOUNDARY[0]?.pack === "elterngeld"
       && /nicht dupliziert/.test(claimText("fb-elterngeld-national-not-in-eu-core")),
-    processComplete: EU_FAMILY_PROCESSES.length === 28
+    processComplete: EU_FAMILY_PROCESSES.length === 29
       && PROCESS_COMPLETE_DIMENSIONS.length === 12
       && summary.processCompletenessPercent === 100
       && summary.blockedScenarioCount === 0
-      && summary.totalScenarios === 57
-      && summary.coveredScenarioCount === 55
+      && summary.totalScenarios === 59
+      && summary.coveredScenarioCount === 57
       && summary.outOfScopeScenarioCount === 2
       && EU_FAMILY_NEGATIVE_CONTROLS.every((key) => uniqueClaimKeys.has(key)),
     officialSourcesOnly: EU_FAMILY_OFFICIAL_SOURCES.every((item) => OFFICIAL_HOSTS.has(item.officialDomain))

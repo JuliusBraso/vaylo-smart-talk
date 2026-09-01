@@ -20,6 +20,7 @@ export const EU_SHARED_ART68_CLAIM_KEY = "art-68-priority-rules" as const;
 export const EU_SHARED_ART682_CLAIM_KEY = "art-68-2-differential-supplement" as const;
 export const EU_SHARED_ART69_CLAIM_KEY = "art-69-orphan-special" as const;
 export const EU_SHARED_ART60_CLAIM_KEY = "art-60-whole-family-fiction" as const;
+export const EU_SHARED_F3_CLAIM_KEY = "decision-f3-per-family-member-comparison" as const;
 
 const HASH = (value: string): string => createHash("sha256").update(value).digest("hex");
 type Entity = Readonly<Record<string, unknown> & { key: string; id: string }>;
@@ -245,6 +246,23 @@ export const EU_FAMILY_OFFICIAL_SOURCES: readonly SourceSpec[] = Object.freeze([
       { key: "family-institution-directory-text", locator: "Institution directory", text: "Zuständige Familienleistungsträger, aktuelle Antragswege und geltende nationale Beträge sind live bei den nationalen Stellen zu ermitteln. Dieser EU-Kern speichert keine Euro-Beträge und kein allgemeines Umrechnungsmodell." },
     ],
   },
+  {
+    key: "decision-f3-family",
+    publisherKey: "eurlex",
+    url: "https://eur-lex.europa.eu/legal-content/DE/TXT/?uri=CELEX:32019D0626(01)",
+    officialDomain: "eur-lex.europa.eu",
+    title: "Beschluss Nr. F3 der Verwaltungskommission vom 19. Dezember 2018 zur Auslegung des Artikels 68",
+    sourceClass: "EU_LAW",
+    sourceType: "eu_decision",
+    retrievalMethod: "HTML_DOCUMENT",
+    informationClass: "LEGAL_BASELINE",
+    handlingMode: "STORE_CANONICALLY",
+    freshnessClass: "LEGAL_CHANGE_MONITORED",
+    staleBehavior: "DO_NOT_USE_STALE",
+    passages: [
+      { key: "decision-f3-family-text", locator: "Beschluss F3", text: "Beschluss Nr. F3 der Verwaltungskommission vom 19. Dezember 2018 betrifft die Auslegung des Artikels 68 der Verordnung 883/2004 und die Methode zur Berechnung des Unterschiedsbetrags. Er gilt ab dem 16. Juli 2019 und ist geltendes Auslegungsrecht. Der nachrangige Träger vergleicht für jedes Familienmitglied den Betrag der nach den vorrangigen Rechtsvorschriften gewährten Familienleistungen mit dem Betrag nach den nachrangigen Rechtsvorschriften und zahlt gegebenenfalls den Unterschied. Der Vergleich ist kein universelles Paar zweier Leistungsnamen und erlaubt nicht zwei volle Leistungen für denselben Zeitraum und dieselbe Person." },
+    ],
+  },
 ]);
 
 type Unit = Readonly<{
@@ -348,6 +366,12 @@ export const EU_FAMILY_UNITS: readonly Unit[] = Object.freeze([
   { key: "fb-exact-amount-fail-closed", category: "supplement", type: "procedure", text: "Ein genauer Euro-Unterschiedsbetrag darf ohne verifizierte nationale Ansprüche, Klassifikation, Zeitraum, Familienangehörige, vorrangigen Staat und aktuelle nationale Berechnungsgrundlagen nicht genannt werden.", sourceKey: "family-institution-directory", passageKey: "family-institution-directory-text", riskLevel: "high", requiresAuthorityResolution: true },
   { key: "fb-no-naive-amount-calculator", category: "supplement", type: "boundary", text: "Zwei Überschriftenbeträge ergeben keinen universellen Unterschiedsbetragsrechner. Perioden, Währungen und einkommensabhängige Teile müssen vergleichbar sein.", sourceKey: "family-institution-directory", passageKey: "family-institution-directory-text", riskLevel: "high" },
   { key: "fb-currency-period-fail-closed", category: "supplement", type: "procedure", text: "Ohne amtlich normalisierte Beträge, Zahlungsrhythmen und Zeiträume bleibt die genaue Differenz unbeantwortet.", sourceKey: "family-institution-directory", passageKey: "family-institution-directory-text", riskLevel: "high", requiresAuthorityResolution: true },
+  { key: EU_SHARED_F3_CLAIM_KEY, category: "decision-f3", type: "definition", text: "Nach geltendem Beschluss F3 der Verwaltungskommission vom 19. Dezember 2018, wirksam ab 16. Juli 2019, vergleicht der nachrangige Träger für jedes Familienmitglied den Betrag der nach den vorrangigen Rechtsvorschriften gewährten Familienleistungen mit dem Betrag nach den nachrangigen Rechtsvorschriften und zahlt gegebenenfalls den Unterschied.", sourceKey: "decision-f3-family", passageKey: "decision-f3-family-text", riskLevel: "high" },
+  { key: "fb-f3-secondary-compares-baskets", category: "decision-f3", type: "procedure", text: "Der Beschluss-F3-Vergleich setzt für dasselbe Familienmitglied und denselben relevanten Zeitraum den Korb der vorrangigen Familienleistungen dem Korb der nachrangigen Familienleistungen gegenüber, nicht eine einzelne Leistungsüberschrift.", sourceKey: "decision-f3-family", passageKey: "decision-f3-family-text", riskLevel: "high" },
+  { key: "fb-f3-not-one-benefit-pair", category: "decision-f3", type: "exception", text: "Beschluss F3 erlaubt keinen universellen Einzelleistungsvergleich wie Kindergeld minus ausländische Kinderzulage oder Elterngeld minus ausländisches Elterngeld als allgemeine Regel.", sourceKey: "decision-f3-family", passageKey: "decision-f3-family-text", riskLevel: "high" },
+  { key: "fb-f3-not-two-full-benefits", category: "decision-f3", type: "exception", text: "Beschluss F3 erlaubt nicht zwei volle überlappende Familienleistungen für denselben Zeitraum und dieselbe Person; er beschreibt den Unterschiedsbetrag, nicht eine Doppelzahlung.", sourceKey: "decision-f3-family", passageKey: "decision-f3-family-text", riskLevel: "high" },
+  { key: "fb-f3-family-member-not-global-family", category: "decision-f3", type: "procedure", text: "Der F3-Vergleich ist familienmitgliedbezogen. Mehrere Kinder oder unterschiedliche Zeiträume dürfen nicht zu einem einzigen globalen Familienbetrag zusammengezogen werden.", sourceKey: "decision-f3-family", passageKey: "decision-f3-family-text", riskLevel: "high" },
+  { key: "fb-f3-current-effective", category: "decision-f3", type: "definition", text: "Beschluss F3 ist geltendes Auslegungsrecht zu Artikel 68. Er ist nicht vorgeschlagenes Recht aus 2016/0397(COD).", sourceKey: "decision-f3-family", passageKey: "decision-f3-family-text", riskLevel: "high" },
 
   { key: "fb-art-68-3-forwarding", category: "procedure", type: "procedure", text: "Wird der Antrag bei einem anwendbaren, aber nicht vorrangigen Träger gestellt, leitet dieser den Antrag unverzüglich an den vorrangigen Träger weiter und unterrichtet die Person.", sourceKey: "vo-883-family", passageKey: "vo-883-fb-art-68", riskLevel: "high" },
   { key: "fb-filing-date-preserved", category: "procedure", type: "definition", text: "Der vorrangige Träger behandelt den Antrag, als sei er unmittelbar bei ihm gestellt worden. Das ursprüngliche Antragsdatum bleibt erhalten.", sourceKey: "vo-883-family", passageKey: "vo-883-fb-art-68", riskLevel: "high" },
@@ -429,6 +453,7 @@ export const EU_FAMILY_PROCESSES: readonly ProcessSpec[] = Object.freeze([
   { key: "art-69-orphan-route", title: "Besondere Waisenfamilienleistungen 2026 führen", trigger: "Zusätzliche oder besondere Waisenfamilienleistung wird verlangt", safeFirstStep: "Artikel 69 und 61 nennen, keine nationalen Waisenmerits erfinden.", riskLevel: "high", dimensions: { what: EU_SHARED_ART69_CLAIM_KEY, whoWhen: "fb-art-61-orphan-implementing", documents: "fb-no-national-orphan-merits", how: "fb-art-67-pensioner-rule-distinct", next: "fb-class-requires-authority", deadlines: SHARED_FRESHNESS, problems: "fb-national-rights-required-for-overlap", dutiesAfter: "fb-fact-change-requires-reclassification", institution: SHARED_INSTITUTION, boundaries: SHARED_BOUNDARIES, freshness: SHARED_FRESHNESS, negatives: SHARED_NEG } },
   { key: "current-vs-proposed-reform-gate", title: "Geltendes Recht und 2016/0397 2026 trennen", trigger: "Nutzer behandelt vorgeschlagene Kindererziehungsregeln als geltendes Recht", safeFirstStep: "Erstlesung 2026 als nicht geltende Revision kennzeichnen.", riskLevel: "high", dimensions: { what: "pending-cod-2016-0397-family-not-current", whoWhen: "proposed-child-raising-category-not-current", documents: "fb-class-proposed-future", how: "fb-elterngeld-national-not-in-eu-core", next: SHARED_FRESHNESS, deadlines: SHARED_FRESHNESS, problems: "fb-class-proposed-future", dutiesAfter: "fb-commission-guidance-revalidate", institution: SHARED_INSTITUTION, boundaries: SHARED_BOUNDARIES, freshness: SHARED_FRESHNESS, negatives: "proposed-child-raising-category-not-current" } },
   { key: "national-classifier-boundary", title: "Nationale Familienleistungskerne 2026 abgrenzen", trigger: "Kindergeld- oder Elterngeldvoraussetzungen sollen im EU-Kern entschieden werden", safeFirstStep: "An nationale Kerne und späteren Korridor verweisen.", riskLevel: "high", dimensions: { what: "fb-kindergeld-national-not-in-eu-core", whoWhen: "fb-elterngeld-national-not-in-eu-core", documents: "moser-whole-family-secondary", how: "fb-moser-calculation-not-universal", next: "fb-class-requires-authority", deadlines: SHARED_FRESHNESS, problems: "fb-uk-family-out-of-scope", dutiesAfter: "fb-fact-change-requires-reclassification", institution: "fb-exact-institution-fetch-live", boundaries: "fb-non-eu-bilateral-out-of-scope", freshness: SHARED_FRESHNESS, negatives: SHARED_NEG } },
+  { key: "decision-f3-basket-method", title: "Beschluss-F3-Familienmitgliedskorb 2026 anwenden", trigger: "Unterschiedsbetrag soll aus zwei Leistungsnamen oder einem Gesamtfamilienbetrag berechnet werden", safeFirstStep: "Pro Familienmitglied vorrangigen und nachrangigen Korb verlangen; keine Einzelleistungspaare.", riskLevel: "high", dimensions: { what: EU_SHARED_F3_CLAIM_KEY, whoWhen: "fb-f3-secondary-compares-baskets", documents: "fb-f3-family-member-not-global-family", how: "fb-exact-amount-fail-closed", next: "fb-f3-not-one-benefit-pair", deadlines: "fb-f3-current-effective", problems: "fb-currency-period-fail-closed", dutiesAfter: "fb-fact-change-requires-reclassification", institution: "fb-exact-institution-fetch-live", boundaries: SHARED_BOUNDARIES, freshness: SHARED_FRESHNESS, negatives: "fb-f3-not-two-full-benefits" } },
 ]);
 
 export type ScenarioCoverage = "COVERED" | "EXPLICITLY_OUT_OF_SCOPE" | "BLOCKED_BY_MISSING_AUTHORITATIVE_SOURCE";
@@ -499,6 +524,8 @@ export const EU_FAMILY_SCENARIOS: readonly ScenarioSpec[] = Object.freeze([
   { id: "non-eu-bilateral-family-benefit", label: "Nicht-EU-bilateraler Familienleistungsfall", coverage: "EXPLICITLY_OUT_OF_SCOPE", requiredClaimKeys: ["fb-non-eu-bilateral-out-of-scope"], requiredProcessKeys: ["national-classifier-boundary"] },
   { id: "locale-sk-factual-de-cz", label: "Locale SK, Sachverhalt DE-CZ", coverage: "COVERED", requiredClaimKeys: ["fb-user-locale-not-priority"], requiredProcessKeys: ["primary-state-determine"] },
   { id: "factual-de-sk-locale-hu", label: "Künftiger DE-SK-Fall, Locale HU", coverage: "COVERED", requiredClaimKeys: ["fb-user-locale-not-priority"], requiredProcessKeys: ["primary-state-determine"] },
+  { id: "f3-per-family-member-comparison", label: "Beschluss F3 Vergleich je Familienmitglied", coverage: "COVERED", requiredClaimKeys: [EU_SHARED_F3_CLAIM_KEY, "fb-f3-secondary-compares-baskets"], requiredProcessKeys: ["decision-f3-basket-method"] },
+  { id: "f3-not-one-to-one-pairing", label: "Einzelleistungspaar statt F3-Korb", coverage: "COVERED", requiredClaimKeys: ["fb-f3-not-one-benefit-pair", "fb-f3-not-two-full-benefits"], requiredProcessKeys: ["decision-f3-basket-method"] },
 ]);
 
 export const EU_FAMILY_NEGATIVE_CONTROLS = Object.freeze([
@@ -526,6 +553,8 @@ export const EU_FAMILY_NEGATIVE_CONTROLS = Object.freeze([
   "fb-unterhaltsvorschuss-annex-i",
   "pending-cod-2016-0397-family-not-current",
   "proposed-child-raising-category-not-current",
+  "fb-f3-not-one-benefit-pair",
+  "fb-f3-not-two-full-benefits",
 ]);
 
 export function evaluateEuFamilyProcessCompleteness(
