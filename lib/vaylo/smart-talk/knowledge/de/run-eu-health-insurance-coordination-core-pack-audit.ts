@@ -184,13 +184,19 @@ async function main(): Promise<void> {
       claimText("socialna-poistovna-not-slovak-health-insurer"),
     ),
     cashBoundary: /nicht dieselben Leistungen wie Sachleistungen/.test(claimText("cash-sickness-not-benefits-in-kind")),
+    selfEmployedCategoryNeutral: /nicht auf Beschäftigte mit Arbeitsvertrag beschränkt/.test(
+      claimText("art-17-insured-person-includes-self-employed"),
+    )
+      && /nicht automatisch den Versichertenstatus/.test(claimText("art-17-insured-person-includes-self-employed"))
+      && /allgemeinen Systems für beschäftigte Personen/.test(claimText("art-23-applicable-scheme-multiple-categories"))
+      && /macht Selbständige nicht rechtlich zu Beschäftigten/.test(claimText("art-23-not-employment-or-automatic-gkv")),
     processComplete: EU_HEALTH_PROCESSES.length === 25
       && PROCESS_COMPLETE_DIMENSIONS.length === 12
       && summary.processCompletenessPercent === 100
       && summary.blockedScenarioCount === 0
-      && summary.totalScenarios === 48
-      && summary.coveredScenarioCount === 43
-      && summary.outOfScopeScenarioCount === 5
+      && summary.totalScenarios === 52
+      && summary.coveredScenarioCount === 46
+      && summary.outOfScopeScenarioCount === 6
       && EU_HEALTH_NEGATIVE_CONTROLS.every((key) => uniqueClaimKeys.has(key)),
     officialSourcesOnly: EU_HEALTH_OFFICIAL_SOURCES.every((item) => OFFICIAL_HOSTS.has(item.officialDomain))
       && uniqueSourceUrls.size === pack.sources.length

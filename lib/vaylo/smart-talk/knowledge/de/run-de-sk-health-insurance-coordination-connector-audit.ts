@@ -11,6 +11,7 @@ import { Client } from "pg";
 
 import { KNOWLEDGE_FACTORY_DOMAINS, validateCuratedDomainPack } from "../source-registry/knowledge-factory-contracts";
 import {
+  CROSS_BORDER_HEALTH_ACTIVITY_TYPES,
   CROSS_BORDER_SOURCE_JURISDICTIONS,
   FOREIGN_NATIONAL_ADAPTER_COUNTRIES,
   detectMissingCrossBorderFacts,
@@ -72,10 +73,12 @@ import {
   DE_SK_HEALTH_PROCESSES,
   DE_SK_HEALTH_REUSED_GERMAN_HEALTH_KEYS,
   DE_SK_HEALTH_SCENARIOS,
+  DE_SK_HEALTH_SELF_EMPLOYED_NEGATIVE_CONTROLS,
   DE_SK_HEALTH_SK_CLAIM_KEYS,
   buildDeSkHealthInsuranceCoordinationConnectorPack,
   deSkHealthConnectorSummary,
   evaluateDeSkHealthProcessCompleteness,
+  evaluateDeSkHealthSelfEmployedHardening,
 } from "../packs/de-sk/health-insurance-coordination/de-sk-health-insurance-coordination-connector-pack";
 
 const ROOT = process.cwd();
@@ -160,6 +163,7 @@ async function main(): Promise<void> {
   const skHealth = buildSkHealthInsuranceCoordinationAdapterPack();
   const connector = buildDeSkHealthInsuranceCoordinationConnectorPack();
   const completeness = evaluateDeSkHealthProcessCompleteness();
+  const seHardening = evaluateDeSkHealthSelfEmployedHardening();
   const summary = deSkHealthConnectorSummary(connector);
   const deSource = source(
     "lib", "vaylo", "smart-talk", "knowledge", "packs", "de",
@@ -228,12 +232,12 @@ async function main(): Promise<void> {
       && connector.activationRequiresVerifiedCaseContext === true
       && validateCuratedCrossBorderConnectorPack(connector).valid
       && CROSS_BORDER_SOURCE_JURISDICTIONS.join(",") === "DE,EU"
-      && DE_SK_HEALTH_PROCESSES.length === 22
+      && DE_SK_HEALTH_PROCESSES.length === 27
       && completeness.processCompletenessPercent === 100
       && completeness.blockedScenarioCount === 0
-      && completeness.totalScenarios === 56
-      && completeness.coveredScenarioCount === 51
-      && completeness.outOfScopeScenarioCount === 5
+      && completeness.totalScenarios === 88
+      && completeness.coveredScenarioCount === 81
+      && completeness.outOfScopeScenarioCount === 7
       && PROCESS_COMPLETE_DIMENSIONS.length === 12,
     germanNormalizedLanguage: skHealth.claims.every((claim) => GERMAN_CLAIM.test(String(claim.text)))
       && deHealth.claims.every((claim) => GERMAN_CLAIM.test(String(claim.text))),
@@ -245,8 +249,15 @@ async function main(): Promise<void> {
       && validateCrossBorderCaseContext({
         persons: [{ role: "WORKER", residenceState: "SK", insuranceState: "DE" }],
         period: { from: "2026-08-31" },
-        healthcare: { applicableLegislationVerified: true, competentState: "DE" },
+        healthcare: {
+          applicableLegislationVerified: true,
+          competentState: "DE",
+          activityType: "SELF_EMPLOYED",
+          healthInsuranceSystem: "GKV",
+          healthInsuranceVerified: true,
+        },
       }).valid
+      && CROSS_BORDER_HEALTH_ACTIVITY_TYPES.join(",") === "EMPLOYED,SELF_EMPLOYED,MIXED_EMPLOYED_SELF_EMPLOYED,ACTIVITY_TYPE_CHANGED,UNKNOWN"
       && alConnector.status === DE_SK_CONNECTOR_STATUS,
     migration055: migration055.includes("sk_health_insurance_coordination_adapter")
       && migration055.includes("de_health_insurance_coordination_routing")
@@ -257,6 +268,38 @@ async function main(): Promise<void> {
       && SK_HEALTH_PRIMARY_PROCESS_KEY === "sk-incoming-s1-register"
       && DE_SK_HEALTH_DE_CLAIM_KEYS.length > 0
       && DE_SK_HEALTH_SK_CLAIM_KEYS.length === SK_HEALTH_UNITS.length,
+    selfEmployedHardening: seHardening.selfEmployedCoverageExplicit
+      && seHardening.mixedActivityCoverageExplicit
+      && seHardening.deSelfEmployedGkvRouteCovered
+      && seHardening.deSelfEmployedPkvFailClosed
+      && seHardening.deSelfEmployedUnknownInsuranceFailClosed
+      && seHardening.skSelfEmployedPublicInsuranceRouteCovered
+      && seHardening.skSelfEmployedInsurerUnknownFailClosed
+      && seHardening.mixedActivityDelegatesToApplicableLegislation
+      && seHardening.multiStateSelfEmploymentDelegatesToCb0C
+      && seHardening.selfEmployedPostingResidenceStaySeparated
+      && seHardening.selfEmployedEhICRouteCovered
+      && seHardening.selfEmployedS2RouteCovered
+      && seHardening.activityChangeReevaluationCovered
+      && seHardening.selfEmployedContributionCalculationOutOfScope
+      && seHardening.krankengeldSelfEmployedOutOfScope
+      && seHardening.total === 32
+      && seHardening.coveredCount === 30
+      && seHardening.outOfScopeCount === 2
+      && seHardening.blockedCount === 0
+      && seHardening.missing.length === 0
+      && seHardening.negativeControlsPresent
+      && DE_SK_HEALTH_SELF_EMPLOYED_NEGATIVE_CONTROLS.length >= 26
+      && !/activityType\s*===\s*["'](?:employed|EMPLOYED)["']/u.test(connectorSource)
+      && !/activityType\s*===\s*["'](?:employed|EMPLOYED)["']/u.test(deSource)
+      && !/activityType\s*===\s*["'](?:employed|EMPLOYED)["']/u.test(skSource)
+      && !/Beschäftigungsvertrag.{0,40}(?:S1|EHIC|S2)|(?:S1|EHIC|S2).{0,40}Beschäftigungsvertrag/iu.test(connectorSource)
+      && !/competentState\s*===\s*["']DE["'][\s\S]{0,160}(?:issues-s1|Krankenkasse)/u.test(connectorSource)
+      && !/competentState\s*===\s*["']SK["'][\s\S]{0,160}VšZP/u.test(connectorSource)
+      && /DE GKV zuständig/.test(connectorSource)
+      && /ohne bestätigte gesetzliche Versicherung fail-closed/.test(connectorSource)
+      && /Artikel 13 nicht im Gesundheitskorridor neu entscheiden/.test(connectorSource)
+      && /VšZP nicht auf alle Versicherer übertragen/.test(skSource),
     noPublicRuntime: summary.validation.productionEligible === false,
     noProductionInteraction: true,
   };
@@ -452,7 +495,7 @@ async function main(): Promise<void> {
     }
     live.noPublicGrants = Number(grants.rows[0]?.n) === 0;
     live.primaryProcessPresent = DE_HEALTH_OFFICIAL_SOURCES.length === 3
-      && DE_SK_HEALTH_SCENARIOS.length === 56;
+      && DE_SK_HEALTH_SCENARIOS.length === 88;
   } finally {
     await ingestor?.end().catch(() => undefined);
     await admin?.end().catch(() => undefined);
@@ -477,6 +520,7 @@ async function main(): Promise<void> {
     connectorFirst,
     connectorSecond,
     completeness,
+    seHardening,
     connectorStatus: connector.status,
     publicRuntimeAuthorized: false,
     productionInteractionPerformed: false,

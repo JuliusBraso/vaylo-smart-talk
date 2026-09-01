@@ -88,7 +88,7 @@ export const SK_HEALTH_OFFICIAL_SOURCES = Object.freeze([
     passages: [{
       key: "sk-health-vszp-s1-operational-text",
       locator: "S1 VšZP betrieblich",
-      text: "Nach betrieblicher VšZP-Darstellung stellt die Krankenversicherung, nicht Sociálna poisťovňa, das S1 aus. Der Wohnortträger kann die Bescheinigung anfordern; die Person muss gleichwohl mitwirken. Entsendung mit A1 ist regelmäßig Aufenthalt, nicht automatisch S1. Trvalý pobyt ist nicht automatisch bydlisko. Diese Betriebsangaben gelten für VšZP und nicht ohne nationale Rechtsgrundlage für Dôvera oder Union. Formulare und Fristen sind live zu prüfen.",
+      text: "Nach betrieblicher VšZP-Darstellung stellt die Krankenversicherung, nicht Sociálna poisťovňa, das S1 aus. Der Wohnortträger kann die Bescheinigung anfordern; die Person muss gleichwohl mitwirken. VšZP nennt als mögliche Antragsteller unter anderem Beschäftigte und SZČO, die in der Slowakei öffentlich krankenversichert sind und in einem anderen Mitgliedstaat wohnen. Für SZČO verlangt VšZP betrieblich die Angabe des tatsächlichen Orts der Tätigkeit; das gilt nicht ohne nationale Rechtsgrundlage für Dôvera oder Union. Entsendung mit A1 ist regelmäßig Aufenthalt, nicht automatisch S1. Trvalý pobyt ist nicht automatisch bydlisko. Formulare und Fristen sind live zu prüfen.",
     }],
   },
   {
@@ -132,6 +132,9 @@ export const SK_HEALTH_UNITS: readonly Unit[] = Object.freeze([
   { key: "sk-health-sp-not-ehic-issuer", category: "institution", type: "exception", text: "Sociálna poisťovňa stellt keine EHIC aus.", sourceKey: "sk-health-vszp-epzp-operational", passageKey: "sk-health-vszp-epzp-operational-text", riskLevel: "high" },
   { key: "sk-health-sp-not-s2-institution", category: "institution", type: "exception", text: "Sociálna poisťovňa entscheidet nicht über S2.", sourceKey: "sk-health-580-2004", passageKey: "sk-health-580-2004-text", riskLevel: "high" },
   { key: "sk-health-outgoing-s1-from-insurer", category: "s1", type: "procedure", text: "Ist die Slowakei zuständiger Staat, stellt die zuständige slowakische Krankenversicherung das S1 aus.", sourceKey: "sk-health-vszp-s1-operational", passageKey: "sk-health-vszp-s1-operational-text", riskLevel: "high" },
+  { key: "sk-health-employee-or-szco-may-request-s1", category: "s1", type: "procedure", text: "Nach betrieblicher VšZP-Darstellung können in der Slowakei öffentlich krankenversicherte Beschäftigte und SZČO mit Wohnort in einem anderen Mitgliedstaat den S1-Weg nutzen. SZČO-Status allein ersetzt nicht die öffentliche Krankenversicherung.", sourceKey: "sk-health-vszp-s1-operational", passageKey: "sk-health-vszp-s1-operational-text", riskLevel: "high" },
+  { key: "sk-health-szco-place-of-activity-vszp-operational", category: "s1", type: "procedure", text: "VšZP verlangt betrieblich, dass eine SZČO bei der S1-Beantragung den tatsächlichen Ort der Tätigkeit angibt. Das ist keine universelle Anforderung aller slowakischen Krankenversicherungen.", sourceKey: "sk-health-vszp-s1-operational", passageKey: "sk-health-vszp-s1-operational-text", riskLevel: "medium" },
+  { key: "sk-health-szco-or-zivnost-not-insurer-identity", category: "institution", type: "exception", text: "SZČO-Status, živnosť, Steueramt oder Sociálna poisťovňa identifizieren nicht die zuständige slowakische Krankenversicherung für S1, EHIC oder S2.", sourceKey: "sk-health-udzs-insurers", passageKey: "sk-health-udzs-insurers-text", riskLevel: "high" },
   { key: "sk-health-incoming-s1-choose-insurer", category: "s1", type: "procedure", text: "Wer in einem anderen Mitgliedstaat versichert ist und in der Slowakei wohnt, wählt nach § 9c eine slowakische Krankenversicherung als Wohnortträger und lässt S1 registrieren.", sourceKey: "sk-health-580-2004", passageKey: "sk-health-580-2004-text", riskLevel: "high" },
   { key: "sk-health-incoming-not-second-insurance", category: "s1", type: "exception", text: "Die S1-Eintragung in der Slowakei begründet keine zweite unabhängige slowakische Krankenversicherung.", sourceKey: "sk-health-580-2004", passageKey: "sk-health-580-2004-text", riskLevel: "high" },
   { key: "sk-health-incoming-not-contribution", category: "s1", type: "exception", text: "Die S1-Eintragung in der Slowakei begründet nicht automatisch slowakische Beitragspflicht.", sourceKey: "sk-health-580-2004", passageKey: "sk-health-580-2004-text", riskLevel: "high" },
@@ -172,6 +175,7 @@ export const SK_HEALTH_NEGATIVE_CONTROLS = Object.freeze([
   "sk-health-directive-9d-not-s2",
   "sk-health-s2-not-vszp-universal-deadline",
   "sk-health-physical-not-eternal",
+  "sk-health-szco-or-zivnost-not-insurer-identity",
 ]);
 
 type ProcessSpec = Readonly<{

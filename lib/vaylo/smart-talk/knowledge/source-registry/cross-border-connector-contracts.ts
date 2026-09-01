@@ -70,10 +70,31 @@ export type CrossBorderPersonFacts = Readonly<{
   postingState?: string | null;
 }>;
 
+export const CROSS_BORDER_HEALTH_ACTIVITY_TYPES = Object.freeze([
+  "EMPLOYED",
+  "SELF_EMPLOYED",
+  "MIXED_EMPLOYED_SELF_EMPLOYED",
+  "ACTIVITY_TYPE_CHANGED",
+  "UNKNOWN",
+] as const);
+export type CrossBorderHealthActivityType = typeof CROSS_BORDER_HEALTH_ACTIVITY_TYPES[number];
+
+export const CROSS_BORDER_HEALTH_INSURANCE_SYSTEMS = Object.freeze([
+  "GKV",
+  "PKV",
+  "SK_PUBLIC",
+  "OTHER",
+  "UNKNOWN",
+] as const);
+export type CrossBorderHealthInsuranceSystem = typeof CROSS_BORDER_HEALTH_INSURANCE_SYSTEMS[number];
+
 export type CrossBorderHealthcareFacts = Readonly<{
   competentState?: string | null;
   applicableLegislationVerified?: boolean | null;
+  activityType?: CrossBorderHealthActivityType | null;
   insuranceSystemType?: "STATUTORY" | "PRIVATE" | "UNCLEAR" | null;
+  healthInsuranceSystem?: CrossBorderHealthInsuranceSystem | null;
+  healthInsuranceVerified?: boolean | null;
   competentHealthInsurerKnown?: boolean | null;
   residenceVerified?: boolean | null;
   temporaryStayState?: string | null;
@@ -348,6 +369,25 @@ export function validateCrossBorderCaseContext(
       if (value != null && value !== "" && !ISO2.test(value)) {
         issues.push(`INVALID_CASE_STATE:unemployment.${stateKey}`);
       }
+    }
+  }
+  if (context.healthcare) {
+    rejectLocaleFields(issues, context.healthcare, "healthcare");
+    if (
+      context.healthcare.activityType != null
+      && !(CROSS_BORDER_HEALTH_ACTIVITY_TYPES as readonly string[]).includes(context.healthcare.activityType)
+    ) {
+      issues.push(`UNKNOWN_HEALTH_ACTIVITY_TYPE:${context.healthcare.activityType}`);
+    }
+    if (
+      context.healthcare.healthInsuranceSystem != null
+      && !(CROSS_BORDER_HEALTH_INSURANCE_SYSTEMS as readonly string[]).includes(context.healthcare.healthInsuranceSystem)
+    ) {
+      issues.push(`UNKNOWN_HEALTH_INSURANCE_SYSTEM:${context.healthcare.healthInsuranceSystem}`);
+    }
+    if (context.healthcare.competentState != null && context.healthcare.competentState !== ""
+      && !ISO2.test(context.healthcare.competentState)) {
+      issues.push("INVALID_CASE_STATE:healthcare.competentState");
     }
   }
   return Object.freeze({
