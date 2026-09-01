@@ -78,6 +78,7 @@ const MIGRATIONS = [
   "supabase/migrations/055_add_de_sk_health_insurance_coordination_ingestion.sql",
   "supabase/migrations/056_add_eu_family_benefits_coordination_ingestion.sql",
   "supabase/migrations/057_add_de_sk_family_benefits_coordination_ingestion.sql",
+  "supabase/migrations/058_add_eu_unemployment_coordination_ingestion.sql",
 ];
 const DOMAIN_RPC = "select public.knowledge_ingest_curated_domain_pack($1::jsonb) as result";
 const EU_RPC = "select public.knowledge_ingest_curated_eu_jurisdiction_anchor($1::jsonb) as result";

@@ -1,5 +1,5 @@
 /**
- * CB-0G dedicated local audit for the EU family-benefits coordination core.
+ * CB-0I dedicated local audit for the EU unemployment-coordination core.
  * Disposable PostgreSQL 17 only. No production connection or public runtime.
  */
 import { spawnSync } from "node:child_process";
@@ -12,8 +12,7 @@ import { Client } from "pg";
 import { KNOWLEDGE_FACTORY_DOMAINS, validateCuratedDomainPack } from "../source-registry/knowledge-factory-contracts";
 import { COD_2016_0397_STATUS } from "../source-registry/cross-border-connector-contracts";
 import { germanKindergeldFixture } from "../source-registry/cross-border-connector-synthetic-fixtures";
-import { KINDERGELD_UNITS } from "../packs/de/familienkasse-kindergeld/kindergeld-federal-core-pack";
-import { ELG_UNITS } from "../packs/de/elterngeld/elterngeld-federal-core-pack";
+import { ALG_UNITS } from "../packs/de/arbeitslosengeld/arbeitslosengeld-federal-core-pack";
 import {
   PROCESS_COMPLETE_DIMENSIONS,
   buildEuApplicableLegislationCorePack,
@@ -24,32 +23,45 @@ import {
   validateEuHealthInsuranceCoordinationPack,
 } from "../packs/eu/health-insurance-coordination/eu-health-insurance-coordination-core-pack";
 import {
-  EU_FAMILY_FUTURE_WATCH,
-  EU_FAMILY_NEGATIVE_CONTROLS,
-  EU_FAMILY_OFFICIAL_SOURCES,
-  EU_FAMILY_PACK_ID,
-  EU_FAMILY_PROCESS_GROUP,
-  EU_FAMILY_PROCESSES,
-  EU_SHARED_ART1Z_CLAIM_KEY,
-  EU_SHARED_ART60_CLAIM_KEY,
-  EU_SHARED_ART67_CLAIM_KEY,
-  EU_SHARED_ART682_CLAIM_KEY,
-  EU_SHARED_ART69_CLAIM_KEY,
-  EU_SHARED_F3_CLAIM_KEY,
-  GERMAN_ELTERNGELD_PACK_BOUNDARY,
-  GERMAN_KINDERGELD_PACK_BOUNDARY,
   buildEuFamilyBenefitsCoordinationPack,
-  detectMissingFamilyFacts,
-  euFamilyPackSummary,
   validateEuFamilyBenefitsCoordinationPack,
 } from "../packs/eu/family-benefits-coordination/eu-family-benefits-coordination-core-pack";
+import {
+  EU_SHARED_ART1F_CLAIM_KEY,
+  EU_SHARED_ART61_CLAIM_KEY,
+  EU_SHARED_ART62_CLAIM_KEY,
+  EU_SHARED_ART64_CLAIM_KEY,
+  EU_SHARED_ART65_CLAIM_KEY,
+  EU_SHARED_ART65A_CLAIM_KEY,
+  EU_UNEMP_REG_883_CURRENT_CELEX,
+  EU_UNEMP_REG_883_CURRENT_CONSOLIDATION_DATE,
+  EU_UNEMP_REG_987_CURRENT_CELEX,
+  EU_UNEMP_REG_987_CURRENT_CONSOLIDATION_DATE,
+  EU_SHARED_DECISION_U3_CLAIM_KEY,
+  EU_SHARED_JELTES_CLAIM_KEY,
+  EU_SHARED_PD_U1_CLAIM_KEY,
+  EU_SHARED_PD_U2_CLAIM_KEY,
+  EU_SHARED_PD_U3_CLAIM_KEY,
+  EU_UNEMP_FUTURE_WATCH,
+  EU_UNEMP_NEGATIVE_CONTROLS,
+  EU_UNEMP_OFFICIAL_SOURCES,
+  EU_UNEMP_PACK_ID,
+  EU_UNEMP_PROCESS_GROUP,
+  EU_UNEMP_PROCESSES,
+  GERMAN_ALG_PACK_BOUNDARY,
+  REUSED_EU_RESIDENCE_CLAIM_KEYS,
+  buildEuUnemploymentCoordinationPack,
+  detectMissingUnemploymentFacts,
+  euUnempPackSummary,
+  validateEuUnemploymentCoordinationPack,
+} from "../packs/eu/unemployment-coordination/eu-unemployment-coordination-core-pack";
 
 const ROOT = process.cwd();
 const IMAGE = "postgres:17";
-const DATABASE = "cb0g_core";
-const PASSWORD = `cb0g-${randomUUID()}`;
+const DATABASE = "cb0i_core";
+const PASSWORD = `cb0i-${randomUUID()}`;
 const INGESTOR_PASSWORD = `ingestor-${randomUUID()}`;
-const CONTAINER = `moja-cb0g-${process.pid}-${randomUUID().slice(0, 8)}`;
+const CONTAINER = `moja-cb0i-${process.pid}-${randomUUID().slice(0, 8)}`;
 const MIGRATIONS = [
   "supabase/migrations/032_create_minimal_knowledge_schema.sql",
   "supabase/migrations/033_add_publication_and_canonical_translation_schema.sql",
@@ -88,6 +100,16 @@ const OFFICIAL_HOSTS = new Set([
   "employment-social-affairs.ec.europa.eu",
   "oeil.europarl.europa.eu",
 ]);
+const ALG_FORBIDDEN_KEYS = [
+  "pd-u1-insurance-periods",
+  "pd-u2-export-job-search",
+  "u2-three-months-extend-six",
+  "apply-u2-before-leaving",
+  "u1-not-u2",
+  "u2-not-ordinary-travel",
+  "egvo-unemployment-export",
+  "domestic-absence-not-u2",
+] as const;
 
 function run(file: string, args: string[], timeout = 180_000) {
   return spawnSync(file, args, {
@@ -117,18 +139,19 @@ async function rejects(client: Client, rpc: string, payload: unknown, token: str
 }
 
 async function main(): Promise<void> {
-  const pack = buildEuFamilyBenefitsCoordinationPack();
+  const pack = buildEuUnemploymentCoordinationPack();
   const euAl = buildEuApplicableLegislationCorePack();
   const euHealth = buildEuHealthInsuranceCoordinationPack();
+  const euFamily = buildEuFamilyBenefitsCoordinationPack();
   const german = germanKindergeldFixture();
-  const summary = euFamilyPackSummary(pack);
-  const validation = validateEuFamilyBenefitsCoordinationPack(pack);
+  const summary = euUnempPackSummary(pack);
+  const validation = validateEuUnemploymentCoordinationPack(pack);
   const packSource = source(
     "lib", "vaylo", "smart-talk", "knowledge", "packs", "eu",
-    "family-benefits-coordination", "eu-family-benefits-coordination-core-pack.ts",
+    "unemployment-coordination", "eu-unemployment-coordination-core-pack.ts",
   );
-  const migration056 = source(
-    "supabase", "migrations", "056_add_eu_family_benefits_coordination_ingestion.sql",
+  const migration058 = source(
+    "supabase", "migrations", "058_add_eu_unemployment_coordination_ingestion.sql",
   );
   const factoryContracts = source(
     "lib", "vaylo", "smart-talk", "knowledge", "source-registry", "knowledge-factory-contracts.ts",
@@ -137,94 +160,143 @@ async function main(): Promise<void> {
   const uniqueClaimKeys = new Set(pack.claims.map((claim) => String(claim.key)));
   const uniqueAlKeys = new Set(euAl.claims.map((claim) => String(claim.key)));
   const uniqueHealthKeys = new Set(euHealth.claims.map((claim) => String(claim.key)));
-  const kindergeldKeys = new Set(KINDERGELD_UNITS.map((unit) => unit.key));
-  const elterngeldKeys = new Set(ELG_UNITS.map((unit) => unit.key));
+  const uniqueFamilyKeys = new Set(euFamily.claims.map((claim) => String(claim.key)));
+  const algKeys = new Set(ALG_UNITS.map((unit) => unit.key));
   const uniqueSourceUrls = new Set(pack.sources.map((item) => String(item.canonicalUrl)));
   const alUrls = new Set(euAl.sources.map((item) => String(item.canonicalUrl)));
   const healthUrls = new Set(euHealth.sources.map((item) => String(item.canonicalUrl)));
+  const familyUrls = new Set(euFamily.sources.map((item) => String(item.canonicalUrl)));
   const keyOverlap = [...uniqueClaimKeys].filter((key) => (
-    uniqueAlKeys.has(key) || uniqueHealthKeys.has(key) || kindergeldKeys.has(key) || elterngeldKeys.has(key)
+    uniqueAlKeys.has(key) || uniqueHealthKeys.has(key) || uniqueFamilyKeys.has(key) || algKeys.has(key)
   ));
-  const urlOverlap = [...uniqueSourceUrls].filter((url) => alUrls.has(url) || healthUrls.has(url));
+  const urlOverlap = [...uniqueSourceUrls].filter((url) => (
+    alUrls.has(url) || healthUrls.has(url) || familyUrls.has(url)
+  ));
+  const algKeyReuse = ALG_FORBIDDEN_KEYS.filter((key) => uniqueClaimKeys.has(key));
 
   const staticCases = {
     factoryUnchanged: KNOWLEDGE_FACTORY_DOMAINS.length === 17
-      && !(KNOWLEDGE_FACTORY_DOMAINS as readonly string[]).includes(EU_FAMILY_PACK_ID)
-      && !factoryContracts.includes("eu_family_benefits_coordination")
+      && !(KNOWLEDGE_FACTORY_DOMAINS as readonly string[]).includes(EU_UNEMP_PACK_ID)
+      && !factoryContracts.includes("eu_unemployment_coordination")
       && validateCuratedDomainPack(german).valid,
     euJurisdiction: pack.trustDomain.code === "eu"
       && pack.jurisdictions[0]?.level === "eu"
       && pack.jurisdictions[0]?.countryCode === "EU"
       && pack.canonicalLanguage === "de"
-      && pack.packId === EU_FAMILY_PACK_ID,
-    article1z: /Sach- oder Geldleistungen zum Ausgleich von Familienlasten/.test(claimText(EU_SHARED_ART1Z_CLAIM_KEY))
-      && /nicht automatisch zur Familienleistung/.test(claimText("fb-name-not-automatic-family-benefit")),
-    annexI: /Unterhaltsvorschussgesetz/.test(claimText("fb-unterhaltsvorschuss-annex-i"))
-      && /Anhang I/.test(claimText("fb-annex-i-exclusions"))
-      && /keine Schlussfolgerung auf die Einordnung anderer/.test(claimText("fb-annex-i-not-other-national-classifications")),
-    article67: /als wohnten diese im zuständigen Mitgliedstaat/.test(claimText(EU_SHARED_ART67_CLAIM_KEY))
-      && /ersetzt nicht nationale Voraussetzungen/.test(claimText("fb-art-67-fiction-not-national-conditions"))
-      && /nicht automatisch den Wegfall/.test(claimText("fb-child-abroad-not-automatic-loss")),
-    article68Different: /zuerst Rechte aufgrund Beschäftigung oder Selbständigkeit/.test(claimText("fb-activity-before-pension-before-residence"))
-      && /überlagert die Rangfolge/.test(claimText("fb-child-residence-not-override-different-bases")),
-    article68SameActivity: /Wohnmitgliedstaat der Kinder Vorrang/.test(claimText("fb-same-basis-activity-child-residence"))
-      && /löst das Kindwohnsitzkriterium den Vorrang/.test(claimText("fb-unresolved-same-basis-activity"))
-      && /Trägerkostenteilung/.test(claimText("fb-art-58-not-user-collects-half")),
-    article68PensionResidence: /längste Versicherungs- oder Wohnzeit/.test(claimText("fb-same-basis-pension-priority"))
-      && /nicht der Wohnort der Eltern/.test(claimText("fb-same-basis-residence-child")),
-    primarySecondary: /primaryBenefitState ist der nach verifizierter Artikel-68-Analyse/.test(claimText("fb-primary-benefit-state-model"))
-      && /nicht identisch mit dem zuständigen Sozialversicherungsstaat/.test(claimText("fb-primary-benefit-state-model"))
-      && /Nachrang bedeutet nicht fehlenden Anspruch/.test(claimText("fb-secondary-benefit-state-model")),
-    differential: /Unterschiedsbetrag kann für den überschießenden Teil/.test(claimText(EU_SHARED_ART682_CLAIM_KEY))
-      && /Artikel 68 Absatz 2 Satz 2/.test(claimText("fb-residence-only-supplement-exception"))
-      && /ohne verifizierte nationale Ansprüche/.test(claimText("fb-exact-amount-fail-closed"))
-      && /für jedes Familienmitglied/.test(claimText(EU_SHARED_F3_CLAIM_KEY))
-      && /keinen universellen Einzelleistungsvergleich/.test(claimText("fb-f3-not-one-benefit-pair")),
-    forwarding: /ursprüngliche Antragsdatum bleibt erhalten/.test(claimText("fb-filing-date-preserved"))
-      && /nicht den Verlust des Antrags/.test(claimText("fb-filed-secondary-not-lost")),
-    article60: /Lage der gesamten Familie/.test(claimText(EU_SHARED_ART60_CLAIM_KEY))
-      && /Antragsbefugnis nicht dasselbe/.test(claimText("trapkowski-applicant-not-beneficiary"))
-      && /auch den Umfang nachrangiger Ansprüche/.test(claimText("moser-whole-family-secondary")),
-    provisional: /vorläufige Vorrangentscheidung/.test(claimText("fb-provisional-priority-decision"))
-      && /zwei Monate/.test(claimText("fb-two-month-institution-response"))
-      && /Träger am Wohnort des Kindes/.test(claimText("fb-disagreement-child-residence-institution")),
-    article59: /bis zum Monatsende weiter/.test(claimText("fb-art-59-month-end-continuation"))
-      && /nicht automatisch zu einem tagesweisen/.test(claimText("fb-mid-month-not-day-split")),
-    article69: /hilfsweise Koordinierung/.test(claimText(EU_SHARED_ART69_CLAIM_KEY))
-      && /keine nationalen Waisenleistungstatbestände/.test(claimText("fb-no-national-orphan-merits")),
+      && pack.packId === EU_UNEMP_PACK_ID,
+    currentConsolidations: EU_UNEMP_REG_883_CURRENT_CELEX === "02004R0883-20190731"
+      && EU_UNEMP_REG_987_CURRENT_CELEX === "02009R0987-20180101"
+      && EU_UNEMP_REG_883_CURRENT_CONSOLIDATION_DATE === "2019-07-31"
+      && EU_UNEMP_REG_987_CURRENT_CONSOLIDATION_DATE === "2018-01-01"
+      && pack.sources.some((item) => String(item.canonicalUrl).includes(EU_UNEMP_REG_883_CURRENT_CELEX))
+      && pack.sources.some((item) => String(item.canonicalUrl).includes(EU_UNEMP_REG_987_CURRENT_CELEX))
+      && pack.sources.every((item) => !String(item.canonicalUrl).includes("02009R0987-20190731"))
+      && !packSource.includes("02009R0987-20190731")
+      && packSource.includes("02009R0987-20180101")
+      && /31\. Juli 2019/.test(claimText("ue-current-883-987-baseline"))
+      && /1\. Januar 2018/.test(claimText("ue-current-883-987-baseline")),
+    frontierWorker: /täglich oder mindestens einmal wöchentlich/.test(claimText(EU_SHARED_ART1F_CLAIM_KEY))
+      && /nicht automatisch Grenzarbeitnehmer/.test(claimText("ue-cross-border-not-auto-frontier"))
+      && /Rückkehrhäufigkeit/.test(claimText("ue-return-frequency-required")),
+    residenceReused: REUSED_EU_RESIDENCE_CLAIM_KEYS.includes("art-11-not-otherwise-covered-residence")
+      && !uniqueClaimKeys.has("art-11-not-otherwise-covered-residence")
+      && /Mittelpunkt der Interessen/.test(claimText("ue-residence-centre-of-interests"))
+      && /nicht aus trvalý pobyt/.test(claimText("ue-residence-centre-of-interests")),
+    unemploymentType: /Vollarbeitslosigkeit, Teilarbeitslosigkeit oder intermittierende/.test(claimText("ue-type-gate-mandatory"))
+      && /vertragliches Beschäftigungsverhältnis/.test(claimText(EU_SHARED_DECISION_U3_CLAIM_KEY))
+      && /nicht automatisch Vollarbeitslosigkeit/.test(claimText("ue-zero-hours-not-whole"))
+      && /nicht das Portable Document U3/.test(claimText("ue-decision-u3-not-portable-u3")),
+    article651: /teilweise oder intermittierend arbeitslose Person/.test(claimText("ue-art-65-1-partial-intermittent"))
+      && /nicht automatisch zur Wohnsitz-Arbeitslosenleistung/.test(claimText("ue-partial-not-residence-route")),
+    wholeFrontier: /Wohnmitgliedstaats/.test(claimText(EU_SHARED_ART65_CLAIM_KEY))
+      && /nicht der leistende Staat/.test(claimText("ue-last-work-not-payer-frontier"))
+      && /ergänzend/.test(claimText("ue-supplementary-registration"))
+      && /keine zweite Arbeitslosenleistung/.test(claimText("ue-supplementary-not-second-benefit"))
+      && /Jeltes/.test(claimText(EU_SHARED_JELTES_CLAIM_KEY))
+      && /Miethe-Ausnahme/.test(claimText("ue-do-not-resurrect-miethe")),
+    nonFrontier: /keine Grenzarbeitnehmer/.test(claimText("ue-decision-u2-non-frontier-scope"))
+      && /nicht das Portable Document U2/.test(claimText("ue-decision-u2-not-portable-u2"))
+      && /Wohnsitzweg/.test(claimText("ue-non-frontier-return-residence"))
+      && /nicht in den Wohnmitgliedstaat zurück/.test(claimText("ue-non-frontier-remain-last-state"))
+      && /Artikel 64 verlangen/.test(claimText("ue-art-65-5b-transition")),
+    aggregation: /Versicherungs-, Beschäftigungs- oder Selbständigkeitszeiten/.test(claimText(EU_SHARED_ART61_CLAIM_KEY))
+      && /nicht automatisch als Versicherungszeiten/.test(claimText("ue-art-61-category-compatibility"))
+      && /Artikel 61 Absatz 2/.test(claimText("ue-art-61-2-recent-period"))
+      && /nicht in Fällen des Artikels 65 Absatz 5 Buchstabe a/.test(claimText("ue-art-61-2-except-65-5a")),
+    u1: /bescheinigt/.test(claimText(EU_SHARED_PD_U1_CLAIM_KEY))
+      && /nicht Leistungsbewilligung/.test(claimText(EU_SHARED_PD_U1_CLAIM_KEY))
+      && /nicht automatisch unmöglich/.test(claimText("ue-u1-absence-not-impossible"))
+      && /Trägerweg/.test(claimText("ue-institutional-period-exchange")),
+    calculation: /Entgeltquelle/.test(claimText(EU_SHARED_ART62_CLAIM_KEY))
+      && /tatsächlich im Staat der letzten Tätigkeit/.test(claimText("ue-art-62-3-residence-uses-activity-salary"))
+      && /keinen Mittelwert/.test(claimText("ue-not-average-both-states"))
+      && /Artikel 54 Absatz 2/.test(claimText("ue-art-54-2-salary-exchange"))
+      && /Beschluss U1 der Verwaltungskommission/.test(claimText("ue-decision-u1-family-increases")),
+    export: /bestehenden Anspruch/.test(claimText(EU_SHARED_ART64_CLAIM_KEY))
+      && /vier Wochen/.test(claimText("ue-art-64-four-week-default"))
+      && /frühere Abreise genehmigen/.test(claimText("ue-four-week-not-absolute"))
+      && /sieben Tagen/.test(claimText("ue-art-64-seven-day-registration"))
+      && /drei Monate/.test(claimText("ue-art-64-three-month-standard"))
+      && /höchstens sechs Monate/.test(claimText("ue-art-64-extend-max-six"))
+      && /zuständige Träger/.test(claimText("ue-payer-remains-competent"))
+      && /Artikel 55/.test(claimText("ue-destination-controls-art-55"))
+      && /Genehmigung/.test(claimText(EU_SHARED_PD_U2_CLAIM_KEY)),
+    portableU3: /Umstände entstanden sind/.test(claimText(EU_SHARED_PD_U3_CLAIM_KEY))
+      && /keine automatische endgültige Einstellung/.test(claimText("ue-u3-not-auto-cancellation"))
+      && /nicht das Portable Document U3/.test(claimText("ue-decision-u3-not-portable-u3")),
+    reimbursement: /ersten drei Monate erstatten/.test(claimText("ue-art-65-reimburse-3-months"))
+      && /fünf Monate/.test(claimText("ue-art-65-reimburse-5-months"))
+      && /nicht zwei Leistungen/.test(claimText("ue-reimburse-not-two-benefits"))
+      && /Beschluss U4/.test(claimText("ue-decision-u4-back-office")),
+    article65a: /amtlich mitgeteilt/.test(claimText(EU_SHARED_ART65A_CLAIM_KEY))
+      && /nicht automatisch unter Artikel 65a/.test(claimText("ue-self-employed-not-auto-65a"))
+      && /Mitteilungslage/.test(claimText("ue-art-65a-notification-lookup"))
+      && /Vier-Wochen-Bedingung/.test(claimText("ue-art-65a-no-four-week")),
+    selfEmployedBranch: /beschäftigt oder selbständig tätig/.test(claimText(EU_SHARED_ART1F_CLAIM_KEY))
+      && /Selbständigkeitszeiten/.test(claimText(EU_SHARED_ART61_CLAIM_KEY))
+      && pack.passages.some((passage) => /Berufseinkommen/.test(String(passage.text)))
+      && /Entgelt/.test(claimText(EU_SHARED_ART62_CLAIM_KEY))
+      && /Wohnmitgliedstaats/.test(claimText(EU_SHARED_ART65_CLAIM_KEY))
+      && /letzter selbständiger Tätigkeit/.test(claimText(EU_SHARED_ART65A_CLAIM_KEY))
+      && /nicht automatisch unter Artikel 65a/.test(claimText("ue-self-employed-not-auto-65a"))
+      && detectMissingUnemploymentFacts({ lastActivityType: "SELF_EMPLOYED" }).includes("article65aNotification"),
+    civilServants: /besonderen Arbeitslosensystems für Beamte/.test(claimText("ue-art-57-civil-servant"))
+      && /nicht automatisch über den gewöhnlichen Artikel-56-Weg/.test(claimText("ue-civil-servant-not-ordinary-56")),
     proposedExcluded: COD_2016_0397_STATUS === "PROPOSED_NOT_CURRENT"
-      && EU_FAMILY_FUTURE_WATCH.every((item) => item.ingestible === false)
-      && /nicht geltende Revision/.test(claimText("pending-cod-2016-0397-family-not-current"))
-      && /nicht geltendes Elterngeld/.test(claimText("proposed-child-raising-category-not-current"))
-      && detectMissingFamilyFacts({}).includes("childResidence"),
-    kindergeldNotDuplicated: keyOverlap.filter((key) => kindergeldKeys.has(key)).length === 0
-      && GERMAN_KINDERGELD_PACK_BOUNDARY[0]?.pack === "familienkasse_kindergeld"
-      && /nicht dupliziert/.test(claimText("fb-kindergeld-national-not-in-eu-core")),
-    elterngeldNotDuplicated: keyOverlap.filter((key) => elterngeldKeys.has(key)).length === 0
-      && GERMAN_ELTERNGELD_PACK_BOUNDARY[0]?.pack === "elterngeld"
-      && /nicht dupliziert/.test(claimText("fb-elterngeld-national-not-in-eu-core")),
-    processComplete: EU_FAMILY_PROCESSES.length === 29
+      && EU_UNEMP_FUTURE_WATCH.every((item) => item.ingestible === false)
+      && /nicht geltende Revision/.test(claimText("ue-pending-cod-not-current"))
+      && /nicht geltendes Artikel-64-Recht/.test(claimText("ue-proposed-six-month-not-current"))
+      && /nicht geltendes Artikel-65-Recht/.test(claimText("ue-proposed-22-week-not-current"))
+      && detectMissingUnemploymentFacts({}).includes("residence")
+      && detectMissingUnemploymentFacts({ lastActivityType: "SELF_EMPLOYED" }).includes("article65aNotification"),
+    algNotDuplicated: keyOverlap.filter((key) => algKeys.has(key)).length === 0
+      && algKeyReuse.length === 0
+      && GERMAN_ALG_PACK_BOUNDARY[0]?.pack === "arbeitslosengeld"
+      && /nicht dupliziert/.test(claimText("ue-alg-national-not-in-eu-core")),
+    processComplete: EU_UNEMP_PROCESSES.length === 40
       && PROCESS_COMPLETE_DIMENSIONS.length === 12
       && summary.processCompletenessPercent === 100
       && summary.blockedScenarioCount === 0
-      && summary.totalScenarios === 59
-      && summary.coveredScenarioCount === 57
+      && summary.totalScenarios === 84
+      && summary.coveredScenarioCount === 82
       && summary.outOfScopeScenarioCount === 2
-      && EU_FAMILY_NEGATIVE_CONTROLS.every((key) => uniqueClaimKeys.has(key)),
-    officialSourcesOnly: EU_FAMILY_OFFICIAL_SOURCES.every((item) => OFFICIAL_HOSTS.has(item.officialDomain))
+      && EU_UNEMP_NEGATIVE_CONTROLS.every((key) => uniqueClaimKeys.has(key)),
+    officialSourcesOnly: EU_UNEMP_OFFICIAL_SOURCES.every((item) => OFFICIAL_HOSTS.has(item.officialDomain))
       && uniqueSourceUrls.size === pack.sources.length
       && pack.sources.every((item) => !/#|wikipedia|reddit|expat|blog|forum/iu.test(String(item.canonicalUrl))),
     germanNormalizedLanguage: pack.claims.every((claim) => GERMAN_CLAIM.test(String(claim.text))),
     noKeyOrUrlOverlap: keyOverlap.length === 0 && urlOverlap.length === 0,
-    noNationalFamilyPacks: !packSource.includes("de_sk_family")
-      && !packSource.includes("sk_family")
-      && !/create table if not exists public\.knowledge_/i.test(migration056)
-      && migration056.includes("eu_family_benefits_coordination")
-      && !migration056.includes("sk_family")
-      && !migration056.includes("GRANT EXECUTE"),
+    noNationalUnemploymentPacks: !packSource.includes("de_sk_unemployment")
+      && !packSource.includes("sk_unemployment")
+      && /SK, CZ, PL oder HU/.test(claimText("ue-four-corridor-reuse"))
+      && !/create table if not exists public\.knowledge_/i.test(migration058)
+      && migration058.includes("eu_unemployment_coordination")
+      && !migration058.includes("sk_unemployment")
+      && !migration058.includes("GRANT EXECUTE"),
     validationPass: validation.valid && validation.productionEligible === false,
     euAlStillValid: validateEuApplicableLegislationCorePack(euAl).valid,
     euHealthStillValid: validateEuHealthInsuranceCoordinationPack(euHealth).valid,
+    euFamilyStillValid: validateEuFamilyBenefitsCoordinationPack(euFamily).valid,
     noPublicRuntime: true,
     noProductionInteraction: true,
   };
@@ -240,7 +312,7 @@ async function main(): Promise<void> {
   }
 
   const created = run("docker", [
-    "run", "--name", CONTAINER, "--label", "phase=knowledge-cb0g",
+    "run", "--name", CONTAINER, "--label", "phase=knowledge-cb0i",
     "-e", `POSTGRES_PASSWORD=${PASSWORD}`, "-e", `POSTGRES_DB=${DATABASE}`,
     "-p", "127.0.0.1::5432", "-d", IMAGE,
   ]);
@@ -249,7 +321,11 @@ async function main(): Promise<void> {
   const live: Record<string, boolean> = {};
   let germanCreated = -1;
   let euAlCreated = -1;
+  let euAlSecond = -1;
   let euHealthCreated = -1;
+  let euHealthSecond = -1;
+  let euFamilyCreated = -1;
+  let euFamilySecond = -1;
   let firstCreated = -1;
   let secondCreated = -1;
   try {
@@ -301,7 +377,11 @@ async function main(): Promise<void> {
 
     germanCreated = semanticCreated((await ingestor.query(DOMAIN_RPC, [german])).rows[0]);
     euAlCreated = semanticCreated((await ingestor.query(EU_RPC, [euAl])).rows[0]);
+    euAlSecond = semanticCreated((await ingestor.query(EU_RPC, [euAl])).rows[0]);
     euHealthCreated = semanticCreated((await ingestor.query(EU_RPC, [euHealth])).rows[0]);
+    euHealthSecond = semanticCreated((await ingestor.query(EU_RPC, [euHealth])).rows[0]);
+    euFamilyCreated = semanticCreated((await ingestor.query(EU_RPC, [euFamily])).rows[0]);
+    euFamilySecond = semanticCreated((await ingestor.query(EU_RPC, [euFamily])).rows[0]);
     firstCreated = semanticCreated((await ingestor.query(EU_RPC, [pack])).rows[0]);
     secondCreated = semanticCreated((await ingestor.query(EU_RPC, [pack])).rows[0]);
 
@@ -332,7 +412,7 @@ async function main(): Promise<void> {
     );
     const processesIngested = await admin.query(
       "select count(*)::int n from public.knowledge_processes where process_group_id=$1",
-      [EU_FAMILY_PROCESS_GROUP],
+      [EU_UNEMP_PROCESS_GROUP],
     );
     const alProcesses = await admin.query(
       "select count(*)::int n from public.knowledge_processes where process_group_id='eu_applicable_legislation'",
@@ -340,11 +420,14 @@ async function main(): Promise<void> {
     const healthProcesses = await admin.query(
       "select count(*)::int n from public.knowledge_processes where process_group_id='eu_health_insurance_coordination'",
     );
+    const familyProcesses = await admin.query(
+      "select count(*)::int n from public.knowledge_processes where process_group_id='eu_family_benefits_coordination'",
+    );
     const processLinks = await admin.query(
       `select count(*)::int n from public.knowledge_process_claim_links l
         join public.knowledge_processes p on p.id=l.process_id
        where p.process_group_id=$1`,
-      [EU_FAMILY_PROCESS_GROUP],
+      [EU_UNEMP_PROCESS_GROUP],
     );
     const metadata = await admin.query(
       `select count(*)::int n from public.knowledge_retrieval_metadata r
@@ -372,6 +455,11 @@ async function main(): Promise<void> {
       `select pg_get_constraintdef(oid) as def from pg_constraint
         where conname='knowledge_processes_process_group_id_check'`,
     );
+    const ingested987 = await admin.query(
+      `select canonical_url from public.knowledge_sources where id = any($1::uuid[])`,
+      [pack.sources.map((source) => source.id)],
+    );
+    const ingested987Urls = ingested987.rows.map((row) => String(row.canonical_url));
     const proposedPack = {
       ...pack,
       claims: pack.claims.map((claim, index) => index === 0
@@ -384,10 +472,12 @@ async function main(): Promise<void> {
     };
 
     live.germanRegression = germanCreated > 0;
-    live.euAlRegression = euAlCreated > 0
+    live.euAlRegression = euAlCreated > 0 && euAlSecond === 0
       && Number(alProcesses.rows[0]?.n) === euAl.processes.length;
-    live.euHealthRegression = euHealthCreated > 0
+    live.euHealthRegression = euHealthCreated > 0 && euHealthSecond === 0
       && Number(healthProcesses.rows[0]?.n) === euHealth.processes.length;
+    live.euFamilyRegression = euFamilyCreated > 0 && euFamilySecond === 0
+      && Number(familyProcesses.rows[0]?.n) === euFamily.processes.length;
     live.firstSemanticCreatedPositive = firstCreated > 0;
     live.secondSemanticCreatedZero = secondCreated === 0;
     live.packClaimsOnce = Number(packClaims.rows[0]?.n) === pack.claims.length;
@@ -402,10 +492,14 @@ async function main(): Promise<void> {
       && await rejects(ingestor, EU_RPC, skEu, "EU_ANCHOR_FOREIGN_NATIONAL_FORBIDDEN");
     live.proposedExcluded = await rejects(ingestor, EU_RPC, proposedPack, "EU_ANCHOR_NON_CURRENT");
     live.activeCorridorsZero = Number(activeCorridors.rows[0]?.n) === 0;
-    live.processGroupAllowed = String(groupCheck.rows[0]?.def ?? "").includes(EU_FAMILY_PROCESS_GROUP)
+    live.processGroupAllowed = String(groupCheck.rows[0]?.def ?? "").includes(EU_UNEMP_PROCESS_GROUP)
+      && String(groupCheck.rows[0]?.def ?? "").includes("eu_family_benefits_coordination")
       && String(groupCheck.rows[0]?.def ?? "").includes("eu_health_insurance_coordination")
       && String(groupCheck.rows[0]?.def ?? "").includes("eu_applicable_legislation");
     live.noPublicGrants = Number(grants.rows[0]?.n) === 0;
+    live.reg987CurrentProvenance = ingested987Urls.some((url) => url.includes(EU_UNEMP_REG_987_CURRENT_CELEX))
+      && ingested987Urls.some((url) => url.includes(EU_UNEMP_REG_883_CURRENT_CELEX))
+      && ingested987Urls.every((url) => !url.includes("02009R0987-20190731"));
     live.noPublicRuntime = true;
   } finally {
     await ingestor?.end().catch(() => undefined);
@@ -420,12 +514,21 @@ async function main(): Promise<void> {
     live,
     germanCreated,
     euAlCreated,
+    euAlSecond,
     euHealthCreated,
+    euHealthSecond,
+    euFamilyCreated,
+    euFamilySecond,
     firstCreated,
     secondCreated,
     summary,
     keyOverlap,
     urlOverlap,
+    algKeyReuse,
+    reg883CurrentCelex: EU_UNEMP_REG_883_CURRENT_CELEX,
+    reg987CurrentCelex: EU_UNEMP_REG_987_CURRENT_CELEX,
+    reg883CurrentConsolidationDate: EU_UNEMP_REG_883_CURRENT_CONSOLIDATION_DATE,
+    reg987CurrentConsolidationDate: EU_UNEMP_REG_987_CURRENT_CONSOLIDATION_DATE,
     publicRuntimeAuthorized: false,
     productionInteractionPerformed: false,
   }, null, 2)}\n`);
@@ -433,6 +536,6 @@ async function main(): Promise<void> {
 }
 
 void main().catch((error: unknown) => {
-  process.stderr.write(`${error instanceof Error ? error.message : "CB-0G audit failed"}\n`);
+  process.stderr.write(`${error instanceof Error ? error.message : "CB-0I audit failed"}\n`);
   process.exitCode = 1;
 });

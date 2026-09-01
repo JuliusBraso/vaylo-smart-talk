@@ -132,6 +132,46 @@ export type CrossBorderFamilyBenefitFacts = Readonly<{
   f3Baskets?: readonly FamilyBenefitBasket[] | null;
 }>;
 
+export type CrossBorderUnemploymentPeriod = Readonly<{
+  state?: string | null;
+  periodType?: "INSURANCE" | "EMPLOYMENT" | "SELF_EMPLOYMENT" | "UNCLEAR" | null;
+  from?: string | null;
+  to?: string | null;
+  overlapStatus?: "NONE" | "OVERLAP" | "UNCLEAR" | null;
+}>;
+
+export type CrossBorderUnemploymentFacts = Readonly<{
+  unemploymentStatus?: "WHOLE" | "PARTIAL" | "INTERMITTENT" | "UNCLEAR" | null;
+  employmentRelationshipExists?: boolean | null;
+  activitySuspended?: boolean | null;
+  lastActivityState?: string | null;
+  lastApplicableLegislationState?: string | null;
+  residenceState?: string | null;
+  residenceVerified?: boolean | null;
+  frontierWorkerStatus?: "FRONTIER" | "NON_FRONTIER" | "UNCLEAR" | null;
+  returnFrequency?: "DAILY" | "WEEKLY" | "LESS_THAN_WEEKLY" | "UNCLEAR" | null;
+  lastActivityType?: "EMPLOYED" | "SELF_EMPLOYED" | "SPECIAL_CIVIL_SERVANT" | "UNKNOWN" | null;
+  continuesInResidenceState?: boolean | null;
+  returnedToResidenceState?: boolean | null;
+  remainedInLastActivityState?: boolean | null;
+  nationalEntitlementCandidates?: readonly string[] | null;
+  insurancePeriods?: readonly CrossBorderUnemploymentPeriod[] | null;
+  employmentPeriods?: readonly CrossBorderUnemploymentPeriod[] | null;
+  selfEmploymentPeriods?: readonly CrossBorderUnemploymentPeriod[] | null;
+  lastSalaryState?: string | null;
+  lastSalaryKnown?: boolean | null;
+  currentBenefitState?: string | null;
+  currentBenefitEntitlementVerified?: boolean | null;
+  exportDestinationState?: string | null;
+  exportPurposeIsJobSearch?: boolean | null;
+  unemploymentRegistrationDate?: string | null;
+  exportDepartureDate?: string | null;
+  u1Status?: "PRESENT" | "ABSENT" | "UNCLEAR" | null;
+  u2Status?: "PRESENT" | "ABSENT" | "UNCLEAR" | null;
+  u3Status?: "PRESENT" | "ABSENT" | "UNCLEAR" | null;
+  article65aNotificationVerified?: boolean | null;
+}>;
+
 export type CrossBorderCaseContext = Readonly<{
   persons: readonly CrossBorderPersonFacts[];
   period?: Readonly<{ from: string; to?: string | null }> | null;
@@ -139,6 +179,7 @@ export type CrossBorderCaseContext = Readonly<{
   workerPostingStatus?: "WORKER" | "POSTED" | "UNCLEAR" | null;
   healthcare?: CrossBorderHealthcareFacts | null;
   familyBenefits?: CrossBorderFamilyBenefitFacts | null;
+  unemployment?: CrossBorderUnemploymentFacts | null;
 }>;
 
 export type CrossBorderActorSemantics = Readonly<{
@@ -294,6 +335,18 @@ export function validateCrossBorderCaseContext(
       const value = context.familyBenefits[stateKey];
       if (value != null && value !== "" && !ISO2.test(value)) {
         issues.push(`INVALID_CASE_STATE:familyBenefits.${stateKey}`);
+      }
+    }
+  }
+  if (context.unemployment) {
+    rejectLocaleFields(issues, context.unemployment, "unemployment");
+    for (const stateKey of [
+      "lastActivityState", "lastApplicableLegislationState", "residenceState",
+      "lastSalaryState", "currentBenefitState", "exportDestinationState",
+    ] as const) {
+      const value = context.unemployment[stateKey];
+      if (value != null && value !== "" && !ISO2.test(value)) {
+        issues.push(`INVALID_CASE_STATE:unemployment.${stateKey}`);
       }
     }
   }
