@@ -12,6 +12,7 @@ import { Client } from "pg";
 import { KNOWLEDGE_FACTORY_DOMAINS, validateCuratedDomainPack } from "../source-registry/knowledge-factory-contracts";
 import {
   COD_2016_0397_STATUS,
+  CROSS_BORDER_FAMILY_ACTIVITY_TYPES,
   CROSS_BORDER_SOURCE_JURISDICTIONS,
   FOREIGN_NATIONAL_ADAPTER_COUNTRIES,
   detectMissingCrossBorderFacts,
@@ -86,9 +87,11 @@ import {
   DE_SK_FB_REUSED_ELTERNGELD_KEYS,
   DE_SK_FAMILY_SCENARIOS,
   DE_SK_FB_SK_CLAIM_KEYS,
+  DE_SK_FAMILY_SELF_EMPLOYED_NEGATIVE_CONTROLS,
   buildDeSkFamilyBenefitsCoordinationConnectorPack,
   deSkFamilyConnectorSummary,
   evaluateDeSkFamilyProcessCompleteness,
+  evaluateDeSkFamilySelfEmployedHardening,
 } from "../packs/de-sk/family-benefits-coordination/de-sk-family-benefits-coordination-connector-pack";
 
 const ROOT = process.cwd();
@@ -179,6 +182,7 @@ async function main(): Promise<void> {
   const skFamily = buildSkFamilyBenefitsAdapterPack();
   const connector = buildDeSkFamilyBenefitsCoordinationConnectorPack();
   const completeness = evaluateDeSkFamilyProcessCompleteness();
+  const seHardening = evaluateDeSkFamilySelfEmployedHardening();
   const summary = deSkFamilyConnectorSummary(connector);
   const deSource = source(
     "lib", "vaylo", "smart-talk", "knowledge", "packs", "de",
@@ -191,6 +195,10 @@ async function main(): Promise<void> {
   const connectorSource = source(
     "lib", "vaylo", "smart-talk", "knowledge", "packs", "de-sk",
     "family-benefits-coordination", "de-sk-family-benefits-coordination-connector-pack.ts",
+  );
+  const euFamilySource = source(
+    "lib", "vaylo", "smart-talk", "knowledge", "packs", "eu",
+    "family-benefits-coordination", "eu-family-benefits-coordination-core-pack.ts",
   );
   const migration057 = source(
     "supabase", "migrations", "057_add_de_sk_family_benefits_coordination_ingestion.sql",
@@ -257,12 +265,12 @@ async function main(): Promise<void> {
       && connector.activationRequiresVerifiedCaseContext === true
       && validateCuratedCrossBorderConnectorPack(connector).valid
       && CROSS_BORDER_SOURCE_JURISDICTIONS.join(",") === "DE,EU"
-      && DE_SK_FAMILY_PROCESSES.length === 29
+      && DE_SK_FAMILY_PROCESSES.length === 34
       && completeness.processCompletenessPercent === 100
       && completeness.blockedScenarioCount === 0
-      && completeness.totalScenarios === 69
-      && completeness.coveredScenarioCount === 67
-      && completeness.outOfScopeScenarioCount === 2
+      && completeness.totalScenarios === 120
+      && completeness.coveredScenarioCount === 116
+      && completeness.outOfScopeScenarioCount === 4
       && PROCESS_COMPLETE_DIMENSIONS.length === 12,
     decisionF3: DE_SK_FB_EU_CLAIM_KEYS.includes(EU_SHARED_F3_CLAIM_KEY)
       && /Familienmitglied/.test(f3Text)
@@ -289,7 +297,19 @@ async function main(): Promise<void> {
       && validateCrossBorderCaseContext({
         persons: [{ role: "PARENT_A", residenceState: "SK", activityState: "DE" }],
         period: { from: "2026-08-31" },
-        familyBenefits: { childResidenceKnown: true, primaryBenefitState: "DE" },
+        familyBenefits: {
+          childResidenceKnown: true,
+          primaryBenefitState: "DE",
+          parentActivities: [{ role: "PARENT_A", activityType: "SELF_EMPLOYED", selfEmploymentStates: ["DE"] }],
+          otherParentSelfEmploymentStatusKnown: false,
+        },
+      }).valid
+      && !validateCrossBorderCaseContext({
+        persons: [{ role: "PARENT_A", residenceState: "SK", activityState: "DE" }],
+        period: { from: "2026-08-31" },
+        familyBenefits: {
+          parentActivities: [{ role: "PARENT_A", activityType: "EMPLOYEE" as never }],
+        },
       }).valid
       && alConnector.status === DE_SK_CONNECTOR_STATUS
       && deAl.trustDomain.code === "de"
@@ -311,6 +331,39 @@ async function main(): Promise<void> {
     noPublicRuntime: summary.validation.productionEligible === false,
     noProductionInteraction: true,
     proposedLaw: COD_2016_0397_STATUS === "PROPOSED_NOT_CURRENT",
+    selfEmployedHardening: seHardening.selfEmployedArticle68ActivityExplicit
+      && seHardening.employeeAndSelfEmployedSamePriorityTier
+      && seHardening.selfEmploymentDoesNotAutoCreateNationalRight
+      && seHardening.otherParentSelfEmploymentIncluded
+      && seHardening.singlePersonMixedActivityDoesNotFabricateTwoRights
+      && seHardening.differentParentMixedActivityCovered
+      && seHardening.bothParentsSelfEmployedCovered
+      && seHardening.multiStateSelfEmploymentDelegatesToApplicableLegislation
+      && seHardening.kindergeldSelfEmployedCrossBorderEvidenceCovered
+      && seHardening.elterngeldSelfEmployedCovered
+      && seHardening.elterngeldMixedIncomeSeparatedFromArticle68
+      && seHardening.skSelfEmployedChildBenefitCovered
+      && seHardening.skSelfEmployedParentalAllowanceCovered
+      && seHardening.activityChangeReclassificationCovered
+      && seHardening.decisionF3SelfEmployedBasketCovered
+      && seHardening.periodAlignmentStillFailClosed
+      && seHardening.total === 51
+      && seHardening.coveredCount === 49
+      && seHardening.outOfScopeCount === 2
+      && seHardening.blockedCount === 0
+      && seHardening.missing.length === 0
+      && seHardening.negativeControlsPresent
+      && DE_SK_FAMILY_SELF_EMPLOYED_NEGATIVE_CONTROLS.length >= 30
+      && CROSS_BORDER_FAMILY_ACTIVITY_TYPES.includes("SELF_EMPLOYED")
+      && CROSS_BORDER_FAMILY_ACTIVITY_TYPES.includes("MIXED")
+      && !/activityType\s*===\s*["']EMPLOYED["']/u.test(connectorSource)
+      && !/activityType\s*===\s*["']EMPLOYED["']/u.test(euFamilySource)
+      && !/employmentState.{0,80}selfEmploymentState.{0,80}two Article 68/u.test(connectorSource)
+      && /gleichrangig/.test(euFamilySource)
+      && /nicht automatisch zwei Artikel-68-ACTIVITY-Rechte/.test(euFamilySource)
+      && /Gewerbeanmeldung ist nicht der Kindergeldanspruch/.test(deSource)
+      && /živnosť begründet den slowakischen Kinderzuschlag nicht automatisch/.test(skSource)
+      && /Artikel 13 nicht im Familienkorridor neu entscheiden/.test(connectorSource),
   };
 
   const docker = run("docker", ["version", "--format", "{{.Server.Version}}"], 30_000);
@@ -506,7 +559,7 @@ async function main(): Promise<void> {
       && stored.rows[0]?.activation_from_locale_allowed === false
       && Number(activeCorridors.rows[0]?.n) === 0
       && Number(familyCorridor.rows[0]?.n) === DE_SK_FAMILY_PROCESSES.length;
-    live.familyCorridorProcessCount = Number(familyCorridor.rows[0]?.n) === 29;
+    live.familyCorridorProcessCount = Number(familyCorridor.rows[0]?.n) === DE_SK_FAMILY_PROCESSES.length;
     live.activeCorridorsZero = Number(activeCorridors.rows[0]?.n) === 0;
     live.noSourceDupes = sourceDupes.rows.length === 0;
     live.noClaimDupes = claimDupes.rows.length === 0;
@@ -550,7 +603,7 @@ async function main(): Promise<void> {
       && groupDef.includes("eu_health_insurance_coordination")
       && groupDef.includes("eu_applicable_legislation");
     live.primaryProcessPresent = DE_FAMILY_OFFICIAL_SOURCES.length === 4
-      && DE_SK_FAMILY_SCENARIOS.length === 69;
+      && DE_SK_FAMILY_SCENARIOS.length === 120;
   } finally {
     await ingestor?.end().catch(() => undefined);
     await admin?.end().catch(() => undefined);
@@ -576,6 +629,7 @@ async function main(): Promise<void> {
     connectorFirst,
     connectorSecond,
     completeness,
+    selfEmployedHardening: seHardening,
     connectorStatus: connector.status,
     publicRuntimeAuthorized: false,
     productionInteractionPerformed: false,

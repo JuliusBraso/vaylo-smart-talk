@@ -113,6 +113,25 @@ export type CrossBorderHealthcareFacts = Readonly<{
   materialChangeDate?: string | null;
 }>;
 
+export const CROSS_BORDER_FAMILY_ACTIVITY_TYPES = Object.freeze([
+  "EMPLOYED",
+  "SELF_EMPLOYED",
+  "MIXED",
+  "INACTIVE",
+  "PENSION",
+  "UNEMPLOYED",
+  "UNKNOWN",
+] as const);
+export type CrossBorderFamilyActivityType = typeof CROSS_BORDER_FAMILY_ACTIVITY_TYPES[number];
+
+export type CrossBorderFamilyParentActivityFacts = Readonly<{
+  role: "PARENT_A" | "PARENT_B";
+  activityType?: CrossBorderFamilyActivityType | null;
+  selfEmploymentStates?: readonly string[] | null;
+  employmentStates?: readonly string[] | null;
+  activityStatusVerified?: boolean | null;
+}>;
+
 export type CrossBorderFamilyBenefitChildFacts = Readonly<{
   childKey?: string | null;
   residenceState?: string | null;
@@ -143,6 +162,8 @@ export type CrossBorderFamilyBenefitFacts = Readonly<{
   overlapSamePeriod?: boolean | null;
   overlapSameFamilyMember?: boolean | null;
   entitlementBasis?: "ACTIVITY" | "PENSION" | "RESIDENCE" | "UNCLEAR" | null;
+  parentActivities?: readonly CrossBorderFamilyParentActivityFacts[] | null;
+  otherParentSelfEmploymentStatusKnown?: boolean | null;
   nationalEntitlementVerified?: boolean | null;
   amountKnown?: boolean | null;
   applicantIsBeneficiary?: boolean | null;
@@ -356,6 +377,28 @@ export function validateCrossBorderCaseContext(
       const value = context.familyBenefits[stateKey];
       if (value != null && value !== "" && !ISO2.test(value)) {
         issues.push(`INVALID_CASE_STATE:familyBenefits.${stateKey}`);
+      }
+    }
+    for (const [index, parent] of (context.familyBenefits.parentActivities ?? []).entries()) {
+      rejectLocaleFields(issues, parent, `familyBenefits.parentActivities.${index}`);
+      if (parent.role !== "PARENT_A" && parent.role !== "PARENT_B") {
+        issues.push(`UNKNOWN_FAMILY_PARENT_ROLE:${parent.role}`);
+      }
+      if (
+        parent.activityType != null
+        && !(CROSS_BORDER_FAMILY_ACTIVITY_TYPES as readonly string[]).includes(parent.activityType)
+      ) {
+        issues.push(`UNKNOWN_FAMILY_ACTIVITY_TYPE:${parent.activityType}`);
+      }
+      for (const state of parent.selfEmploymentStates ?? []) {
+        if (state !== "" && !ISO2.test(state)) {
+          issues.push(`INVALID_CASE_STATE:familyBenefits.parentActivities.${index}.selfEmploymentStates`);
+        }
+      }
+      for (const state of parent.employmentStates ?? []) {
+        if (state !== "" && !ISO2.test(state)) {
+          issues.push(`INVALID_CASE_STATE:familyBenefits.parentActivities.${index}.employmentStates`);
+        }
       }
     }
   }

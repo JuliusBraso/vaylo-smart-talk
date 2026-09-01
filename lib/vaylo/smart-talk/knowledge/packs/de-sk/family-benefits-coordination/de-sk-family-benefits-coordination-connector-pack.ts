@@ -26,6 +26,7 @@ import {
 } from "../../sk/family-benefits/sk-family-benefits-adapter-pack";
 import {
   CROSS_BORDER_CONNECTOR_SCHEMA_VERSION,
+  CROSS_BORDER_FAMILY_ACTIVITY_TYPES,
   type CorridorProcessBinding,
   type CuratedCrossBorderConnectorPack,
   type FamilyBenefitBasket,
@@ -74,6 +75,8 @@ export const DE_SK_FB_REUSED_ELTERNGELD_KEYS = Object.freeze([
   "cross-border-fail-closed",
   "kindergeld-not-elterngeld",
   "local-authority-fetch-live",
+  "self-employed-tax-year",
+  "mixed-moves-framework",
 ]);
 
 export const DE_SK_FB_EU_CLAIM_KEYS = Object.freeze([
@@ -127,6 +130,26 @@ export const DE_SK_FB_EU_CLAIM_KEYS = Object.freeze([
   "fb-elterngeld-national-not-in-eu-core",
   "fb-multiple-children-not-one-child-state",
   "fb-national-rights-required-for-overlap",
+  "fb-basis-activity",
+  "fb-employed-and-self-employed-same-activity-tier",
+  "fb-self-employed-not-automatic-residence",
+  "fb-self-employment-not-automatic-national-right",
+  "fb-single-person-mixed-not-two-activity-rights",
+  "fb-zero-income-not-activity-ceased",
+  "fb-dormant-registration-not-current-activity",
+  "fb-company-owner-not-automatic-self-employed",
+  "fb-mixed-income-not-two-article-68-states",
+  "fb-business-registration-not-priority",
+  "fb-tax-residence-not-priority",
+  "fb-business-closure-not-automatic-benefit-end",
+  "fb-second-parent-activity-unclear-fail-closed",
+  "fb-second-parent-activity-can-change-priority",
+  "fb-working-parent-only-insufficient",
+  "fb-two-working-parents-not-automatic-overlap",
+  "fb-applicable-legislation-not-automatic-activity-right",
+  "fb-eu-coordination-not-national-entitlement",
+  "fb-fact-change-requires-reclassification",
+  "fb-working-parent-not-automatic-payee",
 ]);
 
 export const DE_SK_FB_DE_CLAIM_KEYS = Object.freeze([
@@ -184,6 +207,11 @@ export const DE_SK_FAMILY_PROCESSES: readonly CorridorProcessBinding[] = Object.
   binding("de-sk-fb-child-residence-change", "Kindwohnsitzwechsel DE nach SK oder umgekehrt", "Kind zieht um, Vorrang soll fortgeschrieben werden", "Kindwohnsitz kann den Vorrang ändern; nicht automatisch den neuen Wohnstaat als vorrangig setzen.", [euRef("fb-child-residence-not-always-primary"), euRef("fb-same-basis-activity-child-residence"), skRef("sk-child-change-8-days"), deRef("de-fb-kg-change-reporting"), skRef("sk-child-not-from-child-residence-alone"), euRef(EU_SHARED_ART67_CLAIM_KEY), euRef("fb-art-59-month-end-continuation"), deRef("de-fb-channel-fetch-live"), deRef("de-fb-familienkasse-role"), skRef("sk-fb-upsvar-role"), deRef("de-fb-does-not-copy-eu-law"), euRef("fb-multiple-children-not-one-child-state")]),
   binding("de-sk-fb-mid-month-competence", "Kompetenzwechsel im Kalendermonat", "Beschäftigung oder Vorrang wechselt mitten im Monat", "Kein automatischer tagesweiser Schnitt; bisheriger Träger bis Monatsende.", [euRef("fb-art-59-month-end-continuation"), euRef("fb-mid-month-not-day-split"), skRef("sk-child-calendar-month"), skRef("sk-child-payment"), deRef("de-fb-lebensmonat-not-calendar-month"), deRef("de-fb-period-alignment-fail-closed"), deRef("de-fb-kg-change-reporting"), skRef("sk-parental-change-reporting"), deRef("de-fb-familienkasse-role"), skRef("sk-fb-upsvar-role"), deRef("de-fb-does-not-copy-eu-law"), euRef("fb-currency-period-fail-closed")]),
   binding("de-sk-fb-proposed-law-gate", "Vorgeschlagenes Recht 2016/0397 sperren", "Nutzer behandelt 2016/0397 oder Kindererziehungs-Sonderregeln als geltendes Recht", "Als nicht geltende Revision führen; nicht als aktuelles Elterngeld- oder Familienleistungsrecht speichern.", [euRef("pending-cod-2016-0397-family-not-current"), euRef("proposed-child-raising-category-not-current"), euRef(EU_SHARED_ART68_CLAIM_KEY), deRef("de-fb-does-not-copy-elterngeld-merits"), deRef("de-fb-does-not-copy-eu-law"), skRef("sk-fb-does-not-copy-eu-law"), deRef("de-fb-elg-cross-border-priority"), skRef("sk-parental-not-elterngeld-copy"), deRef("de-fb-elterngeldstelle-role"), skRef("sk-fb-upsvar-role"), euRef("fb-elterngeld-national-not-in-eu-core"), deRef("two-states-not-double-full")]),
+  binding("de-sk-fb-self-employed-activity-gate", "Selbständigkeit als ACTIVITY führen", "Selbständige Person oder SZČO wird als Wohnsitzfall oder nachrangig zur Beschäftigung angeboten", "Selbständigkeit als ACTIVITY derselben Stufe wie Beschäftigung führen; nicht automatisch Wohnsitz und nicht automatisch nationales Recht.", [euRef("fb-basis-activity"), euRef("fb-employed-and-self-employed-same-activity-tier"), euRef("fb-self-employed-not-automatic-residence"), euRef("fb-self-employment-not-automatic-national-right"), euRef("fb-national-rights-required-for-overlap"), skRef("sk-fb-employee-or-szco-activity-facts"), deRef("de-fb-kg-employment-not-automatic-entitlement"), skRef("sk-child-szco-not-automatic-entitlement"), deRef("de-fb-familienkasse-role"), skRef("sk-fb-upsvar-role"), deRef("de-fb-does-not-copy-eu-law"), euRef("fb-tax-residence-not-priority")]),
+  binding("de-sk-fb-single-person-mixed-delegate", "Gemischte Tätigkeit einer Person an Titel II verweisen", "Eine Person ist beschäftigt und selbständig in DE und SK und soll zwei ACTIVITY-Rechte erhalten", "Artikel 13 nicht im Familienkorridor neu entscheiden; zwei ACTIVITY-Rechte nicht aus einer Person erfinden.", [euRef("fb-single-person-mixed-not-two-activity-rights"), euRef("fb-applicable-legislation-not-automatic-activity-right"), euRef("fb-eu-coordination-not-national-entitlement"), euRef("fb-national-rights-required-for-overlap"), euRef("fb-two-working-parents-not-automatic-overlap"), deRef("cross-border-fail-closed"), deRef("paying-state-not-inferred"), deRef("de-fb-does-not-copy-eu-law"), deRef("de-fb-familienkasse-role"), skRef("sk-fb-upsvar-role"), skRef("sk-fb-does-not-copy-eu-law"), euRef("fb-business-registration-not-priority")]),
+  binding("de-sk-fb-kg-self-employed-evidence", "Kindergeld-Nachweise Selbständigkeit", "Selbständige Person legt Gewerbeanmeldung oder Steuerbescheid als Kindergeldanspruch oder Vorrang vor", "Nachweise als Verfahrensbelege führen; Gewerbe nicht als Anspruch und Steuerbescheid nicht als Artikel-68-Vorrang setzen.", [deRef("de-fb-kg-self-employed-evidence"), deRef("de-fb-kg-gewerbe-not-entitlement"), deRef("de-fb-kg-steuerbescheid-not-priority"), deRef("de-fb-kg-employment-not-automatic-entitlement"), deRef("de-fb-kg-cross-border-application"), deRef("anlage-ausland-signals-foreign-facts"), euRef("fb-self-employment-not-automatic-national-right"), euRef("fb-business-registration-not-priority"), deRef("de-fb-familienkasse-role"), skRef("sk-fb-upsvar-role"), deRef("de-fb-does-not-copy-kindergeld-merits"), euRef("fb-tax-residence-not-priority")]),
+  binding("de-sk-fb-se-activity-status-change", "Wechsel Beschäftigung Selbständigkeit neu prüfen", "Selbständigkeit beginnt, endet, wechselt den Staat oder die Betriebsform während des Leistungszeitraums", "Vorrang und Grundlage erneut klassifizieren; ruhende Registrierung, Nullumsatz und Schließung nicht still fortschreiben.", [euRef("fb-fact-change-requires-reclassification"), euRef("fb-zero-income-not-activity-ceased"), euRef("fb-dormant-registration-not-current-activity"), euRef("fb-business-closure-not-automatic-benefit-end"), euRef("fb-art-59-month-end-continuation"), deRef("de-fb-kg-change-reporting"), skRef("sk-child-change-8-days"), skRef("sk-parental-change-reporting"), deRef("de-fb-familienkasse-role"), skRef("sk-fb-upsvar-role"), deRef("de-fb-elterngeldstelle-role"), euRef("fb-mid-month-not-day-split")]),
+  binding("de-sk-fb-priplatok-gainful-activity-gate", "Príplatok nicht aus Selbständigkeit setzen", "Selbständige Person verlangt 30 Euro príplatok automatisch im F3-Korb", "Príplatok nur bei verifiziertem nationalem Anspruch; Erwerbstätigkeit nicht als automatischen Zuschlag setzen.", [skRef("sk-priplatok-not-automatic-from-gainful-activity"), skRef("sk-priplatok-family-benefit-current"), skRef("sk-priplatok-amount-30-2026"), euRef("fb-f3-not-one-benefit-pair"), euRef("fb-exact-amount-fail-closed"), euRef(EU_SHARED_F3_CLAIM_KEY), deRef("de-fb-kg-difference-route"), skRef("sk-fb-application-not-approval"), deRef("de-fb-familienkasse-role"), skRef("sk-fb-upsvar-role"), deRef("de-fb-does-not-copy-eu-law"), euRef("fb-no-naive-amount-calculator")]),
 ]);
 
 type ScenarioSpec = Readonly<{
@@ -264,6 +292,57 @@ export const DE_SK_FAMILY_SCENARIOS: readonly ScenarioSpec[] = Object.freeze([
   { id: "birth-supplement-excluded", label: "Geburtszuschlag Anhang I ausgeschlossen", coverage: "COVERED", requiredClaimKeys: ["sk-birth-supplement-excluded-annex-i"], requiredProcessKeys: ["de-sk-fb-annex-i-gate"] },
   { id: "uk-family-out-of-scope", label: "UK-Familienleistungsfall", coverage: "EXPLICITLY_OUT_OF_SCOPE", requiredClaimKeys: ["fb-uk-family-out-of-scope"], requiredProcessKeys: ["de-sk-fb-case-classify"] },
   { id: "non-eu-bilateral-out-of-scope", label: "Nicht-EU-bilateraler Familienleistungsfall", coverage: "EXPLICITLY_OUT_OF_SCOPE", requiredClaimKeys: ["fb-non-eu-bilateral-out-of-scope"], requiredProcessKeys: ["de-sk-fb-case-classify"] },
+  { id: "se-a-de-b-inactive-child-sk", label: "Elternteil A selbständig DE, B inaktiv SK, Kind SK", coverage: "COVERED", requiredClaimKeys: ["fb-basis-activity", "fb-de-activity-vs-sk-residence"], requiredProcessKeys: ["de-sk-fb-self-employed-activity-gate", "de-sk-fb-de-activity-sk-residence"] },
+  { id: "se-a-sk-b-inactive-child-de", label: "Elternteil A selbständig SK, B inaktiv DE, Kind DE", coverage: "COVERED", requiredClaimKeys: ["fb-basis-activity", "fb-sk-activity-vs-de-residence"], requiredProcessKeys: ["de-sk-fb-self-employed-activity-gate", "de-sk-fb-sk-activity-de-residence"] },
+  { id: "se-a-de-employee-b-sk-child-sk", label: "A selbständig DE, B beschäftigt SK, Kind SK", coverage: "COVERED", requiredClaimKeys: ["fb-employed-and-self-employed-same-activity-tier", "fb-same-basis-activity-child-residence"], requiredProcessKeys: ["de-sk-fb-self-employed-activity-gate", "de-sk-fb-both-activity-child-sk"] },
+  { id: "se-a-de-employee-b-sk-child-de", label: "A selbständig DE, B beschäftigt SK, Kind DE", coverage: "COVERED", requiredClaimKeys: ["fb-employed-and-self-employed-same-activity-tier", "fb-same-basis-activity-child-residence"], requiredProcessKeys: ["de-sk-fb-self-employed-activity-gate", "de-sk-fb-both-activity-child-de"] },
+  { id: "employee-a-de-se-b-sk-child-sk", label: "A beschäftigt DE, B selbständig SK, Kind SK", coverage: "COVERED", requiredClaimKeys: ["fb-employed-and-self-employed-same-activity-tier", "fb-same-basis-activity-child-residence"], requiredProcessKeys: ["de-sk-fb-self-employed-activity-gate", "de-sk-fb-both-activity-child-sk"] },
+  { id: "employee-a-de-se-b-sk-child-de", label: "A beschäftigt DE, B selbständig SK, Kind DE", coverage: "COVERED", requiredClaimKeys: ["fb-employed-and-self-employed-same-activity-tier", "fb-same-basis-activity-child-residence"], requiredProcessKeys: ["de-sk-fb-self-employed-activity-gate", "de-sk-fb-both-activity-child-de"] },
+  { id: "se-a-de-se-b-sk-child-sk", label: "Beide selbständig, Kind SK", coverage: "COVERED", requiredClaimKeys: ["fb-basis-activity", "fb-same-basis-activity-child-residence"], requiredProcessKeys: ["de-sk-fb-self-employed-activity-gate", "de-sk-fb-both-activity-child-sk"] },
+  { id: "se-a-de-se-b-sk-child-de", label: "Beide selbständig, Kind DE", coverage: "COVERED", requiredClaimKeys: ["fb-basis-activity", "fb-same-basis-activity-child-residence"], requiredProcessKeys: ["de-sk-fb-self-employed-activity-gate", "de-sk-fb-both-activity-child-de"] },
+  { id: "se-a-de-se-b-sk-child-hu", label: "Beide selbständig, Kind HU, Artikel 58", coverage: "COVERED", requiredClaimKeys: ["fb-unresolved-same-basis-activity", "fb-art-58-cost-sharing"], requiredProcessKeys: ["de-sk-fb-child-third-state-art-58"] },
+  { id: "both-se-de-child-sk", label: "Beide selbständig DE, Kind SK", coverage: "COVERED", requiredClaimKeys: ["fb-de-activity-vs-sk-residence", "fb-basis-activity"], requiredProcessKeys: ["de-sk-fb-de-activity-sk-residence"] },
+  { id: "both-se-sk-child-de", label: "Beide selbständig SK, Kind DE", coverage: "COVERED", requiredClaimKeys: ["fb-sk-activity-vs-de-residence", "fb-basis-activity"], requiredProcessKeys: ["de-sk-fb-sk-activity-de-residence"] },
+  { id: "mixed-one-person-employed-de-se-sk-other-inactive", label: "Eine Person beschäftigt DE und selbständig SK, anderer inaktiv", coverage: "COVERED", requiredClaimKeys: ["fb-single-person-mixed-not-two-activity-rights"], requiredProcessKeys: ["de-sk-fb-single-person-mixed-delegate"] },
+  { id: "mixed-one-person-employed-sk-se-de-other-inactive", label: "Eine Person beschäftigt SK und selbständig DE, anderer inaktiv", coverage: "COVERED", requiredClaimKeys: ["fb-single-person-mixed-not-two-activity-rights"], requiredProcessKeys: ["de-sk-fb-single-person-mixed-delegate"] },
+  { id: "mixed-one-person-fabricates-two-rights", label: "Gemischte Tätigkeit einer Person erfindet zwei ACTIVITY-Rechte", coverage: "COVERED", requiredClaimKeys: ["fb-single-person-mixed-not-two-activity-rights", "fb-national-rights-required-for-overlap"], requiredProcessKeys: ["de-sk-fb-single-person-mixed-delegate"] },
+  { id: "different-parents-employee-szco-two-potential-rights", label: "Unterschiedliche Eltern beschäftigt und SZČO, zwei mögliche Rechte", coverage: "COVERED", requiredClaimKeys: ["fb-two-working-parents-not-automatic-overlap", "fb-employed-and-self-employed-same-activity-tier"], requiredProcessKeys: ["de-sk-fb-both-activity-child-sk"] },
+  { id: "multi-state-se-al-unresolved", label: "Mehrstaatliche Selbständigkeit, anwendbare Rechtsvorschriften unklar", coverage: "COVERED", requiredClaimKeys: ["fb-applicable-legislation-not-automatic-activity-right", "fb-single-person-mixed-not-two-activity-rights"], requiredProcessKeys: ["de-sk-fb-single-person-mixed-delegate"] },
+  { id: "multi-state-se-al-verified-de", label: "Mehrstaatliche Selbständigkeit, DE-Rechtsvorschriften verifiziert", coverage: "COVERED", requiredClaimKeys: ["fb-applicable-legislation-not-automatic-activity-right", "fb-self-employment-not-automatic-national-right"], requiredProcessKeys: ["de-sk-fb-single-person-mixed-delegate"] },
+  { id: "multi-state-se-al-verified-sk", label: "Mehrstaatliche Selbständigkeit, SK-Rechtsvorschriften verifiziert", coverage: "COVERED", requiredClaimKeys: ["fb-applicable-legislation-not-automatic-activity-right", "fb-self-employment-not-automatic-national-right"], requiredProcessKeys: ["de-sk-fb-single-person-mixed-delegate"] },
+  { id: "se-kg-gewerbe-evidence", label: "DE-Selbständige mit Gewerbeanmeldung als Kindergeldnachweis", coverage: "COVERED", requiredClaimKeys: ["de-fb-kg-self-employed-evidence", "de-fb-kg-gewerbe-not-entitlement"], requiredProcessKeys: ["de-sk-fb-kg-self-employed-evidence"] },
+  { id: "se-gewerbe-assumed-kindergeld", label: "Gewerbe als Kindergeldanspruch angenommen", coverage: "COVERED", requiredClaimKeys: ["de-fb-kg-gewerbe-not-entitlement", "de-fb-kg-employment-not-automatic-entitlement"], requiredProcessKeys: ["de-sk-fb-kg-self-employed-evidence"] },
+  { id: "se-de-secondary-kindergeld", label: "DE selbständig, mögliches nachrangiges Kindergeld", coverage: "COVERED", requiredClaimKeys: ["fb-secondary-not-no-entitlement", "de-fb-kg-difference-route"], requiredProcessKeys: ["de-sk-fb-kindergeld-differential-route"] },
+  { id: "se-259-minus-60-rejected", label: "259 minus 60 als Selbständigen-Differenz verlangt", coverage: "COVERED", requiredClaimKeys: ["fb-no-naive-amount-calculator", "fb-exact-amount-fail-closed"], requiredProcessKeys: ["de-sk-fb-exact-amount-fail-closed"] },
+  { id: "se-elterngeld-candidate", label: "Elterngeldkandidat selbständig", coverage: "COVERED", requiredClaimKeys: ["self-employed-tax-year", "fb-elterngeld-national-not-in-eu-core"], requiredProcessKeys: ["de-sk-fb-elterngeld-differential-route"] },
+  { id: "se-elterngeld-mixed-income", label: "Elterngeldkandidat mit Mischeinkünften", coverage: "COVERED", requiredClaimKeys: ["mixed-moves-framework", "fb-mixed-income-not-two-article-68-states"], requiredProcessKeys: ["de-sk-fb-elterngeld-differential-route"] },
+  { id: "mixed-elterngeld-income-as-two-art-68-states", label: "Elterngeld-Mischeinkünfte als zwei Artikel-68-Staaten", coverage: "COVERED", requiredClaimKeys: ["fb-mixed-income-not-two-article-68-states", "mixed-moves-framework"], requiredProcessKeys: ["de-sk-fb-single-person-mixed-delegate"] },
+  { id: "sk-se-child-benefit-candidate", label: "SK selbständig, Kinderzuschlagskandidat", coverage: "COVERED", requiredClaimKeys: ["sk-child-szco-not-automatic-entitlement", "sk-fb-employee-or-szco-activity-facts"], requiredProcessKeys: ["de-sk-fb-sk-child-route"] },
+  { id: "sk-se-parental-allowance-candidate", label: "SK selbständig, Elternbeitragskandidat", coverage: "COVERED", requiredClaimKeys: ["sk-parental-szco-not-automatic-exclusion", "sk-parental-szco-not-automatic-entitlement"], requiredProcessKeys: ["de-sk-fb-sk-parental-route"] },
+  { id: "sk-se-priplatok-automatic", label: "SK selbständig, príplatok automatisch verlangt", coverage: "COVERED", requiredClaimKeys: ["sk-priplatok-not-automatic-from-gainful-activity"], requiredProcessKeys: ["de-sk-fb-priplatok-gainful-activity-gate"] },
+  { id: "sk-priplatok-gainful-activity-fails", label: "Príplatok scheitert an Erwerbstätigkeitsvoraussetzungen", coverage: "COVERED", requiredClaimKeys: ["sk-priplatok-not-automatic-from-gainful-activity", "sk-priplatok-family-benefit-current"], requiredProcessKeys: ["de-sk-fb-priplatok-gainful-activity-gate"] },
+  { id: "se-starts-during-benefit", label: "Selbständigkeit beginnt im Leistungszeitraum", coverage: "COVERED", requiredClaimKeys: ["fb-fact-change-requires-reclassification", "fb-second-parent-activity-can-change-priority"], requiredProcessKeys: ["de-sk-fb-se-activity-status-change"] },
+  { id: "se-ends-during-benefit", label: "Selbständigkeit endet im Leistungszeitraum", coverage: "COVERED", requiredClaimKeys: ["fb-fact-change-requires-reclassification", "fb-business-closure-not-automatic-benefit-end"], requiredProcessKeys: ["de-sk-fb-se-activity-status-change"] },
+  { id: "employee-to-se-same-state", label: "Beschäftigung wechselt zu Selbständigkeit im selben Staat", coverage: "COVERED", requiredClaimKeys: ["fb-fact-change-requires-reclassification", "fb-employed-and-self-employed-same-activity-tier"], requiredProcessKeys: ["de-sk-fb-se-activity-status-change"] },
+  { id: "se-to-employee-same-state", label: "Selbständigkeit wechselt zu Beschäftigung im selben Staat", coverage: "COVERED", requiredClaimKeys: ["fb-fact-change-requires-reclassification", "fb-employed-and-self-employed-same-activity-tier"], requiredProcessKeys: ["de-sk-fb-se-activity-status-change"] },
+  { id: "se-moves-de-to-sk", label: "Selbständigkeit wechselt DE nach SK", coverage: "COVERED", requiredClaimKeys: ["fb-fact-change-requires-reclassification", "fb-business-registration-not-priority"], requiredProcessKeys: ["de-sk-fb-se-activity-status-change"] },
+  { id: "se-moves-sk-to-de", label: "Selbständigkeit wechselt SK nach DE", coverage: "COVERED", requiredClaimKeys: ["fb-fact-change-requires-reclassification", "fb-business-registration-not-priority"], requiredProcessKeys: ["de-sk-fb-se-activity-status-change"] },
+  { id: "business-closed-old-priority-held", label: "Betrieb geschlossen, alter Vorrang festgehalten", coverage: "COVERED", requiredClaimKeys: ["fb-business-closure-not-automatic-benefit-end", "fb-fact-change-requires-reclassification"], requiredProcessKeys: ["de-sk-fb-se-activity-status-change"] },
+  { id: "zero-income-activity-continues", label: "Nullumsatz, rechtliche Tätigkeit besteht fort", coverage: "COVERED", requiredClaimKeys: ["fb-zero-income-not-activity-ceased"], requiredProcessKeys: ["de-sk-fb-se-activity-status-change"] },
+  { id: "dormant-gewerbe-as-current-activity", label: "Ruhendes Gewerbe als aktuelle Tätigkeit ohne Nachweis", coverage: "COVERED", requiredClaimKeys: ["fb-dormant-registration-not-current-activity", "sk-fb-szco-real-activity-evidence"], requiredProcessKeys: ["de-sk-fb-se-activity-status-change"] },
+  { id: "multiple-businesses-as-multiple-rights", label: "Mehrere Betriebe als mehrere Artikel-68-Rechte", coverage: "COVERED", requiredClaimKeys: ["fb-single-person-mixed-not-two-activity-rights", "fb-business-registration-not-priority"], requiredProcessKeys: ["de-sk-fb-single-person-mixed-delegate"] },
+  { id: "company-owner-status-unclear", label: "Inhaber- oder Geschäftsführerstatus unklar", coverage: "COVERED", requiredClaimKeys: ["fb-company-owner-not-automatic-self-employed", "sk-fb-company-owner-not-automatic-szco"], requiredProcessKeys: ["de-sk-fb-self-employed-activity-gate"] },
+  { id: "child-moves-sk-to-de-both-activity", label: "Kind zieht SK nach DE, beide activity-basiert", coverage: "COVERED", requiredClaimKeys: ["fb-same-basis-activity-child-residence", "fb-child-residence-not-always-primary"], requiredProcessKeys: ["de-sk-fb-child-residence-change"] },
+  { id: "other-parent-se-omitted", label: "Selbständigkeit des anderen Elternteils ausgelassen", coverage: "COVERED", requiredClaimKeys: ["fb-second-parent-activity-can-change-priority", "fb-working-parent-only-insufficient"], requiredProcessKeys: ["de-sk-fb-whole-family-facts"] },
+  { id: "claimant-se-other-parent-unknown", label: "Antragsteller selbständig, andere Tätigkeit unbekannt", coverage: "COVERED", requiredClaimKeys: ["fb-second-parent-activity-unclear-fail-closed", "trapkowski-applicant-not-beneficiary"], requiredProcessKeys: ["de-sk-fb-whole-family-facts"] },
+  { id: "se-f3-basket-incomplete", label: "Unvollständiger F3-Korb bei Selbständigkeit", coverage: "COVERED", requiredClaimKeys: ["fb-exact-amount-fail-closed", "fb-f3-secondary-compares-baskets"], requiredProcessKeys: ["de-sk-fb-f3-basket"] },
+  { id: "se-lebensmonat-vs-calendar", label: "Elterngeld-Lebensmonat und SK-Kalendermonat, selbständig", coverage: "COVERED", requiredClaimKeys: ["de-fb-lebensmonat-not-calendar-month", "sk-parental-calendar-month"], requiredProcessKeys: ["de-sk-fb-differential-input-gate"] },
+  { id: "locale-sk-factual-de-cz-se", label: "Locale SK bei faktischer DE-CZ-Familie, selbständig", coverage: "COVERED", requiredClaimKeys: ["fb-user-locale-not-priority"], requiredProcessKeys: ["de-sk-fb-case-classify"] },
+  { id: "nationality-sk-se-de", label: "Staatsangehörigkeit SK, selbständig DE", coverage: "COVERED", requiredClaimKeys: ["fb-nationality-not-priority", "fb-basis-activity"], requiredProcessKeys: ["de-sk-fb-self-employed-activity-gate"] },
+  { id: "nationality-de-se-sk", label: "Staatsangehörigkeit DE, selbständig SK", coverage: "COVERED", requiredClaimKeys: ["fb-nationality-not-priority", "sk-fb-employee-or-szco-activity-facts"], requiredProcessKeys: ["de-sk-fb-self-employed-activity-gate"] },
+  { id: "proposed-2016-0397-se-parent", label: "Vorschlag 2016/0397 auf selbständigen Elternteil", coverage: "COVERED", requiredClaimKeys: ["pending-cod-2016-0397-family-not-current", "proposed-child-raising-category-not-current"], requiredProcessKeys: ["de-sk-fb-proposed-law-gate"] },
+  { id: "se-uk-family-out-of-scope", label: "UK-Familienleistungsfall mit Selbständigkeit", coverage: "EXPLICITLY_OUT_OF_SCOPE", requiredClaimKeys: ["fb-uk-family-out-of-scope"], requiredProcessKeys: ["de-sk-fb-case-classify"] },
+  { id: "se-non-eu-bilateral-out-of-scope", label: "Nicht-EU-bilateraler Familienleistungsfall mit Selbständigkeit", coverage: "EXPLICITLY_OUT_OF_SCOPE", requiredClaimKeys: ["fb-non-eu-bilateral-out-of-scope"], requiredProcessKeys: ["de-sk-fb-case-classify"] },
 ]);
 
 export function evaluateDeSkFamilyProcessCompleteness() {
@@ -302,6 +381,157 @@ export function evaluateDeSkFamilyProcessCompleteness() {
     missingClaims,
     uncoveredRequired,
     outOfScopeMissing,
+  });
+}
+
+export const DE_SK_FAMILY_SELF_EMPLOYED_SCENARIO_IDS = Object.freeze([
+  "se-a-de-b-inactive-child-sk",
+  "se-a-sk-b-inactive-child-de",
+  "se-a-de-employee-b-sk-child-sk",
+  "se-a-de-employee-b-sk-child-de",
+  "employee-a-de-se-b-sk-child-sk",
+  "employee-a-de-se-b-sk-child-de",
+  "se-a-de-se-b-sk-child-sk",
+  "se-a-de-se-b-sk-child-de",
+  "se-a-de-se-b-sk-child-hu",
+  "both-se-de-child-sk",
+  "both-se-sk-child-de",
+  "mixed-one-person-employed-de-se-sk-other-inactive",
+  "mixed-one-person-employed-sk-se-de-other-inactive",
+  "mixed-one-person-fabricates-two-rights",
+  "different-parents-employee-szco-two-potential-rights",
+  "multi-state-se-al-unresolved",
+  "multi-state-se-al-verified-de",
+  "multi-state-se-al-verified-sk",
+  "se-kg-gewerbe-evidence",
+  "se-gewerbe-assumed-kindergeld",
+  "se-de-secondary-kindergeld",
+  "se-259-minus-60-rejected",
+  "se-elterngeld-candidate",
+  "se-elterngeld-mixed-income",
+  "mixed-elterngeld-income-as-two-art-68-states",
+  "sk-se-child-benefit-candidate",
+  "sk-se-parental-allowance-candidate",
+  "sk-se-priplatok-automatic",
+  "sk-priplatok-gainful-activity-fails",
+  "se-starts-during-benefit",
+  "se-ends-during-benefit",
+  "employee-to-se-same-state",
+  "se-to-employee-same-state",
+  "se-moves-de-to-sk",
+  "se-moves-sk-to-de",
+  "business-closed-old-priority-held",
+  "zero-income-activity-continues",
+  "dormant-gewerbe-as-current-activity",
+  "multiple-businesses-as-multiple-rights",
+  "company-owner-status-unclear",
+  "child-moves-sk-to-de-both-activity",
+  "other-parent-se-omitted",
+  "claimant-se-other-parent-unknown",
+  "se-f3-basket-incomplete",
+  "se-lebensmonat-vs-calendar",
+  "locale-sk-factual-de-cz-se",
+  "nationality-sk-se-de",
+  "nationality-de-se-sk",
+  "proposed-2016-0397-se-parent",
+  "se-uk-family-out-of-scope",
+  "se-non-eu-bilateral-out-of-scope",
+] as const);
+
+export const DE_SK_FAMILY_SELF_EMPLOYED_SCENARIOS = Object.freeze(
+  DE_SK_FAMILY_SELF_EMPLOYED_SCENARIO_IDS.map((id) => {
+    const scenario = DE_SK_FAMILY_SCENARIOS.find((item) => item.id === id);
+    if (!scenario) throw new Error(`DE_SK_FAMILY_SELF_EMPLOYED_SCENARIO_MISSING:${id}`);
+    return scenario;
+  }),
+);
+
+export const DE_SK_FAMILY_SELF_EMPLOYED_NEGATIVE_CONTROLS = Object.freeze([
+  "fb-basis-activity",
+  "fb-employed-and-self-employed-same-activity-tier",
+  "fb-self-employed-not-automatic-residence",
+  "fb-self-employment-not-automatic-national-right",
+  "fb-single-person-mixed-not-two-activity-rights",
+  "fb-zero-income-not-activity-ceased",
+  "fb-dormant-registration-not-current-activity",
+  "fb-company-owner-not-automatic-self-employed",
+  "fb-mixed-income-not-two-article-68-states",
+  "fb-business-registration-not-priority",
+  "fb-tax-residence-not-priority",
+  "fb-business-closure-not-automatic-benefit-end",
+  "fb-second-parent-activity-unclear-fail-closed",
+  "fb-working-parent-only-insufficient",
+  "fb-two-working-parents-not-automatic-overlap",
+  "fb-national-rights-required-for-overlap",
+  "trapkowski-applicant-not-beneficiary",
+  "fb-f3-not-one-benefit-pair",
+  "fb-no-naive-amount-calculator",
+  "fb-nationality-not-priority",
+  "pending-cod-2016-0397-family-not-current",
+  "de-fb-kg-gewerbe-not-entitlement",
+  "de-fb-kg-steuerbescheid-not-priority",
+  "de-fb-lebensmonat-not-calendar-month",
+  "sk-child-szco-not-automatic-entitlement",
+  "sk-parental-szco-not-automatic-exclusion",
+  "sk-parental-szco-not-automatic-entitlement",
+  "sk-priplatok-not-automatic-from-gainful-activity",
+  "sk-fb-company-owner-not-automatic-szco",
+  "mixed-moves-framework",
+]);
+
+export function evaluateDeSkFamilySelfEmployedHardening() {
+  const processKeys = new Set(DE_SK_FAMILY_PROCESSES.map((process) => process.key));
+  const claimKeys = new Set([
+    ...DE_SK_FB_EU_CLAIM_KEYS,
+    ...DE_SK_FB_DE_CLAIM_KEYS,
+    ...DE_SK_FB_SK_CLAIM_KEYS,
+  ]);
+  const scenarios = DE_SK_FAMILY_SELF_EMPLOYED_SCENARIOS;
+  const covered = scenarios.filter((scenario) => scenario.coverage === "COVERED");
+  const outOfScope = scenarios.filter((scenario) => scenario.coverage === "EXPLICITLY_OUT_OF_SCOPE");
+  const blocked = scenarios.filter((scenario) => scenario.coverage === "BLOCKED_BY_MISSING_AUTHORITATIVE_SOURCE");
+  const missing = scenarios.flatMap((scenario) => [
+    ...scenario.requiredProcessKeys.filter((key) => !processKeys.has(key)).map((key) => `process:${scenario.id}:${key}`),
+    ...scenario.requiredClaimKeys.filter((key) => !claimKeys.has(key)).map((key) => `claim:${scenario.id}:${key}`),
+  ]);
+  return Object.freeze({
+    activityTypes: CROSS_BORDER_FAMILY_ACTIVITY_TYPES,
+    selfEmployedArticle68ActivityExplicit: claimKeys.has("fb-basis-activity")
+      && claimKeys.has("fb-employed-and-self-employed-same-activity-tier"),
+    employeeAndSelfEmployedSamePriorityTier: claimKeys.has("fb-employed-and-self-employed-same-activity-tier"),
+    selfEmploymentDoesNotAutoCreateNationalRight: claimKeys.has("fb-self-employment-not-automatic-national-right")
+      && claimKeys.has("fb-self-employed-not-automatic-residence"),
+    otherParentSelfEmploymentIncluded: covered.some((scenario) => scenario.id === "other-parent-se-omitted")
+      && covered.some((scenario) => scenario.id === "claimant-se-other-parent-unknown"),
+    singlePersonMixedActivityDoesNotFabricateTwoRights: processKeys.has("de-sk-fb-single-person-mixed-delegate")
+      && covered.some((scenario) => scenario.id === "mixed-one-person-fabricates-two-rights"),
+    differentParentMixedActivityCovered: covered.some((scenario) => scenario.id === "different-parents-employee-szco-two-potential-rights")
+      && covered.some((scenario) => scenario.id === "employee-a-de-se-b-sk-child-sk"),
+    bothParentsSelfEmployedCovered: covered.some((scenario) => scenario.id === "se-a-de-se-b-sk-child-sk")
+      && covered.some((scenario) => scenario.id === "se-a-de-se-b-sk-child-de"),
+    multiStateSelfEmploymentDelegatesToApplicableLegislation: covered.some((scenario) => scenario.id === "multi-state-se-al-unresolved")
+      && covered.some((scenario) => scenario.id === "multi-state-se-al-verified-de")
+      && covered.some((scenario) => scenario.id === "multi-state-se-al-verified-sk"),
+    kindergeldSelfEmployedCrossBorderEvidenceCovered: covered.some((scenario) => scenario.id === "se-kg-gewerbe-evidence")
+      && covered.some((scenario) => scenario.id === "se-gewerbe-assumed-kindergeld"),
+    elterngeldSelfEmployedCovered: covered.some((scenario) => scenario.id === "se-elterngeld-candidate"),
+    elterngeldMixedIncomeSeparatedFromArticle68: covered.some((scenario) => scenario.id === "mixed-elterngeld-income-as-two-art-68-states")
+      && claimKeys.has("fb-mixed-income-not-two-article-68-states"),
+    skSelfEmployedChildBenefitCovered: covered.some((scenario) => scenario.id === "sk-se-child-benefit-candidate"),
+    skSelfEmployedParentalAllowanceCovered: covered.some((scenario) => scenario.id === "sk-se-parental-allowance-candidate"),
+    activityChangeReclassificationCovered: processKeys.has("de-sk-fb-se-activity-status-change")
+      && covered.some((scenario) => scenario.id === "employee-to-se-same-state")
+      && covered.some((scenario) => scenario.id === "se-to-employee-same-state"),
+    decisionF3SelfEmployedBasketCovered: covered.some((scenario) => scenario.id === "se-f3-basket-incomplete")
+      && covered.some((scenario) => scenario.id === "se-259-minus-60-rejected"),
+    periodAlignmentStillFailClosed: covered.some((scenario) => scenario.id === "se-lebensmonat-vs-calendar"),
+    total: scenarios.length,
+    coveredCount: covered.length,
+    outOfScopeCount: outOfScope.length,
+    blockedCount: blocked.length,
+    missing,
+    negativeControlCount: DE_SK_FAMILY_SELF_EMPLOYED_NEGATIVE_CONTROLS.length,
+    negativeControlsPresent: DE_SK_FAMILY_SELF_EMPLOYED_NEGATIVE_CONTROLS.every((key) => claimKeys.has(key)),
   });
 }
 
@@ -353,6 +583,7 @@ export function deSkFamilyConnectorSummary(
     skRefCount: pack.foreignClaimRefs.length,
     processCount: pack.corridorProcesses?.length ?? 0,
     completeness: evaluateDeSkFamilyProcessCompleteness(),
+    selfEmployedHardening: evaluateDeSkFamilySelfEmployedHardening(),
     validation: validateCuratedCrossBorderConnectorPack(pack),
   });
 }

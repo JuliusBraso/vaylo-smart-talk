@@ -49,7 +49,7 @@ export const SK_FAMILY_OFFICIAL_SOURCES = Object.freeze([
     passages: [{
       key: "sk-fb-act-600-2003-text",
       locator: "Gesetz 600/2003 Z. z.",
-      text: "Der prídavok na dieťa nach dem Gesetz 600/2003 ist die maßgebliche slowakische Familienleistung für die unionsrechtliche Koordinierung; der bloße Name klassifiziert die Leistung nicht. Anspruchsberechtigt sind Eltern, Personen mit Pflege und unter den gesetzlichen Voraussetzungen ein erwachsenes abhängiges Kind. Nezaopatrené dieťa folgt den gesetzlichen Bedingungen und nicht automatisch bis zum 25. Lebensjahr. Die Pflege des Kindes ist Voraussetzung. Die unionsrechtliche Koordinierung kann den slowakischen Wohnsitz ersetzen; der Wohnsitz des Kindes in der Slowakei begründet keinen automatischen Anspruch. Es wird nur eine Zahlung je Kind je Kalendermonat geleistet. Der schriftliche oder elektronische Antrag (ZEP) geht an den Úrad práce, sociálnych vecí a rodiny nach Wohnsitz. Die Leistung wird für den ganzen Kalendermonat gezahlt, auch wenn die Voraussetzungen nur einen Teil des Monats vorliegen; Rückstände folgen im nächsten Monat. Änderungen einschließlich des Beschäftigungsstaats des anderen Elternteils sind binnen acht Tagen zu melden. Ústredie ist Koordinierungs- und Kontaktstelle, nicht der universelle Auszahler in Bratislava. Sociálna poisťovňa und Krankenversicherungen sind nicht der Familienleistungsträger. Diese Sätze wiederholen nicht die materiellen Artikel 67 und 68.",
+      text: "Der prídavok na dieťa nach dem Gesetz 600/2003 ist die maßgebliche slowakische Familienleistung für die unionsrechtliche Koordinierung; der bloße Name klassifiziert die Leistung nicht. Anspruchsberechtigt sind Eltern, Personen mit Pflege und unter den gesetzlichen Voraussetzungen ein erwachsenes abhängiges Kind. Nezaopatrené dieťa folgt den gesetzlichen Bedingungen und nicht automatisch bis zum 25. Lebensjahr. Die Pflege des Kindes ist Voraussetzung. Die unionsrechtliche Koordinierung kann den slowakischen Wohnsitz ersetzen; der Wohnsitz des Kindes in der Slowakei begründet keinen automatischen Anspruch. Selbständige Tätigkeit oder živnosť begründet den Kinderzuschlag nicht automatisch. Es wird nur eine Zahlung je Kind je Kalendermonat geleistet. Der schriftliche oder elektronische Antrag (ZEP) geht an den Úrad práce, sociálnych vecí a rodiny nach Wohnsitz. Die Leistung wird für den ganzen Kalendermonat gezahlt, auch wenn die Voraussetzungen nur einen Teil des Monats vorliegen; Rückstände folgen im nächsten Monat. Änderungen einschließlich des Beschäftigungsstaats des anderen Elternteils sind binnen acht Tagen zu melden. Ústredie ist Koordinierungs- und Kontaktstelle, nicht der universelle Auszahler in Bratislava. Sociálna poisťovňa und Krankenversicherungen sind nicht der Familienleistungsträger. Diese Sätze wiederholen nicht die materiellen Artikel 67 und 68.",
     }],
   },
   {
@@ -110,6 +110,25 @@ export const SK_FAMILY_OFFICIAL_SOURCES = Object.freeze([
     }],
   },
   {
+    key: "sk-fb-upsvr-eu-instruction",
+    publisherKey: "upsvr" as const,
+    officialDomain: "www.upsvr.gov.sk",
+    url: "https://www.upsvr.gov.sk/buxus/docs/SSVaR/statne_soc.davky/Poucenie_o_rodinnych_davkach_EU.pdf",
+    title: "ÚPSVaR: Poučenie o rodinných dávkach v rámci EÚ",
+    sourceType: "official_guidance",
+    sourceClass: "AUTHORITY_PORTAL",
+    retrievalMethod: "HTML_DOCUMENT",
+    handlingMode: "CACHE_AND_REVALIDATE",
+    freshnessClass: "EVENT_DRIVEN",
+    staleBehavior: "REVALIDATE_BEFORE_USE",
+    informationClass: "PROCESS_IDENTITY",
+    passages: [{
+      key: "sk-fb-upsvr-eu-instruction-text",
+      locator: "Poučenie ÚPSVaR EU",
+      text: "Für die Koordinierung der Familienleistungen gilt als beschäftigte oder selbständig tätige Person, wer eine solche Tätigkeit oder eine gleichgestellte Lage nach dem Sozialversicherungsrecht des Tätigkeitsstaats ausübt. Vereinfacht können Steuern und Sozialversicherungsbeiträge als Hinweis dienen. Bei SZČO ohne Beitragspflicht ist die tatsächliche Ausübung der Tätigkeit nachzuweisen, etwa durch Steuererklärung oder Rechnungen. Die bloße Registrierung einer živnosť ersetzt den Tätigkeitsnachweis nicht. Gesellschaftsstellung als konateľ ohne Beschäftigung ist nicht automatisch selbständige Tätigkeit.",
+    }],
+  },
+  {
     key: "sk-fb-act-571-2009",
     publisherKey: "slovlex" as const,
     officialDomain: "www.slov-lex.sk",
@@ -125,7 +144,7 @@ export const SK_FAMILY_OFFICIAL_SOURCES = Object.freeze([
     passages: [{
       key: "sk-fb-act-571-2009-text",
       locator: "Gesetz 571/2009 Z. z.",
-      text: "Der rodičovský príspevok nach dem Gesetz 571/2009 ist die maßgebliche slowakische Eltern-Familienleistung für die unionsrechtliche Koordinierung. Materské ist Krankengeld/Mutterschaftsgeld und nicht die Familienleistungskategorie des Artikels 68. Anspruchsberechtigt ist die gesetzlich bestimmte Person mit regelmäßiger Pflege. Die Altersgrenze beträgt regelmäßig drei Jahre, sechs Jahre bei langfristig ungünstigem Gesundheitszustand oder in den Grenzen der Ersatzpflege. Wohnsitz in der Slowakei oder unionsrechtliche Koordinierung kann die Anknüpfung tragen. Es besteht ein Anspruch je Familie. Kein Anspruch besteht, wenn mindestens eine berechtigte Person materské oder ein vergleichbares Mutterschaftsgeld eines Mitgliedstaats bezieht, dessen voller Kalendermonatsbetrag den Elternbeitrag übersteigt; Ausnahme: Vater innerhalb von sechs Wochen nach der Geburt oder verlängerter Krankenhausaufenthalt. Ausländisches Mutterschaftsgeld schließt nicht automatisch aus; Betrag und Ausnahmetatsachen sind erforderlich. Änderungen sind zu melden. Der Elternbeitrag kopiert nicht das BEEG. Der Kalendermonat ist die Periode dieser Leistung.",
+      text: "Der rodičovský príspevok nach dem Gesetz 571/2009 ist die maßgebliche slowakische Eltern-Familienleistung für die unionsrechtliche Koordinierung. Materské ist Krankengeld/Mutterschaftsgeld und nicht die Familienleistungskategorie des Artikels 68. Anspruchsberechtigt ist die gesetzlich bestimmte Person mit regelmäßiger Pflege. Die Altersgrenze beträgt regelmäßig drei Jahre, sechs Jahre bei langfristig ungünstigem Gesundheitszustand oder in den Grenzen der Ersatzpflege. Wohnsitz in der Slowakei oder unionsrechtliche Koordinierung kann die Anknüpfung tragen. Selbständige Tätigkeit schließt den Elternbeitrag nicht automatisch aus und begründet ihn nicht automatisch. Es besteht ein Anspruch je Familie. Kein Anspruch besteht, wenn mindestens eine berechtigte Person materské oder ein vergleichbares Mutterschaftsgeld eines Mitgliedstaats bezieht, dessen voller Kalendermonatsbetrag den Elternbeitrag übersteigt; Ausnahme: Vater innerhalb von sechs Wochen nach der Geburt oder verlängerter Krankenhausaufenthalt. Ausländisches Mutterschaftsgeld schließt nicht automatisch aus; Betrag und Ausnahmetatsachen sind erforderlich. Änderungen sind zu melden. Der Elternbeitrag kopiert nicht das BEEG. Der Kalendermonat ist die Periode dieser Leistung.",
     }],
   },
   {
@@ -163,7 +182,7 @@ export const SK_FAMILY_OFFICIAL_SOURCES = Object.freeze([
     passages: [{
       key: "sk-fb-mpsvr-priplatok-text",
       locator: "Príplatok k prídavku",
-      text: "Der príplatok k prídavku na dieťa nach dem Gesetz 600/2003 ist ein laufender Geldzuschlag von 30 Euro mit Stand 2026 für Erziehung und Ernährung eines abhängigen Kindes, wenn der Steuerbonus nicht in Anspruch genommen werden kann. Er ist FAMILY_BENEFIT_CURRENT und in den F3-Korb aufzunehmen, sobald der nationale Anspruch verifiziert ist. Ist der Anspruch unbekannt, bleibt MANUAL_REVIEW; ein stilles Weglassen aus der genauen Differenz ist nicht zulässig. Der Betrag ist nicht zeitlos.",
+      text: "Der príplatok k prídavku na dieťa nach dem Gesetz 600/2003 ist ein laufender Geldzuschlag von 30 Euro mit Stand 2026 für Erziehung und Ernährung eines abhängigen Kindes, wenn der Steuerbonus nicht in Anspruch genommen werden kann. Selbständige oder sonstige Erwerbstätigkeit begründet den príplatok nicht automatisch; der nationale Anspruch bleibt an den nicht in Anspruch genommenen Steuerbonus und die übrigen gesetzlichen Voraussetzungen gebunden. Er ist FAMILY_BENEFIT_CURRENT und in den F3-Korb aufzunehmen, sobald der nationale Anspruch verifiziert ist. Ist der Anspruch unbekannt, bleibt MANUAL_REVIEW; ein stilles Weglassen aus der genauen Differenz ist nicht zulässig. Der Betrag ist nicht zeitlos.",
     }],
   },
   {
@@ -251,6 +270,7 @@ export const SK_FAMILY_UNITS: readonly Unit[] = Object.freeze([
   { key: "sk-child-first-grader-domestic-automatic", category: "procedure", type: "procedure", text: "Die inländische Zahlung des Erstklässlerzuschlags erfolgt häufig automatisch aus Schul- und Ministeriumsdaten, regelmäßig im Oktober für den September.", sourceKey: "sk-fb-mpsvr-child", passageKey: "sk-fb-mpsvr-child-text", riskLevel: "medium" },
   { key: "sk-child-first-grader-eu-requires-application", category: "procedure", type: "exception", text: "Erhält die berechtigte Person den Kinderzuschlag in einem anderen Mitgliedstaat, ist der Erstklässlerzuschlag nicht automatisch; der ÚPSVaR-Antrag für unionsrechtliche Empfänger ist erforderlich.", sourceKey: "sk-fb-upsvr-forms", passageKey: "sk-fb-upsvr-forms-text", riskLevel: "high" },
   { key: "sk-child-not-from-child-residence-alone", category: "eligibility", type: "exception", text: "Allein der Wohnsitz des Kindes in der Slowakei begründet keinen slowakischen Kinderzuschlagsanspruch.", sourceKey: "sk-fb-act-600-2003", passageKey: "sk-fb-act-600-2003-text", riskLevel: "high" },
+  { key: "sk-child-szco-not-automatic-entitlement", category: "eligibility", type: "exception", text: "Selbständige Tätigkeit oder živnosť begründet den slowakischen Kinderzuschlag nicht automatisch.", sourceKey: "sk-fb-act-600-2003", passageKey: "sk-fb-act-600-2003-text", riskLevel: "high" },
   { key: "sk-fb-upsvar-role", category: "institution", type: "definition", text: "SK_UPSVAR_FAMILY_BENEFITS ist der Úrad práce, sociálnych vecí a rodiny als slowakischer Familienleistungsträger.", sourceKey: "sk-fb-upsvr-forms", passageKey: "sk-fb-upsvr-forms-text", riskLevel: "high" },
   { key: "sk-fb-upsvar-instance-fetch-live", category: "institution", type: "procedure", text: "Die genaue ÚPSVaR-Amtsinstanz, Anschrift und Formulare sind live zu prüfen und nicht ohne Frische festzuschreiben.", sourceKey: "sk-fb-upsvr-forms", passageKey: "sk-fb-upsvr-forms-text", riskLevel: "medium" },
   { key: "sk-fb-ustredie-not-universal-payer", category: "institution", type: "exception", text: "Ústredie práce, sociálnych vecí a rodiny ist Koordinierungs- und Kontaktstelle, nicht der universelle Auszahler in Bratislava.", sourceKey: "sk-fb-act-600-2003", passageKey: "sk-fb-act-600-2003-text", riskLevel: "high" },
@@ -274,8 +294,14 @@ export const SK_FAMILY_UNITS: readonly Unit[] = Object.freeze([
   { key: "sk-parental-maternity-amount-gate", category: "eligibility", type: "exception", text: "Kein Anspruch auf den Elternbeitrag besteht, wenn mindestens eine berechtigte Person materské oder vergleichbares Mutterschaftsgeld eines Mitgliedstaats bezieht, dessen voller Kalendermonatsbetrag den Elternbeitrag übersteigt; Ausnahme: Vater innerhalb von sechs Wochen nach der Geburt oder verlängerter Krankenhausaufenthalt.", sourceKey: "sk-fb-act-571-2009", passageKey: "sk-fb-act-571-2009-text", riskLevel: "high", requiresAuthorityResolution: true },
   { key: "sk-parental-maternity-not-automatic-exclusion", category: "eligibility", type: "exception", text: "Ausländisches Mutterschaftsgeld schließt den Elternbeitrag nicht automatisch aus; Betrag und Ausnahmetatsachen sind erforderlich.", sourceKey: "sk-fb-act-571-2009", passageKey: "sk-fb-act-571-2009-text", riskLevel: "high", requiresAuthorityResolution: true },
   { key: "sk-parental-not-elterngeld-copy", category: "boundary", type: "boundary", text: "Der slowakische Elternbeitrag kopiert nicht das deutsche Elterngeld nach dem BEEG und ist kein Lebensmonatsmodell.", sourceKey: "sk-fb-act-571-2009", passageKey: "sk-fb-act-571-2009-text", riskLevel: "high" },
+  { key: "sk-parental-szco-not-automatic-exclusion", category: "eligibility", type: "exception", text: "Selbständige Tätigkeit schließt den rodičovský príspevok nicht automatisch aus.", sourceKey: "sk-fb-act-571-2009", passageKey: "sk-fb-act-571-2009-text", riskLevel: "high" },
+  { key: "sk-parental-szco-not-automatic-entitlement", category: "eligibility", type: "exception", text: "Selbständige Tätigkeit begründet den rodičovský príspevok nicht automatisch.", sourceKey: "sk-fb-act-571-2009", passageKey: "sk-fb-act-571-2009-text", riskLevel: "high" },
+  { key: "sk-fb-employee-or-szco-activity-facts", category: "eligibility", type: "definition", text: "Für slowakische Koordinierungsfakten zählen Beschäftigung oder selbständige Tätigkeit, nicht nur ein Arbeitsvertrag.", sourceKey: "sk-fb-upsvr-eu-instruction", passageKey: "sk-fb-upsvr-eu-instruction-text", riskLevel: "high" },
+  { key: "sk-fb-szco-real-activity-evidence", category: "procedure", type: "procedure", text: "Bei SZČO ohne Beitragspflicht ist die tatsächliche Ausübung der Tätigkeit nachzuweisen, etwa durch Steuererklärung oder Rechnungen; die Registrierung einer živnosť reicht nicht.", sourceKey: "sk-fb-upsvr-eu-instruction", passageKey: "sk-fb-upsvr-eu-instruction-text", riskLevel: "high" },
+  { key: "sk-fb-company-owner-not-automatic-szco", category: "eligibility", type: "exception", text: "Gesellschaftsstellung als konateľ ohne Beschäftigung ist nicht automatisch selbständige Tätigkeit für Familienleistungskoordinierung.", sourceKey: "sk-fb-upsvr-eu-instruction", passageKey: "sk-fb-upsvr-eu-instruction-text", riskLevel: "high", requiresAuthorityResolution: true },
   { key: "sk-priplatok-family-benefit-current", category: "classification", type: "definition", text: "Der príplatok k prídavku nach dem Gesetz 600/2003 ist FAMILY_BENEFIT_CURRENT als Geldzuschlag für Erziehung und Ernährung eines abhängigen Kindes, wenn der Steuerbonus nicht in Anspruch genommen werden kann; er gehört in den F3-Korb, sobald der nationale Anspruch verifiziert ist, sonst MANUAL_REVIEW, nicht stilles Weglassen.", sourceKey: "sk-fb-mpsvr-priplatok", passageKey: "sk-fb-mpsvr-priplatok-text", riskLevel: "high", requiresAuthorityResolution: true },
   { key: "sk-priplatok-amount-30-2026", category: "amount", type: "definition", text: "Der príplatok k prídavku beträgt mit Stand 2026 30 Euro je berechtigtes Kind und Kalendermonat; der Betrag ist nicht zeitlos.", sourceKey: "sk-fb-mpsvr-priplatok", passageKey: "sk-fb-mpsvr-priplatok-text", riskLevel: "high" },
+  { key: "sk-priplatok-not-automatic-from-gainful-activity", category: "eligibility", type: "exception", text: "Selbständige oder sonstige Erwerbstätigkeit begründet den príplatok nicht automatisch; der nationale Anspruch bleibt an den nicht in Anspruch genommenen Steuerbonus gebunden.", sourceKey: "sk-fb-mpsvr-priplatok", passageKey: "sk-fb-mpsvr-priplatok-text", riskLevel: "high", requiresAuthorityResolution: true },
   { key: "sk-childcare-classification-requires-authority", category: "classification", type: "procedure", text: "Der príspevok na starostlivosť o dieťa nach dem Gesetz 561/2008 erfordert CLASSIFICATION_REQUIRES_AUTHORITY; der Name ist nicht Artikel 1 Buchstabe z und kein vollständiger nationaler Teilkern.", sourceKey: "sk-fb-act-561-2008", passageKey: "sk-fb-act-561-2008-text", riskLevel: "high", requiresAuthorityResolution: true },
   { key: "sk-birth-allowance-excluded-annex-i", category: "classification", type: "exception", text: "Der príspevok pri narodení dieťaťa ist EXCLUDED_ANNEX_I und keine nach den Familienleistungsregeln zu koordinierende Leistung.", sourceKey: "sk-fb-act-383-2013", passageKey: "sk-fb-act-383-2013-text", riskLevel: "high" },
   { key: "sk-birth-supplement-excluded-annex-i", category: "classification", type: "exception", text: "Der Geburtszuschlag für gleichzeitig geborene Kinder ist EXCLUDED_ANNEX_I und gehört nicht in den koordinierten Familienleistungskorb.", sourceKey: "sk-fb-act-383-2013", passageKey: "sk-fb-act-383-2013-text", riskLevel: "high" },
@@ -298,6 +324,11 @@ export const SK_FAMILY_NEGATIVE_CONTROLS = Object.freeze([
   "sk-child-first-grader-eu-requires-application",
   "sk-fb-amount-not-timeless",
   "sk-parental-maternity-not-automatic-exclusion",
+  "sk-child-szco-not-automatic-entitlement",
+  "sk-parental-szco-not-automatic-exclusion",
+  "sk-parental-szco-not-automatic-entitlement",
+  "sk-priplatok-not-automatic-from-gainful-activity",
+  "sk-fb-company-owner-not-automatic-szco",
 ]);
 
 type ProcessSpec = Readonly<{
