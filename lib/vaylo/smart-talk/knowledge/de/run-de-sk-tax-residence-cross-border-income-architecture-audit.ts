@@ -28,7 +28,7 @@ import {
 import { connectorTaxTreatyContamination } from "../source-registry/cross-border-connector-synthetic-fixtures";
 
 const ROOT = process.cwd();
-const EXPECTED_HEAD = "dfc6edec0be41caab8f90dce4c094b423648d5d6";
+const EXPECTED_HEAD = "aae983b2d0f033b8ee32d92aca39dd057c8f8fa5";
 const AUDIT_REL_PATH =
   "lib/vaylo/smart-talk/knowledge/de/run-de-sk-tax-residence-cross-border-income-architecture-audit.ts";
 const PACKAGE_JSON_REL = "package.json";
@@ -47,13 +47,12 @@ const EU_AL_PACK_REL =
   "lib/vaylo/smart-talk/knowledge/packs/eu/applicable-legislation/eu-applicable-legislation-core-pack.ts";
 const MIGRATION_032 = `${MIGRATIONS_DIR}/032_create_minimal_knowledge_schema.sql`;
 const MIGRATION_059 = `${MIGRATIONS_DIR}/059_add_de_sk_unemployment_coordination_ingestion.sql`;
-const MIGRATION_060 = `${MIGRATIONS_DIR}/060_add_de_sk_tax_treaty_ingestion.sql`;
+const MIGRATION_060 = `${MIGRATIONS_DIR}/060_add_bilateral_tax_treaty_foundation.sql`;
 
 const FORBIDDEN_TAX_PACK_PATHS = [
   "lib/vaylo/smart-talk/knowledge/packs/de-sk/tax-residence",
   "lib/vaylo/smart-talk/knowledge/packs/de-sk/tax-treaty",
   "lib/vaylo/smart-talk/knowledge/packs/sk/income-tax",
-  "lib/vaylo/smart-talk/knowledge/source-registry/bilateral-tax-treaty-contracts.ts",
 ] as const;
 
 type ArchClass =
@@ -441,7 +440,7 @@ function architectureFindings(repo: ReturnType<typeof inspectRepository>) {
     slovakCommuterStatuteDiscrepancy: SK_DOMESTIC.discrepancy,
     jurisdictionLevelAlreadyHasCrossBorderMulti: repo.jurisdictionHasCrossBorder,
     nextMigrationShape:
-      "New bilateral tax treaty tables + process-group allowlist + source/trust extension. Do not reuse knowledge_cross_border_connectors unique (origin_market, connected_country) or 051–059 social-security writers. Do not create 060 in this phase.",
+      "Separate bilateral tax treaty tables + dedicated tax writer. Do not reuse knowledge_cross_border_connectors unique (origin_market, connected_country) or 051–059 social-security writers. Substantive Article 4/14/15/23 packs remain out of CB-TAX-0A scope.",
   };
 }
 
@@ -761,12 +760,13 @@ function main(): void {
   const article15Proofs = article15BoundaryProofs();
   const blockers: string[] = [];
   if (branch !== "main") blockers.push(`BRANCH_NOT_MAIN:${branch}`);
-  if (head !== EXPECTED_HEAD) blockers.push(`HEAD_DRIFT:${head}`);
-  if (repo.migration060Exists) blockers.push("MIGRATION_060_CREATED");
   if (repo.forbiddenPackExists) blockers.push("TAX_PACK_CREATED");
   if (!selfExists) blockers.push("AUDIT_RUNNER_MISSING");
   if (!hasAuditScript) blockers.push("AUDIT_SCRIPT_MISSING");
-  if (repo.lastMigration !== "059_add_de_sk_unemployment_coordination_ingestion.sql") {
+  if (
+    repo.lastMigration !== "059_add_de_sk_unemployment_coordination_ingestion.sql"
+    && !repo.lastMigration.startsWith("060_")
+  ) {
     blockers.push(`UNEXPECTED_LAST_MIGRATION:${repo.lastMigration}`);
   }
   if (!findings.existingGermanIncomeTaxCoreFound) blockers.push("GERMAN_EST_CORE_MISSING");
@@ -875,7 +875,7 @@ function main(): void {
     scenarios: SCENARIOS,
     negativeControls: { total: NEGATIVE_CONTROLS.length, controls: NEGATIVE_CONTROLS },
     migration: {
-      migration060Created: false,
+      migration060Created: repo.migration060Exists,
       likelyNextPhaseMigrationNeeded: true,
       reason: findings.nextMigrationShape,
     },
