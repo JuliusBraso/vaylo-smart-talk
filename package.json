@@ -65,6 +65,7 @@
     "knowledge:local:audit-de-sk-family-benefits-coordination": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-de-sk-family-benefits-coordination-connector-audit.ts",
     "knowledge:local:audit-eu-unemployment-coordination": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-eu-unemployment-coordination-core-pack-audit.ts",
     "knowledge:local:audit-de-sk-unemployment-coordination": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-de-sk-unemployment-coordination-connector-audit.ts",
+    "knowledge:local:audit-de-sk-tax-residence-architecture": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-de-sk-tax-residence-cross-border-income-architecture-audit.ts",
     "release:check": "npm run db:verify",
     "verify:8.3v": "npx -y tsx@4.19.2 scripts/verify-8-3v-additional-synthetic-live-execution.ts"
   },
