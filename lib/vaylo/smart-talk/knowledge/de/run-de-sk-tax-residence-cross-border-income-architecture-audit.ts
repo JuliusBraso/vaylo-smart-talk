@@ -314,8 +314,13 @@ function inspectRepository() {
     && CROSS_BORDER_TOPIC_FAMILIES.includes("SOCIAL_SECURITY_COORDINATION");
   const caseStatesAreSocialSecurity = CROSS_BORDER_CASE_STATES.join(",")
     === "residenceState,employmentState,insuranceState,activityState,postingState";
-  const skIncomeTaxPackFound = skPackFiles.some((file) => /tax|income|595/u.test(file))
-    || /595\/2003|dani z príjmov|income-tax/u.test(skPackFiles.map((file) => readRel(file)).join("\n"));
+  const unauthorizedSkTaxPackFound = skPackFiles.some((file) => {
+    const normalized = file.replaceAll("\\", "/");
+    if (normalized.includes("packs/sk/income-tax-residence/")) return false;
+    return /tax|income|595/u.test(file);
+  });
+  const skIncomeTaxPackFound = unauthorizedSkTaxPackFound
+    || ((KNOWLEDGE_FACTORY_DOMAINS as readonly string[]).includes("sk_income_tax"));
   const estHasResidenceCore = REQUIRED_EST_CLAIM_KEYS.every((key) => est.includes(`key: "${key}"`));
   const estHasAbmeldungClaim = /abmeldung-not-tax-non-residence|abmeldung-not-automatic-non-residence/u.test(est);
   const estHasAo8Ao9 = est.includes('key: "ao-8"') && est.includes('key: "ao-9"')
@@ -766,6 +771,7 @@ function main(): void {
   if (
     repo.lastMigration !== "059_add_de_sk_unemployment_coordination_ingestion.sql"
     && !repo.lastMigration.startsWith("060_")
+    && !repo.lastMigration.startsWith("061_")
   ) {
     blockers.push(`UNEXPECTED_LAST_MIGRATION:${repo.lastMigration}`);
   }

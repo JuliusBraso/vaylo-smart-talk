@@ -253,8 +253,10 @@ export type BilateralTaxTreatyVersionDraft = Readonly<{
 
 export type BilateralTaxProcessDraft = Readonly<{
   processGroupId: BilateralTaxSubtopic;
+  processKey?: string;
   temporalVersion: string;
   claimRefs: readonly BilateralTaxStableRef[];
+  dimensions?: Readonly<Record<string, string>>;
 }>;
 
 export type CuratedBilateralTaxTreatyPack = Readonly<{
