@@ -123,11 +123,12 @@ import {
 } from "../packs/de-sk/tax-residence-treaty/de-sk-tax-residence-treaty-pack";
 
 const ROOT = process.cwd();
-const EXPECTED_HEAD = "f80ab883d75c81ce29de5fd290083eb2b456ba0a";
+const EXPECTED_HEAD = "e3573d9ed9799166b90ff8a7b5ea8f7dcf17a7c3";
 const AUDIT_REL = "lib/vaylo/smart-talk/knowledge/de/run-de-sk-end-to-end-corridor-review-audit.ts";
+const CLOSURE_AUDIT_REL = "lib/vaylo/smart-talk/knowledge/de/run-de-sk-corridor-v1-closure-audit.ts";
 const PACKAGE_JSON_REL = "package.json";
 const MIGRATIONS_DIR = "supabase/migrations";
-const ALLOWED_DIRTY = new Set([AUDIT_REL, PACKAGE_JSON_REL]);
+const ALLOWED_DIRTY = new Set([AUDIT_REL, CLOSURE_AUDIT_REL, PACKAGE_JSON_REL]);
 
 const REQUIRED_AUDIT_FILES = Object.freeze([
   "lib/vaylo/smart-talk/knowledge/de/run-cross-border-connector-foundation-audit.ts",
@@ -292,7 +293,7 @@ function taxContext(partial: Partial<CrossBorderTaxCaseContext> = {}): CrossBord
   };
 }
 
-function main(): void {
+export function runDeSkEndToEndCorridorReviewAudit(): Record<string, unknown> {
   const branch = git("branch --show-current");
   const head = git("rev-parse HEAD");
   const dirty = dirtyPaths();
@@ -300,16 +301,17 @@ function main(): void {
   const migration062 = existsRel(`${MIGRATIONS_DIR}/062_add_de_sk_end_to_end_corridor_review.sql`)
     || fs.readdirSync(path.join(ROOT, MIGRATIONS_DIR)).some((name) => name.startsWith("062_"));
   if (branch !== "main" || head !== EXPECTED_HEAD || unexpectedDirty.length > 0 || migration062) {
-    process.stdout.write(`${JSON.stringify({
+    return {
+      phase: "DE-SK-E2E-0A",
       phaseResult: "FAIL",
       reason: "PREFLIGHT_STOP",
+      corridorV1Candidate: false,
       branch,
       head,
       expectedHead: EXPECTED_HEAD,
       unexpectedDirty,
       migration062,
-    }, null, 2)}\n`);
-    process.exit(1);
+    };
   }
 
   const packageJson = JSON.parse(readRel(PACKAGE_JSON_REL)) as { scripts: Record<string, string> };
@@ -1348,8 +1350,16 @@ function main(): void {
     blockedScenarios: evaluatedScenarios.filter((row) => row.state === "BLOCKED_BY_CROSS_DOMAIN_DEFECT"),
   };
 
-  process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
-  if (phaseResult !== "PASS") process.exit(1);
+  return report;
 }
 
-main();
+function main(): void {
+  const report = runDeSkEndToEndCorridorReviewAudit();
+  process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+  if (report.phaseResult !== "PASS") process.exit(1);
+}
+
+const invokedDirectly = /run-de-sk-end-to-end-corridor-review-audit\.ts$/u.test(
+  (process.argv[1] ?? "").replace(/\\/gu, "/"),
+);
+if (invokedDirectly) main();
