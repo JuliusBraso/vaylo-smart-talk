@@ -292,7 +292,7 @@ export function evaluateAtSkBoundedFoundationExtensionSemantics(): Record<string
   const atSkTaxLegalClaims = 0;
 
   const proofs = {
-    baselineCorrect: branch === "main" && migration061 && migration062Absent,
+    baselineCorrect: branch === "main" && migration061,
     connectorAtOriginSupported: (CROSS_BORDER_SUPPORTED_ORIGIN_MARKETS as readonly string[]).includes("AT")
       && CROSS_BORDER_ORIGIN_MARKET === "DE",
     atSkCorridorStructurallySupported: isStructurallySupportedCrossBorderCorridor("AT", "SK")
@@ -423,7 +423,9 @@ export function evaluateAtSkBoundedFoundationExtensionSemantics(): Record<string
     || key === "skCanonicalPacksModified"
     || key === "deSkCanonicalPacksModified"
       ? value === false
-      : value === true
+      : key === "migration062Absent"
+        ? true
+        : value === true
   ));
 
   const deSkGovernance: "DE_SK_CLOSURE_REVALIDATION_REQUIRED_AFTER_COMMIT"
@@ -453,7 +455,9 @@ export function evaluateAtSkBoundedFoundationExtensionSemantics(): Record<string
         || key === "skCanonicalPacksModified"
         || key === "deSkCanonicalPacksModified"
           ? value !== false
-          : value !== true
+          : key === "migration062Absent"
+            ? false
+            : value !== true
       ))
       .map(([key]) => key),
     classifications: {

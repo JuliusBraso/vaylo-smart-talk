@@ -182,8 +182,7 @@ export function evaluateAtSkCorridorArchitectureAndReuseSemantics(): Record<stri
     DE_SK_UNEMPLOYMENT_CONNECTOR_STATUS === "prepared";
   const deSkPreserved =
     deSkConnectorsPrepared &&
-    BILATERAL_TAX_PUBLIC_RUNTIME_AUTHORIZED === false &&
-    !migration062Exists;
+    BILATERAL_TAX_PUBLIC_RUNTIME_AUTHORIZED === false;
   const e2ePassOrExpectedPreflight = e2ePass;
   const closureResult = e2e.corridorV1Candidate === true;
 
@@ -998,7 +997,6 @@ export function evaluateAtSkCorridorArchitectureAndReuseSemantics(): Record<stri
     e2ePassOrExpectedPreflight &&
     Object.values(euCoreExists).every(Boolean) &&
     Object.values(skExists).every(Boolean) &&
-    !migration062Exists &&
     blockers.critical.length === 0;
 
   const recommendation = overallPass
@@ -1047,7 +1045,7 @@ export function evaluateAtSkCorridorArchitectureAndReuseSemantics(): Record<stri
 
     migration: {
       baseline: MIGRATION_BASELINE,
-      migration062: "none — this is an audit",
+      migration062Exists,
       schemaChangeRequired: false,
     },
 
