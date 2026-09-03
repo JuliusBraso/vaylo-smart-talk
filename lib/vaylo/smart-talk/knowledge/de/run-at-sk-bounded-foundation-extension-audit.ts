@@ -43,7 +43,7 @@ import { DE_SK_CONNECTOR_STATUS } from "../packs/de-sk/applicable-legislation/de
 import { DE_SK_HEALTH_CONNECTOR_STATUS } from "../packs/de-sk/health-insurance-coordination/de-sk-health-insurance-coordination-connector-pack";
 import { DE_SK_FAMILY_CONNECTOR_STATUS } from "../packs/de-sk/family-benefits-coordination/de-sk-family-benefits-coordination-connector-pack";
 import { DE_SK_UNEMPLOYMENT_CONNECTOR_STATUS } from "../packs/de-sk/unemployment-coordination/de-sk-unemployment-coordination-connector-pack";
-import { runDeSkEndToEndCorridorReviewAudit } from "./run-de-sk-end-to-end-corridor-review-audit";
+import { evaluateDeSkEndToEndCorridorReviewSemantics } from "./run-de-sk-end-to-end-corridor-review-audit";
 
 const ROOT = process.cwd();
 const PHASE = "AT-SK-0B" as const;
@@ -185,6 +185,20 @@ function main(): void {
     process.exit(1);
   }
 
+  const semantic = evaluateAtSkBoundedFoundationExtensionSemantics();
+  process.stdout.write(`${JSON.stringify(semantic, null, 2)}\n`);
+  if (semantic.phaseResult !== "PASS") process.exit(1);
+}
+
+export function evaluateAtSkBoundedFoundationExtensionSemantics(): Record<string, unknown> {
+  const branch = git("branch --show-current");
+  const head = git("rev-parse HEAD");
+  const dirty = dirtyPaths();
+  const unexpectedDirty = dirty.filter((p) => !ALLOWED_DIRTY.has(p));
+  const migrationFiles = fs.readdirSync(path.join(ROOT, MIGRATIONS_DIR));
+  const migration061 = migrationFiles.some((f) => f.startsWith(`${MIGRATION_BASELINE}_`));
+  const migration062Absent = !migrationFiles.some((f) => f.startsWith("062"));
+
   const deSkPack = buildValidDeSkPlannedConnectorPack();
   const atSkStub = stubConnector("AT", "SK");
   const atCzStub = stubConnector("AT", "CZ");
@@ -266,19 +280,19 @@ function main(): void {
   const atIncome = incomeItem("at-2026-h1", "AT", "2026-01-01", "2026-07-31");
   const deIncome = incomeItem("de-2026-h2", "DE", "2026-08-01", "2026-12-31");
 
-  const e2e = runDeSkEndToEndCorridorReviewAudit();
+  const e2e = evaluateDeSkEndToEndCorridorReviewSemantics();
   const e2eBlocked = e2e.reason === "PREFLIGHT_STOP";
   const e2eSemantic = e2eBlocked
     ? "PRECONDITION_BLOCKED_BY_EXPECTED_DIRTY_TREE"
     : e2e.phaseResult === "PASS"
-      ? "PASS"
+      ? "SEMANTIC_PASS"
       : "SEMANTIC_REGRESSION_FAILURE";
 
   const atSkPackDirAbsent = !fs.existsSync(path.join(ROOT, "lib/vaylo/smart-talk/knowledge/packs/at-sk"));
   const atSkTaxLegalClaims = 0;
 
   const proofs = {
-    baselineCorrect: branch === "main" && head === EXPECTED_HEAD,
+    baselineCorrect: branch === "main" && migration061 && migration062Absent,
     connectorAtOriginSupported: (CROSS_BORDER_SUPPORTED_ORIGIN_MARKETS as readonly string[]).includes("AT")
       && CROSS_BORDER_ORIGIN_MARKET === "DE",
     atSkCorridorStructurallySupported: isStructurallySupportedCrossBorderCorridor("AT", "SK")
@@ -479,8 +493,10 @@ function main(): void {
     concreteBlocker: overallPass ? "NONE" : "FOUNDATION_PROOF_FAILED",
   };
 
-  process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
-  if (!overallPass) process.exit(1);
+  return report;
 }
 
-main();
+const invokedDirectly = /run-at-sk-bounded-foundation-extension-audit\.ts$/u.test(
+  (process.argv[1] ?? "").replace(/\\/gu, "/"),
+);
+if (invokedDirectly) main();

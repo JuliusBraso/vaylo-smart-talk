@@ -313,7 +313,13 @@ export function runDeSkEndToEndCorridorReviewAudit(): Record<string, unknown> {
       migration062,
     };
   }
+  return evaluateDeSkEndToEndCorridorReviewSemantics();
+}
 
+export function evaluateDeSkEndToEndCorridorReviewSemantics(): Record<string, unknown> {
+  const branch = git("branch --show-current");
+  const head = git("rev-parse HEAD");
+  const dirty = dirtyPaths();
   const packageJson = JSON.parse(readRel(PACKAGE_JSON_REL)) as { scripts: Record<string, string> };
   const auditFilesPresent = REQUIRED_AUDIT_FILES.every((rel) => existsRel(rel));
   const npmScriptsPresent = REQUIRED_NPM_SCRIPTS.every((script) => Boolean(packageJson.scripts[script]));

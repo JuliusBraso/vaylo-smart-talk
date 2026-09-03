@@ -15,7 +15,7 @@ import { DE_SK_CONNECTOR_STATUS } from "../packs/de-sk/applicable-legislation/de
 import { DE_SK_HEALTH_CONNECTOR_STATUS } from "../packs/de-sk/health-insurance-coordination/de-sk-health-insurance-coordination-connector-pack";
 import { DE_SK_FAMILY_CONNECTOR_STATUS } from "../packs/de-sk/family-benefits-coordination/de-sk-family-benefits-coordination-connector-pack";
 import { DE_SK_UNEMPLOYMENT_CONNECTOR_STATUS } from "../packs/de-sk/unemployment-coordination/de-sk-unemployment-coordination-connector-pack";
-import { runDeSkEndToEndCorridorReviewAudit } from "./run-de-sk-end-to-end-corridor-review-audit";
+import { evaluateDeSkEndToEndCorridorReviewSemantics } from "./run-de-sk-end-to-end-corridor-review-audit";
 
 /* ── Architectural inspection imports ─────────────────────────────── */
 import { CROSS_BORDER_ORIGIN_MARKET } from "../source-registry/cross-border-connector-contracts";
@@ -95,6 +95,19 @@ function main(): void {
     process.exit(1);
   }
 
+  const semantic = evaluateAtSkCorridorArchitectureAndReuseSemantics();
+  process.stdout.write(`${JSON.stringify(semantic, null, 2)}\n`);
+  if (semantic.phaseResult !== "PASS") process.exit(1);
+}
+
+export function evaluateAtSkCorridorArchitectureAndReuseSemantics(): Record<string, unknown> {
+  const branch = git("branch --show-current");
+  const head = git("rev-parse HEAD");
+  const dirty = dirtyPaths();
+  const unexpectedDirty = dirty.filter((p) => !ALLOWED_DIRTY.has(p));
+  const migrationFiles = fs.readdirSync(path.join(ROOT, MIGRATIONS_DIR));
+  const migration062Exists = migrationFiles.some((f) => f.startsWith("062"));
+
   /* ════════════════════════════════════════════════════════════════
    * 2. PRODUCT ARCHITECTURE AUDIT
    * ════════════════════════════════════════════════════════════════ */
@@ -160,35 +173,24 @@ function main(): void {
    * 3. DE-SK PRESERVATION
    * ════════════════════════════════════════════════════════════════ */
 
-  const e2e = runDeSkEndToEndCorridorReviewAudit();
+  const e2e = evaluateDeSkEndToEndCorridorReviewSemantics();
   const e2ePass = e2e.phaseResult === "PASS";
-  const e2ePreflightStop = e2e.reason === "PREFLIGHT_STOP";
-  const e2eDirty = Array.isArray(e2e.unexpectedDirty)
-    ? (e2e.unexpectedDirty as string[])
-    : [];
-  const e2eDirtyOnlyAtSk0a = e2eDirty.every((p) => ALLOWED_DIRTY.has(p));
-  const e2eHeadPinStale = e2e.expectedHead !== EXPECTED_HEAD && head === EXPECTED_HEAD;
-  const e2eRunnerPreflightExpected =
-    e2ePreflightStop && (e2eHeadPinStale || e2eDirtyOnlyAtSk0a);
   const deSkConnectorsPrepared =
     DE_SK_CONNECTOR_STATUS === "prepared" &&
     DE_SK_HEALTH_CONNECTOR_STATUS === "prepared" &&
     DE_SK_FAMILY_CONNECTOR_STATUS === "prepared" &&
     DE_SK_UNEMPLOYMENT_CONNECTOR_STATUS === "prepared";
   const deSkPreserved =
-    head === EXPECTED_HEAD &&
     deSkConnectorsPrepared &&
     BILATERAL_TAX_PUBLIC_RUNTIME_AUTHORIZED === false &&
     !migration062Exists;
-  const e2ePassOrExpectedPreflight = e2ePass || e2eRunnerPreflightExpected;
-  const closureResult = e2e.corridorV1Candidate === true || e2eRunnerPreflightExpected;
+  const e2ePassOrExpectedPreflight = e2ePass;
+  const closureResult = e2e.corridorV1Candidate === true;
 
   const deskPreservation = {
-    e2eResult: e2ePass ? "PASS" : e2eRunnerPreflightExpected ? "PASS_RUNNER_PREFLIGHT_EXPECTED" : "FAIL",
+    e2eResult: e2ePass ? "PASS" : "FAIL",
     corridorV1Candidate: closureResult,
-    e2eRunnerNote: e2eRunnerPreflightExpected
-      ? "DE-SK E2E runner preflight stops on stale EXPECTED_HEAD and/or AT-SK-0A dirty files; DE-SK packs unchanged at closure HEAD"
-      : undefined,
+    e2eRunnerNote: "CLI historical HEAD pin remains; this evaluator is semantic-only",
     connectorStatuses: {
       applicableLegislation: DE_SK_CONNECTOR_STATUS,
       health: DE_SK_HEALTH_CONNECTOR_STATUS,
@@ -1064,8 +1066,10 @@ function main(): void {
       : "NONE",
   };
 
-  process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
-  if (!overallPass) process.exit(1);
+  return report;
 }
 
-main();
+const invokedDirectly = /run-at-sk-corridor-architecture-and-reuse-audit\.ts$/u.test(
+  (process.argv[1] ?? "").replace(/\\/gu, "/"),
+);
+if (invokedDirectly) main();
