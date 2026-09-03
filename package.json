@@ -70,6 +70,7 @@
     "knowledge:local:audit-de-sk-tax-residence-and-treaty-core": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-de-sk-tax-residence-and-treaty-core-audit.ts",
     "knowledge:local:audit-de-sk-end-to-end-corridor-review": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-de-sk-end-to-end-corridor-review-audit.ts",
     "knowledge:local:audit-de-sk-corridor-v1-closure": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-de-sk-corridor-v1-closure-audit.ts",
+    "knowledge:local:audit-at-sk-corridor-architecture-and-reuse": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-at-sk-corridor-architecture-and-reuse-audit.ts",
     "release:check": "npm run db:verify",
     "verify:8.3v": "npx -y tsx@4.19.2 scripts/verify-8-3v-additional-synthetic-live-execution.ts"
   },
