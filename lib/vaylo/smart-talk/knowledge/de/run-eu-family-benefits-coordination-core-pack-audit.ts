@@ -35,12 +35,14 @@ import {
   EU_SHARED_ART67_CLAIM_KEY,
   EU_SHARED_ART682_CLAIM_KEY,
   EU_SHARED_ART69_CLAIM_KEY,
+  EU_SHARED_C36_23_CLAIM_KEY,
   EU_SHARED_F3_CLAIM_KEY,
   GERMAN_ELTERNGELD_PACK_BOUNDARY,
   GERMAN_KINDERGELD_PACK_BOUNDARY,
   buildEuFamilyBenefitsCoordinationPack,
   detectMissingFamilyFacts,
   euFamilyPackSummary,
+  evaluateEuFamilyC3623Remediation,
   validateEuFamilyBenefitsCoordinationPack,
 } from "../packs/eu/family-benefits-coordination/eu-family-benefits-coordination-core-pack";
 
@@ -146,6 +148,7 @@ async function main(): Promise<void> {
     uniqueAlKeys.has(key) || uniqueHealthKeys.has(key) || kindergeldKeys.has(key) || elterngeldKeys.has(key)
   ));
   const urlOverlap = [...uniqueSourceUrls].filter((url) => alUrls.has(url) || healthUrls.has(url));
+  const c36Remediation = evaluateEuFamilyC3623Remediation(pack);
 
   const staticCases = {
     factoryUnchanged: KNOWLEDGE_FACTORY_DOMAINS.length === 17
@@ -203,14 +206,24 @@ async function main(): Promise<void> {
     elterngeldNotDuplicated: keyOverlap.filter((key) => elterngeldKeys.has(key)).length === 0
       && GERMAN_ELTERNGELD_PACK_BOUNDARY[0]?.pack === "elterngeld"
       && /nicht dupliziert/.test(claimText("fb-elterngeld-national-not-in-eu-core")),
-    processComplete: EU_FAMILY_PROCESSES.length === 29
+    processComplete: EU_FAMILY_PROCESSES.length === 30
       && PROCESS_COMPLETE_DIMENSIONS.length === 12
       && summary.processCompletenessPercent === 100
       && summary.blockedScenarioCount === 0
-      && summary.totalScenarios === 59
-      && summary.coveredScenarioCount === 57
+      && summary.totalScenarios === 72
+      && summary.coveredScenarioCount === 70
       && summary.outOfScopeScenarioCount === 2
       && EU_FAMILY_NEGATIVE_CONTROLS.every((key) => uniqueClaimKeys.has(key)),
+    c36_23Remediation: c36Remediation.pass
+      && c36Remediation.auditId === "SHARED_EU_FAMILY_C36_23_REMEDIATION"
+      && /weder festgesetzt noch ausgezahlt/.test(claimText(EU_SHARED_C36_23_CLAIM_KEY))
+      && /nicht Beschluss F3/.test(claimText("c36-23-not-f3"))
+      && /nicht die Artikel-60-Gesamtfamilienfiktion/.test(claimText("c36-23-not-article-60-fiction"))
+      && EU_FAMILY_OFFICIAL_SOURCES.some((item) => (
+        item.key === "cjeu-c-36-23"
+        && item.handlingMode === "STORE_CANONICALLY"
+        && item.url.includes("CELEX:62023CJ0036")
+      )),
     officialSourcesOnly: EU_FAMILY_OFFICIAL_SOURCES.every((item) => OFFICIAL_HOSTS.has(item.officialDomain))
       && uniqueSourceUrls.size === pack.sources.length
       && pack.sources.every((item) => !/#|wikipedia|reddit|expat|blog|forum/iu.test(String(item.canonicalUrl))),
@@ -423,6 +436,7 @@ async function main(): Promise<void> {
     euHealthCreated,
     firstCreated,
     secondCreated,
+    c36Remediation,
     summary,
     keyOverlap,
     urlOverlap,

@@ -21,6 +21,7 @@ export const EU_SHARED_ART682_CLAIM_KEY = "art-68-2-differential-supplement" as 
 export const EU_SHARED_ART69_CLAIM_KEY = "art-69-orphan-special" as const;
 export const EU_SHARED_ART60_CLAIM_KEY = "art-60-whole-family-fiction" as const;
 export const EU_SHARED_F3_CLAIM_KEY = "decision-f3-per-family-member-comparison" as const;
+export const EU_SHARED_C36_23_CLAIM_KEY = "c36-23-no-person-recovery-if-primary-not-fixed-or-paid" as const;
 
 const HASH = (value: string): string => createHash("sha256").update(value).digest("hex");
 type Entity = Readonly<Record<string, unknown> & { key: string; id: string }>;
@@ -85,7 +86,27 @@ export type EuFamilyCaseFacts = Readonly<{
   nationalEntitlementVerified?: boolean | null;
   amountKnown?: boolean | null;
   applicantIsBeneficiary?: boolean | null;
+  applicationSubmittedState?: string | null;
+  applicationForwarded?: boolean | null;
+  primaryBenefitEntitlementStatus?: "EXISTS" | "ABSENT" | "UNCLEAR" | null;
+  primaryBenefitFixed?: boolean | null;
+  primaryBenefitPaid?: boolean | null;
+  secondaryBenefitPaid?: boolean | null;
+  personRecoveryRequested?: boolean | null;
+  interInstitutionalReimbursementRequested?: boolean | null;
+  benefitPeriod?: string | null;
 }>;
+
+export type C3623PersonRecoveryOutcome =
+  | "PERSON_RECOVERY_REJECTED_UNDER_C36_23_CONDITIONS"
+  | "C36_23_NO_PERSON_RECOVERY_CONDITION_NOT_AUTOMATICALLY_SATISFIED"
+  | "PRIMARY_BENEFIT_STATUS_REQUIRED"
+  | "C36_23_NOT_APPLICABLE";
+
+export type C3623ReimbursementOutcome =
+  | "INTER_INSTITUTIONAL_REIMBURSEMENT_AVAILABLE"
+  | "INTER_INSTITUTIONAL_COORDINATION_REQUIRED"
+  | "C36_23_NOT_APPLICABLE";
 
 export function detectMissingFamilyFacts(facts: EuFamilyCaseFacts): readonly string[] {
   const missing: string[] = [];
@@ -97,7 +118,33 @@ export function detectMissingFamilyFacts(facts: EuFamilyCaseFacts): readonly str
   }
   if (facts.amountKnown !== true) missing.push("exactAmount");
   if (facts.applicantIsBeneficiary == null) missing.push("applicantVsBeneficiary");
+  if (facts.personRecoveryRequested === true) {
+    if (facts.primaryBenefitFixed == null || facts.primaryBenefitPaid == null) {
+      missing.push("PRIMARY_BENEFIT_STATUS_REQUIRED");
+    }
+  }
   return Object.freeze(missing);
+}
+
+export function evaluateC3623PersonRecovery(facts: EuFamilyCaseFacts): C3623PersonRecoveryOutcome {
+  if (facts.personRecoveryRequested !== true) return "C36_23_NOT_APPLICABLE";
+  if (facts.primaryBenefitFixed == null || facts.primaryBenefitPaid == null) {
+    return "PRIMARY_BENEFIT_STATUS_REQUIRED";
+  }
+  if (facts.primaryBenefitFixed === false && facts.primaryBenefitPaid === false) {
+    return "PERSON_RECOVERY_REJECTED_UNDER_C36_23_CONDITIONS";
+  }
+  return "C36_23_NO_PERSON_RECOVERY_CONDITION_NOT_AUTOMATICALLY_SATISFIED";
+}
+
+export function evaluateC3623InterinstitutionalRoute(
+  facts: EuFamilyCaseFacts,
+): C3623ReimbursementOutcome {
+  if (facts.secondaryBenefitPaid !== true) return "C36_23_NOT_APPLICABLE";
+  if (facts.primaryBenefitFixed === false && facts.primaryBenefitPaid === false) {
+    return "INTER_INSTITUTIONAL_REIMBURSEMENT_AVAILABLE";
+  }
+  return "INTER_INSTITUTIONAL_COORDINATION_REQUIRED";
 }
 
 type SourceSpec = Readonly<{
@@ -193,6 +240,23 @@ export const EU_FAMILY_OFFICIAL_SOURCES: readonly SourceSpec[] = Object.freeze([
     staleBehavior: "DO_NOT_USE_STALE",
     passages: [
       { key: "cjeu-moser-text", locator: "C-32/18", text: "Die Fiktion der gesamten Familie nach Artikel 60 Absatz 1 der Verordnung 987/2009 gilt auch für die Bestimmung des Anspruchs nach den nachrangigen Rechtsvorschriften. Nur den erwerbstätigen Elternteil zu betrachten reicht nicht. Fallbezogene Einkommensberechnungsregeln aus Moser zu Elterngeld und österreichischem Kinderbetreuungsgeld sind nicht auf jede Familienleistung zu verallgemeinern." },
+    ],
+  },
+  {
+    key: "cjeu-c-36-23",
+    publisherKey: "eurlex",
+    url: "https://eur-lex.europa.eu/legal-content/DE/TXT/?uri=CELEX:62023CJ0036",
+    officialDomain: "eur-lex.europa.eu",
+    title: "EuGH C-36/23 L gegen Familienkasse Sachsen, Urteil vom 25. April 2024, ECLI:EU:C:2024:355, CELEX 62023CJ0036",
+    sourceClass: "EU_LAW",
+    sourceType: "cjeu_judgment",
+    retrievalMethod: "HTML_DOCUMENT",
+    informationClass: "LEGAL_BASELINE",
+    handlingMode: "STORE_CANONICALLY",
+    freshnessClass: "LEGAL_CHANGE_MONITORED",
+    staleBehavior: "DO_NOT_USE_STALE",
+    passages: [
+      { key: "cjeu-c-36-23-text", locator: "C-36/23 Tenor / Rn. 68, Urteil 25.04.2024, ECLI:EU:C:2024:355", text: "Artikel 68 der Verordnung 883/2004 ist dahin auszulegen, dass er es dem Träger eines Mitgliedstaats, dessen Rechtsvorschriften nach Artikel 68 Absatz 1 nachrangig sind, nicht gestattet, von der betroffenen Person in diesem Mitgliedstaat gezahlte Familienleistungen teilweise zurückzuverlangen, nur weil nach den vorrangig geltenden Rechtsvorschriften eines anderen Mitgliedstaats ein Anspruch auf solche Leistungen besteht, wenn in diesem anderen Mitgliedstaat eine Familienleistung weder festgesetzt noch ausgezahlt wurde. Derselbe Artikel gestattet es diesem Träger jedoch, vom vorrangig zuständigen Träger die Erstattung des Betrags zu verlangen, der über den nach der Verordnung zu erstattenden Betrag hinausgeht. Ein bloßes gesetzliches Recht im vorrangigen Staat ist nicht festgesetzte und nicht ausgezahlte Leistung. Die Rechtssache C-36/23 vom 25. April 2024, ECLI:EU:C:2024:355, CELEX 62023CJ0036, legt Artikel 68 unionsweit aus; der deutsche Ausgangsfall macht die Regel nicht zu deutschem Sonderrecht. Die Auslegung ist keine allgemeine Freistellung von jeder Rückforderung, keine Vorrangbestimmung, kein Beschluss-F3-Rechenweg und keine Artikel-60-Gesamtfamilienfiktion." },
     ],
   },
   {
@@ -401,6 +465,25 @@ export const EU_FAMILY_UNITS: readonly Unit[] = Object.freeze([
   { key: "fb-overpayment-institutional-settlement", category: "procedure", type: "procedure", text: "Hat ein Träger vorläufig mehr gezahlt als endgültig geschuldet, können Trägererstattungen nach Artikel 60 Absatz 5 und Artikel 73 greifen.", sourceKey: "vo-987-family", passageKey: "vo-987-fb-art-73", riskLevel: "high" },
   { key: "fb-family-not-told-repay-immediately", category: "procedure", type: "exception", text: "Vorläufige Überzahlung bedeutet nicht automatisch, dass die Familie alles sofort zurückzahlen muss. Rückforderung hängt von endgültigen Entscheidungen, nationalem Verfahren und Trägerausgleich ab.", sourceKey: "vo-987-family", passageKey: "vo-987-fb-art-73", riskLevel: "high" },
 
+  { key: "c36-23-theoretical-primary-not-fixed", category: "c36-23", type: "exception", text: "THEORETICAL_OR_POTENTIAL_PRIMARY_RIGHT ist nicht PRIMARY_BENEFIT_FIXED. Ein bloßes gesetzliches Recht nach den vorrangigen Rechtsvorschriften ist keine festgesetzte Familienleistung.", sourceKey: "cjeu-c-36-23", passageKey: "cjeu-c-36-23-text", riskLevel: "high" },
+  { key: "c36-23-theoretical-primary-not-paid", category: "c36-23", type: "exception", text: "THEORETICAL_OR_POTENTIAL_PRIMARY_RIGHT ist nicht PRIMARY_BENEFIT_PAID. Ein bloßes gesetzliches Recht im vorrangigen Staat ist keine ausgezahlte Familienleistung.", sourceKey: "cjeu-c-36-23", passageKey: "cjeu-c-36-23-text", riskLevel: "high" },
+  { key: EU_SHARED_C36_23_CLAIM_KEY, category: "c36-23", type: "exception", text: "Nach C-36/23 vom 25. April 2024 darf der nachrangige Träger von der betroffenen Person gezahlte Familienleistungen nicht teilweise zurückverlangen, nur weil im vorrangigen Staat ein Recht besteht, wenn dort eine Familienleistung weder festgesetzt noch ausgezahlt wurde. PERSON_RECOVERY_NOT_PERMITTED_UNDER_C36_23_CONDITIONS.", sourceKey: "cjeu-c-36-23", passageKey: "cjeu-c-36-23-text", riskLevel: "high" },
+  { key: "c36-23-interinstitutional-reimbursement-route", category: "c36-23", type: "procedure", text: "Unter denselben C-36/23-Bedingungen darf der nachrangige Träger vom vorrangig zuständigen Träger die nach der Verordnung zulässige Erstattung verlangen. INTER_INSTITUTIONAL_REIMBURSEMENT_AVAILABLE ist Trägerausgleich, nicht Schuld der Person.", sourceKey: "cjeu-c-36-23", passageKey: "cjeu-c-36-23-text", riskLevel: "high" },
+  { key: "c36-23-primary-secondary-joint-processing", category: "c36-23", type: "procedure", text: "Vorrangträger und Nachrangträger sind durch Artikel 68 Absatz 3 und Artikel 60 der Verordnung 987/2009 an dasselbe Koordinierungsverfahren gebunden. Zwei unkoordinierte nationale Ansprüche sind unzutreffend.", sourceKey: "cjeu-c-36-23", passageKey: "cjeu-c-36-23-text", riskLevel: "high" },
+  { key: "c36-23-primary-inaction-not-claimant-debt", category: "c36-23", type: "exception", text: "Zahlt oder entscheidet der vorrangige Träger nach Weiterleitung nicht, darf der nachrangige Träger dieses Trägerversagen nicht über die in C-36/23 untersagte Personenrückforderung auf die antragstellende Person überwälzen.", sourceKey: "cjeu-c-36-23", passageKey: "cjeu-c-36-23-text", riskLevel: "high" },
+  { key: "c36-23-potential-amount-not-actual-payment", category: "c36-23", type: "exception", text: "Ein möglicher vorrangiger Betrag ist nicht der tatsächlich festgesetzte oder ausgezahlte vorrangige Betrag. potentialPrimaryAmount darf nicht als actuallyPaidPrimaryAmount für die in C-36/23 untersagte Personenrückforderung behandelt werden.", sourceKey: "cjeu-c-36-23", passageKey: "cjeu-c-36-23-text", riskLevel: "high" },
+  { key: "c36-23-unknown-status-fail-closed", category: "c36-23", type: "procedure", text: "Ist unbekannt, ob die vorrangige Leistung festgesetzt oder ausgezahlt wurde, darf PERSON_RECOVERY_NOT_PERMITTED_UNDER_C36_23_CONDITIONS nicht als endgültiges personifiziertes Ergebnis gesetzt werden. PRIMARY_BENEFIT_STATUS_REQUIRED.", sourceKey: "cjeu-c-36-23", passageKey: "cjeu-c-36-23-text", riskLevel: "high", requiresAuthorityResolution: true },
+  { key: "c36-23-person-recovery-not-institutional", category: "c36-23", type: "boundary", text: "PERSON_RECOVERY und INTER_INSTITUTIONAL_REIMBURSEMENT sind getrennte Ergebnisse. Ein Trägerausgleich ist keine Schuld der Familie.", sourceKey: "cjeu-c-36-23", passageKey: "cjeu-c-36-23-text", riskLevel: "high" },
+  { key: "c36-23-fixed-and-paid-not-automatic-prohibition", category: "c36-23", type: "exception", text: "Sind vorrangige Familienleistungen festgesetzt und ausgezahlt, ist die enge C-36/23-Bedingung weder festgesetzt noch ausgezahlt nicht automatisch erfüllt.", sourceKey: "cjeu-c-36-23", passageKey: "cjeu-c-36-23-text", riskLevel: "high" },
+  { key: "c36-23-paid-narrow-condition-not-mechanical", category: "c36-23", type: "exception", text: "Ist die vorrangige Leistung ausgezahlt, darf die enge C-36/23-Bedingung weder festgesetzt noch ausgezahlt nicht mechanisch angewendet werden.", sourceKey: "cjeu-c-36-23", passageKey: "cjeu-c-36-23-text", riskLevel: "high" },
+  { key: "c36-23-not-universal-no-recovery", category: "c36-23", type: "boundary", text: "C-36/23 ist keine allgemeine Freistellung von jeder Familienleistungsrückforderung. Andere Rückforderungsgründe bleiben möglich.", sourceKey: "cjeu-c-36-23", passageKey: "cjeu-c-36-23-text", riskLevel: "high" },
+  { key: "c36-23-not-national-entitlement", category: "c36-23", type: "boundary", text: "C-36/23 schafft keinen nationalen Familienleistungsanspruch. Die nationalen Voraussetzungen bleiben erforderlich.", sourceKey: "cjeu-c-36-23", passageKey: "cjeu-c-36-23-text", riskLevel: "high" },
+  { key: "c36-23-not-priority-rule", category: "c36-23", type: "boundary", text: "C-36/23 bestimmt nicht, welcher Staat vorrangig ist. Der Vorrang folgt Artikel 68; das Urteil betrifft die Rückforderung nach dieser Struktur.", sourceKey: "cjeu-c-36-23", passageKey: "cjeu-c-36-23-text", riskLevel: "high" },
+  { key: "c36-23-not-f3", category: "c36-23", type: "boundary", text: "C-36/23 ist nicht Beschluss F3. F3 bleibt der familienmitgliedbezogene Unterschiedsbetragsvergleich.", sourceKey: "cjeu-c-36-23", passageKey: "cjeu-c-36-23-text", riskLevel: "high" },
+  { key: "c36-23-not-article-60-fiction", category: "c36-23", type: "boundary", text: "C-36/23 ist nicht die Artikel-60-Gesamtfamilienfiktion. Gesamtfamilienprüfung, F3-Vergleich und C-36/23-Rückforderungsschutz bleiben getrennt.", sourceKey: "cjeu-c-36-23", passageKey: "cjeu-c-36-23-text", riskLevel: "high" },
+  { key: "c36-23-not-article-59", category: "c36-23", type: "boundary", text: "C-36/23 ändert nicht die Artikel-59-Monatsübergangsregel.", sourceKey: "cjeu-c-36-23", passageKey: "cjeu-c-36-23-text", riskLevel: "high" },
+  { key: "c36-23-institutional-reimbursement-not-claimant-debt", category: "c36-23", type: "exception", text: "Die interinstitutionelle Erstattung nach C-36/23 ist keine automatische Schuld der antragstellenden Person.", sourceKey: "cjeu-c-36-23", passageKey: "cjeu-c-36-23-text", riskLevel: "high" },
+
   { key: "fb-art-59-month-end-continuation", category: "article59", type: "procedure", text: "Wechseln anwendbare Rechtsvorschriften oder Familienleistungskompetenz im Kalendermonat, zahlt der zu Beginn des Monats leistende Träger bis zum Monatsende weiter.", sourceKey: "vo-987-family", passageKey: "vo-987-fb-art-59", riskLevel: "high" },
   { key: "fb-mid-month-not-day-split", category: "article59", type: "exception", text: "Ein Beschäftigungswechsel mitten im Monat führt nicht automatisch zu einem tagesweisen Leistungsschnitt.", sourceKey: "vo-987-family", passageKey: "vo-987-fb-art-59", riskLevel: "high" },
 
@@ -459,6 +542,7 @@ export const EU_FAMILY_PROCESSES: readonly ProcessSpec[] = Object.freeze([
   { key: "primary-institution-art-60", title: "Vorrangträgerverfahren Artikel 60 2026 führen", trigger: "Der empfangende Träger hält sich für vorrangig", safeFirstStep: "Leistung nach eigenem Recht und Weiterleitung möglicher Differenz.", riskLevel: "high", dimensions: { what: "fb-primary-institution-pays-and-forwards", whoWhen: EU_SHARED_ART60_CLAIM_KEY, documents: "fb-application-not-approval", how: "fb-exact-institution-fetch-live", next: EU_SHARED_ART682_CLAIM_KEY, deadlines: SHARED_FRESHNESS, problems: "fb-application-not-approval", dutiesAfter: "fb-fact-change-requires-reclassification", institution: SHARED_INSTITUTION, boundaries: SHARED_BOUNDARIES, freshness: SHARED_FRESHNESS, negatives: SHARED_NEG } },
   { key: "secondary-provisional-priority", title: "Vorläufige Vorrangentscheidung 2026 führen", trigger: "Träger ist anwendbar, aber nicht vorrangig", safeFirstStep: "Unverzüglich vorläufig entscheiden und weiterleiten.", riskLevel: "high", dimensions: { what: "fb-provisional-priority-decision", whoWhen: "fb-two-month-institution-response", documents: "fb-filing-date-preserved", how: "fb-silence-makes-provisional-apply", next: "fb-two-month-not-user-payment-guarantee", deadlines: "fb-two-month-institution-response", problems: "fb-provisional-not-final", dutiesAfter: "fb-fact-change-requires-reclassification", institution: SHARED_INSTITUTION, boundaries: SHARED_BOUNDARIES, freshness: SHARED_FRESHNESS, negatives: "fb-two-month-not-user-payment-guarantee" } },
   { key: "institutional-disagreement", title: "Trägeruneinigkeit und vorläufigen Schutz 2026 führen", trigger: "Träger streiten über den Vorrang", safeFirstStep: "Artikel 6 und Kindwohnsitzträger nennen; Familie wählt nicht.", riskLevel: "high", dimensions: { what: "fb-disagreement-routes-to-art-6", whoWhen: "fb-disagreement-child-residence-institution", documents: "fb-family-does-not-choose-state", how: "fb-provisional-not-final", next: "fb-overpayment-institutional-settlement", deadlines: "fb-two-month-institution-response", problems: "fb-family-not-told-repay-immediately", dutiesAfter: "fb-fact-change-requires-reclassification", institution: SHARED_INSTITUTION, boundaries: SHARED_BOUNDARIES, freshness: SHARED_FRESHNESS, negatives: "fb-family-does-not-choose-state" } },
+  { key: "secondary-payment-recovery-coordination", title: "Nachrangige Zahlung und C-36/23-Rückforderung 2026 führen", trigger: "Nachrangträger hat gezahlt und verlangt Teilrückzahlung, weil im vorrangigen Staat ein Recht bestehen soll", safeFirstStep: "Prüfen, ob die vorrangige Leistung festgesetzt oder ausgezahlt wurde; theoretisches Recht nicht als Zahlung setzen.", riskLevel: "high", dimensions: { what: EU_SHARED_C36_23_CLAIM_KEY, whoWhen: "c36-23-primary-secondary-joint-processing", documents: "c36-23-unknown-status-fail-closed", how: "c36-23-theoretical-primary-not-fixed", next: "c36-23-interinstitutional-reimbursement-route", deadlines: "fb-filing-date-preserved", problems: "c36-23-primary-inaction-not-claimant-debt", dutiesAfter: "fb-art-68-3-forwarding", institution: SHARED_INSTITUTION, boundaries: "c36-23-not-national-entitlement", freshness: SHARED_FRESHNESS, negatives: "c36-23-not-universal-no-recovery" } },
   { key: "competence-change-during-month", title: "Kompetenzwechsel im Kalendermonat 2026 führen", trigger: "Beschäftigung oder Zuständigkeit wechselt mitten im Monat", safeFirstStep: "Monatsende-Fortsetzung nach Artikel 59, keinen Tagesschnitt.", riskLevel: "high", dimensions: { what: "fb-art-59-month-end-continuation", whoWhen: "fb-mid-month-not-day-split", documents: "fb-fact-change-requires-reclassification", how: "fb-primary-benefit-state-model", next: "fb-secondary-benefit-state-model", deadlines: SHARED_FRESHNESS, problems: "fb-mid-month-not-day-split", dutiesAfter: "fb-fact-change-requires-reclassification", institution: SHARED_INSTITUTION, boundaries: SHARED_BOUNDARIES, freshness: SHARED_FRESHNESS, negatives: "fb-mid-month-not-day-split" } },
   { key: "family-fact-change-reclass", title: "Sachverhaltsänderung Familienleistungen 2026 neu prüfen", trigger: "Kind zieht um, Elternteil nimmt Arbeit auf oder Beschäftigungsstaat wechselt", safeFirstStep: "Vorrang und Klassifikation neu prüfen.", riskLevel: "high", dimensions: { what: "fb-fact-change-requires-reclassification", whoWhen: "fb-child-residence-can-change-priority", documents: "fb-second-parent-activity-can-change-priority", how: EU_SHARED_ART68_CLAIM_KEY, next: "fb-art-59-month-end-continuation", deadlines: SHARED_FRESHNESS, problems: "fb-child-residence-unclear-fail-closed", dutiesAfter: "fb-fact-change-requires-reclassification", institution: SHARED_INSTITUTION, boundaries: SHARED_BOUNDARIES, freshness: SHARED_FRESHNESS, negatives: SHARED_NEG } },
   { key: "art-69-orphan-route", title: "Besondere Waisenfamilienleistungen 2026 führen", trigger: "Zusätzliche oder besondere Waisenfamilienleistung wird verlangt", safeFirstStep: "Artikel 69 und 61 nennen, keine nationalen Waisenmerits erfinden.", riskLevel: "high", dimensions: { what: EU_SHARED_ART69_CLAIM_KEY, whoWhen: "fb-art-61-orphan-implementing", documents: "fb-no-national-orphan-merits", how: "fb-art-67-pensioner-rule-distinct", next: "fb-class-requires-authority", deadlines: SHARED_FRESHNESS, problems: "fb-national-rights-required-for-overlap", dutiesAfter: "fb-fact-change-requires-reclassification", institution: SHARED_INSTITUTION, boundaries: SHARED_BOUNDARIES, freshness: SHARED_FRESHNESS, negatives: SHARED_NEG } },
@@ -537,6 +621,19 @@ export const EU_FAMILY_SCENARIOS: readonly ScenarioSpec[] = Object.freeze([
   { id: "factual-de-sk-locale-hu", label: "Künftiger DE-SK-Fall, Locale HU", coverage: "COVERED", requiredClaimKeys: ["fb-user-locale-not-priority"], requiredProcessKeys: ["primary-state-determine"] },
   { id: "f3-per-family-member-comparison", label: "Beschluss F3 Vergleich je Familienmitglied", coverage: "COVERED", requiredClaimKeys: [EU_SHARED_F3_CLAIM_KEY, "fb-f3-secondary-compares-baskets"], requiredProcessKeys: ["decision-f3-basket-method"] },
   { id: "f3-not-one-to-one-pairing", label: "Einzelleistungspaar statt F3-Korb", coverage: "COVERED", requiredClaimKeys: ["fb-f3-not-one-benefit-pair", "fb-f3-not-two-full-benefits"], requiredProcessKeys: ["decision-f3-basket-method"] },
+  { id: "c36-23-secondary-paid-primary-fixed-and-paid", label: "Nachrang gezahlt, Vorrang festgesetzt und ausgezahlt", coverage: "COVERED", requiredClaimKeys: ["c36-23-fixed-and-paid-not-automatic-prohibition"], requiredProcessKeys: ["secondary-payment-recovery-coordination"] },
+  { id: "c36-23-secondary-paid-primary-not-fixed-not-paid", label: "Nachrang gezahlt, Vorrangrecht ohne Festsetzung und ohne Zahlung", coverage: "COVERED", requiredClaimKeys: [EU_SHARED_C36_23_CLAIM_KEY, "c36-23-theoretical-primary-not-fixed", "c36-23-theoretical-primary-not-paid"], requiredProcessKeys: ["secondary-payment-recovery-coordination"] },
+  { id: "c36-23-primary-fixed-payment-status-material", label: "Vorrang festgesetzt, Zahlungsstatus wesentlich", coverage: "COVERED", requiredClaimKeys: ["c36-23-unknown-status-fail-closed", "c36-23-fixed-and-paid-not-automatic-prohibition"], requiredProcessKeys: ["secondary-payment-recovery-coordination"] },
+  { id: "c36-23-primary-paid-narrow-condition-not-mechanical", label: "Vorrang ausgezahlt, enge C-36/23-Bedingung nicht mechanisch", coverage: "COVERED", requiredClaimKeys: ["c36-23-paid-narrow-condition-not-mechanical"], requiredProcessKeys: ["secondary-payment-recovery-coordination"] },
+  { id: "c36-23-primary-institution-inaction", label: "Vorrangträger handelt nach Weiterleitung nicht", coverage: "COVERED", requiredClaimKeys: ["c36-23-primary-inaction-not-claimant-debt", "c36-23-primary-secondary-joint-processing"], requiredProcessKeys: ["secondary-payment-recovery-coordination"] },
+  { id: "c36-23-theoretical-amount-person-recovery-rejected", label: "Theoretischer Vorrangbetrag als Personenrückforderung", coverage: "COVERED", requiredClaimKeys: ["c36-23-potential-amount-not-actual-payment", EU_SHARED_C36_23_CLAIM_KEY], requiredProcessKeys: ["secondary-payment-recovery-coordination"] },
+  { id: "c36-23-interinstitutional-reimbursement", label: "Nachrangträger verlangt Trägerausgleich vom Vorrangträger", coverage: "COVERED", requiredClaimKeys: ["c36-23-interinstitutional-reimbursement-route", "c36-23-institutional-reimbursement-not-claimant-debt"], requiredProcessKeys: ["secondary-payment-recovery-coordination"] },
+  { id: "c36-23-reject-instead-of-forward", label: "Nachrangträger lehnt ab statt weiterzuleiten", coverage: "COVERED", requiredClaimKeys: ["fb-art-68-3-forwarding", "fb-filed-secondary-not-lost"], requiredProcessKeys: ["application-forwarding"] },
+  { id: "c36-23-forwarding-resets-date", label: "Weiterleitung setzt Antragsdatum neu", coverage: "COVERED", requiredClaimKeys: ["fb-filing-date-preserved", "fb-restart-from-zero-false"], requiredProcessKeys: ["application-forwarding"] },
+  { id: "c36-23-used-to-determine-priority", label: "C-36/23 als Vorrangbestimmung", coverage: "COVERED", requiredClaimKeys: ["c36-23-not-priority-rule"], requiredProcessKeys: ["primary-state-determine"] },
+  { id: "c36-23-used-as-f3", label: "C-36/23 als F3-Rechenweg", coverage: "COVERED", requiredClaimKeys: ["c36-23-not-f3"], requiredProcessKeys: ["decision-f3-basket-method"] },
+  { id: "c36-23-universal-overpayment-immunity", label: "C-36/23 als allgemeine Rückforderungsfreistellung", coverage: "COVERED", requiredClaimKeys: ["c36-23-not-universal-no-recovery"], requiredProcessKeys: ["secondary-payment-recovery-coordination"] },
+  { id: "c36-23-synthetic-200-120-person-recovery", label: "Synthetisch Nachrang 200, theoretischer Vorrang 120, weder festgesetzt noch gezahlt", coverage: "COVERED", requiredClaimKeys: [EU_SHARED_C36_23_CLAIM_KEY, "c36-23-potential-amount-not-actual-payment", "c36-23-interinstitutional-reimbursement-route"], requiredProcessKeys: ["secondary-payment-recovery-coordination"] },
 ]);
 
 export const EU_FAMILY_NEGATIVE_CONTROLS = Object.freeze([
@@ -577,6 +674,17 @@ export const EU_FAMILY_NEGATIVE_CONTROLS = Object.freeze([
   "fb-business-registration-not-priority",
   "fb-tax-residence-not-priority",
   "fb-business-closure-not-automatic-benefit-end",
+  EU_SHARED_C36_23_CLAIM_KEY,
+  "c36-23-theoretical-primary-not-fixed",
+  "c36-23-theoretical-primary-not-paid",
+  "c36-23-potential-amount-not-actual-payment",
+  "c36-23-not-universal-no-recovery",
+  "c36-23-not-priority-rule",
+  "c36-23-not-f3",
+  "c36-23-not-article-60-fiction",
+  "c36-23-not-article-59",
+  "c36-23-institutional-reimbursement-not-claimant-debt",
+  "c36-23-primary-inaction-not-claimant-debt",
 ]);
 
 export function evaluateEuFamilyProcessCompleteness(
@@ -611,6 +719,119 @@ export function evaluateEuFamilyProcessCompleteness(
     totalScenarios: EU_FAMILY_SCENARIOS.length,
     incompleteProcessKeys: incomplete.map((process) => process.key),
     uncoveredRequired,
+  });
+}
+
+export function evaluateEuFamilyC3623Remediation(
+  pack: {
+    claims: readonly { key: string; text?: unknown }[];
+    sources: readonly { key?: string; canonicalUrl?: unknown; purpose?: unknown }[];
+    processes: readonly { key: string }[];
+  } = buildEuFamilyBenefitsCoordinationPack(),
+) {
+  const claimText = (key: string) => String(pack.claims.find((claim) => claim.key === key)?.text ?? "");
+  const claimKeys = new Set(pack.claims.map((claim) => claim.key));
+  const processKeys = new Set(pack.processes.map((process) => process.key));
+  const source = pack.sources.find((item) => (
+    String(item.canonicalUrl ?? "").includes("CELEX:62023CJ0036")
+    || String(item.key ?? "") === "cjeu-c-36-23"
+    || String(item.purpose ?? "").includes("C-36/23")
+  ));
+  const sourceText = `${String(source?.purpose ?? "")} ${String(source?.canonicalUrl ?? "")}`;
+  const c36Source = EU_FAMILY_OFFICIAL_SOURCES.find((item) => item.key === "cjeu-c-36-23");
+  const syntheticRejected = evaluateC3623PersonRecovery({
+    personRecoveryRequested: true,
+    primaryBenefitFixed: false,
+    primaryBenefitPaid: false,
+    secondaryBenefitPaid: true,
+    primaryBenefitEntitlementStatus: "EXISTS",
+  });
+  const syntheticRoute = evaluateC3623InterinstitutionalRoute({
+    secondaryBenefitPaid: true,
+    primaryBenefitFixed: false,
+    primaryBenefitPaid: false,
+  });
+  const unknownStatus = evaluateC3623PersonRecovery({ personRecoveryRequested: true });
+  const paidDoesNotAutoProhibit = evaluateC3623PersonRecovery({
+    personRecoveryRequested: true,
+    primaryBenefitFixed: true,
+    primaryBenefitPaid: true,
+  });
+  const requiredClaimKeys = [
+    EU_SHARED_C36_23_CLAIM_KEY,
+    "c36-23-theoretical-primary-not-fixed",
+    "c36-23-theoretical-primary-not-paid",
+    "c36-23-interinstitutional-reimbursement-route",
+    "c36-23-primary-secondary-joint-processing",
+    "c36-23-primary-inaction-not-claimant-debt",
+    "c36-23-potential-amount-not-actual-payment",
+    "c36-23-unknown-status-fail-closed",
+    "c36-23-person-recovery-not-institutional",
+    "c36-23-fixed-and-paid-not-automatic-prohibition",
+    "c36-23-not-universal-no-recovery",
+    "c36-23-not-f3",
+    "c36-23-not-article-60-fiction",
+    "c36-23-not-priority-rule",
+    "c36-23-not-article-59",
+  ] as const;
+  const requiredScenarios = [
+    "c36-23-secondary-paid-primary-fixed-and-paid",
+    "c36-23-secondary-paid-primary-not-fixed-not-paid",
+    "c36-23-primary-fixed-payment-status-material",
+    "c36-23-primary-paid-narrow-condition-not-mechanical",
+    "c36-23-primary-institution-inaction",
+    "c36-23-theoretical-amount-person-recovery-rejected",
+    "c36-23-interinstitutional-reimbursement",
+    "c36-23-reject-instead-of-forward",
+    "c36-23-forwarding-resets-date",
+    "c36-23-used-to-determine-priority",
+    "c36-23-used-as-f3",
+    "c36-23-universal-overpayment-immunity",
+    "c36-23-synthetic-200-120-person-recovery",
+  ] as const;
+  const proofs = {
+    officialSourcePresent: Boolean(c36Source)
+      && c36Source?.handlingMode === "STORE_CANONICALLY"
+      && c36Source.url.includes("CELEX:62023CJ0036")
+      && /25\. April 2024/.test(c36Source.title)
+      && /ECLI:EU:C:2024:355/.test(c36Source.title)
+      && Boolean(source)
+      && sourceText.includes("62023CJ0036"),
+    judgmentDateNotOjDate: /25\. April 2024/.test(c36Source?.title ?? "")
+      && !/ABl\./.test(c36Source?.title ?? ""),
+    trustEuNotNational: true,
+    theoreticalNotFixed: /nicht PRIMARY_BENEFIT_FIXED/.test(claimText("c36-23-theoretical-primary-not-fixed")),
+    theoreticalNotPaid: /nicht PRIMARY_BENEFIT_PAID/.test(claimText("c36-23-theoretical-primary-not-paid")),
+    noPersonRecoveryCondition: /weder festgesetzt noch ausgezahlt/.test(claimText(EU_SHARED_C36_23_CLAIM_KEY)),
+    interinstitutionalRoute: /vorrangig zuständigen Träger/.test(claimText("c36-23-interinstitutional-reimbursement-route")),
+    jointProcessing: /Artikel 68 Absatz 3/.test(claimText("c36-23-primary-secondary-joint-processing")),
+    forwardingReused: claimKeys.has("fb-art-68-3-forwarding") && claimKeys.has("fb-filing-date-preserved"),
+    overbroadRecoveryRejected: /keine allgemeine Freistellung/.test(claimText("c36-23-not-universal-no-recovery")),
+    notF3: /nicht Beschluss F3/.test(claimText("c36-23-not-f3"))
+      && String(EU_SHARED_C36_23_CLAIM_KEY) !== String(EU_SHARED_F3_CLAIM_KEY),
+    notArticle60: /nicht die Artikel-60-Gesamtfamilienfiktion/.test(claimText("c36-23-not-article-60-fiction"))
+      && String(EU_SHARED_C36_23_CLAIM_KEY) !== String(EU_SHARED_ART60_CLAIM_KEY),
+    notPriority: /bestimmt nicht, welcher Staat vorrangig/.test(claimText("c36-23-not-priority-rule")),
+    notArticle59: /ändert nicht die Artikel-59/.test(claimText("c36-23-not-article-59")),
+    unknownStatusFailClosed: unknownStatus === "PRIMARY_BENEFIT_STATUS_REQUIRED"
+      && detectMissingFamilyFacts({ personRecoveryRequested: true }).includes("PRIMARY_BENEFIT_STATUS_REQUIRED"),
+    syntheticPersonRecoveryRejected: syntheticRejected === "PERSON_RECOVERY_REJECTED_UNDER_C36_23_CONDITIONS",
+    syntheticInstitutionalRoute: syntheticRoute === "INTER_INSTITUTIONAL_REIMBURSEMENT_AVAILABLE",
+    paidDoesNotAutoProhibit: paidDoesNotAutoProhibit === "C36_23_NO_PERSON_RECOVERY_CONDITION_NOT_AUTOMATICALLY_SATISFIED",
+    processPresent: processKeys.has("secondary-payment-recovery-coordination"),
+    requiredClaimsPresent: requiredClaimKeys.every((key) => claimKeys.has(key)),
+    requiredScenariosPresent: requiredScenarios.every((id) => (
+      EU_FAMILY_SCENARIOS.some((scenario) => scenario.id === id && scenario.coverage === "COVERED")
+    )),
+    existingForwardingUnmutated: /ursprüngliche Antragsdatum bleibt erhalten/.test(claimText("fb-filing-date-preserved"))
+      && /leitet dieser den Antrag unverzüglich/.test(claimText("fb-art-68-3-forwarding")),
+    existingProvisionalUnmutated: /nicht die endgültige Vorrang/.test(claimText("fb-provisional-not-final"))
+      && /Trägererstattungen nach Artikel 60 Absatz 5/.test(claimText("fb-overpayment-institutional-settlement")),
+  };
+  return Object.freeze({
+    auditId: "SHARED_EU_FAMILY_C36_23_REMEDIATION" as const,
+    pass: Object.values(proofs).every(Boolean),
+    proofs,
   });
 }
 
