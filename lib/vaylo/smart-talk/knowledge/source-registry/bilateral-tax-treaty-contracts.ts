@@ -10,16 +10,17 @@ import { KNOWLEDGE_FACTORY_SCHEMA_VERSION, stableKnowledgeFactoryId } from "./kn
 
 export const BILATERAL_TAX_SCHEMA_VERSION = KNOWLEDGE_FACTORY_SCHEMA_VERSION;
 export const BILATERAL_TAX_CANONICAL_TREATY_KEY = "DE-SK" as const;
-export const BILATERAL_TAX_AUTHORIZED_PAIRS = Object.freeze(["DE-SK"] as const);
+export const BILATERAL_TAX_AUTHORIZED_PAIRS = Object.freeze(["AT-SK", "DE-SK"] as const);
+export type BilateralTaxAuthorizedPair = typeof BILATERAL_TAX_AUTHORIZED_PAIRS[number];
 export const BILATERAL_TAX_TOPIC_FAMILY = "TAX_TREATY" as const;
 export const BILATERAL_TAX_TRUST_DOMAIN = "bilateral_tax_treaty" as const;
 export const BILATERAL_TAX_JURISDICTION_LEVEL = "cross_border_multi_jurisdiction" as const;
 
-export const BILATERAL_TAX_COUNTRIES = Object.freeze(["DE", "SK"] as const);
+export const BILATERAL_TAX_COUNTRIES = Object.freeze(["AT", "DE", "SK"] as const);
 export type BilateralTaxCountry = typeof BILATERAL_TAX_COUNTRIES[number];
 
 export const BILATERAL_TAX_AUTHORITY_COUNTRIES = Object.freeze([
-  "DE", "SK", "MULTILATERAL",
+  "AT", "DE", "SK", "MULTILATERAL",
 ] as const);
 export type BilateralTaxAuthorityCountry = typeof BILATERAL_TAX_AUTHORITY_COUNTRIES[number];
 
@@ -82,9 +83,11 @@ export const BILATERAL_TAX_ENTITY_CLASSES = Object.freeze([
 export type BilateralTaxEntityClass = typeof BILATERAL_TAX_ENTITY_CLASSES[number];
 
 export const TAX_RESIDENCE_STATES = Object.freeze([
+  "AT_DOMESTIC_RESIDENT",
   "DE_DOMESTIC_RESIDENT",
   "SK_DOMESTIC_RESIDENT",
   "DUAL_DOMESTIC_RESIDENCE_CANDIDATE",
+  "TREATY_RESIDENT_AT",
   "TREATY_RESIDENT_DE",
   "TREATY_RESIDENT_SK",
   "TREATY_RESIDENCE_UNRESOLVED",
@@ -262,9 +265,9 @@ export type BilateralTaxProcessDraft = Readonly<{
 export type CuratedBilateralTaxTreatyPack = Readonly<{
   schemaVersion: typeof BILATERAL_TAX_SCHEMA_VERSION;
   packId: string;
-  treatyKey: typeof BILATERAL_TAX_CANONICAL_TREATY_KEY;
-  countryA: "DE";
-  countryB: "SK";
+  treatyKey: BilateralTaxAuthorizedPair;
+  countryA: BilateralTaxCountry;
+  countryB: BilateralTaxCountry;
   canonicalLanguage: "de";
   topicFamily: typeof BILATERAL_TAX_TOPIC_FAMILY;
   lifecycleState: BilateralTaxLifecycleState;
@@ -286,8 +289,8 @@ export type CuratedBilateralTaxTreatyPack = Readonly<{
     key: string;
     id: string;
     level: typeof BILATERAL_TAX_JURISDICTION_LEVEL;
-    code: typeof BILATERAL_TAX_CANONICAL_TREATY_KEY;
-    treatyCountries: readonly ["DE", "SK"];
+    code: BilateralTaxAuthorizedPair;
+    treatyCountries: readonly [BilateralTaxCountry, BilateralTaxCountry];
     countryCode: null;
     authorityCountry: BilateralTaxAuthorityCountry;
   }>;
@@ -296,7 +299,7 @@ export type CuratedBilateralTaxTreatyPack = Readonly<{
     id: string;
     type: string;
     jurisdictionIds: readonly string[];
-    treatyCountries: readonly ["DE", "SK"];
+    treatyCountries: readonly [BilateralTaxCountry, BilateralTaxCountry];
   }>;
   publisher: Readonly<{
     key: string;
@@ -344,7 +347,9 @@ export function canonicalBilateralTaxTreatyKey(countryA: string, countryB: strin
 }
 
 export function isAuthorizedBilateralTaxPair(countryA: string, countryB: string): boolean {
-  return canonicalBilateralTaxTreatyKey(countryA, countryB) === BILATERAL_TAX_CANONICAL_TREATY_KEY;
+  return (BILATERAL_TAX_AUTHORIZED_PAIRS as readonly string[]).includes(
+    canonicalBilateralTaxTreatyKey(countryA, countryB),
+  );
 }
 
 export function classifyMliTrustDomain(): typeof BILATERAL_TAX_TRUST_DOMAIN {
@@ -598,7 +603,9 @@ export function validateCrossBorderTaxCaseContext(
     issues.push("UNKNOWN_TAX_RESIDENCE_STATE");
   }
   if (context.treatyVersionContext.treatyKey
-    && context.treatyVersionContext.treatyKey !== BILATERAL_TAX_CANONICAL_TREATY_KEY) {
+    && !(BILATERAL_TAX_AUTHORIZED_PAIRS as readonly string[]).includes(
+      context.treatyVersionContext.treatyKey,
+    )) {
     issues.push("UNSUPPORTED_COUNTRY_PAIR");
   }
   const residence = validateTaxResidenceDetermination({
@@ -644,11 +651,16 @@ export function validateCuratedBilateralTaxTreatyPack(
   rejectSocialSecurityLeakage(issues, pack, "pack");
   if (pack.schemaVersion !== 1) issues.push("UNSUPPORTED_SCHEMA_VERSION");
   if (!PACK.test(pack.packId)) issues.push("INVALID_PACK_ID");
-  if (pack.treatyKey !== BILATERAL_TAX_CANONICAL_TREATY_KEY) {
-    issues.push("TREATY_KEY_MUST_BE_DIRECTION_NEUTRAL_DE_SK");
+  const canonicalKey = canonicalBilateralTaxTreatyKey(pack.countryA, pack.countryB);
+  if (!(BILATERAL_TAX_AUTHORIZED_PAIRS as readonly string[]).includes(pack.treatyKey)) {
+    issues.push("UNSUPPORTED_COUNTRY_PAIR");
   }
-  if (pack.countryA !== "DE" || pack.countryB !== "SK") issues.push("UNSUPPORTED_COUNTRY_PAIR");
-  if (canonicalBilateralTaxTreatyKey(pack.countryA, pack.countryB) !== "DE-SK") {
+  if (pack.treatyKey !== canonicalKey) issues.push("UNSUPPORTED_COUNTRY_PAIR");
+  if (
+    !(BILATERAL_TAX_COUNTRIES as readonly string[]).includes(pack.countryA)
+    || !(BILATERAL_TAX_COUNTRIES as readonly string[]).includes(pack.countryB)
+    || pack.countryA === pack.countryB
+  ) {
     issues.push("UNSUPPORTED_COUNTRY_PAIR");
   }
   if (pack.canonicalLanguage !== "de") issues.push("INVALID_CANONICAL_LANGUAGE");
@@ -670,7 +682,9 @@ export function validateCuratedBilateralTaxTreatyPack(
     issues.push("WRONG_JURISDICTION");
   }
   if ((pack.jurisdiction.level as string) === "eu") issues.push("EU_JURISDICTION_REJECTED_FOR_BILATERAL_TREATY");
-  if (pack.jurisdiction.treatyCountries.join("-") !== "DE-SK") issues.push("UNSUPPORTED_COUNTRY_PAIR");
+  if (pack.jurisdiction.treatyCountries.join("-") !== pack.treatyKey) {
+    issues.push("UNSUPPORTED_COUNTRY_PAIR");
+  }
   if (!(BILATERAL_TAX_AUTHORITY_COUNTRIES as readonly string[]).includes(pack.jurisdiction.authorityCountry)) {
     issues.push("UNKNOWN_AUTHORITY_COUNTRY");
   }

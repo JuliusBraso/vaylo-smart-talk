@@ -9,8 +9,30 @@ import { KNOWLEDGE_FACTORY_SCHEMA_VERSION, stableKnowledgeFactoryId } from "./kn
 
 export const CROSS_BORDER_CONNECTOR_SCHEMA_VERSION = KNOWLEDGE_FACTORY_SCHEMA_VERSION;
 export const CROSS_BORDER_ORIGIN_MARKET = "DE" as const;
+export const CROSS_BORDER_SUPPORTED_ORIGIN_MARKETS = Object.freeze(["DE", "AT"] as const);
+export type CrossBorderOriginMarket = typeof CROSS_BORDER_SUPPORTED_ORIGIN_MARKETS[number];
 export const CROSS_BORDER_CONNECTED_COUNTRIES = Object.freeze(["SK", "CZ", "PL", "HU"] as const);
 export type CrossBorderConnectedCountry = typeof CROSS_BORDER_CONNECTED_COUNTRIES[number];
+export const CROSS_BORDER_STRUCTURAL_CORRIDORS = Object.freeze([
+  "DE-SK", "DE-CZ", "DE-PL", "DE-HU", "AT-SK",
+] as const);
+export type CrossBorderStructuralCorridorId = typeof CROSS_BORDER_STRUCTURAL_CORRIDORS[number];
+
+export function canonicalCrossBorderCorridorId(
+  originMarket: string,
+  connectedCountry: string,
+): string {
+  return `${originMarket}-${connectedCountry}`;
+}
+
+export function isStructurallySupportedCrossBorderCorridor(
+  originMarket: string,
+  connectedCountry: string,
+): boolean {
+  return (CROSS_BORDER_STRUCTURAL_CORRIDORS as readonly string[]).includes(
+    canonicalCrossBorderCorridorId(originMarket, connectedCountry),
+  );
+}
 
 export const CROSS_BORDER_PERSON_ROLES = Object.freeze([
   "PARENT_A", "PARENT_B", "CHILD", "WORKER", "FAMILY_MEMBER",
@@ -269,7 +291,7 @@ export type CorridorProcessBinding = Readonly<{
 export type CuratedCrossBorderConnectorPack = Readonly<{
   schemaVersion: typeof CROSS_BORDER_CONNECTOR_SCHEMA_VERSION;
   packId: string;
-  originMarket: typeof CROSS_BORDER_ORIGIN_MARKET;
+  originMarket: CrossBorderOriginMarket;
   connectedCountry: CrossBorderConnectedCountry;
   status: CrossBorderConnectorStatus;
   activationFromLocaleAllowed: false;
@@ -494,9 +516,17 @@ export function validateCuratedCrossBorderConnectorPack(
   rejectLocaleFields(issues, pack, "pack");
   if (pack.schemaVersion !== 1) issues.push("UNSUPPORTED_SCHEMA_VERSION");
   if (!/^[a-z0-9_]{3,80}$/u.test(pack.packId)) issues.push("INVALID_PACK_ID");
-  if (pack.originMarket !== "DE") issues.push("ORIGIN_MARKET_INVALID");
+  if (!(CROSS_BORDER_SUPPORTED_ORIGIN_MARKETS as readonly string[]).includes(pack.originMarket)) {
+    issues.push("ORIGIN_MARKET_INVALID");
+  }
   if (!(CROSS_BORDER_CONNECTED_COUNTRIES as readonly string[]).includes(pack.connectedCountry)) {
     issues.push("UNKNOWN_CORRIDOR");
+  }
+  if (!isStructurallySupportedCrossBorderCorridor(pack.originMarket, pack.connectedCountry)) {
+    issues.push("UNKNOWN_CORRIDOR");
+  }
+  if (pack.originMarket === "AT" && pack.connectedCountry === "SK") {
+    issues.push("AT_SK_CONNECTOR_NOT_IMPLEMENTED");
   }
   const status = pack.status as string;
   if (status !== "planned" && status !== "prepared") issues.push("CONNECTOR_NOT_PLANNED");
