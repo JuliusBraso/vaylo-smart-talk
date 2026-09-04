@@ -52,7 +52,7 @@ export type CrossBorderTemporalClass = typeof CROSS_BORDER_TEMPORAL_CLASSES[numb
 export const COD_2016_0397_STATUS = "PROPOSED_NOT_CURRENT" as const;
 
 export const CROSS_BORDER_TOPIC_FAMILIES = Object.freeze([
-  "SOCIAL_SECURITY_COORDINATION", "TAX_TREATY",
+  "SOCIAL_SECURITY_COORDINATION", "TRADE_SERVICE_AUTHORIZATION", "TAX_TREATY",
 ] as const);
 export type CrossBorderTopicFamily = typeof CROSS_BORDER_TOPIC_FAMILIES[number];
 
@@ -546,6 +546,7 @@ export function validateCuratedCrossBorderConnectorPack(
   if (pack.topicFamily === "SOCIAL_SECURITY_COORDINATION" && pack.euClaimRefs.length === 0) {
     issues.push("MISSING_EU_REFERENCE");
   }
+  // TRADE_SERVICE_AUTHORIZATION: euClaimRefs may be empty (no MISSING_EU_REFERENCE).
   validateStableRef(issues, pack.germanProcessRef, "germanProcessRef", "processes");
   if (pack.germanProcessRef.sourceJurisdiction !== "DE" || pack.germanProcessRef.trustDomain !== "de") {
     issues.push("GERMAN_PROCESS_JURISDICTION_INVALID");
