@@ -73,6 +73,7 @@
     "knowledge:local:audit-at-sk-corridor-architecture-and-reuse": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-at-sk-corridor-architecture-and-reuse-audit.ts",
     "knowledge:local:audit-at-sk-bounded-foundation-extension": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-at-sk-bounded-foundation-extension-audit.ts",
     "knowledge:local:audit-de-sk-v1-revalidation-after-at-sk-foundation": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-de-sk-corridor-v1-revalidation-after-at-sk-foundation-audit.ts",
+    "knowledge:local:audit-de-sk-v1-revalidation-after-shared-eu-family-c36-23-and-linkage": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-de-sk-corridor-v1-revalidation-after-shared-eu-family-c36-23-and-linkage-audit.ts",
     "knowledge:local:audit-at-sk-austrian-national-foundation-and-authority-model": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-at-sk-austrian-national-foundation-and-authority-model-audit.ts",
     "knowledge:local:audit-at-sk-applicable-legislation-and-a1-connector": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-at-sk-applicable-legislation-and-a1-connector-audit.ts",
     "knowledge:local:audit-at-sk-health-coordination-connector": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-at-sk-health-coordination-connector-audit.ts",
