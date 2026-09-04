@@ -37,6 +37,7 @@ import {
   EU_SHARED_ART67_CLAIM_KEY,
   EU_SHARED_ART68_CLAIM_KEY,
   EU_SHARED_ART682_CLAIM_KEY,
+  EU_SHARED_C36_23_CLAIM_KEY,
   EU_SHARED_F3_CLAIM_KEY,
   buildEuFamilyBenefitsCoordinationPack,
   validateEuFamilyBenefitsCoordinationPack,
@@ -82,6 +83,8 @@ import {
   DE_SK_FAMILY_CONNECTOR_STATUS,
   DE_SK_FB_DE_CLAIM_KEYS,
   DE_SK_FB_EU_CLAIM_KEYS,
+  DE_SK_FB_EU_C36_23_CLAIM_KEYS,
+  DE_SK_FB_SECONDARY_PAYMENT_RECOVERY_PROCESS_KEY,
   DE_SK_FAMILY_PROCESSES,
   DE_SK_FB_REUSED_KINDERGELD_KEYS,
   DE_SK_FB_REUSED_ELTERNGELD_KEYS,
@@ -90,6 +93,7 @@ import {
   DE_SK_FAMILY_SELF_EMPLOYED_NEGATIVE_CONTROLS,
   buildDeSkFamilyBenefitsCoordinationConnectorPack,
   deSkFamilyConnectorSummary,
+  evaluateDeSkFamilyC3623Linkage,
   evaluateDeSkFamilyProcessCompleteness,
   evaluateDeSkFamilySelfEmployedHardening,
 } from "../packs/de-sk/family-benefits-coordination/de-sk-family-benefits-coordination-connector-pack";
@@ -182,6 +186,7 @@ async function main(): Promise<void> {
   const skFamily = buildSkFamilyBenefitsAdapterPack();
   const connector = buildDeSkFamilyBenefitsCoordinationConnectorPack();
   const completeness = evaluateDeSkFamilyProcessCompleteness();
+  const c3623Linkage = evaluateDeSkFamilyC3623Linkage();
   const seHardening = evaluateDeSkFamilySelfEmployedHardening();
   const summary = deSkFamilyConnectorSummary(connector);
   const deSource = source(
@@ -220,6 +225,7 @@ async function main(): Promise<void> {
       && DE_SK_FB_EU_CLAIM_KEYS.includes(EU_SHARED_ART60_CLAIM_KEY)
       && DE_SK_FB_EU_CLAIM_KEYS.includes(EU_SHARED_ART1Z_CLAIM_KEY)
       && DE_SK_FB_EU_CLAIM_KEYS.includes(EU_SHARED_ART682_CLAIM_KEY)
+      && DE_SK_FB_EU_CLAIM_KEYS.includes(EU_SHARED_C36_23_CLAIM_KEY)
       && !EU_COPIED.test(deSource)
       && !EU_COPIED.test(skSource)
       && !EU_COPIED.test(connectorSource),
@@ -265,13 +271,25 @@ async function main(): Promise<void> {
       && connector.activationRequiresVerifiedCaseContext === true
       && validateCuratedCrossBorderConnectorPack(connector).valid
       && CROSS_BORDER_SOURCE_JURISDICTIONS.join(",") === "DE,EU"
-      && DE_SK_FAMILY_PROCESSES.length === 34
+      && DE_SK_FAMILY_PROCESSES.length === 35
       && completeness.processCompletenessPercent === 100
       && completeness.blockedScenarioCount === 0
-      && completeness.totalScenarios === 120
-      && completeness.coveredScenarioCount === 116
+      && completeness.totalScenarios === 136
+      && completeness.coveredScenarioCount === 132
       && completeness.outOfScopeScenarioCount === 4
       && PROCESS_COMPLETE_DIMENSIONS.length === 12,
+    c3623Linkage: c3623Linkage.c36_23ReachableFromDeSkFamilyConnector === true
+      && c3623Linkage.connectorLinkageGap === false
+      && c3623Linkage.requiredRefsPresent === true
+      && c3623Linkage.processBindingPresent === true
+      && c3623Linkage.deSkCopiedC3623Claims === 0
+      && c3623Linkage.deSecondaryRoute === true
+      && c3623Linkage.skSecondaryRoute === true
+      && c3623Linkage.syntheticPersonRecoveryRejected === true
+      && c3623Linkage.institutionalRouteAvailable === true
+      && c3623Linkage.unknownStatusFailClosed === true
+      && DE_SK_FB_EU_C36_23_CLAIM_KEYS.every((key) => DE_SK_FB_EU_CLAIM_KEYS.includes(key))
+      && DE_SK_FAMILY_PROCESSES.some((process) => process.key === DE_SK_FB_SECONDARY_PAYMENT_RECOVERY_PROCESS_KEY),
     decisionF3: DE_SK_FB_EU_CLAIM_KEYS.includes(EU_SHARED_F3_CLAIM_KEY)
       && /Familienmitglied/.test(f3Text)
       && DE_SK_FAMILY_SCENARIOS.some((scenario) => (
@@ -603,7 +621,7 @@ async function main(): Promise<void> {
       && groupDef.includes("eu_health_insurance_coordination")
       && groupDef.includes("eu_applicable_legislation");
     live.primaryProcessPresent = DE_FAMILY_OFFICIAL_SOURCES.length === 4
-      && DE_SK_FAMILY_SCENARIOS.length === 120;
+      && DE_SK_FAMILY_SCENARIOS.length === 136;
   } finally {
     await ingestor?.end().catch(() => undefined);
     await admin?.end().catch(() => undefined);

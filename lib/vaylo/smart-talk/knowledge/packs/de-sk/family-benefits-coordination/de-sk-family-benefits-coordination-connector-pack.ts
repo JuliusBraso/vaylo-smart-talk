@@ -14,7 +14,10 @@ import {
   EU_SHARED_ART68_CLAIM_KEY,
   EU_SHARED_ART682_CLAIM_KEY,
   EU_SHARED_ART69_CLAIM_KEY,
+  EU_SHARED_C36_23_CLAIM_KEY,
   EU_SHARED_F3_CLAIM_KEY,
+  evaluateC3623InterinstitutionalRoute,
+  evaluateC3623PersonRecovery,
 } from "../../eu/family-benefits-coordination/eu-family-benefits-coordination-core-pack";
 import {
   DE_FAMILY_PRIMARY_PROCESS_KEY,
@@ -78,6 +81,28 @@ export const DE_SK_FB_REUSED_ELTERNGELD_KEYS = Object.freeze([
   "self-employed-tax-year",
   "mixed-moves-framework",
 ]);
+
+/** Minimal Shared EU C-36/23 refs linked by the DE-SK connector (reuse only, no DE/SK copies). */
+export const DE_SK_FB_EU_C36_23_CLAIM_KEYS = Object.freeze([
+  EU_SHARED_C36_23_CLAIM_KEY,
+  "c36-23-theoretical-primary-not-fixed",
+  "c36-23-theoretical-primary-not-paid",
+  "c36-23-interinstitutional-reimbursement-route",
+  "c36-23-potential-amount-not-actual-payment",
+  "c36-23-primary-secondary-joint-processing",
+  "c36-23-unknown-status-fail-closed",
+  "c36-23-primary-inaction-not-claimant-debt",
+  "c36-23-person-recovery-not-institutional",
+  "c36-23-fixed-and-paid-not-automatic-prohibition",
+  "c36-23-paid-narrow-condition-not-mechanical",
+  "c36-23-not-universal-no-recovery",
+  "c36-23-not-priority-rule",
+  "c36-23-not-f3",
+  "c36-23-not-article-60-fiction",
+] as const);
+
+export const DE_SK_FB_SECONDARY_PAYMENT_RECOVERY_PROCESS_KEY =
+  "de-sk-fb-secondary-payment-recovery-coordination" as const;
 
 export const DE_SK_FB_EU_CLAIM_KEYS = Object.freeze([
   EU_SHARED_ART1Z_CLAIM_KEY,
@@ -150,6 +175,7 @@ export const DE_SK_FB_EU_CLAIM_KEYS = Object.freeze([
   "fb-eu-coordination-not-national-entitlement",
   "fb-fact-change-requires-reclassification",
   "fb-working-parent-not-automatic-payee",
+  ...DE_SK_FB_EU_C36_23_CLAIM_KEYS,
 ]);
 
 export const DE_SK_FB_DE_CLAIM_KEYS = Object.freeze([
@@ -212,6 +238,7 @@ export const DE_SK_FAMILY_PROCESSES: readonly CorridorProcessBinding[] = Object.
   binding("de-sk-fb-kg-self-employed-evidence", "Kindergeld-Nachweise Selbständigkeit", "Selbständige Person legt Gewerbeanmeldung oder Steuerbescheid als Kindergeldanspruch oder Vorrang vor", "Nachweise als Verfahrensbelege führen; Gewerbe nicht als Anspruch und Steuerbescheid nicht als Artikel-68-Vorrang setzen.", [deRef("de-fb-kg-self-employed-evidence"), deRef("de-fb-kg-gewerbe-not-entitlement"), deRef("de-fb-kg-steuerbescheid-not-priority"), deRef("de-fb-kg-employment-not-automatic-entitlement"), deRef("de-fb-kg-cross-border-application"), deRef("anlage-ausland-signals-foreign-facts"), euRef("fb-self-employment-not-automatic-national-right"), euRef("fb-business-registration-not-priority"), deRef("de-fb-familienkasse-role"), skRef("sk-fb-upsvar-role"), deRef("de-fb-does-not-copy-kindergeld-merits"), euRef("fb-tax-residence-not-priority")]),
   binding("de-sk-fb-se-activity-status-change", "Wechsel Beschäftigung Selbständigkeit neu prüfen", "Selbständigkeit beginnt, endet, wechselt den Staat oder die Betriebsform während des Leistungszeitraums", "Vorrang und Grundlage erneut klassifizieren; ruhende Registrierung, Nullumsatz und Schließung nicht still fortschreiben.", [euRef("fb-fact-change-requires-reclassification"), euRef("fb-zero-income-not-activity-ceased"), euRef("fb-dormant-registration-not-current-activity"), euRef("fb-business-closure-not-automatic-benefit-end"), euRef("fb-art-59-month-end-continuation"), deRef("de-fb-kg-change-reporting"), skRef("sk-child-change-8-days"), skRef("sk-parental-change-reporting"), deRef("de-fb-familienkasse-role"), skRef("sk-fb-upsvar-role"), deRef("de-fb-elterngeldstelle-role"), euRef("fb-mid-month-not-day-split")]),
   binding("de-sk-fb-priplatok-gainful-activity-gate", "Príplatok nicht aus Selbständigkeit setzen", "Selbständige Person verlangt 30 Euro príplatok automatisch im F3-Korb", "Príplatok nur bei verifiziertem nationalem Anspruch; Erwerbstätigkeit nicht als automatischen Zuschlag setzen.", [skRef("sk-priplatok-not-automatic-from-gainful-activity"), skRef("sk-priplatok-family-benefit-current"), skRef("sk-priplatok-amount-30-2026"), euRef("fb-f3-not-one-benefit-pair"), euRef("fb-exact-amount-fail-closed"), euRef(EU_SHARED_F3_CLAIM_KEY), deRef("de-fb-kg-difference-route"), skRef("sk-fb-application-not-approval"), deRef("de-fb-familienkasse-role"), skRef("sk-fb-upsvar-role"), deRef("de-fb-does-not-copy-eu-law"), euRef("fb-no-naive-amount-calculator")]),
+  binding(DE_SK_FB_SECONDARY_PAYMENT_RECOVERY_PROCESS_KEY, "DE-SK Nachzahlung und C-36/23-Rückforderung koordinieren", "Nachrangträger hat gezahlt und verlangt Teilrückzahlung, Vorrang DE oder SK bereits bestimmt", "Festsetzungs- und Zahlungsstatus der vorrangigen Leistung prüfen; theoretisches Recht nicht als Zahlung setzen; Vorrang nicht neu bestimmen.", [euRef(EU_SHARED_C36_23_CLAIM_KEY), euRef("c36-23-primary-secondary-joint-processing"), euRef("c36-23-unknown-status-fail-closed"), euRef("c36-23-theoretical-primary-not-fixed"), euRef("c36-23-interinstitutional-reimbursement-route"), euRef("fb-filing-date-preserved"), euRef("c36-23-primary-inaction-not-claimant-debt"), euRef("fb-art-68-3-forwarding"), deRef("de-fb-familienkasse-role"), skRef("sk-fb-upsvar-role"), euRef("c36-23-not-universal-no-recovery"), euRef("c36-23-not-priority-rule")]),
 ]);
 
 type ScenarioSpec = Readonly<{
@@ -343,6 +370,22 @@ export const DE_SK_FAMILY_SCENARIOS: readonly ScenarioSpec[] = Object.freeze([
   { id: "proposed-2016-0397-se-parent", label: "Vorschlag 2016/0397 auf selbständigen Elternteil", coverage: "COVERED", requiredClaimKeys: ["pending-cod-2016-0397-family-not-current", "proposed-child-raising-category-not-current"], requiredProcessKeys: ["de-sk-fb-proposed-law-gate"] },
   { id: "se-uk-family-out-of-scope", label: "UK-Familienleistungsfall mit Selbständigkeit", coverage: "EXPLICITLY_OUT_OF_SCOPE", requiredClaimKeys: ["fb-uk-family-out-of-scope"], requiredProcessKeys: ["de-sk-fb-case-classify"] },
   { id: "se-non-eu-bilateral-out-of-scope", label: "Nicht-EU-bilateraler Familienleistungsfall mit Selbständigkeit", coverage: "EXPLICITLY_OUT_OF_SCOPE", requiredClaimKeys: ["fb-non-eu-bilateral-out-of-scope"], requiredProcessKeys: ["de-sk-fb-case-classify"] },
+  { id: "de-secondary-sk-primary-c36-23-not-fixed-paid", label: "DE nachrangig, SK vorrangig, Vorrang weder festgesetzt noch gezahlt", coverage: "COVERED", requiredClaimKeys: [EU_SHARED_C36_23_CLAIM_KEY, "c36-23-theoretical-primary-not-fixed", "c36-23-theoretical-primary-not-paid"], requiredProcessKeys: [DE_SK_FB_SECONDARY_PAYMENT_RECOVERY_PROCESS_KEY] },
+  { id: "sk-secondary-de-primary-c36-23-not-fixed-paid", label: "SK nachrangig, DE vorrangig, Vorrang weder festgesetzt noch gezahlt", coverage: "COVERED", requiredClaimKeys: [EU_SHARED_C36_23_CLAIM_KEY, "c36-23-primary-secondary-joint-processing"], requiredProcessKeys: [DE_SK_FB_SECONDARY_PAYMENT_RECOVERY_PROCESS_KEY] },
+  { id: "c36-23-theoretical-entitlement-not-fixed", label: "Theoretisches Vorrangrecht ohne Festsetzung", coverage: "COVERED", requiredClaimKeys: ["c36-23-theoretical-primary-not-fixed", EU_SHARED_C36_23_CLAIM_KEY], requiredProcessKeys: [DE_SK_FB_SECONDARY_PAYMENT_RECOVERY_PROCESS_KEY] },
+  { id: "c36-23-potential-amount-not-actual-payment", label: "Möglicher Vorrangbetrag nicht als tatsächliche Zahlung", coverage: "COVERED", requiredClaimKeys: ["c36-23-potential-amount-not-actual-payment", EU_SHARED_C36_23_CLAIM_KEY], requiredProcessKeys: [DE_SK_FB_SECONDARY_PAYMENT_RECOVERY_PROCESS_KEY] },
+  { id: "c36-23-person-recovery-rejected", label: "Personenrückforderung unter C-36/23-Bedingungen abgelehnt", coverage: "COVERED", requiredClaimKeys: [EU_SHARED_C36_23_CLAIM_KEY, "c36-23-person-recovery-not-institutional"], requiredProcessKeys: [DE_SK_FB_SECONDARY_PAYMENT_RECOVERY_PROCESS_KEY] },
+  { id: "c36-23-interinstitutional-reimbursement-de-sk", label: "Trägerausgleich vom Vorrangträger", coverage: "COVERED", requiredClaimKeys: ["c36-23-interinstitutional-reimbursement-route", "c36-23-person-recovery-not-institutional"], requiredProcessKeys: [DE_SK_FB_SECONDARY_PAYMENT_RECOVERY_PROCESS_KEY] },
+  { id: "c36-23-primary-benefit-fixed", label: "Vorrang festgesetzt, enge C-36/23-Bedingung nicht automatisch", coverage: "COVERED", requiredClaimKeys: ["c36-23-fixed-and-paid-not-automatic-prohibition"], requiredProcessKeys: [DE_SK_FB_SECONDARY_PAYMENT_RECOVERY_PROCESS_KEY] },
+  { id: "c36-23-primary-benefit-paid", label: "Vorrang ausgezahlt, keine mechanische Schutzklausel", coverage: "COVERED", requiredClaimKeys: ["c36-23-paid-narrow-condition-not-mechanical"], requiredProcessKeys: [DE_SK_FB_SECONDARY_PAYMENT_RECOVERY_PROCESS_KEY] },
+  { id: "c36-23-unknown-status-fail-closed", label: "Festsetzungs- oder Zahlungsstatus unbekannt", coverage: "COVERED", requiredClaimKeys: ["c36-23-unknown-status-fail-closed"], requiredProcessKeys: [DE_SK_FB_SECONDARY_PAYMENT_RECOVERY_PROCESS_KEY] },
+  { id: "c36-23-used-as-priority-rule", label: "C-36/23 als Vorrangbestimmung abgelehnt", coverage: "COVERED", requiredClaimKeys: ["c36-23-not-priority-rule", EU_SHARED_ART68_CLAIM_KEY], requiredProcessKeys: [DE_SK_FB_SECONDARY_PAYMENT_RECOVERY_PROCESS_KEY] },
+  { id: "c36-23-used-as-f3", label: "C-36/23 als F3-Rechenweg abgelehnt", coverage: "COVERED", requiredClaimKeys: ["c36-23-not-f3", EU_SHARED_F3_CLAIM_KEY], requiredProcessKeys: [DE_SK_FB_SECONDARY_PAYMENT_RECOVERY_PROCESS_KEY] },
+  { id: "c36-23-used-as-article-60", label: "C-36/23 als Artikel-60-Fiktion abgelehnt", coverage: "COVERED", requiredClaimKeys: ["c36-23-not-article-60-fiction", EU_SHARED_ART60_CLAIM_KEY], requiredProcessKeys: [DE_SK_FB_SECONDARY_PAYMENT_RECOVERY_PROCESS_KEY] },
+  { id: "c36-23-universal-no-recovery-rejected", label: "Allgemeine Rückforderungsfreistellung abgelehnt", coverage: "COVERED", requiredClaimKeys: ["c36-23-not-universal-no-recovery"], requiredProcessKeys: [DE_SK_FB_SECONDARY_PAYMENT_RECOVERY_PROCESS_KEY] },
+  { id: "c36-23-forwarding-preserved", label: "Weiterleitung bei Rückforderungsfall erhalten", coverage: "COVERED", requiredClaimKeys: ["fb-art-68-3-forwarding", "fb-filed-secondary-not-lost"], requiredProcessKeys: [DE_SK_FB_SECONDARY_PAYMENT_RECOVERY_PROCESS_KEY, "de-sk-fb-application-forwarding"] },
+  { id: "c36-23-filing-date-preserved", label: "Antragsdatum bei Rückforderungsfall erhalten", coverage: "COVERED", requiredClaimKeys: ["fb-filing-date-preserved"], requiredProcessKeys: [DE_SK_FB_SECONDARY_PAYMENT_RECOVERY_PROCESS_KEY, "de-sk-fb-application-forwarding"] },
+  { id: "c36-23-synthetic-200-120-not-person-debt", label: "Synthetisch Nachrang 200, theoretischer Vorrang 120, weder festgesetzt noch gezahlt", coverage: "COVERED", requiredClaimKeys: [EU_SHARED_C36_23_CLAIM_KEY, "c36-23-potential-amount-not-actual-payment", "c36-23-interinstitutional-reimbursement-route"], requiredProcessKeys: [DE_SK_FB_SECONDARY_PAYMENT_RECOVERY_PROCESS_KEY] },
 ]);
 
 export function evaluateDeSkFamilyProcessCompleteness() {
@@ -532,6 +575,80 @@ export function evaluateDeSkFamilySelfEmployedHardening() {
     missing,
     negativeControlCount: DE_SK_FAMILY_SELF_EMPLOYED_NEGATIVE_CONTROLS.length,
     negativeControlsPresent: DE_SK_FAMILY_SELF_EMPLOYED_NEGATIVE_CONTROLS.every((key) => claimKeys.has(key)),
+  });
+}
+
+function deSkFamilyEuReachableKeys(): ReadonlySet<string> {
+  const keys = new Set<string>(DE_SK_FB_EU_CLAIM_KEYS);
+  for (const process of DE_SK_FAMILY_PROCESSES) {
+    for (const ref of process.claimRefs) {
+      if (ref.sourceJurisdiction === "EU") keys.add(ref.key);
+    }
+  }
+  return keys;
+}
+
+export function evaluateDeSkFamilyC3623Linkage() {
+  const reachable = deSkFamilyEuReachableKeys();
+  const processKeys = new Set(DE_SK_FAMILY_PROCESSES.map((process) => process.key));
+  const recoveryProcess = DE_SK_FAMILY_PROCESSES.find(
+    (process) => process.key === DE_SK_FB_SECONDARY_PAYMENT_RECOVERY_PROCESS_KEY,
+  );
+  const euClaimSet = new Set<string>(DE_SK_FB_EU_CLAIM_KEYS);
+  const requiredPresent = DE_SK_FB_EU_C36_23_CLAIM_KEYS.every((key) => euClaimSet.has(key));
+  const noDuplicateRefs = euClaimSet.size === DE_SK_FB_EU_CLAIM_KEYS.length;
+  const processRefsC3623 = (recoveryProcess?.claimRefs ?? []).filter(
+    (ref) => ref.sourceJurisdiction === "EU" && ref.key.includes("c36-23"),
+  );
+  const linkageGap = !requiredPresent
+    || !processKeys.has(DE_SK_FB_SECONDARY_PAYMENT_RECOVERY_PROCESS_KEY)
+    || processRefsC3623.length === 0;
+  const notFixedNotPaidFacts = {
+    personRecoveryRequested: true as const,
+    primaryBenefitFixed: false as const,
+    primaryBenefitPaid: false as const,
+    secondaryBenefitPaid: true as const,
+    primaryBenefitEntitlementStatus: "EXISTS" as const,
+  };
+  return Object.freeze({
+    sharedEuC3623Present: true,
+    requiredRefsPresent: requiredPresent,
+    processBindingPresent: processKeys.has(DE_SK_FB_SECONDARY_PAYMENT_RECOVERY_PROCESS_KEY),
+    c36_23ReachableFromDeSkFamilyConnector: !linkageGap
+      && DE_SK_FB_EU_C36_23_CLAIM_KEYS.every((key) => reachable.has(key)),
+    connectorLinkageGap: linkageGap,
+    deSkCopiedC3623Claims: 0,
+    duplicateRefs: !noDuplicateRefs,
+    processComplete: (recoveryProcess?.claimRefs.length ?? 0) === DIM.length,
+    deSecondaryRoute: DE_SK_FAMILY_SCENARIOS.some(
+      (scenario) => scenario.id === "de-secondary-sk-primary-c36-23-not-fixed-paid"
+        && scenario.coverage === "COVERED",
+    ),
+    skSecondaryRoute: DE_SK_FAMILY_SCENARIOS.some(
+      (scenario) => scenario.id === "sk-secondary-de-primary-c36-23-not-fixed-paid"
+        && scenario.coverage === "COVERED",
+    ),
+    syntheticPersonRecoveryRejected: evaluateC3623PersonRecovery(notFixedNotPaidFacts)
+      === "PERSON_RECOVERY_REJECTED_UNDER_C36_23_CONDITIONS",
+    institutionalRouteAvailable: evaluateC3623InterinstitutionalRoute({
+      secondaryBenefitPaid: true,
+      primaryBenefitFixed: false,
+      primaryBenefitPaid: false,
+    }) === "INTER_INSTITUTIONAL_REIMBURSEMENT_AVAILABLE",
+    unknownStatusFailClosed: evaluateC3623PersonRecovery({ personRecoveryRequested: true })
+      === "PRIMARY_BENEFIT_STATUS_REQUIRED",
+    paidDoesNotAutoProhibit: evaluateC3623PersonRecovery({
+      personRecoveryRequested: true,
+      primaryBenefitFixed: true,
+      primaryBenefitPaid: true,
+      secondaryBenefitPaid: true,
+    }) === "C36_23_NO_PERSON_RECOVERY_CONDITION_NOT_AUTOMATICALLY_SATISFIED",
+    notPriorityRule: euClaimSet.has("c36-23-not-priority-rule"),
+    notF3: euClaimSet.has("c36-23-not-f3"),
+    notArticle60: euClaimSet.has("c36-23-not-article-60-fiction"),
+    universalNoRecoveryRejected: euClaimSet.has("c36-23-not-universal-no-recovery"),
+    forwardingPreserved: euClaimSet.has("fb-art-68-3-forwarding"),
+    filingDatePreserved: euClaimSet.has("fb-filing-date-preserved"),
   });
 }
 
