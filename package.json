@@ -78,6 +78,7 @@
     "knowledge:local:audit-at-sk-applicable-legislation-and-a1-connector": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-at-sk-applicable-legislation-and-a1-connector-audit.ts",
     "knowledge:local:audit-at-sk-health-coordination-connector": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-at-sk-health-coordination-connector-audit.ts",
     "knowledge:local:audit-at-sk-family-benefits-coordination": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-at-sk-family-benefits-coordination-connector-audit.ts",
+    "knowledge:local:audit-at-sk-unemployment-coordination": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-at-sk-unemployment-coordination-connector-audit.ts",
     "release:check": "npm run db:verify",
     "verify:8.3v": "npx -y tsx@4.19.2 scripts/verify-8-3v-additional-synthetic-live-execution.ts"
   },
