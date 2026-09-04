@@ -80,6 +80,7 @@
     "knowledge:local:audit-at-sk-family-benefits-coordination": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-at-sk-family-benefits-coordination-connector-audit.ts",
     "knowledge:local:audit-at-sk-unemployment-coordination": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-at-sk-unemployment-coordination-connector-audit.ts",
     "knowledge:local:audit-at-sk-cross-border-gewerbe-service": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-at-sk-cross-border-gewerbe-service-connector-audit.ts",
+    "knowledge:local:audit-at-sk-personal-income-tax-residence": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-at-sk-personal-income-tax-residence-audit.ts",
     "release:check": "npm run db:verify",
     "verify:8.3v": "npx -y tsx@4.19.2 scripts/verify-8-3v-additional-synthetic-live-execution.ts"
   },
