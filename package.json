@@ -83,6 +83,7 @@
     "knowledge:local:audit-at-sk-personal-income-tax-residence": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-at-sk-personal-income-tax-residence-audit.ts",
     "knowledge:local:audit-at-sk-bilateral-tax-treaty": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-at-sk-bilateral-tax-treaty-audit.ts",
     "knowledge:local:audit-at-sk-tax-residence-treaty-connector": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-at-sk-tax-residence-treaty-connector-audit.ts",
+    "knowledge:local:audit-at-sk-multi-state-sk-at-de-architecture-review": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-at-sk-multi-state-sk-at-de-architecture-review-audit.ts",
     "release:check": "npm run db:verify",
     "verify:8.3v": "npx -y tsx@4.19.2 scripts/verify-8-3v-additional-synthetic-live-execution.ts"
   },
