@@ -438,14 +438,49 @@ async function main(): Promise<void> {
     ));
   const migration068Safe = proofs.migration068Safety === true;
 
+  const atSk0bScenarios = (atSk0b.scenarioSummary as { failClosed?: number } | undefined)?.failClosed ?? 1;
+  const atSk0bProofs = atSk0b.proofs as {
+    deSkTaxPairPreserved?: boolean;
+    atSkTaxPairStructurallySupported?: boolean;
+    atSkTaxLegalContentStillAbsent?: boolean;
+  };
+  const atSk0bSemanticPass = atSk0bScenarios === 0
+    && atSk0bProofs.deSkTaxPairPreserved === true
+    && atSk0bProofs.atSkTaxPairStructurallySupported === true;
+  const atSk0bDirectAbsenceObsolete = atSk0bProofs.atSkTaxLegalContentStillAbsent === false;
+
+  const atSk0dProofs = atSk0d.proofs as Record<string, boolean | undefined>;
+  const atSk0dSubstantiveFailed = atSk0dFailed.filter((proof) => proof !== "noAtSkDirectory");
+  const atSk0dDirectAbsenceObsolete = atSk0dProofs.noAtSkDirectory === false;
+  const atSk0dSemanticPass = atSk0dSubstantiveFailed.length === 0
+    && atSk0dProofs.blockedScenarioCountZero === true
+    && atSk0dProofs.processCompletenessPercent100 === true
+    && atSk0dProofs.euAlCoreUnchanged === true
+    && atSk0dProofs.deSkAlUnchanged === true
+    && atSk0dProofs.runtimeUnauthorized === true
+    && atSk0dProofs.deSkConnectorFoundationValid === true
+    && atSk0dProofs.sharedValidatorStillBlocksStub === true;
+
+  const atSk0eProofs = atSk0e.proofs as Record<string, boolean | undefined>;
+  const atSk0eSubstantiveFailed = atSk0eFailed.filter((proof) => proof !== "noAtSkDirectory");
+  const atSk0eDirectAbsenceObsolete = atSk0eProofs.noAtSkDirectory === false;
+  const atSk0eSemanticPass = atSk0eSubstantiveFailed.length === 0
+    && atSk0eProofs.blockedScenarioCountZero === true
+    && atSk0eProofs.processCompleteness100 === true
+    && atSk0eProofs.euHealthUnchanged === true
+    && atSk0eProofs.deSkHealthUnchanged === true
+    && atSk0eProofs.activeCorridorsZero === true
+    && atSk0eProofs.runtimeUnauthorized === true
+    && atSk0eProofs.sharedValidatorStillBlocksStub === true;
+
   const overallPass = failedProofs.length === 0
     && treatyFailed.length === 0
     && ingestion.pass === true
     && atSk0a.phaseResult === "PASS"
-    && atSk0b.phaseResult === "PASS"
+    && atSk0bSemanticPass
     && (atSk0cFailed.length === 0 || atSk0cExpectedMaterialDrift)
-    && atSk0dFailed.length === 0
-    && atSk0eFailed.length === 0
+    && atSk0dSemanticPass
+    && atSk0eSemanticPass
     && atSk0fFailed.length === 0
     && atSk0gFailed.length === 0
     && atSk0hFailed.length === 0
@@ -480,12 +515,45 @@ async function main(): Promise<void> {
       atSk0h: atSk0hFailed.length === 0 ? "PASS" : "FAIL",
       atSk0g: atSk0gFailed.length === 0 ? "PASS" : "FAIL",
       atSk0f: atSk0fFailed.length === 0 ? "PASS" : "FAIL",
-      atSk0e: atSk0eFailed.length === 0 ? "PASS" : "FAIL",
-      atSk0d: atSk0dFailed.length === 0 ? "PASS" : "FAIL",
+      atSk0e: atSk0eSemanticPass ? "PASS" : "FAIL",
+      atSk0d: atSk0dSemanticPass ? "PASS" : "FAIL",
       atSk0c: (atSk0cFailed.length === 0 || atSk0cExpectedMaterialDrift) ? "PASS" : "FAIL",
-      atSk0b: atSk0b.phaseResult,
+      atSk0b: atSk0bSemanticPass ? "PASS" : "FAIL",
       atSk0a: atSk0a.phaseResult,
       migration068Safety: migration068Safe ? "PASS" : "FAIL",
+    },
+    atSk0bClassification: {
+      historicalSnapshot: atSk0bScenarios === 0 ? "historically-valid" : "FAIL",
+      directAbsenceAssertion: atSk0bDirectAbsenceObsolete
+        ? "expected-successor-state-mismatch"
+        : "still-required-absent",
+      successorArchitecture: atSk0bSemanticPass ? "PASS" : "FAIL",
+      rawPhaseResult: atSk0b.phaseResult,
+      atSkTaxLegalContentStillAbsent: atSk0bProofs.atSkTaxLegalContentStillAbsent,
+    },
+    atSk0dClassification: {
+      historicalSnapshot: atSk0dSubstantiveFailed.length === 0 && atSk0dProofs.blockedScenarioCountZero === true
+        ? "historically-valid"
+        : "FAIL",
+      directAbsenceAssertion: atSk0dDirectAbsenceObsolete
+        ? "expected-successor-state-mismatch"
+        : "still-required-absent",
+      successorArchitecture: atSk0dSemanticPass ? "PASS" : "FAIL",
+      rawPhaseResult: atSk0dFailed.length === 0 ? "PASS" : "FAIL",
+      noAtSkDirectory: atSk0dProofs.noAtSkDirectory,
+      substantiveFailedProofs: atSk0dSubstantiveFailed,
+    },
+    atSk0eClassification: {
+      historicalSnapshot: atSk0eSubstantiveFailed.length === 0 && atSk0eProofs.blockedScenarioCountZero === true
+        ? "historically-valid"
+        : "FAIL",
+      directAbsenceAssertion: atSk0eDirectAbsenceObsolete
+        ? "expected-successor-state-mismatch"
+        : "still-required-absent",
+      successorArchitecture: atSk0eSemanticPass ? "PASS" : "FAIL",
+      rawPhaseResult: atSk0eFailed.length === 0 ? "PASS" : "FAIL",
+      noAtSkDirectory: atSk0eProofs.noAtSkDirectory,
+      substantiveFailedProofs: atSk0eSubstantiveFailed,
     },
     security: {
       productionInteraction: false,

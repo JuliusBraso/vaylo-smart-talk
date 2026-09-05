@@ -60,12 +60,14 @@ export const BILATERAL_TAX_SOURCE_KINDS = Object.freeze([
   "OFFICIAL_SYNTHESIZED_WORKING_TEXT",
   "SK_MOF_TREATY_STATUS",
   "DE_DOMESTIC_LAW",
+  "AT_DOMESTIC_LAW",
   "SK_DOMESTIC_LAW",
 ] as const);
 export type BilateralTaxSourceKind = typeof BILATERAL_TAX_SOURCE_KINDS[number];
 
 export const BILATERAL_TAX_CLAIM_ROLES = Object.freeze([
   "german_domestic_tax",
+  "austrian_domestic_tax",
   "slovak_domestic_tax",
   "bilateral_treaty",
   "mli",
@@ -167,6 +169,11 @@ export type ForbiddenTaxResidenceBasis = typeof FORBIDDEN_TAX_RESIDENCE_BASES[nu
 export const BILATERAL_TAX_IS_NOT_TAX_CALCULATOR = true;
 export const BILATERAL_TAX_IS_NOT_ACCOUNTING_ENGINE = true;
 export const BILATERAL_TAX_PUBLIC_RUNTIME_AUTHORIZED = false;
+export const AT_SK_TAX_CONNECTOR_PACK_ID = "at_sk_tax_residence_treaty" as const;
+export const AT_SK_TAX_CONNECTOR_STATUS = "prepared" as const;
+export const AT_SK_TAX_CONNECTOR_ACTIVE_CORRIDORS = 0 as const;
+export const AT_SK_TAX_CONNECTOR_PUBLIC_RUNTIME_ALLOWED = false as const;
+export const AT_SK_TAX_CONNECTOR_LOCALE_ACTIVATION_ALLOWED = false as const;
 export const FIXED_BASE_AND_PE_ARE_SEPARATE = true;
 export const DUAL_DOMESTIC_IS_NOT_DUAL_TREATY_RESIDENCE = true;
 
@@ -177,8 +184,8 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/u;
 export type BilateralTaxStableRef = Readonly<{
   entityClass: BilateralTaxEntityClass;
   key: string;
-  sourceJurisdiction: "DE" | "SK" | "BILATERAL" | "MULTILATERAL";
-  trustDomain: typeof BILATERAL_TAX_TRUST_DOMAIN | "de" | "sk";
+  sourceJurisdiction: "DE" | "AT" | "SK" | "BILATERAL" | "MULTILATERAL";
+  trustDomain: typeof BILATERAL_TAX_TRUST_DOMAIN | "de" | "at" | "sk";
   temporalClass: BilateralTaxTemporalClass;
   claimRole?: BilateralTaxClaimRole;
 }>;
@@ -436,6 +443,9 @@ function validateStableRef(
     issues.push(`WRONG_TRUST_CLASS:${path}`);
   }
   if (ref.claimRole === "german_domestic_tax" && ref.trustDomain !== "de") {
+    issues.push(`WRONG_TRUST_CLASS:${path}`);
+  }
+  if (ref.claimRole === "austrian_domestic_tax" && ref.trustDomain !== "at") {
     issues.push(`WRONG_TRUST_CLASS:${path}`);
   }
   if (ref.claimRole === "slovak_domestic_tax" && ref.trustDomain !== "sk") {
@@ -734,6 +744,39 @@ export function validateCuratedBilateralTaxTreatyPack(
     }
   }
   if (pack.claimUnits.length === 0) issues.push("ZERO_REF_REJECTED:claimUnits");
+  return Object.freeze({
+    valid: issues.length === 0,
+    issues: Object.freeze(issues),
+    authoringUsesKeysNotDatabaseUuids: true,
+    productionEligible: false,
+  });
+}
+
+export type CuratedBilateralTaxConnectorPack = CuratedBilateralTaxTreatyPack & Readonly<{
+  connectorStatus: typeof AT_SK_TAX_CONNECTOR_STATUS;
+  localeActivationAllowed: false;
+  deployment: "none";
+}>;
+
+export function validateCuratedBilateralTaxConnectorPack(
+  pack: CuratedBilateralTaxConnectorPack,
+): BilateralTaxContractValidation {
+  const issues: string[] = [...validateCuratedBilateralTaxTreatyPack(pack).issues];
+  if (pack.packId !== AT_SK_TAX_CONNECTOR_PACK_ID) issues.push("AT_SK_TAX_CONNECTOR_PACK_ID_INVALID");
+  if (pack.treatyKey !== "AT-SK" || pack.countryA !== "AT" || pack.countryB !== "SK") {
+    issues.push("AT_SK_TAX_CONNECTOR_CORRIDOR_INVALID");
+  }
+  if ((pack as CuratedBilateralTaxConnectorPack).connectorStatus !== "prepared") {
+    issues.push("AT_SK_TAX_CONNECTOR_NOT_PREPARED");
+  }
+  if (pack.active !== false) issues.push("CONNECTOR_ACTIVE_FORBIDDEN");
+  if (pack.publicRuntimeAllowed !== false) issues.push("PUBLIC_RUNTIME_FORBIDDEN");
+  if ((pack as CuratedBilateralTaxConnectorPack).localeActivationAllowed !== false) {
+    issues.push("LOCALE_ACTIVATION_FORBIDDEN");
+  }
+  if ((pack as CuratedBilateralTaxConnectorPack).deployment !== "none") {
+    issues.push("DEPLOYMENT_FORBIDDEN");
+  }
   return Object.freeze({
     valid: issues.length === 0,
     issues: Object.freeze(issues),
