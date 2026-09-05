@@ -87,6 +87,7 @@
     "knowledge:local:audit-at-sk-e2e-corridor-semantic-review": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-at-sk-e2e-corridor-semantic-review-audit.ts",
     "knowledge:local:audit-at-sk-knowledge-v1-closure": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-at-sk-knowledge-v1-closure-audit.ts",
     "knowledge:local:audit-slovakia-market-pack-v1-closure": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-slovakia-market-pack-v1-closure-audit.ts",
+    "knowledge:local:audit-database-function-execution-privilege-hardening": "npx -y tsx@4.19.2 lib/vaylo/smart-talk/knowledge/de/run-database-function-execution-privilege-hardening-audit.ts",
     "release:check": "npm run db:verify",
     "verify:8.3v": "npx -y tsx@4.19.2 scripts/verify-8-3v-additional-synthetic-live-execution.ts"
   },
