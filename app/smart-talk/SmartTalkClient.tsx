@@ -24,7 +24,7 @@ import {
 const MAX_TEXT_LENGTH = 12000;
 const RECOMMENDED_TEXT_LENGTH = 4000;
 
-/** Smart Talk photo MVP: multi-page scan cap (matches `/api/smart-talk-photo`). */
+/** Retained photo-selection cap while public photo processing is unavailable. */
 const SMART_TALK_MAX_PHOTO_PAGES = 3;
 const SMART_TALK_MAX_PHOTO_UPLOAD_TOTAL_BYTES = 4 * 1024 * 1024;
 
@@ -142,278 +142,12 @@ type SmartTalkOkResponse = {
   mode: string;
   context: string;
   result: SmartTalkResult;
-  /** Present when `/api/smart-talk-photo` substituted OCR placeholders for one or more pages. */
-  partialOcr?: boolean;
 };
 
 function isRecord(x: unknown): x is Record<string, unknown> {
   return x !== null && typeof x === "object";
 }
 
-/**
- * Phase 8.11C: safe display-only shape for the internal Real OCR extraction
- * test button. Deliberately does NOT carry the full extracted text — only
- * a capped preview and length, matching what the operator is allowed to see
- * (see SmartTalkClient result panel below). Never persisted client-side.
- */
-type RealOcrUiResult = {
-  ok: boolean;
-  code?: string;
-  extractedTextLength?: number;
-  extractedTextPreview?: string;
-  qualityStatus?: "blocked" | "low" | "medium" | "usable";
-  blockingReasons?: string[];
-  downgradeReasons?: string[];
-};
-
-const REAL_OCR_QUALITY_STATUSES = new Set(["blocked", "low", "medium", "usable"]);
-
-function parseRealOcrResponse(data: unknown): RealOcrUiResult | null {
-  if (!isRecord(data)) return null;
-
-  if (data.ok === true) {
-    const ocrResult = isRecord(data.ocrResult) ? data.ocrResult : null;
-    const quality = isRecord(data.quality) ? data.quality : null;
-    if (!ocrResult || !quality) return null;
-
-    const blockingReasons = Array.isArray(quality.blockingReasons)
-      ? quality.blockingReasons.filter((x): x is string => typeof x === "string")
-      : [];
-    const downgradeReasons = Array.isArray(quality.downgradeReasons)
-      ? quality.downgradeReasons.filter((x): x is string => typeof x === "string")
-      : [];
-    const qualityStatusRaw = typeof quality.status === "string" ? quality.status : "blocked";
-    const qualityStatus = (
-      REAL_OCR_QUALITY_STATUSES.has(qualityStatusRaw) ? qualityStatusRaw : "blocked"
-    ) as RealOcrUiResult["qualityStatus"];
-
-    return {
-      ok: true,
-      extractedTextLength:
-        typeof ocrResult.extractedTextLength === "number" ? ocrResult.extractedTextLength : 0,
-      extractedTextPreview:
-        typeof ocrResult.extractedTextPreview === "string" ? ocrResult.extractedTextPreview : "",
-      qualityStatus,
-      blockingReasons,
-      downgradeReasons,
-    };
-  }
-
-  if (data.ok === false) {
-    const code = typeof data.code === "string" ? data.code : "real_ocr_extraction_failed";
-    const quality = isRecord(data.quality) ? data.quality : null;
-    const blockingReasons =
-      quality && Array.isArray(quality.blockingReasons)
-        ? quality.blockingReasons.filter((x): x is string => typeof x === "string")
-        : [];
-    return { ok: false, code, blockingReasons };
-  }
-
-  return null;
-}
-
-/** Slovak UX for the internal Phase 8.11C Real OCR extraction test button. */
-function messageForRealOcrCode(code: string | undefined): string {
-  switch (code) {
-    case "real_ocr_extraction_disabled":
-      return "Reálna OCR extrakcia je momentálne vypnutá (interný kontrolovaný test).";
-    case "real_ocr_unsupported_mime":
-      return "Nepodporovaný typ súboru. Použite JPG, PNG alebo WebP.";
-    case "real_ocr_missing_image":
-      return "Vyberte platný obrázok na test.";
-    case "real_ocr_file_too_large":
-      return "Súbor je príliš veľký. Maximálna veľkosť je 8 MB.";
-    case "real_ocr_multiple_pages_blocked":
-      return "Tento interný test podporuje iba jednu stranu.";
-    case "real_ocr_invalid_content_type":
-      return "Neplatný formát požiadavky pre interný test.";
-    case "real_ocr_timeout":
-      return "Rozpoznávanie textu trvalo príliš dlho. Skúste to znova.";
-    case "real_ocr_provider_error":
-      return "OCR modul zlyhal pri spracovaní obrázka.";
-    case "real_ocr_empty_extraction":
-      return "Z obrázka sa nepodarilo rozpoznať žiadny text.";
-    case "real_ocr_quality_blocked":
-      return "Rozpoznaný text nemá dostatočnú kvalitu na ďalšie spracovanie.";
-    default:
-      return "Interný test Real OCR extraction zlyhal. Skúste to znova.";
-  }
-}
-
-/**
- * Minimal, non-sensitive parsed shape for the Phase 8.11I internal
- * "OCR → Smart Talk" handoff envelope test button. Deliberately does NOT
- * carry the full extracted text — only a capped preview and length, and
- * never the raw image. Never persisted client-side. Smart Talk reasoning is
- * never invoked by this branch in 8.11I (smartTalkResult is always null on
- * the server), so there is no result to route into the main explanation
- * flow here.
- */
-type OcrHandoffUiResult = {
-  ok: boolean;
-  code?: string;
-  qualityStatus?: "blocked" | "low" | "medium" | "usable";
-  handoffAllowed?: boolean;
-  handoffPerformed?: boolean;
-  handoffReason?: string;
-  extractedTextLength?: number;
-  extractedTextPreview?: string;
-  ocrWarnings?: string[];
-  warnings?: string[];
-  highRiskTokensDetected?: string[];
-  blockingReasons?: string[];
-  downgradeReasons?: string[];
-  /**
-   * Phase 8.11P: present only when the request explicitly selected the
-   * internal controlled-reasoning operation (see
-   * handleOcrToSmartTalkHandoffSubmit below) AND the server performed
-   * reasoning. Never inferred client-side — mirrors exactly what the
-   * committed route reports in `reasoning.performed`/`reasoning.reason`/
-   * `reasoning.modelInvocation.modelCallCount`.
-   */
-  reasoningPerformed?: boolean;
-  reasoningReason?: string;
-  modelCallCount?: number;
-  /** Only non-null when reasoningPerformed is true. */
-  smartTalkResult?: SmartTalkResult | null;
-};
-
-function parseOcrHandoffResponse(data: unknown): OcrHandoffUiResult | null {
-  if (!isRecord(data)) return null;
-
-  if (data.ok === true) {
-    const ocrResult = isRecord(data.ocrResult) ? data.ocrResult : null;
-    const handoff = isRecord(data.handoff) ? data.handoff : null;
-    if (!ocrResult || !handoff) return null;
-
-    const qualityStatusRaw = typeof handoff.qualityStatus === "string" ? handoff.qualityStatus : "blocked";
-    const qualityStatus = (
-      REAL_OCR_QUALITY_STATUSES.has(qualityStatusRaw) ? qualityStatusRaw : "blocked"
-    ) as OcrHandoffUiResult["qualityStatus"];
-
-    const ocrWarnings = Array.isArray(handoff.ocrWarnings)
-      ? handoff.ocrWarnings.filter((x): x is string => typeof x === "string")
-      : [];
-    const warnings = Array.isArray(data.warnings)
-      ? data.warnings.filter((x): x is string => typeof x === "string")
-      : [];
-    const highRiskTokensDetected = Array.isArray(handoff.highRiskTokensDetected)
-      ? handoff.highRiskTokensDetected.filter((x): x is string => typeof x === "string")
-      : [];
-    const blockingReasons = Array.isArray(handoff.blockingReasons)
-      ? handoff.blockingReasons.filter((x): x is string => typeof x === "string")
-      : [];
-    const downgradeReasons = Array.isArray(handoff.downgradeReasons)
-      ? handoff.downgradeReasons.filter((x): x is string => typeof x === "string")
-      : [];
-
-    // Phase 8.11P: only present when the caller requested the controlled
-    // reasoning operation and the route actually ran it — completely absent
-    // (undefined) for the unmodified 8.11I/8.11K envelope-only response.
-    const reasoning = isRecord(data.reasoning) ? data.reasoning : null;
-    const reasoningPerformed = reasoning?.performed === true;
-    const reasoningReason =
-      reasoning && typeof reasoning.reason === "string" ? reasoning.reason : undefined;
-    const modelInvocation =
-      reasoning && isRecord(reasoning.modelInvocation) ? reasoning.modelInvocation : null;
-    const modelCallCount =
-      modelInvocation && typeof modelInvocation.modelCallCount === "number"
-        ? modelInvocation.modelCallCount
-        : undefined;
-    const smartTalkResult = reasoningPerformed
-      ? parseSmartTalkResultObject(data.smartTalkResult)
-      : null;
-
-    return {
-      ok: true,
-      qualityStatus,
-      handoffAllowed: handoff.allowed === true,
-      handoffPerformed: handoff.performed === true,
-      handoffReason: typeof handoff.reason === "string" ? handoff.reason : "",
-      extractedTextLength:
-        typeof ocrResult.extractedTextLength === "number" ? ocrResult.extractedTextLength : 0,
-      extractedTextPreview:
-        typeof ocrResult.extractedTextPreview === "string" ? ocrResult.extractedTextPreview : "",
-      ocrWarnings,
-      warnings,
-      highRiskTokensDetected,
-      blockingReasons,
-      downgradeReasons,
-      reasoningPerformed,
-      reasoningReason,
-      modelCallCount,
-      smartTalkResult,
-    };
-  }
-
-  if (data.ok === false) {
-    const code = typeof data.code === "string" ? data.code : "ocr_to_smart_talk_handoff_failed";
-    const quality = isRecord(data.quality) ? data.quality : null;
-    const blockingReasons =
-      quality && Array.isArray(quality.blockingReasons)
-        ? quality.blockingReasons.filter((x): x is string => typeof x === "string")
-        : [];
-    return { ok: false, code, blockingReasons };
-  }
-
-  return null;
-}
-
-/** Slovak UX for the internal Phase 8.11I OCR → Smart Talk handoff test button. */
-function messageForOcrHandoffCode(code: string | undefined): string {
-  switch (code) {
-    case "ocr_to_smart_talk_handoff_disabled":
-      return "Odovzdanie OCR textu do Smart Talk je momentálne vypnuté (interný kontrolovaný test).";
-    case "real_ocr_extraction_required_for_handoff":
-      return "Reálna OCR extrakcia musí byť povolená, aby bolo možné odovzdanie textu.";
-    case "ocr_quality_not_usable_for_handoff":
-      return "Rozpoznaný text nemá dostatočnú kvalitu na odovzdanie do Smart Talk.";
-    case "ocr_to_smart_talk_handoff_missing_image":
-      return "Vyberte platný obrázok na test.";
-    case "ocr_to_smart_talk_handoff_unsupported_mime":
-      return "Nepodporovaný typ súboru. Použite JPG, PNG alebo WebP.";
-    case "ocr_to_smart_talk_handoff_file_too_large":
-      return "Súbor je príliš veľký. Maximálna veľkosť je 8 MB.";
-    case "ocr_to_smart_talk_handoff_page_count_required":
-    case "ocr_to_smart_talk_handoff_single_image_required":
-      return "Tento interný test podporuje iba jednu stranu.";
-    case "ocr_to_smart_talk_handoff_invalid_content_type":
-      return "Neplatný formát požiadavky pre interný test.";
-    case "ocr_to_smart_talk_handoff_timeout":
-      return "Rozpoznávanie textu trvalo príliš dlho. Skúste to znova.";
-    case "ocr_to_smart_talk_handoff_provider_error":
-      return "OCR modul zlyhal pri spracovaní obrázka.";
-    case "ocr_to_smart_talk_handoff_empty_extraction":
-      return "Z obrázka sa nepodarilo rozpoznať žiadny text.";
-    // Phase 8.11P — internal controlled-reasoning operation failure codes.
-    case "ocr_controlled_reasoning_disabled":
-      return "Interné riadené vysvetlenie (OCR → Smart Talk) je momentálne vypnuté (kontrolovaný test).";
-    case "handoff_required_for_reasoning":
-    case "real_ocr_required_for_reasoning":
-      return "Predpoklady pre riadené vysvetlenie nie sú momentálne splnené (kontrolovaný test).";
-    case "ocr_quality_not_usable_for_reasoning":
-    case "ocr_blocking_reasons_present":
-    case "ocr_trust_metadata_missing":
-    case "evidence_gate_rejected_ocr_reasoning":
-      return "Rozpoznaný text nespĺňa podmienky na riadené vysvetlenie (kontrolovaný test).";
-    case "ocr_reasoning_timeout":
-      return "Riadené vysvetlenie trvalo príliš dlho. Skúste to znova.";
-    case "ocr_reasoning_model_error":
-    case "ocr_reasoning_internal_error":
-    case "ocr_reasoning_trap_rejected":
-      return "Riadené vysvetlenie zlyhalo (kontrolovaný test). Skúste to znova.";
-    default:
-      return "Interný test OCR → Smart Talk zlyhal. Skúste to znova.";
-  }
-}
-
-/**
- * Phase 8.11P: extracted from parseSmartTalkResponse's inline result-parsing
- * so the internal controlled-reasoning test button (see below) can reuse the
- * exact same validated `SmartTalkResult` shape — and, in the JSX, the exact
- * same result-rendering sections — as the main envelope-only/text/question
- * flows below, without duplicating either the parsing or the rendering.
- */
 function parseSmartTalkResultObject(result: unknown): SmartTalkResult | null {
   if (!isRecord(result)) return null;
 
@@ -534,7 +268,6 @@ function parseSmartTalkResponse(data: unknown): SmartTalkOkResponse | null {
     mode: data.mode,
     context: data.context,
     result: parsedResult,
-    partialOcr: data.partialOcr === true,
   };
 }
 
@@ -547,8 +280,6 @@ const MSG = {
   fallback: "Nepodarilo sa vysvetliť text. Skúste to znova.",
   photoPrepareTimeout:
     "Príprava fotografie trvala príliš dlho. Skúste menší súbor alebo to znova neskôr.",
-  photoFetchTimeout:
-    "Odoslanie alebo spracovanie fotografie trvalo príliš dlho. Skúste to znova neskôr.",
   photoPrepareFailed:
     "Nepodarilo sa pripraviť fotografiu na odoslanie. Skúste iný súbor alebo znížte rozlíšenie.",
   photoGalleryTooLarge:
@@ -568,12 +299,9 @@ const MSG = {
   photoProcessingDoc: "Spracovávam dokument…",
   photoTotalTooLarge:
     "Súčet veľkosti strán po úprave presahuje 4 MB. Odstráňte stranu alebo použite menšie obrázky.",
-  photoPartialOcrNotice:
-    "OCR jednej strany sa nepodarilo úplne spracovať — výsledok môže byť neúplný.",
 } as const;
 
 const PHOTO_PREPARE_TIMEOUT_MS = 55_000;
-const PHOTO_FETCH_TIMEOUT_MS = 115_000;
 
 function messageForPreparePhotoError(err: unknown): string {
   if (err instanceof PrepareDocumentPhotoError) {
@@ -586,58 +314,6 @@ function messageForPreparePhotoError(err: unknown): string {
     return MSG.photoPrepareTimeout;
   }
   return MSG.photoPrepareFailed;
-}
-
-function readApiErrorCode(data: unknown): string | null {
-  if (!isRecord(data) || data.ok !== false) return null;
-  const e = data.error;
-  return typeof e === "string" ? e : null;
-}
-
-/** Slovak UX for /api/smart-talk-photo (and shared OpenAI errors). */
-function messageForPhotoError(errorCode: string | null, httpStatus: number): string {
-  if (errorCode === "invalid_file_type") {
-    return "Nepodporovaný typ súboru. Použite JPG, PNG alebo WebP.";
-  }
-  if (errorCode === "file_too_large") {
-    return "Súbor je príliš veľký. Maximálna veľkosť je 4 MB.";
-  }
-  if (errorCode === "smart_talk_photo_extraction_failed") {
-    return "Nepodarilo sa rozpoznať text na fotografii. Skúste lepšie osvetlenie alebo ostrejšiu snímku.";
-  }
-  if (
-    errorCode === "missing_file" ||
-    errorCode === "missing_files" ||
-    errorCode === "invalid_form_data"
-  ) {
-    return "Vyberte platnú fotografiu dokumentu.";
-  }
-  if (errorCode === "too_many_files") {
-    return "Maximálne 3 strany naraz. Odstráňte prebytočné strany.";
-  }
-  if (errorCode === "total_upload_too_large") {
-    return MSG.photoTotalTooLarge;
-  }
-  if (errorCode === "smart_talk_photo_rate_limited") {
-    return "Príliš veľa fotografií v krátkom čase. Skúste to znova neskôr.";
-  }
-  if (errorCode === "smart_talk_unavailable") {
-    return MSG.unavailable;
-  }
-  if (
-    errorCode === "smart_talk_photo_timeout" ||
-    errorCode === "smart_talk_timeout" ||
-    httpStatus === 504
-  ) {
-    return "Spracovanie fotografie trvalo príliš dlho. Skúste menší súbor alebo to znova neskôr.";
-  }
-  if (httpStatus === 500) {
-    return "Chyba servera pri spracovaní fotografie. Skúste to znova neskôr.";
-  }
-  if (httpStatus === 400) {
-    return "Neplatná požiadavka. Skontrolujte fotografiu.";
-  }
-  return MSG.fallback;
 }
 
 function messageForStatus(status: number): string {
@@ -858,7 +534,6 @@ export default function SmartTalkClient() {
   const [photoPages, setPhotoPages] = useState<SmartTalkPhotoPage[]>([]);
   const [photoPreparing, setPhotoPreparing] = useState(false);
   const [photoPrepareStatus, setPhotoPrepareStatus] = useState<string | null>(null);
-  const [partialOcrNotice, setPartialOcrNotice] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SmartTalkResult | null>(null);
@@ -872,21 +547,6 @@ export default function SmartTalkClient() {
   const [cameraStarting, setCameraStarting] = useState(false);
   const [cameraVideoReady, setCameraVideoReady] = useState(false);
   const [photoInfoLine, setPhotoInfoLine] = useState<string | null>(null);
-  // Phase 8.11C: fully separate state for the internal Real OCR extraction
-  // test button. Never shared with the main `result`/`error`/`loading`
-  // state above, since the real OCR response shape is not a SmartTalkResult
-  // and must never be routed into Smart Talk reasoning/explanation display.
-  const [realOcrLoading, setRealOcrLoading] = useState(false);
-  const [realOcrError, setRealOcrError] = useState<string | null>(null);
-  const [realOcrResult, setRealOcrResult] = useState<RealOcrUiResult | null>(null);
-  // Phase 8.11I: fully separate state for the internal OCR → Smart Talk
-  // handoff envelope test button. Never shared with the main
-  // `result`/`error`/`loading` state above or with the 8.11C real OCR test
-  // state above — Smart Talk reasoning is never invoked by this branch in
-  // 8.11I, so there is no SmartTalkResult to route anywhere.
-  const [ocrHandoffLoading, setOcrHandoffLoading] = useState(false);
-  const [ocrHandoffError, setOcrHandoffError] = useState<string | null>(null);
-  const [ocrHandoffResult, setOcrHandoffResult] = useState<OcrHandoffUiResult | null>(null);
 
   const releaseCameraHardware = useCallback(() => {
     const v = videoRef.current;
@@ -919,7 +579,6 @@ export default function SmartTalkClient() {
       setCameraVideoReady(false);
       setPhotoInfoLine(null);
       setPhotoPages([]);
-      setPartialOcrNotice(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }, [mode, releaseCameraHardware]);
@@ -1072,7 +731,6 @@ export default function SmartTalkClient() {
 
   const removePhotoPage = useCallback((pageId: string) => {
     setPhotoPages((prev) => prev.filter((p) => p.id !== pageId));
-    setPartialOcrNotice(false);
     setPhotoInfoLine(null);
   }, []);
 
@@ -1225,19 +883,10 @@ export default function SmartTalkClient() {
   const photoOverUploadBudget =
     mode === "photo" &&
     photoBytesTotal > SMART_TALK_MAX_PHOTO_UPLOAD_TOTAL_BYTES;
+  const publicModeUnavailable = mode !== "question";
 
   const submitDisabled =
-    loading ||
-    photoPreparing ||
-    cameraStarting ||
-    (mode === "photo"
-      ? photoPages.length === 0 || photoOverUploadBudget
-      : trimmedLen < 8 || trimmedLen > MAX_TEXT_LENGTH);
-
-  // Phase 8.9K: guarded to mode === "text" only — the control is not even
-  // rendered otherwise (see JSX below), so this is a defense-in-depth guard.
-  const controlledTextDocumentModeDisabled =
-    mode !== "text" ||
+    publicModeUnavailable ||
     loading ||
     photoPreparing ||
     cameraStarting ||
@@ -1251,6 +900,7 @@ export default function SmartTalkClient() {
     !photoPreparing;
 
   const photoPickDisabled =
+    publicModeUnavailable ||
     loading ||
     photoPreparing ||
     cameraStarting ||
@@ -1281,11 +931,8 @@ export default function SmartTalkClient() {
   };
 
   const onSubmit = useCallback(async () => {
-    if (mode === "photo") return;
-    // Phase 8.13C-BLOCKER: read only the input state that belongs to the
-    // mode that is about to be submitted — never the other mode's draft.
-    const trimmed =
-      mode === "question" ? questionInput.trim() : textDocumentInput.trim();
+    if (mode !== "question") return;
+    const trimmed = questionInput.trim();
     if (trimmed.length < 8 || trimmed.length > MAX_TEXT_LENGTH || busyRef.current) return;
     const genAtStart = generationRef.current;
     busyRef.current = true;
@@ -1294,15 +941,14 @@ export default function SmartTalkClient() {
     setError(null);
     setResult(null);
 
-    const inputType = mode === "question" ? "question" : "text";
-
     try {
       const res = await fetch("/api/smart-talk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          mode: "free_qa_public_beta",
           context: "anonymous",
-          inputType,
+          inputType: "question",
           locale: "sk",
           text: trimmed,
         }),
@@ -1331,359 +977,7 @@ export default function SmartTalkClient() {
       busyRef.current = false;
       setLoading(false);
     }
-  }, [questionInput, textDocumentInput, mode]);
-
-  // Phase 8.9K: controlled/internal-only Text Document Mode test action.
-  // Fully additive — does not alter onSubmit/onPhotoSubmit or their branching.
-  // Only operates on pasted text (mode === "text"); never wired to photo/file/
-  // image/OCR/upload. No client-side storage, analytics, or console logging
-  // of the document text. Behind a clearly-labeled, non-default, internal
-  // control only (see JSX below) — internal/local test surface only.
-  const handleControlledTextDocumentModeSubmit = useCallback(async () => {
-    if (mode !== "text") return;
-    // Phase 8.13C-BLOCKER: text-document mode reads only its own isolated
-    // input state — never the question-mode draft.
-    const trimmed = textDocumentInput.trim();
-    if (trimmed.length < 8 || trimmed.length > MAX_TEXT_LENGTH || busyRef.current) return;
-    const genAtStart = generationRef.current;
-    busyRef.current = true;
-
-    setLoading(true);
-    setError(null);
-    setResult(null);
-
-    try {
-      const res = await fetch("/api/smart-talk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mode: "text_document_controlled_runtime",
-          context: "anonymous",
-          inputType: "text",
-          locale: "sk",
-          text: trimmed,
-        }),
-      });
-
-      let data: unknown = null;
-      try {
-        data = (await res.json()) as unknown;
-      } catch {
-        data = null;
-      }
-
-      if (genAtStart !== generationRef.current) return;
-
-      const okParsed = parseSmartTalkResponse(data);
-      if (res.ok && okParsed) {
-        setResult(okParsed.result);
-        return;
-      }
-
-      setError(messageForStatus(res.status));
-    } catch {
-      if (genAtStart !== generationRef.current) return;
-      setError(MSG.fallback);
-    } finally {
-      busyRef.current = false;
-      setLoading(false);
-    }
-  }, [textDocumentInput, mode]);
-
-  // Phase 8.10C: controlled/internal-only Photo/OCR placeholder test action.
-  // Fully additive — does not alter onPhotoSubmit or its FormData/upload
-  // flow. Sends ONLY page metadata (mimeType + sizeBytes) to the server;
-  // never sends the actual file bytes, never persists anything client-side,
-  // and never claims OCR is active or that the document was read. The
-  // server-side route branch is the sole authority for enabling this path —
-  // no client-side env flag is used or implied. Internal/local test surface
-  // only.
-  const handleControlledPhotoOcrPlaceholderSubmit = useCallback(async () => {
-    if (mode !== "photo" || photoPages.length === 0 || busyRef.current || photoPreparing) return;
-    const genAtStart = generationRef.current;
-    busyRef.current = true;
-
-    setLoading(true);
-    setError(null);
-    setResult(null);
-
-    try {
-      const res = await fetch("/api/smart-talk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mode: "photo_ocr_controlled_runtime",
-          context: "anonymous",
-          inputType: "photo",
-          locale: "sk",
-          photoPages: photoPages.map((p) => ({
-            mimeType: p.file.type,
-            sizeBytes: p.file.size,
-          })),
-        }),
-      });
-
-      let data: unknown = null;
-      try {
-        data = (await res.json()) as unknown;
-      } catch {
-        data = null;
-      }
-
-      if (genAtStart !== generationRef.current) return;
-
-      const okParsed = parseSmartTalkResponse(data);
-      if (res.ok && okParsed) {
-        setResult(okParsed.result);
-        return;
-      }
-
-      setError(messageForStatus(res.status));
-    } catch {
-      if (genAtStart !== generationRef.current) return;
-      setError(MSG.fallback);
-    } finally {
-      busyRef.current = false;
-      setLoading(false);
-    }
-  }, [mode, photoPages, photoPreparing]);
-
-  // Phase 8.10C: defense-in-depth guard — the control is only rendered when
-  // mode === "photo" (see JSX below), but this mirrors the 8.9K pattern of
-  // also gating the handler/disabled-state on the exact mode.
-  const controlledPhotoOcrPlaceholderDisabled =
-    mode !== "photo" ||
-    loading ||
-    photoPreparing ||
-    cameraStarting ||
-    photoPages.length === 0;
-
-  // Phase 8.11C: controlled/internal-only Real OCR extraction test action.
-  // Fully additive — separate from the 8.10C Photo/OCR placeholder test
-  // above and from onPhotoSubmit's own upload flow. Performs REAL, local,
-  // server-side OCR extraction (behind its own dedicated server-side env
-  // flag) on a single selected image via a dedicated multipart request. The
-  // returned extracted text is never auto-filled into text mode, never
-  // passed into the existing explanation flow, and never persisted
-  // client-side (no localStorage/sessionStorage, no console logging of the
-  // extracted text). No client-side env flag is used or implied — the
-  // server-side route branch is the sole authority for enabling real OCR.
-  // Internal/local test surface only; selecting the photo tab or choosing an
-  // image never runs OCR by itself — this requires an explicit click.
-  const handleRealOcrExtractionSubmit = useCallback(async () => {
-    if (
-      mode !== "photo" ||
-      photoPages.length !== 1 ||
-      realOcrLoading ||
-      photoPreparing ||
-      busyRef.current
-    )
-      return;
-
-    setRealOcrLoading(true);
-    setRealOcrError(null);
-    setRealOcrResult(null);
-
-    try {
-      const fd = new FormData();
-      fd.append("mode", "photo_ocr_real_extraction_controlled_runtime");
-      fd.append("image", photoPages[0].file);
-      fd.append("pageCount", "1");
-
-      const res = await fetch("/api/smart-talk", {
-        method: "POST",
-        body: fd,
-      });
-
-      let data: unknown = null;
-      try {
-        data = (await res.json()) as unknown;
-      } catch {
-        data = null;
-      }
-
-      const parsed = parseRealOcrResponse(data);
-      if (parsed) {
-        setRealOcrResult(parsed);
-        if (!parsed.ok) {
-          setRealOcrError(messageForRealOcrCode(parsed.code));
-        }
-        return;
-      }
-
-      setRealOcrError(MSG.fallback);
-    } catch {
-      setRealOcrError(MSG.fallback);
-    } finally {
-      setRealOcrLoading(false);
-    }
-  }, [mode, photoPages, realOcrLoading, photoPreparing]);
-
-  // Defense-in-depth guard mirroring controlledPhotoOcrPlaceholderDisabled:
-  // requires exactly one selected image/page and is only ever rendered when
-  // mode === "photo" (see JSX below).
-  const realOcrExtractionDisabled =
-    mode !== "photo" ||
-    realOcrLoading ||
-    photoPreparing ||
-    cameraStarting ||
-    photoPages.length !== 1;
-
-  // Phase 8.11I: controlled/internal-only OCR → Smart Talk handoff envelope
-  // test action. Fully additive — separate from the 8.11C Real OCR
-  // extraction test above and from onPhotoSubmit's own upload flow. Calls
-  // the new mode "photo_ocr_real_extraction_to_smart_talk_controlled_
-  // handoff" via a dedicated multipart request. The returned extracted text
-  // is never auto-filled into text mode, never passed into the existing
-  // explanation flow (except via the explicit, server-authorized
-  // `smartTalkResult` path added in 8.11P below), and never persisted
-  // client-side (no localStorage/sessionStorage, no console logging of the
-  // extracted text). No client-side env flag is used or implied — the
-  // server-side route branch is the sole authority for enabling this
-  // handoff envelope and, separately, for enabling reasoning. Internal/
-  // local test surface only; selecting the photo tab or choosing an image
-  // never triggers this by itself — this requires an explicit click.
-  //
-  // Phase 8.11P: this one handler now takes an explicit `operation`
-  // argument instead of being duplicated. `"envelope_only"` sends exactly
-  // the same request as 8.11I/8.11K (no `operation` field at all — the
-  // existing internal test button below is unchanged). `"controlled_
-  // reasoning"` additionally sends `operation="controlled_reasoning"`,
-  // which only SELECTS this internal intent server-side — it can never
-  // authorize reasoning by itself (see route.ts's own 8.11M contract);
-  // authorization remains exclusively the three exact server-side env
-  // flags. Both operations share the same loading/error/result state, so
-  // the pending state disables both buttons at once (see ocrHandoffDisabled
-  // below) and a second click cannot fire while a request is in flight.
-  const handleOcrToSmartTalkHandoffSubmit = useCallback(
-    async (operation: "envelope_only" | "controlled_reasoning") => {
-      if (
-        mode !== "photo" ||
-        photoPages.length !== 1 ||
-        ocrHandoffLoading ||
-        photoPreparing ||
-        busyRef.current
-      )
-        return;
-
-      setOcrHandoffLoading(true);
-      setOcrHandoffError(null);
-      setOcrHandoffResult(null);
-
-      try {
-        const fd = new FormData();
-        fd.append("mode", "photo_ocr_real_extraction_to_smart_talk_controlled_handoff");
-        fd.append("image", photoPages[0].file);
-        fd.append("pageCount", "1");
-        if (operation === "controlled_reasoning") {
-          fd.append("operation", "controlled_reasoning");
-        }
-
-        const res = await fetch("/api/smart-talk", {
-          method: "POST",
-          body: fd,
-        });
-
-        let data: unknown = null;
-        try {
-          data = (await res.json()) as unknown;
-        } catch {
-          data = null;
-        }
-
-        const parsed = parseOcrHandoffResponse(data);
-        if (parsed) {
-          setOcrHandoffResult(parsed);
-          if (!parsed.ok) {
-            setOcrHandoffError(messageForOcrHandoffCode(parsed.code));
-          }
-          return;
-        }
-
-        setOcrHandoffError(MSG.fallback);
-      } catch {
-        setOcrHandoffError(MSG.fallback);
-      } finally {
-        setOcrHandoffLoading(false);
-      }
-    },
-    [mode, photoPages, ocrHandoffLoading, photoPreparing],
-  );
-
-  // Defense-in-depth guard mirroring realOcrExtractionDisabled: requires
-  // exactly one selected image/page and is only ever rendered when
-  // mode === "photo" (see JSX below).
-  const ocrHandoffDisabled =
-    mode !== "photo" ||
-    ocrHandoffLoading ||
-    photoPreparing ||
-    cameraStarting ||
-    photoPages.length !== 1;
-
-  const onPhotoSubmit = useCallback(async () => {
-    if (
-      photoPages.length === 0 ||
-      busyRef.current ||
-      photoPreparing ||
-      sumPhotoPageBytes(photoPages) > SMART_TALK_MAX_PHOTO_UPLOAD_TOTAL_BYTES
-    )
-      return;
-    const genAtStart = generationRef.current;
-    busyRef.current = true;
-
-    setLoading(true);
-    setError(null);
-    setResult(null);
-    setPartialOcrNotice(false);
-    setPhotoInfoLine(null);
-
-    const ac = new AbortController();
-    const fetchTimeoutId = setTimeout(() => ac.abort(), PHOTO_FETCH_TIMEOUT_MS);
-
-    try {
-      const fd = new FormData();
-      for (const p of photoPages) {
-        fd.append("files", p.file);
-      }
-      fd.append("context", "anonymous");
-      fd.append("locale", "sk");
-
-      const res = await fetch("/api/smart-talk-photo", {
-        method: "POST",
-        body: fd,
-        signal: ac.signal,
-      });
-
-      let data: unknown = null;
-      try {
-        data = (await res.json()) as unknown;
-      } catch {
-        data = null;
-      }
-
-      if (genAtStart !== generationRef.current) return;
-
-      const okParsed = parseSmartTalkResponse(data);
-      if (res.ok && okParsed) {
-        setResult(okParsed.result);
-        setPartialOcrNotice(okParsed.partialOcr === true);
-        return;
-      }
-
-      setError(messageForPhotoError(readApiErrorCode(data), res.status));
-    } catch (err) {
-      if (genAtStart !== generationRef.current) return;
-      if (err instanceof DOMException && err.name === "AbortError") {
-        setError(MSG.photoFetchTimeout);
-        return;
-      }
-      setError(MSG.fallback);
-    } finally {
-      clearTimeout(fetchTimeoutId);
-      busyRef.current = false;
-      setLoading(false);
-    }
-  }, [photoPages, photoPreparing]);
+  }, [questionInput, mode]);
 
   const modeChip = (m: SmartTalkUiMode, label: string) => {
     const selected = mode === m;
@@ -1737,6 +1031,11 @@ export default function SmartTalkClient() {
             {GUIDANCE_PRIMARY[mode]}
           </p>
         ) : null}
+        {publicModeUnavailable ? (
+          <p role="status" style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: "var(--muted)" }}>
+            Táto možnosť je momentálne nedostupná. Zatiaľ môžete použiť režim Opýtať sa.
+          </p>
+        ) : null}
         {lengthGuardActive ? (
           <p style={{ margin: 0, fontSize: 12, lineHeight: 1.45, color: "var(--muted2)" }}>
             Limit: maximálne 12 000 znakov.
@@ -1788,6 +1087,7 @@ export default function SmartTalkClient() {
                 type="button"
                 onClick={() => void openCamera()}
                 disabled={
+                  publicModeUnavailable ||
                   loading ||
                   photoPreparing ||
                   cameraStarting ||
@@ -1798,6 +1098,7 @@ export default function SmartTalkClient() {
                   ...photoLabelStyle,
                   border: "1px solid var(--accentBorder)",
                   cursor:
+                    publicModeUnavailable ||
                     loading ||
                     photoPreparing ||
                     cameraStarting ||
@@ -1806,6 +1107,7 @@ export default function SmartTalkClient() {
                       ? "not-allowed"
                       : "pointer",
                   opacity:
+                    publicModeUnavailable ||
                     loading ||
                     photoPreparing ||
                     cameraStarting ||
@@ -1895,11 +1197,14 @@ export default function SmartTalkClient() {
                 <button
                   type="button"
                   onClick={cancelCamera}
-                  disabled={loading || photoPreparing}
+                  disabled={publicModeUnavailable || loading || photoPreparing}
                   style={{
                     ...photoSecondaryBtnStyle,
-                    opacity: loading || photoPreparing ? 0.55 : 1,
-                    cursor: loading || photoPreparing ? "not-allowed" : "pointer",
+                    opacity: publicModeUnavailable || loading || photoPreparing ? 0.55 : 1,
+                    cursor:
+                      publicModeUnavailable || loading || photoPreparing
+                        ? "not-allowed"
+                        : "pointer",
                   }}
                 >
                   Zrušiť
@@ -1908,6 +1213,7 @@ export default function SmartTalkClient() {
                   type="button"
                   onClick={() => void captureFromCamera()}
                   disabled={
+                    publicModeUnavailable ||
                     loading ||
                     photoPreparing ||
                     !cameraVideoReady ||
@@ -1916,6 +1222,7 @@ export default function SmartTalkClient() {
                   style={{
                     ...photoLabelStyle,
                     opacity:
+                      publicModeUnavailable ||
                       loading ||
                       photoPreparing ||
                       !cameraVideoReady ||
@@ -1923,6 +1230,7 @@ export default function SmartTalkClient() {
                         ? 0.55
                         : 1,
                     cursor:
+                      publicModeUnavailable ||
                       loading ||
                       photoPreparing ||
                       !cameraVideoReady ||
@@ -1969,7 +1277,7 @@ export default function SmartTalkClient() {
               }}
               placeholder={PLACEHOLDER[mode]}
               className="w-full resize-y rounded-[var(--r12)] border border-[var(--border)] bg-[var(--bg0)] px-3 py-3 text-[15px] leading-relaxed text-[var(--text)] outline-none placeholder:text-[var(--muted2)] focus:border-[color:rgba(199,210,254,1)] focus:shadow-[0_0_0_3px_rgba(199,210,254,0.45)] min-h-[168px]"
-              disabled={loading}
+              disabled={loading || publicModeUnavailable}
             />
           </>
         )}
@@ -2006,8 +1314,7 @@ export default function SmartTalkClient() {
       <button
         type="button"
         onClick={() => {
-          if (mode === "photo") void onPhotoSubmit();
-          else void onSubmit();
+          if (mode === "question") void onSubmit();
         }}
         disabled={submitDisabled}
         aria-busy={loading || photoPreparing || cameraStarting}
@@ -2028,338 +1335,6 @@ export default function SmartTalkClient() {
       >
         {SUBMIT_LABEL[mode]}
       </button>
-
-      {mode === "text" ? (
-        <div style={{ display: "grid", gap: 6, marginTop: -4 }}>
-          <button
-            type="button"
-            onClick={() => void handleControlledTextDocumentModeSubmit()}
-            disabled={controlledTextDocumentModeDisabled}
-            aria-busy={loading}
-            style={{
-              width: "100%",
-              height: 40,
-              borderRadius: "var(--r999)",
-              border: "1px dashed rgba(148, 163, 184, 0.6)",
-              background: "rgba(248, 250, 252, 1)",
-              color: "var(--muted)",
-              fontWeight: 700,
-              fontSize: 13,
-              cursor: controlledTextDocumentModeDisabled ? "not-allowed" : "pointer",
-              opacity: controlledTextDocumentModeDisabled ? 0.55 : 1,
-            }}
-          >
-            Interný test: Text Document Mode
-          </button>
-          <p
-            style={{
-              margin: 0,
-              fontSize: 11,
-              lineHeight: 1.4,
-              color: "var(--muted2)",
-              textAlign: "center",
-            }}
-          >
-            Len interný test — kontrolovaný lokálne, nie verejná funkcia.
-          </p>
-        </div>
-      ) : null}
-
-      {mode === "photo" ? (
-        <div style={{ display: "grid", gap: 6, marginTop: -4 }}>
-          <button
-            type="button"
-            onClick={() => void handleControlledPhotoOcrPlaceholderSubmit()}
-            disabled={controlledPhotoOcrPlaceholderDisabled}
-            aria-busy={loading}
-            style={{
-              width: "100%",
-              height: 40,
-              borderRadius: "var(--r999)",
-              border: "1px dashed rgba(148, 163, 184, 0.6)",
-              background: "rgba(248, 250, 252, 1)",
-              color: "var(--muted)",
-              fontWeight: 700,
-              fontSize: 13,
-              cursor: controlledPhotoOcrPlaceholderDisabled ? "not-allowed" : "pointer",
-              opacity: controlledPhotoOcrPlaceholderDisabled ? 0.55 : 1,
-            }}
-          >
-            Interný test: Photo/OCR placeholder
-          </button>
-          <p
-            style={{
-              margin: 0,
-              fontSize: 11,
-              lineHeight: 1.4,
-              color: "var(--muted2)",
-              textAlign: "center",
-            }}
-          >
-            Len interný test — OCR zatiaľ nie je aktívne.
-          </p>
-
-          <button
-            type="button"
-            onClick={() => void handleRealOcrExtractionSubmit()}
-            disabled={realOcrExtractionDisabled}
-            aria-busy={realOcrLoading}
-            style={{
-              width: "100%",
-              height: 40,
-              borderRadius: "var(--r999)",
-              border: "1px dashed rgba(148, 163, 184, 0.6)",
-              background: "rgba(248, 250, 252, 1)",
-              color: "var(--muted)",
-              fontWeight: 700,
-              fontSize: 13,
-              cursor: realOcrExtractionDisabled ? "not-allowed" : "pointer",
-              opacity: realOcrExtractionDisabled ? 0.55 : 1,
-            }}
-          >
-            Interný test: Real OCR extraction
-          </button>
-          <p
-            style={{
-              margin: 0,
-              fontSize: 11,
-              lineHeight: 1.4,
-              color: "var(--muted2)",
-              textAlign: "center",
-            }}
-          >
-            Len interný test — vyžaduje presne jednu vybranú stranu. Obrázok ani text sa
-            neukladajú. Nie je to právne poradenstvo.
-          </p>
-
-          {realOcrLoading || realOcrError || realOcrResult ? (
-            <div
-              aria-live="polite"
-              style={{
-                marginTop: 4,
-                padding: "12px 14px",
-                borderRadius: "var(--r12)",
-                border: realOcrError
-                  ? "1px solid rgba(248, 113, 113, 0.45)"
-                  : "1px solid rgba(226, 232, 240, 1)",
-                background: realOcrError ? "rgba(254, 242, 242, 1)" : "rgba(248, 250, 252, 1)",
-                fontSize: 12,
-                lineHeight: 1.5,
-                color: "var(--muted)",
-                display: "grid",
-                gap: 6,
-              }}
-            >
-              {realOcrLoading ? (
-                <p style={{ margin: 0 }}>Prebieha interný test rozpoznávania textu (real OCR)…</p>
-              ) : realOcrError ? (
-                <p style={{ margin: 0, color: "rgba(127, 29, 29, 0.92)" }}>{realOcrError}</p>
-              ) : realOcrResult && realOcrResult.ok ? (
-                <>
-                  <p style={{ margin: 0, fontWeight: 700, color: "var(--text)" }}>
-                    Real OCR extrakcia dokončená (interný test).
-                  </p>
-                  <p style={{ margin: 0 }}>
-                    Dĺžka rozpoznaného textu: {realOcrResult.extractedTextLength ?? 0} znakov.
-                  </p>
-                  {realOcrResult.extractedTextPreview ? (
-                    <p style={{ margin: 0, fontStyle: "italic" }}>
-                      Náhľad: „{realOcrResult.extractedTextPreview}“
-                    </p>
-                  ) : null}
-                  <p style={{ margin: 0 }}>Kvalita: {realOcrResult.qualityStatus ?? "unknown"}</p>
-                  {realOcrResult.downgradeReasons && realOcrResult.downgradeReasons.length > 0 ? (
-                    <p style={{ margin: 0 }}>
-                      Upozornenia kvality: {realOcrResult.downgradeReasons.join(", ")}
-                    </p>
-                  ) : null}
-                  <p style={{ margin: 0 }}>
-                    OCR môže obsahovať chyby a nejde o právne poradenstvo. Vždy skontrolujte
-                    originálny dokument. Obrázok ani text sa štandardne neukladajú.
-                  </p>
-                </>
-              ) : realOcrResult ? (
-                <>
-                  <p style={{ margin: 0, fontWeight: 700, color: "var(--text)" }}>
-                    Real OCR extrakcia zlyhala (interný test).
-                  </p>
-                  {realOcrResult.blockingReasons && realOcrResult.blockingReasons.length > 0 ? (
-                    <p style={{ margin: 0 }}>
-                      Dôvody: {realOcrResult.blockingReasons.join(", ")}
-                    </p>
-                  ) : null}
-                </>
-              ) : null}
-            </div>
-          ) : null}
-
-          <button
-            type="button"
-            onClick={() => void handleOcrToSmartTalkHandoffSubmit("envelope_only")}
-            disabled={ocrHandoffDisabled}
-            aria-busy={ocrHandoffLoading}
-            style={{
-              width: "100%",
-              height: 40,
-              borderRadius: "var(--r999)",
-              border: "1px dashed rgba(148, 163, 184, 0.6)",
-              background: "rgba(248, 250, 252, 1)",
-              color: "var(--muted)",
-              fontWeight: 700,
-              fontSize: 13,
-              cursor: ocrHandoffDisabled ? "not-allowed" : "pointer",
-              opacity: ocrHandoffDisabled ? 0.55 : 1,
-            }}
-          >
-            Interný test: OCR → Smart Talk
-          </button>
-          <p
-            style={{
-              margin: 0,
-              fontSize: 11,
-              lineHeight: 1.4,
-              color: "var(--muted2)",
-              textAlign: "center",
-            }}
-          >
-            Len interný test — vyžaduje presne jednu vybranú stranu. Smart Talk odpoveď sa v
-            tejto fáze ešte nevytvára, iba sa pripraví odovzdanie textu.
-          </p>
-
-          {/* Phase 8.11P: separate internal-only button that explicitly
-              requests controlled reasoning (operation="controlled_reasoning").
-              Shares handleOcrToSmartTalkHandoffSubmit and ocrHandoffDisabled/
-              ocrHandoffLoading with the envelope-only button above, so a
-              pending request disables both and a second click cannot fire.
-              Server-side env gates remain the sole authority — this button
-              only selects intent and never authorizes reasoning itself. */}
-          <button
-            type="button"
-            onClick={() => void handleOcrToSmartTalkHandoffSubmit("controlled_reasoning")}
-            disabled={ocrHandoffDisabled}
-            aria-busy={ocrHandoffLoading}
-            style={{
-              width: "100%",
-              height: 40,
-              borderRadius: "var(--r999)",
-              border: "1px dashed rgba(148, 163, 184, 0.6)",
-              background: "rgba(248, 250, 252, 1)",
-              color: "var(--muted)",
-              fontWeight: 700,
-              fontSize: 13,
-              cursor: ocrHandoffDisabled ? "not-allowed" : "pointer",
-              opacity: ocrHandoffDisabled ? 0.55 : 1,
-            }}
-          >
-            Interný test: OCR → Smart Talk vysvetlenie
-          </button>
-          <p
-            style={{
-              margin: 0,
-              fontSize: 11,
-              lineHeight: 1.4,
-              color: "var(--muted2)",
-              textAlign: "center",
-            }}
-          >
-            Len interný test riadeného vysvetlenia — vyžaduje presne jednu vybranú stranu.
-            Vyžaduje explicitné kliknutie a server-side povolenie; bez neho vráti chybu.
-          </p>
-
-          {ocrHandoffLoading || ocrHandoffError || ocrHandoffResult ? (
-            <div
-              aria-live="polite"
-              style={{
-                marginTop: 4,
-                padding: "12px 14px",
-                borderRadius: "var(--r12)",
-                border: ocrHandoffError
-                  ? "1px solid rgba(248, 113, 113, 0.45)"
-                  : "1px solid rgba(226, 232, 240, 1)",
-                background: ocrHandoffError ? "rgba(254, 242, 242, 1)" : "rgba(248, 250, 252, 1)",
-                fontSize: 12,
-                lineHeight: 1.5,
-                color: "var(--muted)",
-                display: "grid",
-                gap: 6,
-              }}
-            >
-              {ocrHandoffLoading ? (
-                <p style={{ margin: 0 }}>Prebieha interný test odovzdania OCR textu do Smart Talk…</p>
-              ) : ocrHandoffError ? (
-                <p style={{ margin: 0, color: "rgba(127, 29, 29, 0.92)" }}>{ocrHandoffError}</p>
-              ) : ocrHandoffResult && ocrHandoffResult.ok ? (
-                <>
-                  <p style={{ margin: 0, fontWeight: 700, color: "var(--text)" }}>
-                    Odovzdanie OCR textu pripravené (interný test).
-                  </p>
-                  <p style={{ margin: 0 }}>
-                    Stav odovzdania: {ocrHandoffResult.handoffAllowed ? "pripravené" : "zablokované"}
-                    {" · "}
-                    Smart Talk odpoveď vytvorená: {ocrHandoffResult.handoffPerformed ? "áno" : "nie"}.
-                  </p>
-                  {ocrHandoffResult.handoffReason ? (
-                    <p style={{ margin: 0 }}>Dôvod: {ocrHandoffResult.handoffReason}</p>
-                  ) : null}
-                  <p style={{ margin: 0 }}>Kvalita: {ocrHandoffResult.qualityStatus ?? "unknown"}</p>
-                  <p style={{ margin: 0 }}>
-                    Dĺžka rozpoznaného textu: {ocrHandoffResult.extractedTextLength ?? 0} znakov.
-                  </p>
-                  {ocrHandoffResult.extractedTextPreview ? (
-                    <p style={{ margin: 0, fontStyle: "italic" }}>
-                      Náhľad: „{ocrHandoffResult.extractedTextPreview}“
-                    </p>
-                  ) : null}
-                  {ocrHandoffResult.highRiskTokensDetected &&
-                  ocrHandoffResult.highRiskTokensDetected.length > 0 ? (
-                    <p style={{ margin: 0 }}>
-                      Citlivý/rizikový obsah zistený: {ocrHandoffResult.highRiskTokensDetected.join(", ")}
-                    </p>
-                  ) : null}
-                  {ocrHandoffResult.warnings && ocrHandoffResult.warnings.length > 0 ? (
-                    <ul style={{ margin: 0, paddingLeft: 18 }}>
-                      {ocrHandoffResult.warnings.map((w, i) => (
-                        <li key={i}>{w}</li>
-                      ))}
-                    </ul>
-                  ) : null}
-
-                  {ocrHandoffResult.smartTalkResult ? (
-                    <div style={{ marginTop: 6, display: "grid", gap: 10 }}>
-                      <p style={{ margin: 0, fontWeight: 700, color: "var(--text)" }}>
-                        Smart Talk vysvetlenie (interný test riadeného vysvetlenia):
-                      </p>
-                      {renderSmartTalkResultCards(ocrHandoffResult.smartTalkResult)}
-                      <p style={{ margin: "4px 0 0" }}>
-                        OCR text môže obsahovať chyby — vždy skontrolujte originálny dokument.
-                        Toto nie je právne poradenstvo. Toto je interný kontrolovaný test, nie
-                        produkčná funkcia. Obrázok ani text sa neukladajú.
-                      </p>
-                    </div>
-                  ) : (
-                    <p style={{ margin: 0 }}>
-                      OCR môže obsahovať chyby a nejde o právne poradenstvo. Vždy skontrolujte
-                      originálny dokument. Smart Talk odpoveď sa v tejto fáze (8.11I) ešte
-                      nevytvára. Obrázok ani text sa štandardne neukladajú.
-                    </p>
-                  )}
-                </>
-              ) : ocrHandoffResult ? (
-                <>
-                  <p style={{ margin: 0, fontWeight: 700, color: "var(--text)" }}>
-                    Odovzdanie OCR textu zlyhalo (interný test).
-                  </p>
-                  {ocrHandoffResult.blockingReasons && ocrHandoffResult.blockingReasons.length > 0 ? (
-                    <p style={{ margin: 0 }}>
-                      Dôvody: {ocrHandoffResult.blockingReasons.join(", ")}
-                    </p>
-                  ) : null}
-                </>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
 
       <div
         aria-live="polite"
@@ -2417,19 +1392,6 @@ export default function SmartTalkClient() {
             >
               Tu je vaša analýza. Takto situáciu vyhodnotilo Vaylo:
             </p>
-            {partialOcrNotice ? (
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: 13,
-                  lineHeight: 1.55,
-                  color: "var(--muted)",
-                }}
-              >
-                {MSG.photoPartialOcrNotice}
-              </p>
-            ) : null}
-
             {renderSmartTalkResultCards(result)}
 
             {process.env.NODE_ENV === "development" ? (

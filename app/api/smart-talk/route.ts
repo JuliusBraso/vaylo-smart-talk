@@ -6,7 +6,6 @@ import {
 } from "@/lib/api/safe-error-response";
 import { runSmartTalk } from "@/lib/vaylo/smart-talk/run-smart-talk";
 import type {
-  SmartTalkInputType,
   SmartTalkLocale,
 } from "@/lib/vaylo/smart-talk/build-smart-talk-prompt";
 import { runRuntimeGuardedDelivery } from "@/lib/vaylo/smart-talk/reality-matrix/run-runtime-guarded-delivery";
@@ -36,10 +35,6 @@ import {
   validateFirstContactPresentation,
 } from "@/lib/vaylo/smart-talk/first-contact/build-first-contact-presentation";
 
-function isSmartTalkInputType(v: unknown): v is SmartTalkInputType {
-  return v === "text" || v === "question";
-}
-
 export const runtime = "nodejs";
 
 const MAX_TEXT = 12_000;
@@ -62,6 +57,9 @@ const PHOTO_OCR_MAX_RAW_BYTES_PER_PAGE = 8 * 1024 * 1024;
 const PHOTO_OCR_MAX_PROCESSED_BYTES_TOTAL = 4 * 1024 * 1024;
 const FIRST_CONTACT_CONTROLLED_RUNTIME_MODE = "first_contact_controlled_runtime";
 const FIRST_CONTACT_MODE_ENV_FLAG = "SMART_TALK_FIRST_CONTACT_MODE_ENABLED";
+const CONTROLLED_TEXT_PILOT_INTERNAL_RUNTIME_MODE = "controlled_text_pilot_guarded";
+const CONTROLLED_LIVE_TEXT_INTERNAL_RUNTIME_MODE = "controlled_live_text_guarded";
+const SYNTHETIC_E2E_INTERNAL_RUNTIME_MODE = "synthetic_e2e_guarded";
 
 // Phase 8.11C — Real OCR Extraction Controlled Runtime (separate from the
 // 8.10C placeholder above). Disabled by default; this dedicated env flag is
@@ -164,6 +162,49 @@ const OCR_CONTROLLED_REASONING_BASE_WARNINGS = [
   "Check the original document.",
   "This is not legal advice.",
 ] as const;
+
+const PUBLIC_RUNTIME_MODES = new Set([
+  FREE_QA_PUBLIC_BETA_MODE,
+  TEXT_DOCUMENT_CONTROLLED_RUNTIME_MODE,
+  PHOTO_OCR_CONTROLLED_RUNTIME_MODE,
+  REAL_OCR_CONTROLLED_RUNTIME_MODE,
+  OCR_TO_SMART_TALK_HANDOFF_CONTROLLED_RUNTIME_MODE,
+  FIRST_CONTACT_CONTROLLED_RUNTIME_MODE,
+]);
+
+const CONTAINED_PUBLIC_RUNTIME_MODES = new Set([
+  TEXT_DOCUMENT_CONTROLLED_RUNTIME_MODE,
+  PHOTO_OCR_CONTROLLED_RUNTIME_MODE,
+  REAL_OCR_CONTROLLED_RUNTIME_MODE,
+  OCR_TO_SMART_TALK_HANDOFF_CONTROLLED_RUNTIME_MODE,
+  FIRST_CONTACT_CONTROLLED_RUNTIME_MODE,
+]);
+
+const INTERNAL_RUNTIME_MODES = new Set([
+  FREE_QA_INTERNAL_RUNTIME_MODE,
+  CONTROLLED_TEXT_PILOT_INTERNAL_RUNTIME_MODE,
+  CONTROLLED_LIVE_TEXT_INTERNAL_RUNTIME_MODE,
+  SYNTHETIC_E2E_INTERNAL_RUNTIME_MODE,
+]);
+
+function hasOwnField(record: Record<string, unknown>, field: string): boolean {
+  return Object.prototype.hasOwnProperty.call(record, field);
+}
+
+function routingRejected(code: string, status = 400): ReturnType<typeof NextResponse.json> {
+  return NextResponse.json({ ok: false, code }, { status });
+}
+
+function containedRuntimeUnavailable(): ReturnType<typeof NextResponse.json> {
+  return NextResponse.json(
+    {
+      ok: false,
+      code: "smart_talk_mode_unavailable",
+      message: "This Smart Talk mode is currently unavailable.",
+    },
+    { status: 503 },
+  );
+}
 
 function hasLetter(s: string): boolean {
   return /[\p{L}\p{M}]/u.test(s);
@@ -787,6 +828,8 @@ function evaluateRealOcrQuality(
  * affected — this function is additive and self-contained, and its own
  * behavior, response shapes, and env-gate-first ordering are unchanged.
  */
+// Retained implementation; the dispatch firewall intentionally makes it unreachable.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function handleRealOcrExtractionRequest(
   req: Request,
 ): Promise<ReturnType<typeof NextResponse.json>> {
@@ -1037,6 +1080,8 @@ function ocrToSmartTalkHandoffBlockedResponse(
  * self-contained; does not alter handleRealOcrExtractionRequest's own
  * behavior or response shape.
  */
+// Retained implementation; the dispatch firewall intentionally makes it unreachable.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function handleOcrToSmartTalkHandoffRequest(
   req: Request,
 ): Promise<ReturnType<typeof NextResponse.json>> {
@@ -1554,37 +1599,41 @@ async function handleOcrControlledReasoningRequest(
 // ── End Phase 8.11M Minimal OCR-to-Smart-Talk Controlled Reasoning Runtime
 // Patch helpers ──────────────────────────────────────────────────────────
 
-/**
- * Shared multipart/form-data entry point (Phase 8.11I). Peeks the `mode`
- * form field from a *cloned* request (leaving the original request body
- * unconsumed) to decide which branch should handle the request, then
- * dispatches to either the new OCR-to-Smart-Talk handoff branch or the
- * existing (unmodified) 8.11C real OCR extraction branch — each of which
- * independently parses the original, still-unconsumed request body itself,
- * exactly as before this dispatcher existed. This replaces the previous
- * direct call from POST to handleRealOcrExtractionRequest(req) — that
- * function's own behavior, response shapes, and env-gate-first ordering are
- * otherwise completely unchanged.
- */
+/** Validates multipart routing exactly once. Controlled OCR entry paths are contained. */
 async function handleMultipartSmartTalkRequest(
   req: Request,
 ): Promise<ReturnType<typeof NextResponse.json>> {
-  let peekedMode: unknown = null;
+  let form: FormData;
   try {
-    const peekForm = await req.clone().formData();
-    peekedMode = peekForm.get("mode");
+    form = await req.formData();
   } catch {
-    // Malformed multipart body — fall through to the real OCR branch below,
-    // whose own req.formData() call on the (still-unconsumed) original
-    // request will surface the same real_ocr_invalid_content_type failure
-    // mode as before this dispatcher existed.
+    return routingRejected("invalid_multipart_body");
   }
 
-  if (peekedMode === OCR_TO_SMART_TALK_HANDOFF_CONTROLLED_RUNTIME_MODE) {
-    return handleOcrToSmartTalkHandoffRequest(req);
+  if (
+    form.has("internalRuntimeMode") ||
+    form.has("internalRuntimeGuard") ||
+    form.has("internalFreeQaTestEnabled")
+  ) {
+    return routingRejected("public_internal_marker_conflict");
   }
 
-  return handleRealOcrExtractionRequest(req);
+  const modes = form.getAll("mode");
+  if (modes.length !== 1) {
+    return routingRejected("invalid_mode");
+  }
+  const mode = modes[0];
+  if (typeof mode !== "string" || mode.trim() === "" || mode !== mode.trim()) {
+    return routingRejected("invalid_mode");
+  }
+  if (!PUBLIC_RUNTIME_MODES.has(mode)) {
+    return routingRejected("unknown_mode");
+  }
+  if (CONTAINED_PUBLIC_RUNTIME_MODES.has(mode)) {
+    return containedRuntimeUnavailable();
+  }
+
+  return routingRejected("invalid_content_type", 415);
 }
 // ── End Phase 8.11I Minimal OCR-to-Smart-Talk Handoff Runtime Patch helpers ─
 
@@ -1594,17 +1643,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "smart_talk_rate_limited" }, { status: 429 });
   }
 
-  // ── Phase 8.11C — Real OCR Extraction Controlled Runtime dispatch ──────────
-  // This is the only branch that accepts multipart/form-data; every other
-  // existing mode (question/text, Free Q&A, Text Document Mode, Photo/OCR
-  // placeholder) continues to send/receive JSON exactly as before and is
-  // completely unaffected by this dispatch check.
+  // Multipart requests are parsed once by the containment dispatcher.
+  // No multipart mode reaches OCR extraction, handoff, reasoning, or a model.
   const requestContentType = req.headers.get("content-type") || "";
   if (requestContentType.toLowerCase().startsWith("multipart/form-data")) {
     return handleMultipartSmartTalkRequest(req);
   }
-  // ── End Phase 8.11C dispatch ────────────────────────────────────────────────
-
   let body: unknown;
   try {
     body = await req.json();
@@ -1612,11 +1656,59 @@ export async function POST(req: Request) {
     return badRequest("invalid_json");
   }
 
-  if (!body || typeof body !== "object") {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
     return badRequest("invalid_body");
   }
 
   const o = body as Record<string, unknown>;
+
+  const modePresent = hasOwnField(o, "mode");
+  const internalModePresent = hasOwnField(o, "internalRuntimeMode");
+  const internalGuardPresent = hasOwnField(o, "internalRuntimeGuard");
+  const internalFreeQaTestPresent = hasOwnField(o, "internalFreeQaTestEnabled");
+
+  if (modePresent && internalModePresent) {
+    return routingRejected("conflicting_routing_selectors");
+  }
+  if (modePresent && (internalGuardPresent || internalFreeQaTestPresent)) {
+    return routingRejected("public_internal_marker_conflict");
+  }
+  if (!modePresent && !internalModePresent) {
+    return routingRejected(
+      internalGuardPresent || internalFreeQaTestPresent
+        ? "internal_runtime_mode_required"
+        : "routing_selector_required",
+    );
+  }
+
+  if (modePresent) {
+    if (typeof o.mode !== "string" || o.mode.trim() === "" || o.mode !== o.mode.trim()) {
+      return routingRejected("invalid_mode");
+    }
+    if (!PUBLIC_RUNTIME_MODES.has(o.mode)) {
+      return routingRejected("unknown_mode");
+    }
+    if (CONTAINED_PUBLIC_RUNTIME_MODES.has(o.mode)) {
+      return containedRuntimeUnavailable();
+    }
+  } else {
+    if (
+      typeof o.internalRuntimeMode !== "string" ||
+      o.internalRuntimeMode.trim() === "" ||
+      o.internalRuntimeMode !== o.internalRuntimeMode.trim()
+    ) {
+      return routingRejected("invalid_internal_runtime_mode");
+    }
+    if (!INTERNAL_RUNTIME_MODES.has(o.internalRuntimeMode)) {
+      return routingRejected("unknown_internal_runtime_mode");
+    }
+    if (
+      internalFreeQaTestPresent &&
+      o.internalRuntimeMode !== FREE_QA_INTERNAL_RUNTIME_MODE
+    ) {
+      return routingRejected("internal_marker_mode_mismatch");
+    }
+  }
 
   // ── Phase 8.11C — Real OCR mode requested via non-multipart JSON body ─────
   // The real OCR extraction branch requires multipart/form-data (handled
@@ -2237,11 +2329,7 @@ export async function POST(req: Request) {
 
   // ── Phase 8.8M — Actual minimal scoped runtime patch (internal-only Free Q&A) ──
   // Strictly fail-closed. Disabled by default for public requests.
-  const freeQaModeRequested =
-    o.internalRuntimeMode === FREE_QA_INTERNAL_RUNTIME_MODE ||
-    o.internalRuntimeGuard === FREE_QA_INTERNAL_RUNTIME_GUARD ||
-    o.internalFreeQaTestEnabled !== undefined;
-  if (freeQaModeRequested) {
+  if (o.internalRuntimeMode === FREE_QA_INTERNAL_RUNTIME_MODE) {
     const l = runFreeQaScopedRuntimePatchAuthorizationDecision();
     const eightEightLAuthorizationConfirmed =
       l.checkId === "8.8L" &&
@@ -2455,7 +2543,7 @@ export async function POST(req: Request) {
   // Fail-closed: any guard failure returns an opaque rejection with no raw content.
   // Does not call live LLM, does not persist, does not emit user-visible output.
   // Governance chain connection comes in 8.2K-3.
-  if (o.internalRuntimeMode === "controlled_text_pilot_guarded") {
+  if (o.internalRuntimeMode === CONTROLLED_TEXT_PILOT_INTERNAL_RUNTIME_MODE) {
     const d: string[] = ["pilot_runtime_contract_started"];
 
     // Guard 1 — feature_flag_enabled
@@ -2782,14 +2870,7 @@ export async function POST(req: Request) {
   }
   // ── End Phase 8.2K-2 guarded internal controlled text pilot branch ────────
 
-  // ── Guarded internal delivery branch (Phase 8.2G-9 / 8.2G-10) ──────────
-  // Activates ONLY when internalRuntimeMode or internalRuntimeGuard are
-  // present. Normal Smart Talk requests never include these fields.
-  if (
-    o.internalRuntimeMode !== undefined ||
-    o.internalRuntimeGuard !== undefined
-  ) {
-    // Phase 8.2G-10 — server-side secret header guard (must pass before delivery)
+  if (o.internalRuntimeMode === CONTROLLED_LIVE_TEXT_INTERNAL_RUNTIME_MODE) {
     const internalAuth = runRuntimeInternalAuthGuard({
       providedSecret: req.headers.get("x-vaylo-internal-runtime-secret"),
       expectedSecret: process.env.VAYLO_INTERNAL_RUNTIME_SECRET,
@@ -2805,31 +2886,48 @@ export async function POST(req: Request) {
       );
     }
 
-    // ── Phase 8.2H-5 — controlled live text guarded branch ────────────────
-    // Activates ONLY when mode + guard phrase match exactly. Uses only the
-    // safe_real_text synthetic fixture; no real user text is forwarded.
-    if (
-      o.internalRuntimeMode === "controlled_live_text_guarded" &&
-      o.internalRuntimeGuard === "I_UNDERSTAND_THIS_IS_CONTROLLED_LIVE_TEXT_INTERNAL_ONLY"
-    ) {
-      const pipelineResult = runGuardedLiveTextRuntimePipeline({
-        pipelineRunId: `smart-talk-controlled-live-text-${Date.now().toString()}`,
-        fixtureMode: "safe_real_text",
-        neverUserVisible: true,
-      });
+    if (o.internalRuntimeGuard !== "I_UNDERSTAND_THIS_IS_CONTROLLED_LIVE_TEXT_INTERNAL_ONLY") {
       return NextResponse.json(
         {
-          mode: "controlled_live_text_guarded",
-          verdict: pipelineResult.verdict,
-          diagnostics: pipelineResult.diagnostics,
-          packetCreated: pipelineResult.packetCreated,
-          acceptedForUserVisibleAssembly: pipelineResult.acceptedForUserVisibleAssembly,
-          userVisibleOutputAllowedForFuture: pipelineResult.userVisibleOutputAllowedForFuture,
+          error: "Internal guarded runtime disabled or rejected",
+          code: "controlled_live_text_guard_not_satisfied",
         },
-        { status: pipelineResult.verdict === "completed_authorised_internal_packet" ? 200 : 403 },
+        { status: 403 },
       );
     }
-    // ── End Phase 8.2H-5 controlled live text guarded branch ──────────────
+
+    const pipelineResult = runGuardedLiveTextRuntimePipeline({
+      pipelineRunId: `smart-talk-controlled-live-text-${Date.now().toString()}`,
+      fixtureMode: "safe_real_text",
+      neverUserVisible: true,
+    });
+    return NextResponse.json(
+      {
+        mode: CONTROLLED_LIVE_TEXT_INTERNAL_RUNTIME_MODE,
+        verdict: pipelineResult.verdict,
+        diagnostics: pipelineResult.diagnostics,
+        packetCreated: pipelineResult.packetCreated,
+        acceptedForUserVisibleAssembly: pipelineResult.acceptedForUserVisibleAssembly,
+        userVisibleOutputAllowedForFuture: pipelineResult.userVisibleOutputAllowedForFuture,
+      },
+      { status: pipelineResult.verdict === "completed_authorised_internal_packet" ? 200 : 403 },
+    );
+  }
+
+  if (o.internalRuntimeMode === SYNTHETIC_E2E_INTERNAL_RUNTIME_MODE) {
+    const internalAuth = runRuntimeInternalAuthGuard({
+      providedSecret: req.headers.get("x-vaylo-internal-runtime-secret"),
+      expectedSecret: process.env.VAYLO_INTERNAL_RUNTIME_SECRET,
+    });
+    if (!internalAuth.authorised) {
+      return NextResponse.json(
+        {
+          error: "Internal guarded runtime unauthorised",
+          code: internalAuth.verdict,
+        },
+        { status: 403 },
+      );
+    }
 
     const deliveryResult = runRuntimeGuardedDelivery({
       internalRuntimeMode: o.internalRuntimeMode,
@@ -2860,114 +2958,6 @@ export async function POST(req: Request) {
       { status: 200 },
     );
   }
-  // ── End guarded internal delivery branch ─────────────────────────────────
 
-  if (o.context !== "anonymous") {
-    return badRequest("invalid_context");
-  }
-  if (!isSmartTalkInputType(o.inputType)) {
-    return badRequest("invalid_input_type");
-  }
-  const inputType = o.inputType;
-  if (typeof o.text !== "string") {
-    return badRequest("invalid_text");
-  }
-
-  const text = o.text.trim();
-  if (text.length < MIN_TEXT) {
-    return badRequest("text_too_short");
-  }
-  if (text.length > MAX_TEXT) {
-    return badRequest("text_too_long");
-  }
-  if (!hasLetter(text) || isOnlyUrls(text)) {
-    return badRequest("invalid_text");
-  }
-
-  // ── Phase 8.5N — Text Document Bypass Guard ─────────────────────────────
-  // After JSON parse · before runSmartTalk · before prompt build · before model call.
-  if (detectTextDocumentBypassRequired(text)) {
-    return NextResponse.json(
-      {
-        ok: false,
-        code: "document_mode_required",
-        message:
-          "This looks like a letter, email, invoice, authority notice, or other document. Please use Document Mode for document explanations.",
-        nextStep:
-          "You can ask a general question here, but do not paste personal documents into Free Q&A.",
-      },
-      { status: 402 },
-    );
-  }
-  // ── End Phase 8.5N ───────────────────────────────────────────────────────
-
-  // ── Phase 8.5U — Paid Document Mode boundary: deny-by-default ────────────
-  // Rejects client-side paid/document/entitlement activation signals.
-  // After JSON parse · after text validation · after 8.5N bypass guard.
-  // Before runSmartTalk · before prompt build · before model call.
-  // No entitlement runtime · no payment runtime · no document processing.
-  if (detectClientPaidDocumentModeActivation(o)) {
-    return NextResponse.json(
-      {
-        ok: false,
-        code: "document_mode_required",
-        reason:
-          "Document Mode requires server-side entitlement verification and is not available in this request.",
-        urgency: "unknown",
-        summary: "",
-        meaning: "",
-        nextSteps: [],
-        warnings: [
-          "Document Mode is not enabled by client-side flags.",
-          "Server-side entitlement verification is required before document processing.",
-        ],
-      },
-      { status: 402 },
-    );
-  }
-  // ── End Phase 8.5U ───────────────────────────────────────────────────────
-
-  let locale: SmartTalkLocale = "sk";
-  if (o.locale !== undefined && o.locale !== null) {
-    if (typeof o.locale !== "string" || !ALLOWED_LOCALES.has(o.locale as SmartTalkLocale)) {
-      return badRequest("invalid_locale");
-    }
-    locale = o.locale as SmartTalkLocale;
-  }
-
-  const apiKey = process.env.OPENAI_API_KEY?.trim();
-  if (!apiKey) {
-    return NextResponse.json(
-      { ok: false, error: "smart_talk_unavailable" },
-      { status: 503 },
-    );
-  }
-
-  let out: Awaited<ReturnType<typeof runSmartTalk>>;
-  try {
-    out = await Promise.race([
-      runSmartTalk({ text, locale, inputType }),
-      new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error("smart_talk_timeout")), SMART_TALK_ROUTE_TIMEOUT_MS);
-      }),
-    ]);
-  } catch {
-    return NextResponse.json({ ok: false, error: "smart_talk_timeout" }, { status: 504 });
-  }
-
-  if (!out.ok) {
-    const requestId = createRequestId();
-    logRouteError("[smart-talk] openai failed", requestId, {
-      kind: out.error.kind,
-      status: out.error.kind === "openai_http" ? out.error.status : undefined,
-    });
-    return internalErrorResponse({ requestId, status: 500 });
-  }
-
-  return NextResponse.json({
-    ok: true,
-    mode: "smart_talk",
-    context: "anonymous",
-    result: out.result,
-  });
+  return routingRejected("unmatched_dispatch");
 }
