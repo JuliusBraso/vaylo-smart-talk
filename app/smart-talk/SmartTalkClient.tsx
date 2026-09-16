@@ -41,14 +41,22 @@ function sumPhotoPageBytes(pages: SmartTalkPhotoPage[]): number {
 type SmartTalkUiMode = "question" | "text" | "photo";
 
 const PLACEHOLDER: Record<SmartTalkUiMode, string> = {
-  question: "Opýtajte sa napríklad: Ako požiadam o Kindergeld v Nemecku?",
+  question:
+    "Pracujem v Rakúsku a rodina býva na Slovensku. Ako mám postupovať pri žiadosti o rodinné dávky?",
   text: "Sem vložte text z listu, úradu alebo formulára…",
   photo: "",
 };
 
+const QUESTION_MODE_PRIVACY_GUIDANCE = {
+  heading: "Opíšte situáciu bez osobných údajov",
+  body:
+    "Neuvádzajte svoje ani cudzie meno, presnú adresu bydliska, e-mail, telefón ani čísla dokladov, účtu či spisu. Uveďte krajinu a podľa potreby mesto, názov úradu, dôležitý termín alebo sumu.",
+  additional:
+    "Nevkladajte celý list ani dokument. Vlastnými slovami opíšte, čo potrebujete vybaviť.",
+};
+
 const GUIDANCE_PRIMARY: Record<SmartTalkUiMode, string> = {
-  question:
-    "Pýtajte sa na dane, Kindergeld, Anmeldung, zdravotnú poisťovňu, úrady alebo iné nemecké byrokratické kroky.",
+  question: "",
   text: "Najlepšie funguje, keď vložíte najdôležitejšiu časť listu alebo formulára.",
   photo:
     "Pridajte až 3 strany dokumentu (poradie zachováme): kamerou alebo viac obrázkov z galérie (JPG/PNG/WebP; max. 8 MB pred úpravou na súbor). Spolu max. 4 MB po úprave. Dobré svetlo zlepší OCR.",
@@ -1261,10 +1269,53 @@ export default function SmartTalkClient() {
             <label htmlFor="smart-talk-input" className="sr-only">
               {mode === "question" ? "Otázka pre Vayla" : "Text dokumentu"}
             </label>
+            {mode === "question" ? (
+              <div
+                id="smart-talk-question-privacy-guidance"
+                style={{ display: "grid", gap: 8, marginBottom: 10 }}
+              >
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: 14,
+                    lineHeight: 1.45,
+                    fontWeight: 700,
+                    color: "var(--text)",
+                  }}
+                >
+                  {QUESTION_MODE_PRIVACY_GUIDANCE.heading}
+                </p>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: 13,
+                    lineHeight: 1.5,
+                    color: "var(--muted)",
+                  }}
+                >
+                  {QUESTION_MODE_PRIVACY_GUIDANCE.body}
+                </p>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: 13,
+                    lineHeight: 1.5,
+                    color: "var(--muted)",
+                  }}
+                >
+                  {QUESTION_MODE_PRIVACY_GUIDANCE.additional}
+                </p>
+              </div>
+            ) : null}
             <textarea
               id="smart-talk-input"
               name="smart-talk-text"
               rows={8}
+              aria-describedby={
+                mode === "question"
+                  ? "smart-talk-question-privacy-guidance"
+                  : undefined
+              }
               // Phase 8.13C-BLOCKER: value/onChange are routed to the
               // isolated state for the currently active mode only —
               // question and text-document drafts never share a value or
