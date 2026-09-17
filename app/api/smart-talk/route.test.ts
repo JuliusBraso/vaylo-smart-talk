@@ -216,7 +216,290 @@ test("Smart Talk dispatch is explicit and controlled modes are contained", async
       }), 400, "internal_marker_mode_mismatch");
     });
 
+    await t.test("free-question PII screening blocks before external processing", async () => {
+      process.env.SMART_TALK_FREE_QA_PUBLIC_ENABLED = "true";
+
+      const { screenFreeQuestionInput } = await import(
+        "@/lib/vaylo/smart-talk/pii/free-question-input-screening"
+      );
+
+      const cleanQuestions = [
+        "Ako zmením meno po svadbe?",
+        "Kde nájdem adresu Finanzamtu vo Viedni?",
+        "Pracujem v Rakúsku a rodina býva na Slovensku. Ako požiadam o rodinné dávky?",
+        "Ako funguje zdravotné poistenie pri práci v Nemecku?",
+        "Som nezamestnaný v Bratislave, aké sú kroky pri registrácii?",
+        "Aké dane platím pri príjme 2400 EUR mesačne v Rakúsku?",
+        "Mám 42 rokov a chcem požiadať o Kindergeld v DE, ako postupovať?",
+        "Potrebujem termín na 15.03.2026 na úrade v Košiciach.",
+        "Ako zistím customer ID pre tento postup?",
+        "Kde nájdem číslo pasu v pokynoch úradu?",
+        "Mám otázku k trvalému pobytu. Kde je adresa magistrátu v Brne?",
+        "Bývanie v nájomnom byte — aké sú povinnosti nájomcu?",
+        "1999-01-01 a 15.09.1986 sú len dátumy v mojej otázke o lehote.",
+      ];
+      for (const text of cleanQuestions) {
+        assert.equal(screenFreeQuestionInput(text).reasonCode, "no_supported_signal_detected");
+      }
+
+      assert.equal(screenFreeQuestionInput("990101/1234").reasonCode, "user_revision_required");
+      assert.equal(screenFreeQuestionInput("995101/1234").reasonCode, "user_revision_required");
+
+      assert.equal(screenFreeQuestionInput("Číslo pasu: AB1234567").reasonCode, "user_revision_required");
+      assert.equal(screenFreeQuestionInput("Moja adresa je Lipová ulica 12.").reasonCode, "user_revision_required");
+      assert.equal(screenFreeQuestionInput("Ich wohne in Hauptstraße 12.").reasonCode, "user_revision_required");
+      assert.equal(
+        screenFreeQuestionInput("My home address is Example Street 12.").reasonCode,
+        "user_revision_required",
+      );
+      assert.equal(
+        screenFreeQuestionInput("My home address is 12 Example Street.").reasonCode,
+        "user_revision_required",
+      );
+      assert.equal(screenFreeQuestionInput("Ich wohne in Hauptstr. 12.").reasonCode, "user_revision_required");
+      assert.equal(screenFreeQuestionInput("I live at 44 Cedar Rd.").reasonCode, "user_revision_required");
+      assert.equal(
+        screenFreeQuestionInput("My home address is Cedar Rd. 44.").reasonCode,
+        "user_revision_required",
+      );
+      assert.equal(
+        screenFreeQuestionInput("Delivery address is 9 Mill Ln.").reasonCode,
+        "user_revision_required",
+      );
+      assert.equal(
+        screenFreeQuestionInput("Ich wohne in Kirchgasse 5 und habe eine Frage.").reasonCode,
+        "user_revision_required",
+      );
+
+      assert.equal(
+        screenFreeQuestionInput("Ich wohne in Wien, das Amt ist in Hauptstraße 12.").reasonCode,
+        "no_supported_signal_detected",
+      );
+      assert.equal(
+        screenFreeQuestionInput("Ich wohne in Wien; das Amt ist in Hauptstraße 12.").reasonCode,
+        "no_supported_signal_detected",
+      );
+      assert.equal(
+        screenFreeQuestionInput("Ich wohne in Wien. Das Amt ist in Hauptstraße 12.").reasonCode,
+        "no_supported_signal_detected",
+      );
+      assert.equal(
+        screenFreeQuestionInput("Ich wohne in Wien\nDas Amt ist in Hauptstraße 12.").reasonCode,
+        "no_supported_signal_detected",
+      );
+      assert.equal(
+        screenFreeQuestionInput("Birkenweg 7, ich wohne in Graz.").reasonCode,
+        "no_supported_signal_detected",
+      );
+      assert.equal(
+        screenFreeQuestionInput("Delivery address is required on this Road form.").reasonCode,
+        "no_supported_signal_detected",
+      );
+
+      assert.equal(
+        screenFreeQuestionInput("My home address is unknown. Office is Cedar Road 44.").reasonCode,
+        "no_supported_signal_detected",
+      );
+      assert.equal(
+        screenFreeQuestionInput("My home address is unknown\nOffice is Cedar Road 44.").reasonCode,
+        "no_supported_signal_detected",
+      );
+      assert.equal(
+        screenFreeQuestionInput("My home address is unknown\r\nOffice is Cedar Road 44.").reasonCode,
+        "no_supported_signal_detected",
+      );
+      assert.equal(
+        screenFreeQuestionInput("My home address is unknown\u2028Office is Cedar Road 44.").reasonCode,
+        "no_supported_signal_detected",
+      );
+      assert.equal(
+        screenFreeQuestionInput("My home address is unknown\u2029Office is Cedar Road 44.").reasonCode,
+        "no_supported_signal_detected",
+      );
+      assert.equal(
+        screenFreeQuestionInput("Moja adresa je neznáma\nLipová ulica 12 je adresa úradu.").reasonCode,
+        "no_supported_signal_detected",
+      );
+      assert.equal(
+        screenFreeQuestionInput("Ich wohne in\nHauptstraße 12.").reasonCode,
+        "no_supported_signal_detected",
+      );
+      assert.equal(
+        screenFreeQuestionInput("My home address is pending. Branch is Willow Court 9.").reasonCode,
+        "no_supported_signal_detected",
+      );
+
+      assert.equal(
+        screenFreeQuestionInput("My home address is North Maple Ridge Street 12.").reasonCode,
+        "user_revision_required",
+      );
+      assert.equal(
+        screenFreeQuestionInput("I live at 44 Cedar\tRoad in a rental flat.").reasonCode,
+        "user_revision_required",
+      );
+
+      assert.equal(
+        screenFreeQuestionInput("Delivery address is 9 Mill Lane for parcel pickup.").reasonCode,
+        "user_revision_required",
+      );
+      assert.equal(
+        screenFreeQuestionInput("I live at 44 Cedar Road in a rental flat.").reasonCode,
+        "user_revision_required",
+      );
+      assert.equal(
+        screenFreeQuestionInput("Moja adresa je Lipová ulica 12.\nKde je úrad v Brne?").reasonCode,
+        "user_revision_required",
+      );
+      assert.equal(
+        screenFreeQuestionInput("Bývanie v byte. Ich wohne in Wien.\nAmt in Parkstraße 3.").reasonCode,
+        "no_supported_signal_detected",
+      );
+
+      fetchCalls = 0;
+      const addressRoute = await smartTalkPost(jsonRequest({
+        mode: "free_qa_public_beta",
+        context: "anonymous",
+        inputType: "question",
+        locale: "sk",
+        text: "My home address is 12 Example Street, how do I register?",
+        privacyAlreadyRedacted: true,
+      }));
+      const addressBody = await responseBody(addressRoute);
+      assert.equal(addressRoute.status, 422);
+      assert.equal(addressBody.code, "question_privacy_revision_required");
+      assert.equal(fetchCalls, 0);
+      assert.equal(JSON.stringify(addressBody).includes("Example"), false);
+
+      fetchCalls = 0;
+      const abbrevRoute = await smartTalkPost(jsonRequest({
+        mode: "free_qa_public_beta",
+        context: "anonymous",
+        inputType: "question",
+        locale: "sk",
+        text: "Ich wohne in Hauptstr. 12 und brauche Hilfe bei der Anmeldung.",
+        clientPrivacyPass: true,
+      }));
+      const abbrevBody = await responseBody(abbrevRoute);
+      assert.equal(abbrevRoute.status, 422);
+      assert.equal(abbrevBody.code, "question_privacy_revision_required");
+      assert.equal(fetchCalls, 0);
+      assert.equal(JSON.stringify(abbrevBody).includes("Hauptstr"), false);
+
+      assert.equal(screenFreeQuestionInput("aaa\ud800").reasonCode, "invalid_input");
+      assert.equal(screenFreeQuestionInput("\udc00aaa").reasonCode, "invalid_input");
+      assert.equal(screenFreeQuestionInput("\ud800a").reasonCode, "invalid_input");
+      assert.equal(
+        screenFreeQuestionInput("Ako postupujem pri registrácii v Nemecku? 😀").reasonCode,
+        "no_supported_signal_detected",
+      );
+      assert.equal(screenFreeQuestionInput("a".repeat(12_000)).reasonCode, "no_supported_signal_detected");
+      assert.equal(screenFreeQuestionInput("a".repeat(12_001)).reasonCode, "invalid_input");
+      const decomposedOverLimit = `${"e\u0301".repeat(6001)}?`;
+      assert.equal(decomposedOverLimit.length, 12_003);
+      assert.equal(screenFreeQuestionInput(decomposedOverLimit).reasonCode, "invalid_input");
+
+      const piiSamples = [
+        {
+          text: "Volám sa Juraj Kováč, potrebujem radu k poisteniu.",
+          needle: "Juraj",
+        },
+        {
+          text: "Ich heiße Lena Vogt und habe eine Frage zur Anmeldung.",
+          needle: "Lena",
+        },
+        {
+          text: "My name is Oliver Reed — how do I register for health insurance?",
+          needle: "Oliver",
+        },
+        {
+          text: "Napíšte mi na zdravotne.otazky@example.org prosím postup.",
+          needle: "zdravotne.otazky@example.org",
+        },
+        {
+          text: "Kontakt telefón: +421 918 445 667, chcem vedieť o dávkach.",
+          needle: "+421",
+        },
+        {
+          text: "Platba na účet SK68 1100 0000 0029 8765 4321 za poplatok.",
+          needle: "SK68",
+        },
+        {
+          text: "V dokumente je uvedené 990101/1234, čo mám urobiť ďalej?",
+          needle: "990101",
+        },
+        {
+          text: "Číslo pasu: AB1234567 je v žiadosti, ako pokračovať?",
+          needle: "AB1234567",
+        },
+        {
+          text: "Moja adresa je Lipová ulica 12, potrebujem zmeniť trvalý pobyt.",
+          needle: "Lipová",
+        },
+        {
+          text: "Ich wohne in Hauptstraße 12 und brauche Hilfe bei der Anmeldung.",
+          needle: "Hauptstraße",
+        },
+        {
+          text: "My home address is Example Street 12, how do I register?",
+          needle: "Example",
+        },
+      ];
+
+      for (const sample of piiSamples) {
+        assert.equal(screenFreeQuestionInput(sample.text).reasonCode, "user_revision_required");
+        fetchCalls = 0;
+        const response = await smartTalkPost(jsonRequest({
+          mode: "free_qa_public_beta",
+          context: "anonymous",
+          inputType: "question",
+          locale: "sk",
+          text: sample.text,
+          privacyAlreadyRedacted: true,
+          clientPrivacyPass: true,
+        }));
+        const body = await responseBody(response);
+        assert.equal(response.status, 422);
+        assert.equal(body.code, "question_privacy_revision_required");
+        assert.equal(body.ok, false);
+        assert.equal(fetchCalls, 0);
+        const serialized = JSON.stringify(body);
+        assert.equal(serialized.includes(sample.needle), false);
+        assert.equal(Object.keys(body).sort().join(","), "code,ok");
+      }
+
+      fetchCalls = 0;
+      const cleanRoute = await smartTalkPost(jsonRequest({
+        mode: "free_qa_public_beta",
+        context: "anonymous",
+        inputType: "question",
+        locale: "sk",
+        text: "Ako zmením meno po svadbe?",
+      }));
+      assert.equal(cleanRoute.status, 200);
+      assert.equal(fetchCalls, 1);
+
+      fetchCalls = 0;
+      const cleanRoute2 = await smartTalkPost(jsonRequest({
+        mode: "free_qa_public_beta",
+        context: "anonymous",
+        inputType: "question",
+        locale: "sk",
+        text: "Pracujem v Rakúsku a rodina býva na Slovensku. Ako požiadam o rodinné dávky?",
+      }));
+      assert.equal(cleanRoute2.status, 200);
+      assert.equal(fetchCalls, 1);
+
+      assert.equal(screenFreeQuestionInput(12).reasonCode, "invalid_input");
+      assert.equal(screenFreeQuestionInput("x\ud800yaaaa").reasonCode, "invalid_input");
+      const maxClean = `Ako postupujem pri registrácii v ${"Nemecku. ".repeat(900)}`;
+      assert.equal(maxClean.length <= 12_000, true);
+      assert.equal(screenFreeQuestionInput(maxClean).reasonCode, "no_supported_signal_detected");
+
+      delete process.env.SMART_TALK_FREE_QA_PUBLIC_ENABLED;
+    });
+
     await t.test("public Free Q&A retains flag and input/document guards", async () => {
+      delete process.env.SMART_TALK_FREE_QA_PUBLIC_ENABLED;
       await expectNoFetch(jsonRequest({
         mode: "free_qa_public_beta",
         context: "anonymous",

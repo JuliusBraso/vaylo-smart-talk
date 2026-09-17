@@ -34,6 +34,7 @@ import {
   buildFirstContactPresentation,
   validateFirstContactPresentation,
 } from "@/lib/vaylo/smart-talk/first-contact/build-first-contact-presentation";
+import { screenFreeQuestionInput } from "@/lib/vaylo/smart-talk/pii/free-question-input-screening";
 
 export const runtime = "nodejs";
 
@@ -1862,6 +1863,22 @@ export async function POST(req: Request) {
         return badRequest("invalid_locale");
       }
       locale = o.locale as SmartTalkLocale;
+    }
+
+    let freeQuestionScreening: ReturnType<typeof screenFreeQuestionInput>;
+    try {
+      freeQuestionScreening = screenFreeQuestionInput(text);
+    } catch {
+      return NextResponse.json({ ok: false, error: "smart_talk_unavailable" }, { status: 503 });
+    }
+    if (freeQuestionScreening.reasonCode === "invalid_input") {
+      return badRequest("invalid_text");
+    }
+    if (freeQuestionScreening.reasonCode === "user_revision_required") {
+      return NextResponse.json(
+        { ok: false, code: "question_privacy_revision_required" },
+        { status: 422 },
+      );
     }
 
     const apiKey = process.env.OPENAI_API_KEY?.trim();

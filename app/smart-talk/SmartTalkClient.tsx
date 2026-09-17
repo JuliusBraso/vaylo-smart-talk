@@ -280,6 +280,8 @@ function parseSmartTalkResponse(data: unknown): SmartTalkOkResponse | null {
 }
 
 const MSG = {
+  questionPrivacyRevision:
+    "Otázka môže obsahovať osobné údaje. Odstráňte meno, presnú adresu, kontaktné údaje alebo osobné identifikátory a skúste ju odoslať znova. Krajinu, mesto, názov úradu a dôležité okolnosti môžete ponechať.",
   badInput:
     "Text je príliš krátky alebo neplatný. Skúste vložiť časť listu alebo formulára.",
   rateLimited: "Príliš veľa pokusov. Skúste to znova neskôr.",
@@ -974,6 +976,15 @@ export default function SmartTalkClient() {
       const okParsed = parseSmartTalkResponse(data);
       if (res.ok && okParsed) {
         setResult(okParsed.result);
+        return;
+      }
+
+      if (
+        res.status === 422 &&
+        isRecord(data) &&
+        data.code === "question_privacy_revision_required"
+      ) {
+        setError(MSG.questionPrivacyRevision);
         return;
       }
 
