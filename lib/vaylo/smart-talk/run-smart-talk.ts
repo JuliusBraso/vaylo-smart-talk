@@ -1078,6 +1078,9 @@ export async function runSmartTalk(params: {
     ...params,
     knowledgeEvidence: knowledge.evidence,
     localContext: knowledge.localContext,
+    ...(outputContract === "public_free_qa_strict"
+      ? { publicJurisdictionScope: "de_at_sk_cross_border" as const }
+      : {}),
   });
 
   const controller = new AbortController();

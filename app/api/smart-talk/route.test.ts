@@ -138,9 +138,17 @@ test("Smart Talk dispatch is explicit and controlled modes are contained", async
   ] as const;
   let fetchCalls = 0;
   let mockOpenAiMessageContent: string | null = null;
+  let lastProviderRequestBody: {
+    messages?: Array<{ role: string; content: string }>;
+  } | null = null;
 
-  globalThis.fetch = async () => {
+  globalThis.fetch = async (_input, init) => {
     fetchCalls += 1;
+    if (typeof init?.body === "string") {
+      lastProviderRequestBody = JSON.parse(init.body) as {
+        messages?: Array<{ role: string; content: string }>;
+      };
+    }
     const content = mockOpenAiMessageContent ?? JSON.stringify(VALID_MODEL_RESULT);
     return new Response(JSON.stringify({
       choices: [{ message: { content } }],
@@ -816,6 +824,215 @@ test("Smart Talk dispatch is explicit and controlled modes are contained", async
       const meaning = (calendarBody.result as { meaning?: string }).meaning ?? "";
       assert.equal(meaning.includes(inventedDate), false);
       assert.equal(meaning.includes("kalendárny dátum"), true);
+    });
+
+    await t.test("public Free Q&A applies the DE/AT/SK cross-border jurisdiction contract", async (context) => {
+      const {
+        buildSmartTalkMessages,
+        PUBLIC_JURISDICTION_SCOPE_MARKER,
+        LOCALE_NOT_JURISDICTION_MARKER,
+        GERMANY_ONLY_INSTITUTION_MARKER,
+        PUBLIC_EDUCATIONAL_EXPLAINER_MARKER,
+        PUBLIC_QUESTION_WARNINGS_PATTERN_MARKER,
+        PUBLIC_EDUCATIONAL_JSON_MEANING_GUIDANCE_MARKER,
+        PUBLIC_QUESTION_URGENCY_CALIBRATION_MARKER,
+      } = await import("@/lib/vaylo/smart-talk/build-smart-talk-prompt");
+
+      context.after(() => {
+        mockOpenAiMessageContent = null;
+        lastProviderRequestBody = null;
+      });
+
+      const legacyGermanyOnlyRedirect =
+        "o nemeckej byrokracii. Skúste otázku preformulovať v tomto kontexte.";
+      const scopedSkRedirect =
+        "rakúskej byrokracii a cezhraničných situáciách so Slovenskom";
+      const legacyEducationalSentence =
+        "Educational explainer mode (Phase 8.0B): Explain German bureaucracy terms and contrasts clearly and pedagogically.";
+      const legacyEducationalJsonGuidance =
+        "pedagogical explanation with Slovak gloss + German term in parentheses where helpful";
+      const legacyWarningsPattern =
+        "warnings pattern examples when the topic matches (paraphrase in output language; Slovak tone):";
+      const legacyTimingGuidance =
+        "Combine Steuer-ID / Anmeldung / Kindergeld timing notes into warnings only when they directly answer the user's risk";
+      const austriaEducationalQuestion =
+        "Čo znamená Familienbeihilfe v Rakúsku?";
+      const austriaEducationalNeedle = "Familienbeihilfe";
+      const legacyUrgencyFamilienkasse =
+        "Examples mapping (not automatic rules): HIGH — Familienkasse repayment with deadline";
+      const legacyUrgencyKrankenkasseBuergeramt =
+        "Krankenkasse asking for more proofs, Bürgeramt registration documents";
+      const legacyUrgencyPrefix = "Urgency calibration (question mode): Reflect practical stakes";
+      const assertScopedPublicUrgency = (system: string) => {
+        assert.equal(system.includes(PUBLIC_QUESTION_URGENCY_CALIBRATION_MARKER), true);
+        assert.equal(system.includes(legacyUrgencyFamilienkasse), false);
+        assert.equal(system.includes(legacyUrgencyKrankenkasseBuergeramt), false);
+        assert.equal(system.includes(legacyUrgencyPrefix), false);
+      };
+
+      const scopedSk = buildSmartTalkMessages({
+        text: "Synthetic jurisdiction probe.",
+        locale: "sk",
+        inputType: "question",
+        publicJurisdictionScope: "de_at_sk_cross_border",
+      });
+      assert.equal(scopedSk.system.includes(PUBLIC_JURISDICTION_SCOPE_MARKER), true);
+      assert.equal(scopedSk.system.includes(LOCALE_NOT_JURISDICTION_MARKER), true);
+      assert.equal(scopedSk.system.includes(GERMANY_ONLY_INSTITUTION_MARKER), true);
+      assert.equal(scopedSk.system.includes(scopedSkRedirect), true);
+      assert.equal(scopedSk.system.includes(legacyGermanyOnlyRedirect), false);
+      assert.equal(
+        scopedSk.system.includes(
+          "If the question is clearly outside German bureaucracy, politely decline by centering summary and meaning on this exact Slovak sentence",
+        ),
+        false,
+      );
+
+      const compatibleSk = buildSmartTalkMessages({
+        text: "Synthetic compatible probe.",
+        locale: "sk",
+        inputType: "question",
+      });
+      assert.equal(compatibleSk.system.includes(legacyGermanyOnlyRedirect), true);
+      assert.equal(compatibleSk.system.includes(PUBLIC_JURISDICTION_SCOPE_MARKER), false);
+      assert.equal(compatibleSk.system.includes(legacyUrgencyFamilienkasse), true);
+      assert.equal(compatibleSk.system.includes(PUBLIC_QUESTION_URGENCY_CALIBRATION_MARKER), false);
+
+      const scopedDe = buildSmartTalkMessages({
+        text: "Synthetic.",
+        locale: "de",
+        inputType: "question",
+        publicJurisdictionScope: "de_at_sk_cross_border",
+      });
+      assert.equal(
+        scopedDe.system.includes(
+          "grenzüberschreitenden Situationen mit der Slowakei",
+        ),
+        true,
+      );
+
+      const scopedEn = buildSmartTalkMessages({
+        text: "Synthetic.",
+        locale: "en",
+        inputType: "question",
+        publicJurisdictionScope: "de_at_sk_cross_border",
+      });
+      assert.equal(
+        scopedEn.system.includes("cross-border situations involving Slovakia"),
+        true,
+      );
+
+      const strictDocScoped = buildSmartTalkMessages({
+        text: "Synthetic document paste.",
+        locale: "sk",
+        inputType: "text",
+        publicJurisdictionScope: "de_at_sk_cross_border",
+      });
+      assert.equal(
+        strictDocScoped.system.includes("You explain German bureaucracy documents"),
+        true,
+      );
+      assert.equal(strictDocScoped.system.includes(PUBLIC_JURISDICTION_SCOPE_MARKER), false);
+
+      const scopedEducational = buildSmartTalkMessages({
+        text: austriaEducationalQuestion,
+        locale: "sk",
+        inputType: "question",
+        publicJurisdictionScope: "de_at_sk_cross_border",
+      });
+      assert.equal(scopedEducational.system.includes(PUBLIC_EDUCATIONAL_EXPLAINER_MARKER), true);
+      assert.equal(scopedEducational.system.includes(PUBLIC_JURISDICTION_SCOPE_MARKER), true);
+      assert.equal(scopedEducational.system.includes(LOCALE_NOT_JURISDICTION_MARKER), true);
+      assert.equal(scopedEducational.system.includes(GERMANY_ONLY_INSTITUTION_MARKER), true);
+      assert.equal(scopedEducational.system.includes("DE/AT–Slovakia cross-border"), true);
+      assert.equal(scopedEducational.system.includes("Austrian family-benefits"), true);
+      assert.equal(scopedEducational.system.includes(legacyEducationalSentence), false);
+      assert.equal(scopedEducational.system.includes(legacyWarningsPattern), false);
+      assert.equal(scopedEducational.system.includes(PUBLIC_QUESTION_WARNINGS_PATTERN_MARKER), true);
+      assert.equal(scopedEducational.system.includes(legacyTimingGuidance), false);
+      assert.equal(
+        scopedEducational.system.includes(PUBLIC_EDUCATIONAL_JSON_MEANING_GUIDANCE_MARKER),
+        true,
+      );
+      assertScopedPublicUrgency(scopedEducational.system);
+
+      const austriaSlovakiaFamilyBenefitsQuestion =
+        "Pracujem v Rakúsku a rodina býva na Slovensku. Ako mám postupovať pri žiadosti o rodinné dávky?";
+      const scopedFamilyBenefits = buildSmartTalkMessages({
+        text: austriaSlovakiaFamilyBenefitsQuestion,
+        locale: "sk",
+        inputType: "question",
+        publicJurisdictionScope: "de_at_sk_cross_border",
+      });
+      assertScopedPublicUrgency(scopedFamilyBenefits.system);
+
+      const compatibleEducational = buildSmartTalkMessages({
+        text: austriaEducationalQuestion,
+        locale: "sk",
+        inputType: "question",
+      });
+      assert.equal(compatibleEducational.system.includes(legacyEducationalSentence), true);
+      assert.equal(compatibleEducational.system.includes(PUBLIC_JURISDICTION_SCOPE_MARKER), false);
+      assert.equal(compatibleEducational.system.includes(legacyEducationalJsonGuidance), true);
+
+      process.env.SMART_TALK_FREE_QA_PUBLIC_ENABLED = "true";
+      const austriaSlovakiaQuestion = austriaSlovakiaFamilyBenefitsQuestion;
+      const questionNeedle = "rodinné dávky";
+      fetchCalls = 0;
+      lastProviderRequestBody = null;
+      const response = await smartTalkPost(jsonRequest({
+        mode: "free_qa_public_beta",
+        context: "anonymous",
+        inputType: "question",
+        locale: "sk",
+        text: austriaSlovakiaQuestion,
+      }));
+      const body = await responseBody(response);
+      assert.equal(response.status, 200);
+      assert.equal(fetchCalls, 1);
+      assert.equal(body.ok, true);
+      assert.equal(body.mode, "free_qa_public_beta");
+      assert.equal(body.context, "anonymous");
+
+      assert.notEqual(lastProviderRequestBody, null);
+      const messages = lastProviderRequestBody!.messages ?? [];
+      const systemMessage = messages.find((m: { role: string; content: string }) => m.role === "system")?.content ?? "";
+      const userMessage = messages.find((m: { role: string; content: string }) => m.role === "user")?.content ?? "";
+      assert.equal(userMessage.includes(austriaSlovakiaQuestion), true);
+      assert.equal(systemMessage.includes(PUBLIC_JURISDICTION_SCOPE_MARKER), true);
+      assert.equal(systemMessage.includes(LOCALE_NOT_JURISDICTION_MARKER), true);
+      assert.equal(systemMessage.includes(GERMANY_ONLY_INSTITUTION_MARKER), true);
+      assert.equal(systemMessage.includes(scopedSkRedirect), true);
+      assert.equal(systemMessage.includes(legacyGermanyOnlyRedirect), false);
+      assertScopedPublicUrgency(systemMessage);
+      assert.equal(JSON.stringify(body).includes(questionNeedle), false);
+
+      fetchCalls = 0;
+      lastProviderRequestBody = null;
+      const educationalResponse = await smartTalkPost(jsonRequest({
+        mode: "free_qa_public_beta",
+        context: "anonymous",
+        inputType: "question",
+        locale: "sk",
+        text: austriaEducationalQuestion,
+      }));
+      const educationalBody = await responseBody(educationalResponse);
+      assert.equal(educationalResponse.status, 200);
+      assert.equal(fetchCalls, 1);
+      assert.equal(educationalBody.ok, true);
+      assert.equal(educationalBody.mode, "free_qa_public_beta");
+      assert.equal(educationalBody.context, "anonymous");
+      assert.notEqual(lastProviderRequestBody, null);
+      const educationalSystem =
+        (lastProviderRequestBody!.messages ?? []).find(
+          (m: { role: string; content: string }) => m.role === "system",
+        )?.content ?? "";
+      assert.equal(educationalSystem.includes(PUBLIC_EDUCATIONAL_EXPLAINER_MARKER), true);
+      assert.equal(educationalSystem.includes(legacyEducationalSentence), false);
+      assert.equal(educationalSystem.includes(legacyWarningsPattern), false);
+      assert.equal(educationalSystem.includes(legacyTimingGuidance), false);
+      assertScopedPublicUrgency(educationalSystem);
+      assert.equal(JSON.stringify(educationalBody).includes(austriaEducationalNeedle), false);
     });
 
     await t.test("separate photo API remains quarantined", async () => {
