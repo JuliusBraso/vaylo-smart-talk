@@ -1889,7 +1889,12 @@ export async function POST(req: Request) {
     let out: Awaited<ReturnType<typeof runSmartTalk>>;
     try {
       out = await Promise.race([
-        runSmartTalk({ text, locale, inputType: "question" }),
+        runSmartTalk({
+          text,
+          locale,
+          inputType: "question",
+          outputContract: "public_free_qa_strict",
+        }),
         new Promise<never>((_, reject) => {
           setTimeout(() => reject(new Error("smart_talk_timeout")), SMART_TALK_ROUTE_TIMEOUT_MS);
         }),
@@ -1899,6 +1904,9 @@ export async function POST(req: Request) {
     }
 
     if (!out.ok) {
+      if (out.error.kind === "model_output_invalid") {
+        return NextResponse.json({ ok: false, error: "smart_talk_unavailable" }, { status: 503 });
+      }
       const requestId = createRequestId();
       logRouteError("[smart-talk] free-qa public beta openai failed", requestId, {
         kind: out.error.kind,

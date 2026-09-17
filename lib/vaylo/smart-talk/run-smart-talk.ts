@@ -898,7 +898,125 @@ function fallbackInvalidJson(): SmartTalkResult {
   };
 }
 
-export type RunSmartTalkError = { kind: "openai_http"; status: number } | { kind: "openai_empty" };
+export type SmartTalkOutputContract = "compatible" | "public_free_qa_strict";
+
+export type RunSmartTalkError =
+  | { kind: "openai_http"; status: number }
+  | { kind: "openai_empty" }
+  | { kind: "model_output_invalid" };
+
+const PUBLIC_FREE_QA_STRICT_REQUIRED_KEYS: readonly string[] = [
+  "summary",
+  "meaning",
+  "urgency",
+  "nextSteps",
+  "warnings",
+  "stabilizers",
+  "confidenceLevel",
+  "consequencePhase",
+  "documentQuality",
+  "documentKind",
+  "domain",
+  "documentTypeLabel",
+  "paymentChannel",
+  "proceduralState",
+  "legalSeverity",
+  "deadlines",
+  "rights",
+  "obligations",
+  "consequences",
+] as const;
+
+const PUBLIC_FREE_QA_STRICT_STRING_ARRAY_LIMITS: Readonly<
+  Record<string, { maxItems: number; maxItemLen: number }>
+> = {
+  nextSteps: { maxItems: 16, maxItemLen: 500 },
+  warnings: { maxItems: 12, maxItemLen: 400 },
+  stabilizers: { maxItems: 2, maxItemLen: 400 },
+  deadlines: { maxItems: 12, maxItemLen: 400 },
+  rights: { maxItems: 10, maxItemLen: 400 },
+  obligations: { maxItems: 10, maxItemLen: 400 },
+  consequences: { maxItems: 10, maxItemLen: 400 },
+};
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  return Object.getPrototypeOf(value) === Object.prototype;
+}
+
+function parseStrictProviderJson(rawContent: string): Record<string, unknown> | null {
+  const trimmed = rawContent.trim();
+  if (!trimmed) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(trimmed) as unknown;
+  } catch {
+    return null;
+  }
+  if (!isPlainRecord(parsed)) return null;
+  return parsed;
+}
+
+function validatePublicFreeQaStrictObject(obj: Record<string, unknown>): boolean {
+  const keys = Object.keys(obj);
+  if (keys.length !== PUBLIC_FREE_QA_STRICT_REQUIRED_KEYS.length) return false;
+  for (const key of PUBLIC_FREE_QA_STRICT_REQUIRED_KEYS) {
+    if (!Object.prototype.hasOwnProperty.call(obj, key)) return false;
+  }
+
+  const summary = obj.summary;
+  if (typeof summary !== "string" || summary.trim().length === 0 || summary.length > 8000) {
+    return false;
+  }
+  const meaning = obj.meaning;
+  if (typeof meaning !== "string" || meaning.trim().length === 0 || meaning.length > 12000) {
+    return false;
+  }
+  const documentTypeLabel = obj.documentTypeLabel;
+  if (typeof documentTypeLabel !== "string" || documentTypeLabel.length > 200) {
+    return false;
+  }
+
+  if (typeof obj.urgency !== "string" || !URGENCY_SET.has(obj.urgency)) return false;
+  if (typeof obj.confidenceLevel !== "string" || !CONFIDENCE_SET.has(obj.confidenceLevel)) {
+    return false;
+  }
+  if (typeof obj.consequencePhase !== "string" || !CONSEQUENCE_SET.has(obj.consequencePhase)) {
+    return false;
+  }
+  if (typeof obj.documentQuality !== "string" || !DOCUMENT_QUALITY_SET.has(obj.documentQuality)) {
+    return false;
+  }
+  if (typeof obj.documentKind !== "string" || !DOCUMENT_KIND_SET.has(obj.documentKind)) {
+    return false;
+  }
+  if (typeof obj.domain !== "string" || !DOMAIN_SET.has(obj.domain)) return false;
+  if (typeof obj.paymentChannel !== "string" || !PAYMENT_CHANNEL_SET.has(obj.paymentChannel)) {
+    return false;
+  }
+  if (
+    typeof obj.proceduralState !== "string" ||
+    !PROCEDURAL_STATE_SET.has(obj.proceduralState)
+  ) {
+    return false;
+  }
+  if (typeof obj.legalSeverity !== "string" || !LEGAL_SEVERITY_SET.has(obj.legalSeverity)) {
+    return false;
+  }
+
+  for (const [field, limits] of Object.entries(PUBLIC_FREE_QA_STRICT_STRING_ARRAY_LIMITS)) {
+    const raw = obj[field];
+    if (!Array.isArray(raw)) return false;
+    if (raw.length > limits.maxItems) return false;
+    for (const item of raw) {
+      if (typeof item !== "string") return false;
+      const trimmed = item.trim();
+      if (!trimmed || item.length > limits.maxItemLen) return false;
+    }
+  }
+
+  return true;
+}
 
 // [TD-002] post-model/pre-user-visible governance seam — disabled-by-default
 // containment only | no user-visible output | no persistence | no production authorization
@@ -932,15 +1050,20 @@ function _buildSyntheticGovernanceInputForContainmentSeam(): Parameters<typeof r
 
 /**
  * Calls OpenAI with JSON object mode. Requires OPENAI_API_KEY in env.
- * On successful HTTP but unparseable JSON, returns a safe fallback result (no throw).
- * On HTTP failure or empty content, returns { ok: false, error }.
+ * Compatible contract: on successful HTTP but unparseable JSON, returns a safe fallback result (ok: true).
+ * public_free_qa_strict: empty, malformed, or structurally invalid model output returns
+ * { ok: false, error: { kind: "model_output_invalid" } }.
+ * On provider HTTP failure, returns { ok: false, error: { kind: "openai_http", status } }.
+ * Compatible contract: missing, non-string, empty, or whitespace-only message content returns openai_empty.
  */
 export async function runSmartTalk(params: {
   text: string;
   locale: SmartTalkLocale;
   inputType: SmartTalkInputType;
   source?: SmartTalkTextSource;
+  outputContract?: SmartTalkOutputContract;
 }): Promise<{ ok: true; result: SmartTalkResult } | { ok: false; error: RunSmartTalkError }> {
+  const outputContract = params.outputContract ?? "compatible";
   const key = process.env.OPENAI_API_KEY?.trim();
   if (!key) {
     return { ok: false, error: { kind: "openai_empty" } };
@@ -989,19 +1112,30 @@ export async function runSmartTalk(params: {
     };
     const rawContent = body.choices?.[0]?.message?.content;
     if (typeof rawContent !== "string" || !rawContent.trim()) {
+      if (outputContract === "public_free_qa_strict") {
+        return { ok: false, error: { kind: "model_output_invalid" } };
+      }
       return { ok: false, error: { kind: "openai_empty" } };
     }
 
-    const content = stripJsonFence(rawContent);
     let parsed: unknown;
-    try {
-      parsed = JSON.parse(content) as unknown;
-    } catch {
-      return { ok: true, result: fallbackInvalidJson() };
-    }
+    if (outputContract === "public_free_qa_strict") {
+      const strictParsed = parseStrictProviderJson(rawContent);
+      if (!strictParsed || !validatePublicFreeQaStrictObject(strictParsed)) {
+        return { ok: false, error: { kind: "model_output_invalid" } };
+      }
+      parsed = strictParsed;
+    } else {
+      const content = stripJsonFence(rawContent);
+      try {
+        parsed = JSON.parse(content) as unknown;
+      } catch {
+        return { ok: true, result: fallbackInvalidJson() };
+      }
 
-    if (!parsed || typeof parsed !== "object") {
-      return { ok: true, result: fallbackInvalidJson() };
+      if (!parsed || typeof parsed !== "object") {
+        return { ok: true, result: fallbackInvalidJson() };
+      }
     }
 
     const protocol = deriveSmartTalkReasoningProtocol(params);

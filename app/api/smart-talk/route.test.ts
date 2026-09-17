@@ -137,11 +137,13 @@ test("Smart Talk dispatch is explicit and controlled modes are contained", async
     "VAYLO_CONTROLLED_TEXT_PILOT_SCENARIO_ALLOWLIST",
   ] as const;
   let fetchCalls = 0;
+  let mockOpenAiMessageContent: string | null = null;
 
   globalThis.fetch = async () => {
     fetchCalls += 1;
+    const content = mockOpenAiMessageContent ?? JSON.stringify(VALID_MODEL_RESULT);
     return new Response(JSON.stringify({
-      choices: [{ message: { content: JSON.stringify(VALID_MODEL_RESULT) } }],
+      choices: [{ message: { content } }],
     }), {
       status: 200,
       headers: { "content-type": "application/json" },
@@ -678,6 +680,142 @@ test("Smart Talk dispatch is explicit and controlled modes are contained", async
       }));
       assert.equal(synthetic.status, 200);
       assert.equal(fetchCalls, 0);
+    });
+
+    await t.test("public Free Q&A strict output contract rejects malformed provider payloads", async (context) => {
+      context.after(() => {
+        mockOpenAiMessageContent = null;
+      });
+      process.env.SMART_TALK_FREE_QA_PUBLIC_ENABLED = "true";
+      const publicQuestion = {
+        mode: "free_qa_public_beta",
+        context: "anonymous",
+        inputType: "question",
+        locale: "sk",
+        text: "Ako postupujem pri registrácii na obecnom úrade v Nemecku?",
+      };
+      const questionNeedle = "registrácii";
+      const validJson = JSON.stringify(VALID_MODEL_RESULT);
+
+      const expectStrictReject = async (providerContent: string, providerNeedle: string) => {
+        mockOpenAiMessageContent = providerContent;
+        fetchCalls = 0;
+        const response = await smartTalkPost(jsonRequest(publicQuestion));
+        const body = await responseBody(response);
+        assert.equal(fetchCalls, 1);
+        assert.equal(response.status, 503);
+        assert.deepEqual(body, { ok: false, error: "smart_talk_unavailable" });
+        assert.equal(Object.keys(body).sort().join(","), "error,ok");
+        const serialized = JSON.stringify(body);
+        assert.equal(serialized.includes(questionNeedle), false);
+        assert.equal(serialized.includes(providerNeedle), false);
+      };
+
+      const expectStrictRejectNoProviderNeedle = async (providerContent: string) => {
+        mockOpenAiMessageContent = providerContent;
+        fetchCalls = 0;
+        const response = await smartTalkPost(jsonRequest(publicQuestion));
+        const body = await responseBody(response);
+        assert.equal(fetchCalls, 1);
+        assert.equal(response.status, 503);
+        assert.deepEqual(body, { ok: false, error: "smart_talk_unavailable" });
+        assert.equal(Object.keys(body).sort().join(","), "error,ok");
+        assert.equal(JSON.stringify(body).includes(questionNeedle), false);
+      };
+
+      await expectStrictRejectNoProviderNeedle("");
+      await expectStrictRejectNoProviderNeedle("   \n\t  ");
+
+      await expectStrictReject("{SYNTH_STRICT_BAD_JSON", "SYNTH_STRICT_BAD_JSON");
+      await expectStrictReject(`${validJson} SYNTH_TRAILING_PROSE`, "SYNTH_TRAILING_PROSE");
+      await expectStrictReject(
+        `\`\`\`json\n${validJson}\n\`\`\``,
+        "SYNTH_FENCE_MARKER",
+      );
+      await expectStrictReject("null", "null");
+      await expectStrictReject("[]", "[]");
+      await expectStrictReject(JSON.stringify("SYNTH_SCALAR_ONLY"), "SYNTH_SCALAR_ONLY");
+
+      const withoutSummary = { ...VALID_MODEL_RESULT };
+      delete (withoutSummary as { summary?: string }).summary;
+      await expectStrictReject(JSON.stringify(withoutSummary), "Synthetic summary");
+
+      const withoutRights = { ...VALID_MODEL_RESULT };
+      delete (withoutRights as { rights?: string[] }).rights;
+      await expectStrictReject(JSON.stringify(withoutRights), "Synthetic summary");
+
+      await expectStrictReject(
+        JSON.stringify({ ...VALID_MODEL_RESULT, summary: "   " }),
+        "Synthetic meaning",
+      );
+      await expectStrictReject(
+        JSON.stringify({ ...VALID_MODEL_RESULT, meaning: "   " }),
+        "Synthetic summary",
+      );
+      await expectStrictReject(
+        JSON.stringify({ ...VALID_MODEL_RESULT, summary: 42 }),
+        "Synthetic summary",
+      );
+      await expectStrictReject(
+        JSON.stringify({ ...VALID_MODEL_RESULT, urgency: "SYNTH_INVALID_ENUM" }),
+        "SYNTH_INVALID_ENUM",
+      );
+      await expectStrictReject(
+        JSON.stringify({ ...VALID_MODEL_RESULT, SYNTH_EXTRA_KEY: "x" }),
+        "SYNTH_EXTRA_KEY",
+      );
+      await expectStrictReject(
+        JSON.stringify({ ...VALID_MODEL_RESULT, nextSteps: [42] }),
+        "42",
+      );
+      await expectStrictReject(
+        JSON.stringify({ ...VALID_MODEL_RESULT, nextSteps: ["   "] }),
+        "Synthetic summary",
+      );
+      await expectStrictReject(
+        JSON.stringify({
+          ...VALID_MODEL_RESULT,
+          nextSteps: Array.from({ length: 17 }, (_, i) => `step-${i}`),
+        }),
+        "step-16",
+      );
+      await expectStrictReject(
+        JSON.stringify({ ...VALID_MODEL_RESULT, summary: "x".repeat(8001) }),
+        "xxxx",
+      );
+
+      mockOpenAiMessageContent = `  \n${validJson}\n  `;
+      fetchCalls = 0;
+      const paddedOk = await smartTalkPost(jsonRequest(publicQuestion));
+      const paddedBody = await responseBody(paddedOk);
+      assert.equal(fetchCalls, 1);
+      assert.equal(paddedOk.status, 200);
+      assert.equal(paddedBody.ok, true);
+
+      mockOpenAiMessageContent = JSON.stringify({
+        ...VALID_MODEL_RESULT,
+        documentTypeLabel: "",
+        nextSteps: [],
+        warnings: [],
+      });
+      fetchCalls = 0;
+      const emptyArraysOk = await smartTalkPost(jsonRequest(publicQuestion));
+      assert.equal(emptyArraysOk.status, 200);
+      assert.equal(fetchCalls, 1);
+
+      const inventedDate = "15.03.2099";
+      mockOpenAiMessageContent = JSON.stringify({
+        ...VALID_MODEL_RESULT,
+        meaning: `Lehota do ${inventedDate} je všeobecná orientácia.`,
+      });
+      fetchCalls = 0;
+      const calendarResponse = await smartTalkPost(jsonRequest(publicQuestion));
+      const calendarBody = await responseBody(calendarResponse);
+      assert.equal(calendarResponse.status, 200);
+      assert.equal(fetchCalls, 1);
+      const meaning = (calendarBody.result as { meaning?: string }).meaning ?? "";
+      assert.equal(meaning.includes(inventedDate), false);
+      assert.equal(meaning.includes("kalendárny dátum"), true);
     });
 
     await t.test("separate photo API remains quarantined", async () => {
