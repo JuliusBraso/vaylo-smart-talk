@@ -1886,22 +1886,37 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "smart_talk_unavailable" }, { status: 503 });
     }
 
-    let out: Awaited<ReturnType<typeof runSmartTalk>>;
+    const requestController = new AbortController();
+    let deadlineExpired = false;
+    let deadlineTimer: ReturnType<typeof setTimeout> | undefined;
+    const runPromise = runSmartTalk({
+      text,
+      locale,
+      inputType: "question",
+      outputContract: "public_free_qa_strict",
+      signal: requestController.signal,
+    }).then(
+      (out) => ({ kind: "result" as const, out }),
+      () => ({ kind: "failure" as const }),
+    );
+    const deadlinePromise = new Promise<{ kind: "timeout" }>((resolve) => {
+      deadlineTimer = setTimeout(() => {
+        deadlineExpired = true;
+        requestController.abort();
+        resolve({ kind: "timeout" });
+      }, SMART_TALK_ROUTE_TIMEOUT_MS);
+    });
+
+    let settled: Awaited<typeof runPromise> | { kind: "timeout" };
     try {
-      out = await Promise.race([
-        runSmartTalk({
-          text,
-          locale,
-          inputType: "question",
-          outputContract: "public_free_qa_strict",
-        }),
-        new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error("smart_talk_timeout")), SMART_TALK_ROUTE_TIMEOUT_MS);
-        }),
-      ]);
-    } catch {
+      settled = await Promise.race([runPromise, deadlinePromise]);
+    } finally {
+      if (deadlineTimer !== undefined) clearTimeout(deadlineTimer);
+    }
+    if (deadlineExpired || settled.kind !== "result") {
       return NextResponse.json({ ok: false, error: "smart_talk_timeout" }, { status: 504 });
     }
+    const out = settled.out;
 
     if (!out.ok) {
       if (out.error.kind === "model_output_invalid") {

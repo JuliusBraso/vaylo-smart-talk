@@ -903,7 +903,8 @@ export type SmartTalkOutputContract = "compatible" | "public_free_qa_strict";
 export type RunSmartTalkError =
   | { kind: "openai_http"; status: number }
   | { kind: "openai_empty" }
-  | { kind: "model_output_invalid" };
+  | { kind: "model_output_invalid" }
+  | { kind: "aborted" };
 
 const PUBLIC_FREE_QA_STRICT_REQUIRED_KEYS: readonly string[] = [
   "summary",
@@ -1062,20 +1063,42 @@ export async function runSmartTalk(params: {
   inputType: SmartTalkInputType;
   source?: SmartTalkTextSource;
   outputContract?: SmartTalkOutputContract;
+  signal?: AbortSignal;
 }): Promise<{ ok: true; result: SmartTalkResult } | { ok: false; error: RunSmartTalkError }> {
-  const outputContract = params.outputContract ?? "compatible";
+  const { signal: callerSignal, ...messageParams } = params;
+  const outputContract = messageParams.outputContract ?? "compatible";
+  if (callerSignal?.aborted) {
+    return { ok: false, error: { kind: "aborted" } };
+  }
   const key = process.env.OPENAI_API_KEY?.trim();
   if (!key) {
     return { ok: false, error: { kind: "openai_empty" } };
   }
 
   const model = process.env.OPENAI_SMART_TALK_MODEL?.trim() || DEFAULT_MODEL;
-  const knowledge =
-    params.inputType === "question"
-      ? await prepareControlledQuestionKnowledge({ text: params.text, locale: params.locale })
-      : { evidence: [], localContext: null };
+  let knowledge: Awaited<ReturnType<typeof prepareControlledQuestionKnowledge>> | {
+    evidence: never[];
+    localContext: null;
+  };
+  try {
+    knowledge =
+      messageParams.inputType === "question"
+        ? await prepareControlledQuestionKnowledge({
+            text: messageParams.text,
+            locale: messageParams.locale,
+          })
+        : { evidence: [], localContext: null };
+  } catch (error) {
+    if (callerSignal?.aborted) {
+      return { ok: false, error: { kind: "aborted" } };
+    }
+    throw error;
+  }
+  if (callerSignal?.aborted) {
+    return { ok: false, error: { kind: "aborted" } };
+  }
   const { system, user } = buildSmartTalkMessages({
-    ...params,
+    ...messageParams,
     knowledgeEvidence: knowledge.evidence,
     localContext: knowledge.localContext,
     ...(outputContract === "public_free_qa_strict"
@@ -1084,9 +1107,23 @@ export async function runSmartTalk(params: {
   });
 
   const controller = new AbortController();
+  let callerCancellationObserved = false;
+  const forwardCallerAbort = () => {
+    callerCancellationObserved = true;
+    controller.abort(callerSignal?.reason);
+  };
+  if (callerSignal) {
+    callerSignal.addEventListener("abort", forwardCallerAbort, { once: true });
+    if (callerSignal.aborted) {
+      forwardCallerAbort();
+    }
+  }
   const t = setTimeout(() => controller.abort(), 55_000);
 
   try {
+    if (callerCancellationObserved || callerSignal?.aborted) {
+      return { ok: false, error: { kind: "aborted" } };
+    }
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -1106,6 +1143,9 @@ export async function runSmartTalk(params: {
       signal: controller.signal,
     });
 
+    if (callerCancellationObserved || callerSignal?.aborted) {
+      return { ok: false, error: { kind: "aborted" } };
+    }
     if (!res.ok) {
       return { ok: false, error: { kind: "openai_http", status: res.status } };
     }
@@ -1114,6 +1154,9 @@ export async function runSmartTalk(params: {
       choices?: Array<{ message?: { content?: string } }>;
     };
     const rawContent = body.choices?.[0]?.message?.content;
+    if (callerCancellationObserved || callerSignal?.aborted) {
+      return { ok: false, error: { kind: "aborted" } };
+    }
     if (typeof rawContent !== "string" || !rawContent.trim()) {
       if (outputContract === "public_free_qa_strict") {
         return { ok: false, error: { kind: "model_output_invalid" } };
@@ -1141,12 +1184,12 @@ export async function runSmartTalk(params: {
       }
     }
 
-    const protocol = deriveSmartTalkReasoningProtocol(params);
+    const protocol = deriveSmartTalkReasoningProtocol(messageParams);
 
     const _smartTalkResult = normalizeParsedObject(
       parsed as Record<string, unknown>,
-      params.text,
-      params.locale,
+      messageParams.text,
+      messageParams.locale,
       protocol,
     );
 
@@ -1161,10 +1204,17 @@ export async function runSmartTalk(params: {
       void _containmentAdapterOutput;
     }
 
+    if (callerCancellationObserved || callerSignal?.aborted) {
+      return { ok: false, error: { kind: "aborted" } };
+    }
     return { ok: true, result: _smartTalkResult };
   } catch {
+    if (callerCancellationObserved || callerSignal?.aborted) {
+      return { ok: false, error: { kind: "aborted" } };
+    }
     return { ok: false, error: { kind: "openai_http", status: 0 } };
   } finally {
     clearTimeout(t);
+    callerSignal?.removeEventListener("abort", forwardCallerAbort);
   }
 }

@@ -22,6 +22,19 @@ registerHooks({
     if (specifier === "server-only") {
       return { url: "data:text/javascript,export%20{};", shortCircuit: true };
     }
+    if (specifier.endsWith("/controlled-runtime-retrieval")) {
+      const source = `
+        export async function prepareControlledQuestionKnowledge(params) {
+          const mock = globalThis.__smartTalkKnowledgeMock;
+          if (typeof mock === "function") return await mock(params);
+          return { evidence: [], localContext: null };
+        }
+      `;
+      return {
+        url: `data:text/javascript,${encodeURIComponent(source)}`,
+        shortCircuit: true,
+      };
+    }
     if (specifier === "next/server") {
       return nextResolve("next/server.js", context);
     }
@@ -51,6 +64,14 @@ registerHooks({
 });
 
 type PostHandler = (request: Request) => Promise<Response>;
+type KnowledgeMock = (params: {
+  text: string;
+  locale: "sk" | "de" | "en";
+}) => Promise<{ evidence: []; localContext: null }>;
+
+const testGlobals = globalThis as typeof globalThis & {
+  __smartTalkKnowledgeMock?: KnowledgeMock;
+};
 
 const VALID_MODEL_RESULT = {
   summary: "Synthetic summary.",
@@ -112,6 +133,13 @@ function multipartRequest(form: FormData): Request {
 
 async function responseBody(response: Response): Promise<Record<string, unknown>> {
   return await response.json() as Record<string, unknown>;
+}
+
+async function flushMicrotasksUntil(predicate: () => boolean, attempts = 30): Promise<void> {
+  for (let i = 0; i < attempts && !predicate(); i += 1) {
+    await Promise.resolve();
+  }
+  assert.equal(predicate(), true, "expected asynchronous test boundary was not reached");
 }
 
 test("Smart Talk dispatch is explicit and controlled modes are contained", async (t) => {
@@ -1033,6 +1061,293 @@ test("Smart Talk dispatch is explicit and controlled modes are contained", async
       assert.equal(educationalSystem.includes(legacyTimingGuidance), false);
       assertScopedPublicUrgency(educationalSystem);
       assert.equal(JSON.stringify(educationalBody).includes(austriaEducationalNeedle), false);
+    });
+
+    await t.test("public Free Q&A propagates its deadline and cleans cancellation resources", async (suite) => {
+      process.env.SMART_TALK_FREE_QA_PUBLIC_ENABLED = "true";
+      const outerFetch = globalThis.fetch;
+      const { runSmartTalk } = await import("@/lib/vaylo/smart-talk/run-smart-talk");
+      const publicQuestion = () => jsonRequest({
+        mode: "free_qa_public_beta",
+        context: "anonymous",
+        inputType: "question",
+        locale: "sk",
+        text: "Ako postupujem pri registrácii na obecnom úrade v Nemecku?",
+      });
+      const providerSuccess = () => new Response(JSON.stringify({
+        choices: [{ message: { content: JSON.stringify(VALID_MODEL_RESULT) } }],
+      }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+
+      await suite.test("pending main provider fetch is aborted at the bounded route deadline", async (context) => {
+        context.mock.timers.enable({ apis: ["setTimeout"] });
+        context.after(() => {
+          globalThis.fetch = outerFetch;
+          delete testGlobals.__smartTalkKnowledgeMock;
+          context.mock.timers.reset();
+        });
+        let mainProviderFetchCalls = 0;
+        let providerSignal: AbortSignal | null = null;
+        testGlobals.__smartTalkKnowledgeMock = async () => ({ evidence: [], localContext: null });
+        globalThis.fetch = async (_input, init) => {
+          mainProviderFetchCalls += 1;
+          providerSignal = init?.signal ?? null;
+          return await new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener("abort", () => {
+              reject(new DOMException("synthetic abort", "AbortError"));
+            }, { once: true });
+          });
+        };
+
+        const responsePromise = smartTalkPost(publicQuestion());
+        await flushMicrotasksUntil(() => mainProviderFetchCalls === 1);
+        context.mock.timers.tick(20_000);
+        const response = await responsePromise;
+        assert.equal(response.status, 504);
+        assert.deepEqual(await responseBody(response), {
+          ok: false,
+          error: "smart_talk_timeout",
+        });
+        assert.equal((providerSignal as AbortSignal | null)?.aborted, true);
+      });
+
+      await suite.test("late knowledge completion cannot start the main provider request", async (context) => {
+        context.mock.timers.enable({ apis: ["setTimeout"] });
+        context.after(() => {
+          globalThis.fetch = outerFetch;
+          delete testGlobals.__smartTalkKnowledgeMock;
+          context.mock.timers.reset();
+        });
+        let resolveKnowledge!: (value: { evidence: []; localContext: null }) => void;
+        const delayedKnowledge = new Promise<{ evidence: []; localContext: null }>((resolve) => {
+          resolveKnowledge = resolve;
+        });
+        let knowledgeCalls = 0;
+        let mainProviderFetchCalls = 0;
+        testGlobals.__smartTalkKnowledgeMock = async () => {
+          knowledgeCalls += 1;
+          return await delayedKnowledge;
+        };
+        globalThis.fetch = async () => {
+          mainProviderFetchCalls += 1;
+          return providerSuccess();
+        };
+
+        const responsePromise = smartTalkPost(publicQuestion());
+        await flushMicrotasksUntil(() => knowledgeCalls === 1);
+        context.mock.timers.tick(20_000);
+        const response = await responsePromise;
+        assert.equal(response.status, 504);
+        assert.deepEqual(await responseBody(response), {
+          ok: false,
+          error: "smart_talk_timeout",
+        });
+        resolveKnowledge({ evidence: [], localContext: null });
+        await Promise.resolve();
+        await Promise.resolve();
+        assert.equal(mainProviderFetchCalls, 0);
+      });
+
+      await suite.test("already-aborted caller prevents knowledge and model processing", async (context) => {
+        context.after(() => {
+          globalThis.fetch = outerFetch;
+          delete testGlobals.__smartTalkKnowledgeMock;
+        });
+        let knowledgeCalls = 0;
+        let mainProviderFetchCalls = 0;
+        testGlobals.__smartTalkKnowledgeMock = async () => {
+          knowledgeCalls += 1;
+          return { evidence: [], localContext: null };
+        };
+        globalThis.fetch = async () => {
+          mainProviderFetchCalls += 1;
+          return providerSuccess();
+        };
+        const controller = new AbortController();
+        controller.abort();
+        const result = await runSmartTalk({
+          text: "Synthetic cancellation question.",
+          locale: "sk",
+          inputType: "question",
+          signal: controller.signal,
+        });
+        assert.deepEqual(result, { ok: false, error: { kind: "aborted" } });
+        assert.equal(knowledgeCalls, 0);
+        assert.equal(mainProviderFetchCalls, 0);
+      });
+
+      await suite.test("early route success clears both deadline and provider timers", async (context) => {
+        context.mock.timers.enable({ apis: ["setTimeout"] });
+        context.after(() => {
+          globalThis.fetch = outerFetch;
+          delete testGlobals.__smartTalkKnowledgeMock;
+          context.mock.timers.reset();
+        });
+        let providerSignal: AbortSignal | null = null;
+        let mainProviderFetchCalls = 0;
+        testGlobals.__smartTalkKnowledgeMock = async () => ({ evidence: [], localContext: null });
+        globalThis.fetch = async (_input, init) => {
+          mainProviderFetchCalls += 1;
+          providerSignal = init?.signal ?? null;
+          return providerSuccess();
+        };
+        const response = await smartTalkPost(publicQuestion());
+        assert.equal(response.status, 200);
+        assert.equal(mainProviderFetchCalls, 1);
+        assert.equal((providerSignal as AbortSignal | null)?.aborted, false);
+        context.mock.timers.tick(60_000);
+        assert.equal((providerSignal as AbortSignal | null)?.aborted, false);
+      });
+
+      await suite.test("provider failure and caller cancellation remove listeners and timers", async (context) => {
+        context.mock.timers.enable({ apis: ["setTimeout"] });
+        context.after(() => {
+          globalThis.fetch = outerFetch;
+          delete testGlobals.__smartTalkKnowledgeMock;
+          context.mock.timers.reset();
+        });
+        testGlobals.__smartTalkKnowledgeMock = async () => ({ evidence: [], localContext: null });
+
+        const instrument = (controller: AbortController) => {
+          const signal = controller.signal;
+          const originalAdd = signal.addEventListener.bind(signal) as EventTarget["addEventListener"];
+          const originalRemove =
+            signal.removeEventListener.bind(signal) as EventTarget["removeEventListener"];
+          let adds = 0;
+          let removes = 0;
+          Object.defineProperty(signal, "addEventListener", {
+            configurable: true,
+            value: (...args: Parameters<EventTarget["addEventListener"]>) => {
+              adds += 1;
+              return originalAdd(...args);
+            },
+          });
+          Object.defineProperty(signal, "removeEventListener", {
+            configurable: true,
+            value: (...args: Parameters<EventTarget["removeEventListener"]>) => {
+              removes += 1;
+              return originalRemove(...args);
+            },
+          });
+          return { signal, counts: () => ({ adds, removes }) };
+        };
+
+        const failedCaller = new AbortController();
+        const failedTracked = instrument(failedCaller);
+        let failedProviderSignal: AbortSignal | null = null;
+        globalThis.fetch = async (_input, init) => {
+          failedProviderSignal = init?.signal ?? null;
+          return new Response("synthetic provider failure", { status: 503 });
+        };
+        const failed = await runSmartTalk({
+          text: "Synthetic provider failure question.",
+          locale: "sk",
+          inputType: "question",
+          signal: failedTracked.signal,
+        });
+        assert.deepEqual(failed, {
+          ok: false,
+          error: { kind: "openai_http", status: 503 },
+        });
+        assert.deepEqual(failedTracked.counts(), { adds: 1, removes: 1 });
+        failedCaller.abort();
+        context.mock.timers.tick(55_000);
+        assert.equal((failedProviderSignal as AbortSignal | null)?.aborted, false);
+
+        const cancelledCaller = new AbortController();
+        const cancelledTracked = instrument(cancelledCaller);
+        let cancelledProviderSignal: AbortSignal | null = null;
+        globalThis.fetch = async (_input, init) => {
+          cancelledProviderSignal = init?.signal ?? null;
+          return await new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener("abort", () => {
+              reject(new DOMException("synthetic abort", "AbortError"));
+            }, { once: true });
+          });
+        };
+        const cancelledPromise = runSmartTalk({
+          text: "Synthetic caller cancellation question.",
+          locale: "sk",
+          inputType: "question",
+          signal: cancelledTracked.signal,
+        });
+        await flushMicrotasksUntil(() => cancelledProviderSignal !== null);
+        cancelledCaller.abort();
+        const cancelled = await cancelledPromise;
+        assert.deepEqual(cancelled, { ok: false, error: { kind: "aborted" } });
+        assert.equal((cancelledProviderSignal as AbortSignal | null)?.aborted, true);
+        assert.deepEqual(cancelledTracked.counts(), { adds: 1, removes: 1 });
+      });
+
+      await suite.test("late knowledge rejection is handled after the route timeout", async (context) => {
+        context.mock.timers.enable({ apis: ["setTimeout"] });
+        context.after(() => {
+          globalThis.fetch = outerFetch;
+          delete testGlobals.__smartTalkKnowledgeMock;
+          context.mock.timers.reset();
+        });
+        let rejectKnowledge!: (reason: unknown) => void;
+        const delayedKnowledge = new Promise<{ evidence: []; localContext: null }>((_resolve, reject) => {
+          rejectKnowledge = reject;
+        });
+        let knowledgeCalls = 0;
+        let mainProviderFetchCalls = 0;
+        testGlobals.__smartTalkKnowledgeMock = async () => {
+          knowledgeCalls += 1;
+          return await delayedKnowledge;
+        };
+        globalThis.fetch = async () => {
+          mainProviderFetchCalls += 1;
+          return providerSuccess();
+        };
+        const unhandled: unknown[] = [];
+        const onUnhandled = (reason: unknown) => unhandled.push(reason);
+        process.on("unhandledRejection", onUnhandled);
+        try {
+          const responsePromise = smartTalkPost(publicQuestion());
+          await flushMicrotasksUntil(() => knowledgeCalls === 1);
+          context.mock.timers.tick(20_000);
+          const response = await responsePromise;
+          assert.equal(response.status, 504);
+          rejectKnowledge(new Error("synthetic late knowledge rejection"));
+          await Promise.resolve();
+          await new Promise<void>((resolve) => setImmediate(resolve));
+          assert.equal(mainProviderFetchCalls, 0);
+          assert.deepEqual(unhandled, []);
+        } finally {
+          process.removeListener("unhandledRejection", onUnhandled);
+        }
+      });
+
+      await suite.test("callers without a signal retain compatible successful behavior", async (context) => {
+        context.after(() => {
+          globalThis.fetch = outerFetch;
+          delete testGlobals.__smartTalkKnowledgeMock;
+        });
+        let knowledgeCalls = 0;
+        let mainProviderFetchCalls = 0;
+        let serializedProviderBody = "";
+        testGlobals.__smartTalkKnowledgeMock = async () => {
+          knowledgeCalls += 1;
+          return { evidence: [], localContext: null };
+        };
+        globalThis.fetch = async (_input, init) => {
+          mainProviderFetchCalls += 1;
+          serializedProviderBody = typeof init?.body === "string" ? init.body : "";
+          return providerSuccess();
+        };
+        const result = await runSmartTalk({
+          text: "Synthetic default caller question.",
+          locale: "sk",
+          inputType: "question",
+        });
+        assert.equal(result.ok, true);
+        assert.equal(knowledgeCalls, 1);
+        assert.equal(mainProviderFetchCalls, 1);
+        assert.equal(serializedProviderBody.includes("signal"), false);
+      });
     });
 
     await t.test("separate photo API remains quarantined", async () => {
