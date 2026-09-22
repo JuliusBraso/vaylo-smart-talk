@@ -14,6 +14,9 @@ import {
 import { WEILTINGEN_PILOT } from "./bayern-weiltingen-locality-pilot";
 import {
   fetchLiveOpeningHours,
+  isKnowledgePreparationCancelled,
+  KnowledgePreparationCancelledError,
+  throwIfKnowledgePreparationCancelled,
   type LiveOperationalDependencies,
   type LiveOperationalFailureStage,
   type LiveSourceAuthorization,
@@ -145,7 +148,7 @@ export type ControlledKnowledgeResult = Readonly<{
   diagnostics: ControlledKnowledgeDiagnostics;
 }>;
 
-type RetrievalConfiguration = Readonly<{
+export type RetrievalConfiguration = Readonly<{
   clientConfig: ClientConfig;
   database: string;
 }>;
@@ -175,22 +178,28 @@ type RetrievalAttemptResult =
       failureStage: RetrievalFailureStage;
     }>;
 
-type ControlledKnowledgeDependencies = Readonly<{
-  selectUnitIds: (text: string) => Promise<unknown>;
-  selectLocalityKey?: (text: string) => Promise<unknown>;
+export type ControlledKnowledgeDependencies = Readonly<{
+  selectUnitIds: (text: string, signal?: AbortSignal) => Promise<unknown>;
+  selectLocalityKey?: (text: string, signal?: AbortSignal) => Promise<unknown>;
   retrieveRows: (
     claimIds: readonly string[],
     jurisdictionCodes: readonly string[],
     configuration: RetrievalConfiguration,
+    signal?: AbortSignal,
   ) => Promise<RetrievalAttemptResult>;
   retrieveAnmeldungContext?: (
     claimIds: readonly string[],
     municipalityCode: string | null,
     configuration: RetrievalConfiguration,
+    signal?: AbortSignal,
   ) => Promise<ContextRetrievalAttemptResult>;
   liveOperational?: LiveOperationalDependencies;
   report: (diagnostics: ControlledKnowledgeDiagnostics) => void;
 }>;
+
+export type KnowledgePgClient = Client;
+export type KnowledgePgClientFactory = (configuration: ClientConfig) => KnowledgePgClient;
+const DEFAULT_CLIENT_FACTORY: KnowledgePgClientFactory = (configuration) => new Client(configuration);
 
 type ContextRetrievalAttemptResult =
   | Readonly<{
@@ -284,11 +293,38 @@ function localContextConfigurationFromEnvironment(environment: NodeJS.ProcessEnv
   }
 }
 
-async function selectUnitsWithModel(text: string): Promise<unknown> {
+function selectorCancellation(
+  callerSignal: AbortSignal | undefined,
+): Readonly<{ signal: AbortSignal; callerCancelled: () => boolean; cleanup: () => void }> {
+  const controller = new AbortController();
+  let callerCancellationObserved = false;
+  const onCallerAbort = () => {
+    callerCancellationObserved = true;
+    controller.abort();
+  };
+  if (callerSignal) {
+    callerSignal.addEventListener("abort", onCallerAbort, { once: true });
+    if (callerSignal.aborted) onCallerAbort();
+  }
+  const timer = setTimeout(() => controller.abort(), 6_000);
+  return {
+    signal: controller.signal,
+    callerCancelled: () => callerCancellationObserved || callerSignal?.aborted === true,
+    cleanup: () => {
+      clearTimeout(timer);
+      callerSignal?.removeEventListener("abort", onCallerAbort);
+    },
+  };
+}
+
+export async function selectUnitsWithModel(text: string, signal?: AbortSignal): Promise<unknown> {
+  throwIfKnowledgePreparationCancelled(signal);
   const key = process.env.OPENAI_API_KEY?.trim();
   if (!key) return [];
   const catalog = PRODUCTION_DEPLOYED_UNITS.map((unit) => ({ id: unit.id, text: unit.text }));
+  const cancellation = selectorCancellation(signal);
   try {
+    if (cancellation.callerCancelled()) throw new KnowledgePreparationCancelledError();
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
@@ -307,17 +343,28 @@ async function selectUnitsWithModel(text: string): Promise<unknown> {
           { role: "user", content: JSON.stringify({ question: text, catalog }) },
         ],
       }),
-      signal: AbortSignal.timeout(6_000),
+      signal: cancellation.signal,
     });
+    if (cancellation.callerCancelled()) throw new KnowledgePreparationCancelledError();
     if (!response.ok) return [];
     const body = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
+    if (cancellation.callerCancelled()) throw new KnowledgePreparationCancelledError();
     return (JSON.parse(body.choices?.[0]?.message?.content ?? "{}") as { unitIds?: unknown }).unitIds;
-  } catch {
+  } catch (error) {
+    if (cancellation.callerCancelled() || isKnowledgePreparationCancelled(error)) {
+      throw new KnowledgePreparationCancelledError();
+    }
     return [];
+  } finally {
+    cancellation.cleanup();
   }
 }
 
-async function selectLocalityKeyWithModel(text: string): Promise<unknown> {
+export async function selectLocalityKeyWithModel(
+  text: string,
+  signal?: AbortSignal,
+): Promise<unknown> {
+  throwIfKnowledgePreparationCancelled(signal);
   const key = process.env.OPENAI_API_KEY?.trim();
   if (!key) return null;
   const catalog = ANMELDUNG_KNOWN_LOCALITIES.map((locality) => ({
@@ -325,7 +372,9 @@ async function selectLocalityKeyWithModel(text: string): Promise<unknown> {
     municipalityName: locality.municipalityName,
     aliases: locality.aliases,
   }));
+  const cancellation = selectorCancellation(signal);
   try {
+    if (cancellation.callerCancelled()) throw new KnowledgePreparationCancelledError();
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
@@ -344,28 +393,77 @@ async function selectLocalityKeyWithModel(text: string): Promise<unknown> {
           { role: "user", content: JSON.stringify({ question: text, catalog }) },
         ],
       }),
-      signal: AbortSignal.timeout(6_000),
+      signal: cancellation.signal,
     });
+    if (cancellation.callerCancelled()) throw new KnowledgePreparationCancelledError();
     if (!response.ok) return null;
     const body = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
+    if (cancellation.callerCancelled()) throw new KnowledgePreparationCancelledError();
     return (JSON.parse(body.choices?.[0]?.message?.content ?? "{}") as { localityKey?: unknown }).localityKey;
-  } catch {
+  } catch (error) {
+    if (cancellation.callerCancelled() || isKnowledgePreparationCancelled(error)) {
+      throw new KnowledgePreparationCancelledError();
+    }
     return null;
+  } finally {
+    cancellation.cleanup();
   }
 }
 
-async function retrieveRowsFromProduction(
+function attachClientCancellation(
+  client: KnowledgePgClient,
+  signal?: AbortSignal,
+): Readonly<{
+  cancelled: () => boolean;
+  close: () => Promise<void>;
+  cleanup: () => void;
+}> {
+  let cancellationObserved = false;
+  let closePromise: Promise<void> | null = null;
+  const onClientError = () => undefined;
+  const close = () => {
+    if (!closePromise) {
+      closePromise = Promise.resolve(client.end()).then(() => undefined, () => undefined);
+    }
+    return closePromise;
+  };
+  const onAbort = () => {
+    cancellationObserved = true;
+    void close();
+  };
+  client.on("error", onClientError);
+  if (signal) {
+    signal.addEventListener("abort", onAbort, { once: true });
+    if (signal.aborted) onAbort();
+  }
+  return {
+    cancelled: () => cancellationObserved || signal?.aborted === true,
+    close,
+    cleanup: () => {
+      signal?.removeEventListener("abort", onAbort);
+      client.off("error", onClientError);
+    },
+  };
+}
+
+export async function retrieveRowsFromProduction(
   claimIds: readonly string[],
   jurisdictionCodes: readonly string[],
   configuration: RetrievalConfiguration,
+  signal?: AbortSignal,
+  createClient: KnowledgePgClientFactory = DEFAULT_CLIENT_FACTORY,
 ): Promise<RetrievalAttemptResult> {
-  const client = new Client(configuration.clientConfig);
+  throwIfKnowledgePreparationCancelled(signal);
+  const client = createClient(configuration.clientConfig);
+  const cancellation = attachClientCancellation(client, signal);
   let transaction = false;
   let connectionSucceeded = false;
   let rpcInvoked = false;
   let failureStage: RetrievalFailureStage = "connection";
   try {
+    if (cancellation.cancelled()) throw new KnowledgePreparationCancelledError();
     await client.connect();
+    if (cancellation.cancelled()) throw new KnowledgePreparationCancelledError();
     connectionSucceeded = true;
     failureStage = "identity";
     const identity = await client.query(
@@ -376,6 +474,7 @@ async function retrieveRowsFromProduction(
          join pg_catalog.pg_database d on d.datname=current_database()
         where r.rolname=current_user`,
     );
+    if (cancellation.cancelled()) throw new KnowledgePreparationCancelledError();
     const row = identity.rows[0] as Record<string, unknown> | undefined;
     if (
       !row
@@ -409,22 +508,29 @@ async function retrieveRowsFromProduction(
         "knowledge_retrieval_metadata",
       ]],
     );
+    if (cancellation.cancelled()) throw new KnowledgePreparationCancelledError();
     const privileges = privilegeResult.rows[0] as Record<string, unknown> | undefined;
     if (!privileges?.retrieval || privileges.ingestion || privileges.schema_create || privileges.table_access !== 0) {
       throw new Error("Knowledge reader privilege contract rejected");
     }
     failureStage = "transaction";
+    if (cancellation.cancelled()) throw new KnowledgePreparationCancelledError();
     await client.query("begin read only");
+    if (cancellation.cancelled()) throw new KnowledgePreparationCancelledError();
     transaction = true;
     await client.query("set local statement_timeout='8s'");
+    if (cancellation.cancelled()) throw new KnowledgePreparationCancelledError();
     await client.query("set local lock_timeout='1s'");
+    if (cancellation.cancelled()) throw new KnowledgePreparationCancelledError();
     failureStage = "rpc";
     rpcInvoked = true;
     const result = await client.query(
       "select * from public.knowledge_retrieve_evidence_packets($1::uuid[],$2::text[])",
       [claimIds, jurisdictionCodes],
     );
+    if (cancellation.cancelled()) throw new KnowledgePreparationCancelledError();
     await client.query("rollback");
+    if (cancellation.cancelled()) throw new KnowledgePreparationCancelledError();
     transaction = false;
     return {
       ok: true,
@@ -433,7 +539,10 @@ async function retrieveRowsFromProduction(
       rpcInvoked: true,
       rpcSucceeded: true,
     };
-  } catch {
+  } catch (error) {
+    if (cancellation.cancelled() || isKnowledgePreparationCancelled(error)) {
+      throw new KnowledgePreparationCancelledError();
+    }
     return {
       ok: false,
       rows: [],
@@ -443,23 +552,34 @@ async function retrieveRowsFromProduction(
       failureStage,
     };
   } finally {
-    if (transaction) await client.query("rollback").catch(() => undefined);
-    await client.end().catch(() => undefined);
+    if (!cancellation.cancelled() && transaction) {
+      await client.query("rollback").catch(() => undefined);
+    }
+    await cancellation.close();
+    const cancelledDuringCleanup = cancellation.cancelled();
+    cancellation.cleanup();
+    if (cancelledDuringCleanup) throw new KnowledgePreparationCancelledError();
   }
 }
 
-async function retrieveAnmeldungContextFromControlledReader(
+export async function retrieveAnmeldungContextFromControlledReader(
   claimIds: readonly string[],
   municipalityCode: string | null,
   configuration: RetrievalConfiguration,
+  signal?: AbortSignal,
+  createClient: KnowledgePgClientFactory = DEFAULT_CLIENT_FACTORY,
 ): Promise<ContextRetrievalAttemptResult> {
-  const client = new Client(configuration.clientConfig);
+  throwIfKnowledgePreparationCancelled(signal);
+  const client = createClient(configuration.clientConfig);
+  const cancellation = attachClientCancellation(client, signal);
   let transaction = false;
   let connectionSucceeded = false;
   let rpcInvoked = false;
   let failureStage: RetrievalFailureStage = "connection";
   try {
+    if (cancellation.cancelled()) throw new KnowledgePreparationCancelledError();
     await client.connect();
+    if (cancellation.cancelled()) throw new KnowledgePreparationCancelledError();
     connectionSucceeded = true;
     failureStage = "identity";
     const identity = await client.query(
@@ -470,6 +590,7 @@ async function retrieveAnmeldungContextFromControlledReader(
          join pg_catalog.pg_database d on d.datname=current_database()
         where r.rolname=current_user`,
     );
+    if (cancellation.cancelled()) throw new KnowledgePreparationCancelledError();
     const row = identity.rows[0] as Record<string, unknown> | undefined;
     if (
       !row || row.reader !== EXPECTED_READER || row.database_name !== configuration.database
@@ -484,22 +605,32 @@ async function retrieveAnmeldungContextFromControlledReader(
          has_function_privilege(current_user,'public.knowledge_ingest_curated_locality_pack(jsonb)','EXECUTE') as locality_ingestion,
          has_schema_privilege(current_user,'public','CREATE') as schema_create`,
     );
+    if (cancellation.cancelled()) throw new KnowledgePreparationCancelledError();
     const privilege = privileges.rows[0] as Record<string, unknown> | undefined;
     if (!privilege?.context_retrieval || privilege.ingestion || privilege.locality_ingestion || privilege.schema_create) {
       throw new Error("Knowledge reader privilege contract rejected");
     }
     failureStage = "transaction";
+    if (cancellation.cancelled()) throw new KnowledgePreparationCancelledError();
     await client.query("begin read only");
+    if (cancellation.cancelled()) throw new KnowledgePreparationCancelledError();
     transaction = true;
     await client.query("set local statement_timeout='8s'");
+    if (cancellation.cancelled()) throw new KnowledgePreparationCancelledError();
     await client.query("set local lock_timeout='1s'");
+    if (cancellation.cancelled()) throw new KnowledgePreparationCancelledError();
     failureStage = "rpc";
     rpcInvoked = true;
     const result = await retrieveAnmeldungContext(client, claimIds, municipalityCode);
+    if (cancellation.cancelled()) throw new KnowledgePreparationCancelledError();
     await client.query("rollback");
+    if (cancellation.cancelled()) throw new KnowledgePreparationCancelledError();
     transaction = false;
     return { ok: true, result, connectionSucceeded: true, rpcInvoked: true, rpcSucceeded: true };
-  } catch {
+  } catch (error) {
+    if (cancellation.cancelled() || isKnowledgePreparationCancelled(error)) {
+      throw new KnowledgePreparationCancelledError();
+    }
     return {
       ok: false,
       result: null,
@@ -509,8 +640,13 @@ async function retrieveAnmeldungContextFromControlledReader(
       failureStage,
     };
   } finally {
-    if (transaction) await client.query("rollback").catch(() => undefined);
-    await client.end().catch(() => undefined);
+    if (!cancellation.cancelled() && transaction) {
+      await client.query("rollback").catch(() => undefined);
+    }
+    await cancellation.close();
+    const cancelledDuringCleanup = cancellation.cancelled();
+    cancellation.cleanup();
+    if (cancelledDuringCleanup) throw new KnowledgePreparationCancelledError();
   }
 }
 
@@ -767,9 +903,16 @@ function diagnostics(
 }
 
 export async function prepareControlledQuestionKnowledge(
-  input: Readonly<{ text: string; locale: "sk" | "de" | "en"; environment?: NodeJS.ProcessEnv }>,
+  input: Readonly<{
+    text: string;
+    locale: "sk" | "de" | "en";
+    environment?: NodeJS.ProcessEnv;
+    signal?: AbortSignal;
+  }>,
   dependencies: ControlledKnowledgeDependencies = PRODUCTION_DEPENDENCIES,
 ): Promise<ControlledKnowledgeResult> {
+  const signal = input.signal;
+  throwIfKnowledgePreparationCancelled(signal);
   const environment = input.environment ?? process.env;
   const localContextEnabled = environment[ENV.localContextEnabled] === "true";
   const federalEnabled = environment[ENV.enabled] === "true";
@@ -780,6 +923,7 @@ export async function prepareControlledQuestionKnowledge(
     ? localContextConfigurationFromEnvironment(environment)
     : configurationFromEnvironment(environment);
   if (!configuration) {
+    throwIfKnowledgePreparationCancelled(signal);
     const report = diagnostics(input.locale, {
       attempted: true,
       failureStage: "configuration",
@@ -789,11 +933,17 @@ export async function prepareControlledQuestionKnowledge(
   }
   let selected: readonly string[] | null;
   try {
-    selected = normalizeSelection(await dependencies.selectUnitIds(input.text));
-  } catch {
+    throwIfKnowledgePreparationCancelled(signal);
+    selected = normalizeSelection(await dependencies.selectUnitIds(input.text, signal));
+    throwIfKnowledgePreparationCancelled(signal);
+  } catch (error) {
+    if (isKnowledgePreparationCancelled(error) || signal?.aborted) {
+      throw new KnowledgePreparationCancelledError();
+    }
     selected = null;
   }
   if (!selected?.length) {
+    throwIfKnowledgePreparationCancelled(signal);
     const report = diagnostics(input.locale, { attempted: true });
     dependencies.report(report);
     return { evidence: [], localContext: null, diagnostics: report };
@@ -802,10 +952,19 @@ export async function prepareControlledQuestionKnowledge(
   if (localContextEnabled) {
     let localityProposal: unknown = null;
     try {
-      localityProposal = await (dependencies.selectLocalityKey ?? selectLocalityKeyWithModel)(input.text);
-    } catch {
+      throwIfKnowledgePreparationCancelled(signal);
+      localityProposal = await (dependencies.selectLocalityKey ?? selectLocalityKeyWithModel)(
+        input.text,
+        signal,
+      );
+      throwIfKnowledgePreparationCancelled(signal);
+    } catch (error) {
+      if (isKnowledgePreparationCancelled(error) || signal?.aborted) {
+        throw new KnowledgePreparationCancelledError();
+      }
       localityProposal = null;
     }
+    throwIfKnowledgePreparationCancelled(signal);
     const locality = validateAnmeldungLocalityProposal(localityProposal, input.text);
     const municipalityCode = locality?.municipalityCode ?? null;
     try {
@@ -813,7 +972,9 @@ export async function prepareControlledQuestionKnowledge(
         claimIds,
         municipalityCode,
         configuration,
+        signal,
       );
+      throwIfKnowledgePreparationCancelled(signal);
       if (!retrieval.ok) {
         const report = diagnostics(input.locale, {
           attempted: true,
@@ -824,6 +985,7 @@ export async function prepareControlledQuestionKnowledge(
           localContextRpcInvoked: retrieval.rpcInvoked,
           localContextFailureStage: retrieval.failureStage,
         });
+        throwIfKnowledgePreparationCancelled(signal);
         dependencies.report(report);
         return { evidence: [], localContext: null, diagnostics: report };
       }
@@ -852,7 +1014,7 @@ export async function prepareControlledQuestionKnowledge(
         if (source) {
           const authorization = sourceOwnedOpeningHoursAuthorization(municipalityCode, source.canonicalUrl);
           const live = authorization
-            ? await fetchLiveOpeningHours(authorization, dependencies.liveOperational)
+            ? await fetchLiveOpeningHours(authorization, dependencies.liveOperational, signal)
             : {
                 ok: false as const,
                 failureStage: "source_validation" as const,
@@ -861,6 +1023,7 @@ export async function prepareControlledQuestionKnowledge(
                 fetchSucceeded: false,
                 extractionSucceeded: false as const,
               };
+          throwIfKnowledgePreparationCancelled(signal);
           liveSourceValidated = live.sourceValidated;
           liveFetchAttempted = live.fetchAttempted;
           liveFetchSucceeded = live.fetchSucceeded;
@@ -936,9 +1099,13 @@ export async function prepareControlledQuestionKnowledge(
         liveOperationalFailureStage: liveFailureStage,
         liveOperationalFetchedAt: liveFetchedAt,
       });
+      throwIfKnowledgePreparationCancelled(signal);
       dependencies.report(report);
       return { evidence, localContext, diagnostics: report };
-    } catch {
+    } catch (error) {
+      if (isKnowledgePreparationCancelled(error) || signal?.aborted) {
+        throw new KnowledgePreparationCancelledError();
+      }
       const report = diagnostics(input.locale, {
         attempted: true,
         selectedUnitIds: selected,
@@ -947,16 +1114,20 @@ export async function prepareControlledQuestionKnowledge(
         localContextAttempted: true,
         localContextFailureStage: "connection",
       });
+      throwIfKnowledgePreparationCancelled(signal);
       dependencies.report(report);
       return { evidence: [], localContext: null, diagnostics: report };
     }
   }
   try {
+    throwIfKnowledgePreparationCancelled(signal);
     const retrieval = await dependencies.retrieveRows(
       claimIds,
       [FEDERAL_JURISDICTION_CODE],
       configuration,
+      signal,
     );
+    throwIfKnowledgePreparationCancelled(signal);
     if (!retrieval.ok) {
       const report = diagnostics(input.locale, {
         attempted: true,
@@ -965,6 +1136,7 @@ export async function prepareControlledQuestionKnowledge(
         failureStage: retrieval.failureStage,
         selectedUnitIds: selected,
       });
+      throwIfKnowledgePreparationCancelled(signal);
       dependencies.report(report);
       return { evidence: [], localContext: null, diagnostics: report };
     }
@@ -979,14 +1151,19 @@ export async function prepareControlledQuestionKnowledge(
       selectedUnitIds: selected,
       retrieved: evidence.length,
     });
+    throwIfKnowledgePreparationCancelled(signal);
     dependencies.report(report);
     return { evidence, localContext: null, diagnostics: report };
-  } catch {
+  } catch (error) {
+    if (isKnowledgePreparationCancelled(error) || signal?.aborted) {
+      throw new KnowledgePreparationCancelledError();
+    }
     const report = diagnostics(input.locale, {
       attempted: true,
       failureStage: "connection",
       selectedUnitIds: selected,
     });
+    throwIfKnowledgePreparationCancelled(signal);
     dependencies.report(report);
     return { evidence: [], localContext: null, diagnostics: report };
   }

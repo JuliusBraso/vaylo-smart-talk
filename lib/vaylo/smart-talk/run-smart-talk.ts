@@ -1086,6 +1086,7 @@ export async function runSmartTalk(params: {
         ? await prepareControlledQuestionKnowledge({
             text: messageParams.text,
             locale: messageParams.locale,
+            signal: callerSignal,
           })
         : { evidence: [], localContext: null };
   } catch (error) {

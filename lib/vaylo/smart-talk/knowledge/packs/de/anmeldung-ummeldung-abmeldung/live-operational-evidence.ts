@@ -14,10 +14,25 @@ export type LiveSourceAuthorization = Readonly<{
 }>;
 
 export type LiveOperationalDependencies = Readonly<{
-  resolveAddresses: (hostname: string) => Promise<readonly string[]>;
+  resolveAddresses: (hostname: string, signal?: AbortSignal) => Promise<readonly string[]>;
   fetch: typeof fetch;
   now: () => Date;
 }>;
+
+export class KnowledgePreparationCancelledError extends Error {
+  constructor() {
+    super("knowledge_preparation_cancelled");
+    this.name = "KnowledgePreparationCancelledError";
+  }
+}
+
+export function isKnowledgePreparationCancelled(error: unknown): boolean {
+  return error instanceof KnowledgePreparationCancelledError;
+}
+
+export function throwIfKnowledgePreparationCancelled(signal?: AbortSignal): void {
+  if (signal?.aborted) throw new KnowledgePreparationCancelledError();
+}
 
 export type LiveOpeningHoursResult =
   | Readonly<{
@@ -103,6 +118,69 @@ function validateSource(source: LiveSourceAuthorization): URL | null {
   }
 }
 
+async function awaitWithCallerCancellation<T>(
+  operation: Promise<T>,
+  signal?: AbortSignal,
+): Promise<T> {
+  // Own the Promise before any cancellation throw. Its creator may already
+  // have aborted while producing this settled or rejected Promise.
+  const settled = operation.then(
+    (value) => ({ status: "fulfilled" as const, value }),
+    (error: unknown) => ({ status: "rejected" as const, error }),
+  );
+  throwIfKnowledgePreparationCancelled(signal);
+  if (!signal) {
+    const result = await settled;
+    if (result.status === "rejected") throw result.error;
+    return result.value;
+  }
+  let removeListener: () => void = () => undefined;
+  const cancelled = new Promise<void>((resolve) => {
+    const onAbort = () => resolve();
+    signal.addEventListener("abort", onAbort, { once: true });
+    removeListener = () => signal.removeEventListener("abort", onAbort);
+    if (signal.aborted) onAbort();
+  });
+  try {
+    const winner = await Promise.race([
+      settled.then((result) => ({ kind: "settled" as const, result })),
+      cancelled.then(() => ({ kind: "cancelled" as const })),
+    ]);
+    if (winner.kind === "cancelled" || signal.aborted) {
+      throw new KnowledgePreparationCancelledError();
+    }
+    if (winner.result.status === "rejected") throw winner.result.error;
+    return winner.result.value;
+  } finally {
+    removeListener();
+  }
+}
+
+function combinedTimeoutSignal(
+  callerSignal: AbortSignal | undefined,
+  timeoutMs: number,
+): Readonly<{ signal: AbortSignal; cleanup: () => void; callerCancelled: () => boolean }> {
+  const controller = new AbortController();
+  let callerCancellationObserved = false;
+  const onCallerAbort = () => {
+    callerCancellationObserved = true;
+    controller.abort();
+  };
+  if (callerSignal) {
+    callerSignal.addEventListener("abort", onCallerAbort, { once: true });
+    if (callerSignal.aborted) onCallerAbort();
+  }
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  return {
+    signal: controller.signal,
+    callerCancelled: () => callerCancellationObserved || callerSignal?.aborted === true,
+    cleanup: () => {
+      clearTimeout(timer);
+      callerSignal?.removeEventListener("abort", onCallerAbort);
+    },
+  };
+}
+
 export function normalizeLiveOpeningHoursHtml(html: string): string {
   return html
     .replace(/<(script|style|noscript)[^>]*>[\s\S]*?<\/\1>/gi, " ")
@@ -126,34 +204,53 @@ export function extractLiveOpeningHours(text: string): string | null {
   return value || null;
 }
 
-async function readBoundedBody(response: Response): Promise<string | null> {
+async function readBoundedBody(response: Response, signal?: AbortSignal): Promise<string | null> {
+  throwIfKnowledgePreparationCancelled(signal);
   const declared = Number(response.headers.get("content-length") ?? "0");
-  if (Number.isFinite(declared) && declared > MAX_BYTES) return null;
+  if (Number.isFinite(declared) && declared > MAX_BYTES) {
+    await response.body?.cancel().catch(() => undefined);
+    return null;
+  }
   if (!response.body) {
-    const body = await response.text();
+    const body = await awaitWithCallerCancellation(response.text(), signal);
+    throwIfKnowledgePreparationCancelled(signal);
     return Buffer.byteLength(body) <= MAX_BYTES ? body : null;
   }
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let total = 0;
   let body = "";
-  while (true) {
-    const part = await reader.read();
-    if (part.done) break;
-    total += part.value.byteLength;
-    if (total > MAX_BYTES) {
-      await reader.cancel();
-      return null;
+  const onAbort = () => {
+    void reader.cancel().catch(() => undefined);
+  };
+  signal?.addEventListener("abort", onAbort, { once: true });
+  if (signal?.aborted) onAbort();
+  try {
+    while (true) {
+      throwIfKnowledgePreparationCancelled(signal);
+      const part = await reader.read();
+      throwIfKnowledgePreparationCancelled(signal);
+      if (part.done) break;
+      total += part.value.byteLength;
+      if (total > MAX_BYTES) {
+        await reader.cancel().catch(() => undefined);
+        return null;
+      }
+      body += decoder.decode(part.value, { stream: true });
     }
-    body += decoder.decode(part.value, { stream: true });
+    return body + decoder.decode();
+  } finally {
+    signal?.removeEventListener("abort", onAbort);
+    reader.releaseLock();
   }
-  return body + decoder.decode();
 }
 
 export async function fetchLiveOpeningHours(
   source: LiveSourceAuthorization,
   dependencies: LiveOperationalDependencies = DEFAULT_DEPENDENCIES,
+  signal?: AbortSignal,
 ): Promise<LiveOpeningHoursResult> {
+  throwIfKnowledgePreparationCancelled(signal);
   const url = validateSource(source);
   if (!url) {
     return {
@@ -163,15 +260,22 @@ export async function fetchLiveOpeningHours(
   }
   let addresses: readonly string[];
   try {
+    throwIfKnowledgePreparationCancelled(signal);
     addresses = isIP(normalizedHostname(url.hostname))
       ? [normalizedHostname(url.hostname)]
-      : await dependencies.resolveAddresses(normalizedHostname(url.hostname));
-  } catch {
+      : await awaitWithCallerCancellation(
+          dependencies.resolveAddresses(normalizedHostname(url.hostname), signal),
+          signal,
+        );
+    throwIfKnowledgePreparationCancelled(signal);
+  } catch (error) {
+    if (isKnowledgePreparationCancelled(error)) throw error;
     return {
       ok: false, failureStage: "dns", sourceValidated: true,
       fetchAttempted: false, fetchSucceeded: false, extractionSucceeded: false,
     };
   }
+  throwIfKnowledgePreparationCancelled(signal);
   if (addresses.length === 0 || addresses.some(isForbiddenLiveTargetAddress)) {
     return {
       ok: false, failureStage: "dns", sourceValidated: true,
@@ -179,20 +283,32 @@ export async function fetchLiveOpeningHours(
     };
   }
   let response: Response;
+  const requestCancellation = combinedTimeoutSignal(signal, 7_000);
   try {
+    if (requestCancellation.callerCancelled()) throw new KnowledgePreparationCancelledError();
     response = await dependencies.fetch(url, {
       redirect: "manual",
-      signal: AbortSignal.timeout(7_000),
+      signal: requestCancellation.signal,
       headers: { Accept: "text/html" },
       credentials: "omit",
     });
-  } catch {
+    if (requestCancellation.callerCancelled()) throw new KnowledgePreparationCancelledError();
+  } catch (error) {
+    requestCancellation.cleanup();
+    if (requestCancellation.callerCancelled() || isKnowledgePreparationCancelled(error)) {
+      throw new KnowledgePreparationCancelledError();
+    }
     return {
       ok: false, failureStage: "fetch", sourceValidated: true,
       fetchAttempted: true, fetchSucceeded: false, extractionSucceeded: false,
     };
   }
+  throwIfKnowledgePreparationCancelled(signal);
   if (!response.ok) {
+    await response.body?.cancel().catch(() => undefined);
+    const callerCancelled = requestCancellation.callerCancelled();
+    requestCancellation.cleanup();
+    if (callerCancelled) throw new KnowledgePreparationCancelledError();
     return {
       ok: false,
       failureStage: response.status >= 300 && response.status < 400 ? "fetch" : "http_status",
@@ -200,6 +316,10 @@ export async function fetchLiveOpeningHours(
     };
   }
   if (!/^text\/html(?:;|$)/i.test(response.headers.get("content-type") ?? "")) {
+    await response.body?.cancel().catch(() => undefined);
+    const callerCancelled = requestCancellation.callerCancelled();
+    requestCancellation.cleanup();
+    if (callerCancelled) throw new KnowledgePreparationCancelledError();
     return {
       ok: false, failureStage: "content_type", sourceValidated: true,
       fetchAttempted: true, fetchSucceeded: true, extractionSucceeded: false,
@@ -207,13 +327,18 @@ export async function fetchLiveOpeningHours(
   }
   let body: string | null;
   try {
-    body = await readBoundedBody(response);
+    body = await readBoundedBody(response, requestCancellation.signal);
+    if (requestCancellation.callerCancelled()) throw new KnowledgePreparationCancelledError();
   } catch {
+    requestCancellation.cleanup();
+    if (requestCancellation.callerCancelled()) throw new KnowledgePreparationCancelledError();
     return {
       ok: false, failureStage: "fetch", sourceValidated: true,
       fetchAttempted: true, fetchSucceeded: true, extractionSucceeded: false,
     };
   }
+  requestCancellation.cleanup();
+  throwIfKnowledgePreparationCancelled(signal);
   if (body === null) {
     return {
       ok: false, failureStage: "body_limit", sourceValidated: true,

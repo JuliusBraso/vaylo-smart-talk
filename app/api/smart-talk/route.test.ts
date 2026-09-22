@@ -67,6 +67,7 @@ type PostHandler = (request: Request) => Promise<Response>;
 type KnowledgeMock = (params: {
   text: string;
   locale: "sk" | "de" | "en";
+  signal?: AbortSignal;
 }) => Promise<{ evidence: []; localContext: null }>;
 
 const testGlobals = globalThis as typeof globalThis & {
@@ -1090,7 +1091,11 @@ test("Smart Talk dispatch is explicit and controlled modes are contained", async
         });
         let mainProviderFetchCalls = 0;
         let providerSignal: AbortSignal | null = null;
-        testGlobals.__smartTalkKnowledgeMock = async () => ({ evidence: [], localContext: null });
+        let knowledgeSignal: AbortSignal | null = null;
+        testGlobals.__smartTalkKnowledgeMock = async (params) => {
+          knowledgeSignal = params.signal ?? null;
+          return { evidence: [], localContext: null };
+        };
         globalThis.fetch = async (_input, init) => {
           mainProviderFetchCalls += 1;
           providerSignal = init?.signal ?? null;
@@ -1111,6 +1116,7 @@ test("Smart Talk dispatch is explicit and controlled modes are contained", async
           error: "smart_talk_timeout",
         });
         assert.equal((providerSignal as AbortSignal | null)?.aborted, true);
+        assert.equal((knowledgeSignal as AbortSignal | null)?.aborted, true);
       });
 
       await suite.test("late knowledge completion cannot start the main provider request", async (context) => {
