@@ -85,7 +85,7 @@ function configurationReady(now: number): { token: Buffer; expiry: number } | nu
   if (readEnv("VERCEL_TARGET_ENV") !== "preview") return null;
   if (readEnv("PUBLIC_FREE_QA_HEADER_OBSERVATION_ENABLED") !== "true") return null;
   const expiryText = readEnv("PUBLIC_FREE_QA_HEADER_OBSERVATION_EXPIRES_AT");
-  const tokenText = readEnv("PUBLIC_FREE_QA_HEADER_OBSERVATION_TOKEN");
+  const tokenText = readEnv("BIRELLO_HEADER_OBSERVATION_TOKEN");
   if (!expiryText || !tokenText) return null;
   const expiry = validInstant(expiryText);
   const token = canonicalToken(tokenText);

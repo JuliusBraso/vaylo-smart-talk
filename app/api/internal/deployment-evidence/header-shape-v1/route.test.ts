@@ -42,6 +42,8 @@ const EXPIRY = "2099-01-01T00:00:00Z";
 const EXPIRY_INSTANT = Date.UTC(2099, 0, 1, 0, 0, 0);
 const TOKEN = Buffer.alloc(32, 0x2a).toString("base64");
 const OTHER = Buffer.alloc(32, 0x2b).toString("base64");
+const TOKEN_KEY = "BIRELLO_HEADER_OBSERVATION_TOKEN";
+const rejectedTokenKey = "PUBLIC_FREE_QA_" + "HEADER_OBSERVATION_TOKEN";
 const TARGET = "https://preview.example/api/internal/deployment-evidence/header-shape-v1";
 const ENV_KEYS = [
   "VERCEL",
@@ -49,7 +51,8 @@ const ENV_KEYS = [
   "VERCEL_TARGET_ENV",
   "PUBLIC_FREE_QA_HEADER_OBSERVATION_ENABLED",
   "PUBLIC_FREE_QA_HEADER_OBSERVATION_EXPIRES_AT",
-  "PUBLIC_FREE_QA_HEADER_OBSERVATION_TOKEN",
+  TOKEN_KEY,
+  rejectedTokenKey,
 ] as const;
 
 const openEnv = {
@@ -58,7 +61,7 @@ const openEnv = {
   VERCEL_TARGET_ENV: "preview",
   PUBLIC_FREE_QA_HEADER_OBSERVATION_ENABLED: "true",
   PUBLIC_FREE_QA_HEADER_OBSERVATION_EXPIRES_AT: EXPIRY,
-  PUBLIC_FREE_QA_HEADER_OBSERVATION_TOKEN: TOKEN,
+  [TOKEN_KEY]: TOKEN,
 };
 
 function restoreEnv(previous: Map<string, string | undefined>): void {
@@ -238,7 +241,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
   });
 
   test("R13 missing configured token", async () => {
-    const response = await post(successRequest().request, { ...openEnv, PUBLIC_FREE_QA_HEADER_OBSERVATION_TOKEN: undefined });
+    const response = await post(successRequest().request, { ...openEnv, [TOKEN_KEY]: undefined });
     assert.equal(response.status, 404);
   });
 
@@ -259,7 +262,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
     assert.equal(accepted.status, 200);
 
     const configuredAlias = countingRequest({ headers: { authorization: `Bearer ${alias}` } });
-    const configuredResponse = await post(configuredAlias.request, { ...openEnv, PUBLIC_FREE_QA_HEADER_OBSERVATION_TOKEN: alias });
+    const configuredResponse = await post(configuredAlias.request, { ...openEnv, [TOKEN_KEY]: alias });
     assert.equal(configuredResponse.status, 404);
     assert.equal(await bodyOf(configuredResponse), "{\"ok\":false}");
     assert.equal(configuredAlias.counts["x-forwarded-for"] ?? 0, 0);
@@ -673,5 +676,94 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
     assert.equal(response.headers.get("content-type"), "application/json; charset=utf-8");
     assert.equal(response.headers.get("pragma"), "no-cache");
     assert.equal(response.headers.get("referrer-policy"), "no-referrer");
+  });
+
+  test("FIX2 the secret-compatible key permits authenticated observation", async () => {
+    const made = successRequest({ "x-forwarded-for": "192.0.2.10" });
+    const response = await post(made.request, { ...openEnv, [rejectedTokenKey]: undefined });
+    assert.equal(response.status, 200);
+    const body = await response.json() as { ok: boolean; schemaVersion: number };
+    assert.equal(body.ok, true);
+    assert.equal(body.schemaVersion, 1);
+    assert.equal(made.counts["x-forwarded-for"], 1);
+  });
+
+  test("FIX2 a public-prefixed token key does not authorize", async () => {
+    const made = countingRequest({
+      headers: {
+        authorization: `Bearer ${TOKEN}`,
+        "x-forwarded-for": "192.0.2.10",
+        "x-vercel-forwarded-for": "198.51.100.20",
+        "x-real-ip": "203.0.113.30",
+      },
+    });
+    const response = await post(made.request, {
+      ...openEnv,
+      [TOKEN_KEY]: undefined,
+      [rejectedTokenKey]: TOKEN,
+    });
+    assert.equal(response.status, 404);
+    assert.equal(await bodyOf(response), "{\"ok\":false}");
+    assert.equal(made.counts["x-forwarded-for"] ?? 0, 0);
+    assert.equal(made.counts["x-vercel-forwarded-for"] ?? 0, 0);
+    assert.equal(made.counts["x-real-ip"] ?? 0, 0);
+  });
+
+  test("FIX2 malformed missing alias and mismatched new-key values stay closed", async () => {
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    const body = TOKEN.slice(0, -1);
+    const index = alphabet.indexOf(body[body.length - 1] ?? "");
+    const alias = `${body.slice(0, -1)}${alphabet[index + 1]}=`;
+    const cases = [
+      { [TOKEN_KEY]: "not-a-token", authorization: `Bearer ${TOKEN}` },
+      { [TOKEN_KEY]: undefined, authorization: `Bearer ${TOKEN}` },
+      { [TOKEN_KEY]: alias, authorization: `Bearer ${alias}` },
+      { [TOKEN_KEY]: OTHER, authorization: `Bearer ${TOKEN}` },
+    ];
+    for (const item of cases) {
+      const made = countingRequest({
+        headers: {
+          authorization: item.authorization,
+          "x-forwarded-for": "192.0.2.10",
+        },
+      });
+      const response = await post(made.request, {
+        ...openEnv,
+        [TOKEN_KEY]: item[TOKEN_KEY],
+        [rejectedTokenKey]: TOKEN,
+      });
+      assert.equal(response.status, 404);
+      assert.equal(await bodyOf(response), "{\"ok\":false}");
+      assert.equal(made.counts["x-forwarded-for"] ?? 0, 0);
+    }
+  });
+
+  test("FIX2 token material stays out of source responses and logs", async () => {
+    const source = readFileSync(ROUTE_PATH, "utf8");
+    const testSource = readFileSync(fileURLToPath(import.meta.url), "utf8");
+    assert.equal(source.includes(TOKEN_KEY), true);
+    assert.equal(source.includes(rejectedTokenKey), false);
+    assert.equal(source.includes(TOKEN), false);
+    assert.equal(testSource.includes(TOKEN), false);
+    const calls: string[] = [];
+    const log = mock.method(console, "log", () => calls.push("log"));
+    const error = mock.method(console, "error", () => calls.push("error"));
+    const warn = mock.method(console, "warn", () => calls.push("warn"));
+    const info = mock.method(console, "info", () => calls.push("info"));
+    try {
+      const accepted = await bodyOf(await post(successRequest().request));
+      const denied = await bodyOf(await post(countingRequest({
+        headers: { authorization: `Bearer ${TOKEN}`, "x-forwarded-for": "192.0.2.10" },
+      }).request, { ...openEnv, [TOKEN_KEY]: undefined, [rejectedTokenKey]: TOKEN }));
+      assert.equal(accepted.includes(TOKEN), false);
+      assert.equal(denied, "{\"ok\":false}");
+      assert.equal(denied.includes(TOKEN), false);
+      assert.deepEqual(calls, []);
+    } finally {
+      log.mock.restore();
+      error.mock.restore();
+      warn.mock.restore();
+      info.mock.restore();
+    }
   });
 });
