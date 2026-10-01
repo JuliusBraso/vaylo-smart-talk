@@ -20,15 +20,22 @@ const REAL_SENTINEL = "203.0.113.30";
 const VERCEL_IPV6_SENTINEL = "2001:db8::40";
 
 type Shape = "absent" | "single_ipv4" | "single_ipv6" | "multi_value" | "invalid";
+type Gate = "environment" | "configuration" | "authorization" | "request";
+type Ready =
+  | { ok: true; token: Buffer; expiry: number }
+  | { ok: false; gate: "environment" | "configuration" };
 
 type HeaderSource = {
   get(name: string): string | null;
 };
 
-function failure(includeBody: boolean): Response {
+function failure(includeBody: boolean, gate: Gate): Response {
   return new Response(includeBody ? FAILURE_BODY : null, {
     status: 404,
-    headers: RESPONSE_HEADERS,
+    headers: {
+      ...RESPONSE_HEADERS,
+      "x-birello-diagnostic-gate": gate,
+    },
   });
 }
 
@@ -79,21 +86,44 @@ function canonicalToken(value: string): Buffer | null {
   return decoded;
 }
 
-function configurationReady(now: number): { token: Buffer; expiry: number } | null {
-  if (readEnv("VERCEL") !== "1") return null;
-  if (readEnv("VERCEL_ENV") !== "preview") return null;
-  if (readEnv("VERCEL_TARGET_ENV") !== "preview") return null;
-  if (readEnv("PUBLIC_FREE_QA_HEADER_OBSERVATION_ENABLED") !== "true") return null;
-  const expiryText = readEnv("PUBLIC_FREE_QA_HEADER_OBSERVATION_EXPIRES_AT");
-  const tokenText = readEnv("BIRELLO_HEADER_OBSERVATION_TOKEN");
-  if (!expiryText || !tokenText) return null;
-  const expiry = validInstant(expiryText);
-  const token = canonicalToken(tokenText);
-  if (expiry === null || token === null || now >= expiry) {
-    token?.fill(0);
-    return null;
+function environmentDenied(): "environment" | null {
+  try {
+    if (readEnv("VERCEL") !== "1") return "environment";
+  } catch {
+    return "environment";
   }
-  return { token, expiry };
+  try {
+    if (readEnv("VERCEL_ENV") !== "preview") return "environment";
+  } catch {
+    return "environment";
+  }
+  try {
+    if (readEnv("VERCEL_TARGET_ENV") !== "preview") return "environment";
+  } catch {
+    return "environment";
+  }
+  return null;
+}
+
+function configurationReady(now: number): Ready {
+  if (environmentDenied() === "environment") return { ok: false, gate: "environment" };
+  let token: Buffer | null = null;
+  try {
+    if (readEnv("PUBLIC_FREE_QA_HEADER_OBSERVATION_ENABLED") !== "true") return { ok: false, gate: "configuration" };
+    const expiryText = readEnv("PUBLIC_FREE_QA_HEADER_OBSERVATION_EXPIRES_AT");
+    const tokenText = readEnv("BIRELLO_HEADER_OBSERVATION_TOKEN");
+    if (!expiryText || !tokenText) return { ok: false, gate: "configuration" };
+    const expiry = validInstant(expiryText);
+    token = canonicalToken(tokenText);
+    if (expiry === null || token === null || now >= expiry) {
+      token?.fill(0);
+      return { ok: false, gate: "configuration" };
+    }
+    return { ok: true, token, expiry };
+  } catch {
+    token?.fill(0);
+    return { ok: false, gate: "configuration" };
+  }
 }
 
 function authorize(presented: string | null, expected: Buffer): boolean {
@@ -223,7 +253,7 @@ function observe(headers: HeaderSource): Response {
   const forwardedShape = classify(forwarded);
   const vercelShape = classify(vercel);
   const realShape = classify(real);
-  if (!SHAPES.has(forwardedShape) || !SHAPES.has(vercelShape) || !SHAPES.has(realShape)) return failure(true);
+  if (!SHAPES.has(forwardedShape) || !SHAPES.has(vercelShape) || !SHAPES.has(realShape)) return failure(true, "request");
   return success({
     ok: true,
     schemaVersion: 1,
@@ -252,21 +282,41 @@ function requestRejected(request: Request): boolean {
 
 async function post(request: Request): Promise<Response> {
   const ready = configurationReady(Date.now());
-  if (!ready) return failure(true);
+  if (!ready.ok) return failure(true, ready.gate);
   try {
-    if (requestRejected(request)) return failure(true);
-    const authorization = readString(request.headers, "authorization");
-    if (!authorize(authorization, ready.token)) return failure(true);
-    return observe(request.headers);
-  } catch {
-    return failure(true);
+    try {
+      if (requestRejected(request)) return failure(true, "request");
+    } catch {
+      return failure(true, "request");
+    }
+    try {
+      let authorization: string | null;
+      try {
+        authorization = readString(request.headers, "authorization");
+      } catch {
+        try {
+          timingSafeEqual(ready.token, ready.token);
+        } catch {
+          return failure(true, "authorization");
+        }
+        return failure(true, "authorization");
+      }
+      if (!authorize(authorization, ready.token)) return failure(true, "authorization");
+    } catch {
+      return failure(true, "authorization");
+    }
+    try {
+      return observe(request.headers);
+    } catch {
+      return failure(true, "request");
+    }
   } finally {
     ready.token.fill(0);
   }
 }
 
 export function GET(): Response {
-  return failure(true);
+  return failure(true, "request");
 }
 
 export function POST(request: Request): Promise<Response> {
@@ -274,21 +324,21 @@ export function POST(request: Request): Promise<Response> {
 }
 
 export function PUT(): Response {
-  return failure(true);
+  return failure(true, "request");
 }
 
 export function PATCH(): Response {
-  return failure(true);
+  return failure(true, "request");
 }
 
 export function DELETE(): Response {
-  return failure(true);
+  return failure(true, "request");
 }
 
 export function HEAD(): Response {
-  return failure(false);
+  return failure(false, "request");
 }
 
 export function OPTIONS(): Response {
-  return failure(true);
+  return failure(true, "request");
 }

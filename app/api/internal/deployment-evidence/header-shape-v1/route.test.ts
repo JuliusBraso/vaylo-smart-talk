@@ -150,6 +150,38 @@ async function bodyOf(response: Response): Promise<string> {
   return response.text();
 }
 
+const DIAGNOSTIC_GATES = new Set(["environment", "configuration", "authorization", "request"]);
+
+function noncanonicalAlias(canonical: string): string {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  const body = canonical.slice(0, -1);
+  const index = alphabet.indexOf(body[body.length - 1] ?? "");
+  return `${body.slice(0, -1)}${alphabet[index + 1]}=`;
+}
+
+async function assertDiagnosticFailure(response: Response, gate: string): Promise<void> {
+  assert.equal(response.status, 404);
+  assert.equal(response.headers.get("X-Birello-Diagnostic-Gate"), gate);
+  assert.equal(response.headers.get("x-birello-diagnostic-gate"), gate);
+  assert.equal(DIAGNOSTIC_GATES.has(gate), true);
+  assert.equal(response.headers.get("cache-control"), "no-store, private");
+  assert.equal(response.headers.get("pragma"), "no-cache");
+  assert.equal(response.headers.get("x-content-type-options"), "nosniff");
+  assert.equal(response.headers.get("referrer-policy"), "no-referrer");
+  assert.equal(response.headers.get("content-type"), "application/json; charset=utf-8");
+  assert.equal(response.headers.get("set-cookie"), null);
+  if (response.body === null) return;
+  const text = await response.text();
+  assert.equal(text, "{\"ok\":false}");
+  assert.equal(text.includes(gate), false);
+}
+
+function containsSensitiveMaterial(response: Response, body: string): boolean {
+  const visible = `${body}\n${[...response.headers.entries()].map(([, value]) => value).join("\n")}`;
+  const material = [TOKEN, OTHER, "192.0.2.10", "198.51.100.20", "203.0.113.30", "2001:db8::40", "marker-should-not-leak"];
+  return material.some((item) => visible.includes(item));
+}
+
 describe("header-shape-v1", { concurrency: 1 }, () => {
   test("R01 missing VERCEL", async () => {
     const response = await post(successRequest().request, { ...openEnv, VERCEL: undefined });
@@ -306,10 +338,22 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
   });
 
   test("R16 wrong scheme", async () => {
-    const made = countingRequest({ headers: { authorization: `Token ${TOKEN}` } });
-    const response = await post(made.request);
-    assert.equal(response.status, 404);
-    assert.equal(await bodyOf(response), "{\"ok\":false}");
+    comparisons.length = 0;
+    recordComparisons = true;
+    try {
+      const made = countingRequest({ headers: { authorization: `Token ${TOKEN}` } });
+      const response = await post(made.request);
+      assert.equal(response.status, 404);
+      assert.equal(await bodyOf(response), "{\"ok\":false}");
+      assert.equal(comparisons.length, 1);
+      assert.equal(comparisons[0]?.equal, true);
+      assert.equal(comparisons[0]?.leftLength, 32);
+      assert.equal(comparisons[0]?.rightLength, 32);
+      assert.equal(comparisons[0]?.sameBuffer, true);
+    } finally {
+      recordComparisons = false;
+      comparisons.length = 0;
+    }
   });
 
   test("R17 surrounding whitespace", async () => {
@@ -764,6 +808,211 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
       error.mock.restore();
       warn.mock.restore();
       info.mock.restore();
+    }
+  });
+
+  test("FIX3 each failed platform variable produces environment", async () => {
+    const cases = [
+      { ...openEnv, VERCEL: undefined },
+      { ...openEnv, VERCEL: "0" },
+      { ...openEnv, VERCEL_ENV: undefined },
+      { ...openEnv, VERCEL_ENV: "production" },
+      { ...openEnv, VERCEL_TARGET_ENV: undefined },
+      { ...openEnv, VERCEL_TARGET_ENV: "staging" },
+    ];
+    for (const env of cases) {
+      const made = countingRequest({
+        headers: { authorization: `Bearer ${TOKEN}`, "x-forwarded-for": "192.0.2.10" },
+      });
+      const response = await post(made.request, env);
+      await assertDiagnosticFailure(response, "environment");
+      assert.equal(made.counts["x-forwarded-for"] ?? 0, 0);
+      assert.equal(containsSensitiveMaterial(response, "{\"ok\":false}"), false);
+    }
+  });
+
+  test("FIX3 an invalid enable flag produces configuration", async () => {
+    for (const value of [undefined, "TRUE"] as const) {
+      const made = countingRequest({
+        headers: { authorization: `Bearer ${TOKEN}`, "x-forwarded-for": "192.0.2.10" },
+      });
+      const response = await post(made.request, { ...openEnv, PUBLIC_FREE_QA_HEADER_OBSERVATION_ENABLED: value });
+      await assertDiagnosticFailure(response, "configuration");
+      assert.equal(made.counts["x-forwarded-for"] ?? 0, 0);
+    }
+  });
+
+  test("FIX3 invalid expiry produces configuration", async () => {
+    const cases = ["tomorrow", "2099-02-31T00:00:00Z", "2020-01-01T00:00:00Z", "2030-01-01T00:00:00Z"];
+    for (const expiry of cases) {
+      const made = countingRequest({
+        headers: { authorization: `Bearer ${TOKEN}`, "x-forwarded-for": "192.0.2.10" },
+      });
+      const response = await post(made.request, { ...openEnv, PUBLIC_FREE_QA_HEADER_OBSERVATION_EXPIRES_AT: expiry });
+      await assertDiagnosticFailure(response, "configuration");
+      assert.equal(made.counts["x-forwarded-for"] ?? 0, 0);
+      assert.equal(containsSensitiveMaterial(response, "{\"ok\":false}"), false);
+    }
+  });
+
+  test("FIX3 missing and noncanonical configured tokens produce configuration", async () => {
+    const cases = [undefined, noncanonicalAlias(TOKEN), "abc"];
+    for (const value of cases) {
+      const made = countingRequest({
+        headers: { authorization: `Bearer ${TOKEN}`, "x-forwarded-for": "192.0.2.10" },
+      });
+      const response = await post(made.request, { ...openEnv, [TOKEN_KEY]: value });
+      await assertDiagnosticFailure(response, "configuration");
+      assert.equal(made.counts["x-forwarded-for"] ?? 0, 0);
+    }
+  });
+
+  test("FIX3 missing Authorization produces authorization", async () => {
+    const made = countingRequest({ headers: { "x-forwarded-for": "192.0.2.10" } });
+    const response = await post(made.request);
+    await assertDiagnosticFailure(response, "authorization");
+    assert.equal(made.counts["x-forwarded-for"] ?? 0, 0);
+  });
+
+  test("FIX3 a malformed scheme produces authorization", async () => {
+    const made = countingRequest({
+      headers: { authorization: `Token ${TOKEN}`, "x-forwarded-for": "192.0.2.10" },
+    });
+    const response = await post(made.request);
+    await assertDiagnosticFailure(response, "authorization");
+    assert.equal(made.counts["x-forwarded-for"] ?? 0, 0);
+    assert.equal(containsSensitiveMaterial(response, "{\"ok\":false}"), false);
+  });
+
+  test("FIX3 a mismatched token produces authorization", async () => {
+    const made = countingRequest({
+      headers: { authorization: `Bearer ${OTHER}`, "x-forwarded-for": "192.0.2.10" },
+    });
+    const response = await post(made.request);
+    await assertDiagnosticFailure(response, "authorization");
+    assert.equal(made.counts["x-forwarded-for"] ?? 0, 0);
+    assert.equal(containsSensitiveMaterial(response, "{\"ok\":false}"), false);
+  });
+
+  test("FIX3 a noncanonical presented alias produces authorization", async () => {
+    const alias = noncanonicalAlias(TOKEN);
+    const made = countingRequest({
+      headers: { authorization: `Bearer ${alias}`, "x-forwarded-for": "192.0.2.10" },
+    });
+    const response = await post(made.request);
+    await assertDiagnosticFailure(response, "authorization");
+    assert.equal(made.counts["x-forwarded-for"] ?? 0, 0);
+  });
+
+  test("FIX3 query and a bare question mark produce request", async () => {
+    comparisons.length = 0;
+    recordComparisons = true;
+    try {
+      const query = countingRequest({
+        url: `${TARGET}?x=1`,
+        headers: { authorization: `Bearer ${TOKEN}`, "x-forwarded-for": "192.0.2.10" },
+      });
+      const queryResponse = await post(query.request);
+      await assertDiagnosticFailure(queryResponse, "request");
+      assert.equal(query.counts["x-forwarded-for"] ?? 0, 0);
+      const native = new Request(`${TARGET}?`, { method: "POST", headers: { authorization: `Bearer ${TOKEN}` } });
+      const bare = await post(native);
+      await assertDiagnosticFailure(bare, "request");
+      assert.equal(comparisons.length, 0);
+    } finally {
+      recordComparisons = false;
+      comparisons.length = 0;
+    }
+  });
+
+  test("FIX3 body length and transfer encoding produce request", async () => {
+    comparisons.length = 0;
+    recordComparisons = true;
+    try {
+      const body = countingRequest({
+        body: "stream",
+        headers: { authorization: `Bearer ${TOKEN}`, "content-length": "0", "x-forwarded-for": "192.0.2.10" },
+      });
+      const length = countingRequest({
+        headers: { authorization: `Bearer ${TOKEN}`, "content-length": "1", "x-forwarded-for": "192.0.2.10" },
+      });
+      const encoded = countingRequest({
+        headers: { authorization: `Bearer ${TOKEN}`, "transfer-encoding": "chunked", "x-forwarded-for": "192.0.2.10" },
+      });
+      await assertDiagnosticFailure(await post(body.request), "request");
+      await assertDiagnosticFailure(await post(length.request), "request");
+      await assertDiagnosticFailure(await post(encoded.request), "request");
+      assert.equal(body.counts["x-forwarded-for"] ?? 0, 0);
+      assert.equal(length.counts["x-forwarded-for"] ?? 0, 0);
+      assert.equal(encoded.counts["x-forwarded-for"] ?? 0, 0);
+      assert.equal(body.reads.text, 0);
+      assert.equal(comparisons.length, 0);
+    } finally {
+      recordComparisons = false;
+      comparisons.length = 0;
+    }
+  });
+
+  test("FIX3 unsupported methods produce request", async () => {
+    for (const response of [GET(), PUT(), PATCH(), DELETE(), OPTIONS()]) {
+      await assertDiagnosticFailure(response, "request");
+    }
+    const head = HEAD();
+    assert.equal(head.status, 404);
+    assert.equal(head.body, null);
+    assert.equal(head.headers.get("X-Birello-Diagnostic-Gate"), "request");
+    assert.equal(head.headers.get("x-birello-diagnostic-gate"), "request");
+    assert.equal(await head.text(), "");
+  });
+
+  test("FIX3 a forwarding accessor failure produces request", async () => {
+    const made = countingRequest({
+      throwOn: "x-forwarded-for",
+      headers: { authorization: `Bearer ${TOKEN}`, "x-forwarded-for": "192.0.2.10" },
+    });
+    const response = await post(made.request);
+    await assertDiagnosticFailure(response, "request");
+    assert.equal(containsSensitiveMaterial(response, "{\"ok\":false}"), false);
+  });
+
+  test("FIX3 a successful observation has no attribution header", async () => {
+    const made = successRequest({ "x-vercel-forwarded-for": "198.51.100.20" });
+    const response = await post(made.request);
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("X-Birello-Diagnostic-Gate"), null);
+    assert.equal(response.headers.get("x-birello-diagnostic-gate"), null);
+    const text = await response.text();
+    assert.equal(text.includes("X-Birello-Diagnostic-Gate"), false);
+    assert.equal(containsSensitiveMaterial(response, text), false);
+  });
+
+  test("FIX3 a throwing authorization accessor produces authorization", async () => {
+    comparisons.length = 0;
+    recordComparisons = true;
+    try {
+      const made = countingRequest({
+        throwOn: "authorization",
+        headers: {
+          authorization: `Bearer ${TOKEN}`,
+          "x-forwarded-for": "192.0.2.10",
+          "x-vercel-forwarded-for": "198.51.100.20",
+          "x-real-ip": "203.0.113.30",
+        },
+      });
+      const response = await post(made.request);
+      await assertDiagnosticFailure(response, "authorization");
+      assert.equal(comparisons.length, 1);
+      assert.equal(comparisons[0]?.equal, true);
+      assert.equal(comparisons[0]?.leftLength, 32);
+      assert.equal(comparisons[0]?.rightLength, 32);
+      assert.equal(comparisons[0]?.sameBuffer, true);
+      assert.equal(made.counts["x-forwarded-for"] ?? 0, 0);
+      assert.equal(made.counts["x-vercel-forwarded-for"] ?? 0, 0);
+      assert.equal(made.counts["x-real-ip"] ?? 0, 0);
+      assert.equal(containsSensitiveMaterial(response, "{\"ok\":false}"), false);
+    } finally {
+      recordComparisons = false;
+      comparisons.length = 0;
     }
   });
 });
