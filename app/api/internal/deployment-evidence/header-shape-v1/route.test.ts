@@ -94,9 +94,10 @@ function countingRequest(input: {
   headers?: Record<string, unknown>;
   body?: "none" | "stream";
   throwOn?: string;
-}): { request: Request; counts: Record<string, number>; reads: Record<string, number> } {
+}): { request: Request; counts: Record<string, number>; reads: Record<string, number>; access: { body: number } } {
   const counts: Record<string, number> = {};
   const reads = { text: 0, json: 0, arrayBuffer: 0, formData: 0 };
+  const access = { body: 0 };
   const headers = {
     get(name: string): string | null {
       const key = name.toLowerCase();
@@ -127,12 +128,23 @@ function countingRequest(input: {
   };
   return {
     request: {
-      url: input.url ?? TARGET,
-      headers,
-      body: input.body === "stream" ? stream : null,
+      get url() {
+        if (input.throwOn === "url") throw new Error("marker-should-not-leak");
+        return input.url ?? TARGET;
+      },
+      get headers() {
+        if (input.throwOn === "headers") throw new Error("marker-should-not-leak");
+        return headers;
+      },
+      get body() {
+        access.body += 1;
+        if (input.throwOn === "body") throw new Error("marker-should-not-leak");
+        return input.body === "stream" ? stream : null;
+      },
     } as unknown as Request,
     counts,
     reads,
+    access,
   };
 }
 
@@ -151,12 +163,21 @@ async function bodyOf(response: Response): Promise<string> {
 }
 
 const DIAGNOSTIC_GATES = new Set(["environment", "configuration", "authorization", "request"]);
+const REQUEST_REASONS = new Set(["method", "url", "content_length", "transfer_encoding", "body", "forwarding_headers"]);
 
 function noncanonicalAlias(canonical: string): string {
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
   const body = canonical.slice(0, -1);
   const index = alphabet.indexOf(body[body.length - 1] ?? "");
   return `${body.slice(0, -1)}${alphabet[index + 1]}=`;
+}
+
+async function assertRequestFailure(response: Response, reason: string): Promise<void> {
+  assert.equal(response.headers.get("X-Birello-Diagnostic-Request-Reason"), reason);
+  assert.equal(response.headers.get("x-birello-diagnostic-request-reason"), reason);
+  assert.equal(REQUEST_REASONS.has(reason), true);
+  assert.equal(containsSensitiveMaterial(response, "{\"ok\":false}"), false);
+  await assertDiagnosticFailure(response, "request");
 }
 
 async function assertDiagnosticFailure(response: Response, gate: string): Promise<void> {
@@ -1014,5 +1035,227 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
       recordComparisons = false;
       comparisons.length = 0;
     }
+  });
+
+  test("FIX4 non-POST handlers report method", async () => {
+    for (const response of [GET(), PUT(), PATCH(), DELETE(), OPTIONS()]) {
+      await assertRequestFailure(response, "method");
+    }
+    const head = HEAD();
+    await assertRequestFailure(head, "method");
+    assert.equal(head.body, null);
+    assert.equal(await head.text(), "");
+  });
+
+  test("FIX4 query fragment and a bare question mark report url", async () => {
+    comparisons.length = 0;
+    recordComparisons = true;
+    try {
+      const query = countingRequest({
+        url: `${TARGET}?x=1`,
+        headers: { authorization: `Bearer ${TOKEN}`, "content-length": "1", "x-forwarded-for": "192.0.2.10" },
+      });
+      await assertRequestFailure(await post(query.request), "url");
+      assert.equal(query.counts["content-length"] ?? 0, 0);
+      assert.equal(query.counts["authorization"] ?? 0, 0);
+      assert.equal(query.counts["x-forwarded-for"] ?? 0, 0);
+      assert.equal(query.access.body, 0);
+
+      const fragment = countingRequest({
+        url: `${TARGET}#part`,
+        headers: { authorization: `Bearer ${TOKEN}`, "content-length": "0" },
+      });
+      await assertRequestFailure(await post(fragment.request), "url");
+      assert.equal(fragment.counts["content-length"] ?? 0, 0);
+
+      const bare = new Request(`${TARGET}?`, { method: "POST", headers: { authorization: `Bearer ${TOKEN}` } });
+      assert.equal(bare.url.endsWith("?"), true);
+      assert.equal(bare.body, null);
+      await assertRequestFailure(await post(bare), "url");
+      assert.equal(comparisons.length, 0);
+    } finally {
+      recordComparisons = false;
+      comparisons.length = 0;
+    }
+  });
+
+  test("FIX4 content-length and transfer-encoding report separate reasons", async () => {
+    const length = countingRequest({
+      headers: { authorization: `Bearer ${TOKEN}`, "content-length": "1", "transfer-encoding": "chunked" },
+    });
+    await assertRequestFailure(await post(length.request), "content_length");
+    assert.equal(length.counts["content-length"], 1);
+    assert.equal(length.counts["transfer-encoding"] ?? 0, 0);
+    assert.equal(length.access.body, 0);
+
+    const encoded = countingRequest({
+      headers: { authorization: `Bearer ${TOKEN}`, "content-length": "0", "transfer-encoding": "chunked" },
+    });
+    await assertRequestFailure(await post(encoded.request), "transfer_encoding");
+    assert.equal(encoded.counts["content-length"], 1);
+    assert.equal(encoded.counts["transfer-encoding"], 1);
+    assert.equal(encoded.access.body, 0);
+    assert.equal(encoded.counts["authorization"] ?? 0, 0);
+  });
+
+  test("FIX4 a null body can be observed and a non-null empty stream reports body", async () => {
+    const absent = new Request(TARGET, { method: "POST", headers: { authorization: `Bearer ${TOKEN}` } });
+    assert.equal(absent.body, null);
+    assert.equal(absent.headers.get("content-length"), null);
+    const accepted = await post(absent);
+    assert.equal(accepted.status, 200);
+    assert.equal(accepted.headers.get("X-Birello-Diagnostic-Request-Reason"), null);
+    assert.equal(accepted.headers.get("X-Birello-Diagnostic-Gate"), null);
+    const acceptedBody = await accepted.json() as { ok: boolean; schemaVersion: number; headers: { xForwardedFor: { shape: string } } };
+    assert.equal(acceptedBody.ok, true);
+    assert.equal(acceptedBody.schemaVersion, 1);
+    assert.equal(acceptedBody.headers.xForwardedFor.shape, "absent");
+
+    const empty = new Request(TARGET, { method: "POST", body: "", headers: { authorization: `Bearer ${TOKEN}` } });
+    assert.notEqual(empty.body, null);
+    assert.equal(empty.headers.get("content-length"), null);
+    assert.equal(empty.headers.get("transfer-encoding"), null);
+    await assertRequestFailure(await post(empty), "body");
+  });
+
+  test("FIX4 an exception at a request boundary reports that boundary", async () => {
+    comparisons.length = 0;
+    recordComparisons = true;
+    try {
+      const url = countingRequest({ throwOn: "url", headers: { authorization: `Bearer ${TOKEN}`, "content-length": "1" } });
+      const urlResponse = await post(url.request);
+      await assertRequestFailure(urlResponse, "url");
+      assert.equal(url.counts["content-length"] ?? 0, 0);
+      assert.equal(url.access.body, 0);
+
+      const headers = countingRequest({ throwOn: "headers", headers: { authorization: `Bearer ${TOKEN}`, "transfer-encoding": "chunked" } });
+      await assertRequestFailure(await post(headers.request), "content_length");
+      assert.equal(headers.counts["content-length"] ?? 0, 0);
+      assert.equal(headers.counts["transfer-encoding"] ?? 0, 0);
+      assert.equal(headers.access.body, 0);
+
+      const length = countingRequest({
+        throwOn: "content-length",
+        headers: { authorization: `Bearer ${TOKEN}`, "transfer-encoding": "chunked" },
+      });
+      await assertRequestFailure(await post(length.request), "content_length");
+      assert.equal(length.counts["content-length"], 1);
+      assert.equal(length.counts["transfer-encoding"] ?? 0, 0);
+      assert.equal(length.access.body, 0);
+
+      const encoded = countingRequest({
+        throwOn: "transfer-encoding",
+        headers: { authorization: `Bearer ${TOKEN}`, "content-length": "0" },
+      });
+      await assertRequestFailure(await post(encoded.request), "transfer_encoding");
+      assert.equal(encoded.counts["content-length"], 1);
+      assert.equal(encoded.access.body, 0);
+
+      const body = countingRequest({
+        throwOn: "body",
+        body: "stream",
+        headers: { authorization: `Bearer ${TOKEN}`, "content-length": "0" },
+      });
+      await assertRequestFailure(await post(body.request), "body");
+      assert.equal(body.access.body, 1);
+      assert.equal(body.reads.text, 0);
+      assert.equal(body.counts["authorization"] ?? 0, 0);
+      assert.equal(comparisons.length, 0);
+    } finally {
+      recordComparisons = false;
+      comparisons.length = 0;
+    }
+  });
+
+  test("FIX4 a forwarding accessor failure reports forwarding_headers", async () => {
+    const made = countingRequest({
+      throwOn: "x-forwarded-for",
+      headers: { authorization: `Bearer ${TOKEN}`, "x-forwarded-for": "192.0.2.10" },
+    });
+    const response = await post(made.request);
+    await assertRequestFailure(response, "forwarding_headers");
+    assert.equal(made.counts["x-forwarded-for"], 1);
+    assert.equal(made.counts["x-vercel-forwarded-for"] ?? 0, 0);
+    assert.equal(made.counts["x-real-ip"] ?? 0, 0);
+  });
+
+  test("FIX4 invalid forwarding text stays a successful observation", async () => {
+    const made = successRequest({ "x-forwarded-for": "example.test" });
+    const response = await post(made.request);
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("X-Birello-Diagnostic-Gate"), null);
+    assert.equal(response.headers.get("x-birello-diagnostic-gate"), null);
+    assert.equal(response.headers.get("X-Birello-Diagnostic-Request-Reason"), null);
+    assert.equal(response.headers.get("x-birello-diagnostic-request-reason"), null);
+    const body = await response.json() as {
+      ok: boolean;
+      schemaVersion: number;
+      environment: string;
+      headers: { xForwardedFor: { shape: string } };
+    };
+    assert.equal(body.ok, true);
+    assert.equal(body.schemaVersion, 1);
+    assert.equal(body.environment, "preview");
+    assert.equal(body.headers.xForwardedFor.shape, "invalid");
+    assert.equal(JSON.stringify(body).includes("X-Birello-Diagnostic-Request-Reason"), false);
+  });
+
+  test("FIX4 the first failing boundary supplies the reason", async () => {
+    comparisons.length = 0;
+    recordComparisons = true;
+    try {
+      const query = countingRequest({
+        url: `${TARGET}?x=1`,
+        body: "stream",
+        headers: { authorization: `Bearer ${TOKEN}`, "content-length": "1", "transfer-encoding": "chunked" },
+      });
+      await assertRequestFailure(await post(query.request), "url");
+      assert.equal(query.counts["content-length"] ?? 0, 0);
+      assert.equal(query.counts["transfer-encoding"] ?? 0, 0);
+      assert.equal(query.access.body, 0);
+      assert.equal(query.counts["authorization"] ?? 0, 0);
+
+      const length = countingRequest({
+        body: "stream",
+        headers: { authorization: `Bearer ${TOKEN}`, "content-length": "1", "transfer-encoding": "chunked" },
+      });
+      await assertRequestFailure(await post(length.request), "content_length");
+      assert.equal(length.counts["transfer-encoding"] ?? 0, 0);
+      assert.equal(length.access.body, 0);
+
+      const encoded = countingRequest({
+        body: "stream",
+        headers: { authorization: `Bearer ${TOKEN}`, "content-length": "0", "transfer-encoding": "chunked" },
+      });
+      await assertRequestFailure(await post(encoded.request), "transfer_encoding");
+      assert.equal(encoded.access.body, 0);
+      assert.equal(encoded.counts["authorization"] ?? 0, 0);
+      assert.equal(comparisons.length, 0);
+    } finally {
+      recordComparisons = false;
+      comparisons.length = 0;
+    }
+  });
+
+  test("FIX4 environment configuration authorization and success omit the request reason", async () => {
+    const environment = await post(successRequest().request, { ...openEnv, VERCEL: undefined });
+    await assertDiagnosticFailure(environment, "environment");
+    assert.equal(environment.headers.get("X-Birello-Diagnostic-Request-Reason"), null);
+    assert.equal(environment.headers.get("x-birello-diagnostic-request-reason"), null);
+
+    const configuration = await post(successRequest().request, { ...openEnv, PUBLIC_FREE_QA_HEADER_OBSERVATION_ENABLED: undefined });
+    await assertDiagnosticFailure(configuration, "configuration");
+    assert.equal(configuration.headers.get("X-Birello-Diagnostic-Request-Reason"), null);
+
+    const authorization = await post(countingRequest({ headers: {} }).request);
+    await assertDiagnosticFailure(authorization, "authorization");
+    assert.equal(authorization.headers.get("X-Birello-Diagnostic-Request-Reason"), null);
+
+    const success = await post(successRequest().request);
+    assert.equal(success.status, 200);
+    assert.equal(success.headers.get("X-Birello-Diagnostic-Request-Reason"), null);
+    assert.equal(success.headers.get("X-Birello-Diagnostic-Gate"), null);
+    const text = await success.text();
+    assert.equal(text.includes("X-Birello-Diagnostic-Request-Reason"), false);
   });
 });

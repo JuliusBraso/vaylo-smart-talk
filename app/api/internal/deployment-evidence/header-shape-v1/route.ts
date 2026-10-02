@@ -21,6 +21,7 @@ const VERCEL_IPV6_SENTINEL = "2001:db8::40";
 
 type Shape = "absent" | "single_ipv4" | "single_ipv6" | "multi_value" | "invalid";
 type Gate = "environment" | "configuration" | "authorization" | "request";
+type RequestReason = "method" | "url" | "content_length" | "transfer_encoding" | "body" | "forwarding_headers";
 type Ready =
   | { ok: true; token: Buffer; expiry: number }
   | { ok: false; gate: "environment" | "configuration" };
@@ -29,13 +30,17 @@ type HeaderSource = {
   get(name: string): string | null;
 };
 
-function failure(includeBody: boolean, gate: Gate): Response {
+function failure(includeBody: boolean, gate: Exclude<Gate, "request">): Response;
+function failure(includeBody: boolean, gate: "request", reason: RequestReason): Response;
+function failure(includeBody: boolean, gate: Gate, reason?: RequestReason): Response {
+  const headers: Record<string, string> = {
+    ...RESPONSE_HEADERS,
+    "x-birello-diagnostic-gate": gate,
+  };
+  if (gate === "request" && reason) headers["x-birello-diagnostic-request-reason"] = reason;
   return new Response(includeBody ? FAILURE_BODY : null, {
     status: 404,
-    headers: {
-      ...RESPONSE_HEADERS,
-      "x-birello-diagnostic-gate": gate,
-    },
+    headers,
   });
 }
 
@@ -253,7 +258,7 @@ function observe(headers: HeaderSource): Response {
   const forwardedShape = classify(forwarded);
   const vercelShape = classify(vercel);
   const realShape = classify(real);
-  if (!SHAPES.has(forwardedShape) || !SHAPES.has(vercelShape) || !SHAPES.has(realShape)) return failure(true, "request");
+  if (!SHAPES.has(forwardedShape) || !SHAPES.has(vercelShape) || !SHAPES.has(realShape)) return failure(true, "request", "forwarding_headers");
   return success({
     ok: true,
     schemaVersion: 1,
@@ -271,24 +276,37 @@ function observe(headers: HeaderSource): Response {
   });
 }
 
-function requestRejected(request: Request): boolean {
-  if (request.url.includes("?") || request.url.includes("#")) return true;
-  const length = request.headers.get("content-length");
-  if (length !== null && length !== "0") return true;
-  if (request.headers.get("transfer-encoding") !== null) return true;
-  if (request.body !== null) return true;
-  return false;
+function requestBoundary(request: Request): RequestReason | null {
+  try {
+    if (request.url.includes("?") || request.url.includes("#")) return "url";
+  } catch {
+    return "url";
+  }
+  try {
+    const length = request.headers.get("content-length");
+    if (length !== null && length !== "0") return "content_length";
+  } catch {
+    return "content_length";
+  }
+  try {
+    if (request.headers.get("transfer-encoding") !== null) return "transfer_encoding";
+  } catch {
+    return "transfer_encoding";
+  }
+  try {
+    if (request.body !== null) return "body";
+  } catch {
+    return "body";
+  }
+  return null;
 }
 
 async function post(request: Request): Promise<Response> {
   const ready = configurationReady(Date.now());
   if (!ready.ok) return failure(true, ready.gate);
   try {
-    try {
-      if (requestRejected(request)) return failure(true, "request");
-    } catch {
-      return failure(true, "request");
-    }
+    const reason = requestBoundary(request);
+    if (reason) return failure(true, "request", reason);
     try {
       let authorization: string | null;
       try {
@@ -308,7 +326,7 @@ async function post(request: Request): Promise<Response> {
     try {
       return observe(request.headers);
     } catch {
-      return failure(true, "request");
+      return failure(true, "request", "forwarding_headers");
     }
   } finally {
     ready.token.fill(0);
@@ -316,7 +334,7 @@ async function post(request: Request): Promise<Response> {
 }
 
 export function GET(): Response {
-  return failure(true, "request");
+  return failure(true, "request", "method");
 }
 
 export function POST(request: Request): Promise<Response> {
@@ -324,21 +342,21 @@ export function POST(request: Request): Promise<Response> {
 }
 
 export function PUT(): Response {
-  return failure(true, "request");
+  return failure(true, "request", "method");
 }
 
 export function PATCH(): Response {
-  return failure(true, "request");
+  return failure(true, "request", "method");
 }
 
 export function DELETE(): Response {
-  return failure(true, "request");
+  return failure(true, "request", "method");
 }
 
 export function HEAD(): Response {
-  return failure(false, "request");
+  return failure(false, "request", "method");
 }
 
 export function OPTIONS(): Response {
-  return failure(true, "request");
+  return failure(true, "request", "method");
 }
