@@ -148,8 +148,8 @@ function countingRequest(input: {
   };
 }
 
-async function post(request: Request, env: Record<string, string | undefined> = openEnv): Promise<Response> {
-  return withEnv(env, () => POST(request));
+async function diagnose(request: Request, env: Record<string, string | undefined> = openEnv): Promise<Response> {
+  return withEnv(env, () => GET(request));
 }
 
 function successRequest(headers: Record<string, string> = {}): ReturnType<typeof countingRequest> {
@@ -205,42 +205,42 @@ function containsSensitiveMaterial(response: Response, body: string): boolean {
 
 describe("header-shape-v1", { concurrency: 1 }, () => {
   test("R01 missing VERCEL", async () => {
-    const response = await post(successRequest().request, { ...openEnv, VERCEL: undefined });
+    const response = await diagnose(successRequest().request, { ...openEnv, VERCEL: undefined });
     assert.equal(response.status, 404);
   });
 
   test("R02 production environment", async () => {
-    const response = await post(successRequest().request, { ...openEnv, VERCEL_ENV: "production" });
+    const response = await diagnose(successRequest().request, { ...openEnv, VERCEL_ENV: "production" });
     assert.equal(response.status, 404);
   });
 
   test("R03 development environment", async () => {
-    const response = await post(successRequest().request, { ...openEnv, VERCEL_ENV: "development" });
+    const response = await diagnose(successRequest().request, { ...openEnv, VERCEL_ENV: "development" });
     assert.equal(response.status, 404);
   });
 
   test("R04 missing VERCEL_ENV", async () => {
-    const response = await post(successRequest().request, { ...openEnv, VERCEL_ENV: undefined });
+    const response = await diagnose(successRequest().request, { ...openEnv, VERCEL_ENV: undefined });
     assert.equal(response.status, 404);
   });
 
   test("R05 custom target environment", async () => {
-    const response = await post(successRequest().request, { ...openEnv, VERCEL_TARGET_ENV: "staging" });
+    const response = await diagnose(successRequest().request, { ...openEnv, VERCEL_TARGET_ENV: "staging" });
     assert.equal(response.status, 404);
   });
 
   test("R06 missing enable flag", async () => {
-    const response = await post(successRequest().request, { ...openEnv, PUBLIC_FREE_QA_HEADER_OBSERVATION_ENABLED: undefined });
+    const response = await diagnose(successRequest().request, { ...openEnv, PUBLIC_FREE_QA_HEADER_OBSERVATION_ENABLED: undefined });
     assert.equal(response.status, 404);
   });
 
   test("R07 flag is not the exact string true", async () => {
-    const response = await post(successRequest().request, { ...openEnv, PUBLIC_FREE_QA_HEADER_OBSERVATION_ENABLED: "TRUE" });
+    const response = await diagnose(successRequest().request, { ...openEnv, PUBLIC_FREE_QA_HEADER_OBSERVATION_ENABLED: "TRUE" });
     assert.equal(response.status, 404);
   });
 
   test("R08 missing expiry", async () => {
-    const response = await post(successRequest().request, { ...openEnv, PUBLIC_FREE_QA_HEADER_OBSERVATION_EXPIRES_AT: undefined });
+    const response = await diagnose(successRequest().request, { ...openEnv, PUBLIC_FREE_QA_HEADER_OBSERVATION_EXPIRES_AT: undefined });
     assert.equal(response.status, 404);
   });
 
@@ -248,15 +248,15 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
     const impossible = "2099-02-31T00:00:00Z";
     const normalized = Date.UTC(2099, 1, 31, 0, 0, 0);
     assert.equal(normalized > NOW, true);
-    const malformed = await post(successRequest().request, { ...openEnv, PUBLIC_FREE_QA_HEADER_OBSERVATION_EXPIRES_AT: "tomorrow" });
+    const malformed = await diagnose(successRequest().request, { ...openEnv, PUBLIC_FREE_QA_HEADER_OBSERVATION_EXPIRES_AT: "tomorrow" });
     assert.equal(malformed.status, 404);
     assert.equal(await bodyOf(malformed), "{\"ok\":false}");
     const deniedRequest = countingRequest({ headers: { authorization: `Bearer ${TOKEN}`, "x-forwarded-for": "192.0.2.10" } });
-    const denied = await post(deniedRequest.request, { ...openEnv, PUBLIC_FREE_QA_HEADER_OBSERVATION_EXPIRES_AT: impossible });
+    const denied = await diagnose(deniedRequest.request, { ...openEnv, PUBLIC_FREE_QA_HEADER_OBSERVATION_EXPIRES_AT: impossible });
     assert.equal(denied.status, 404);
     assert.equal(await bodyOf(denied), "{\"ok\":false}");
     assert.equal(deniedRequest.counts["x-forwarded-for"] ?? 0, 0);
-    const allowed = await post(successRequest().request);
+    const allowed = await diagnose(successRequest().request);
     assert.equal(allowed.status, 200);
   });
 
@@ -265,7 +265,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
     for (const [key, value] of Object.entries(openEnv)) process.env[key] = value;
     const clock = mock.method(Date, "now", () => EXPIRY_INSTANT);
     try {
-      const response = await POST(successRequest().request);
+      const response = await GET(successRequest().request);
       assert.equal(response.status, 404);
     } finally {
       clock.mock.restore();
@@ -278,7 +278,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
     for (const [key, value] of Object.entries(openEnv)) process.env[key] = value;
     const clock = mock.method(Date, "now", () => EXPIRY_INSTANT + 1000);
     try {
-      const response = await POST(successRequest().request);
+      const response = await GET(successRequest().request);
       assert.equal(response.status, 404);
     } finally {
       clock.mock.restore();
@@ -287,14 +287,14 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
   });
 
   test("R12 open gates reach observation", async () => {
-    const response = await post(successRequest().request);
+    const response = await diagnose(successRequest().request);
     assert.equal(response.status, 200);
     const body = await response.json() as { environment: string };
     assert.equal(body.environment, "preview");
   });
 
   test("R13 missing configured token", async () => {
-    const response = await post(successRequest().request, { ...openEnv, [TOKEN_KEY]: undefined });
+    const response = await diagnose(successRequest().request, { ...openEnv, [TOKEN_KEY]: undefined });
     assert.equal(response.status, 404);
   });
 
@@ -311,11 +311,11 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
     assert.equal(decodedAlias.equals(decodedCanonical), true);
     assert.equal(decodedAlias.toString("base64") === alias, false);
 
-    const accepted = await post(successRequest().request);
+    const accepted = await diagnose(successRequest().request);
     assert.equal(accepted.status, 200);
 
     const configuredAlias = countingRequest({ headers: { authorization: `Bearer ${alias}` } });
-    const configuredResponse = await post(configuredAlias.request, { ...openEnv, [TOKEN_KEY]: alias });
+    const configuredResponse = await diagnose(configuredAlias.request, { ...openEnv, [TOKEN_KEY]: alias });
     assert.equal(configuredResponse.status, 404);
     assert.equal(await bodyOf(configuredResponse), "{\"ok\":false}");
     assert.equal(configuredAlias.counts["x-forwarded-for"] ?? 0, 0);
@@ -324,7 +324,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
     recordComparisons = true;
     try {
       const presentedAlias = countingRequest({ headers: { authorization: `Bearer ${alias}`, "x-forwarded-for": "192.0.2.10" } });
-      const presentedResponse = await post(presentedAlias.request);
+      const presentedResponse = await diagnose(presentedAlias.request);
       assert.equal(presentedResponse.status, 404);
       assert.equal(await bodyOf(presentedResponse), "{\"ok\":false}");
       assert.equal(presentedAlias.counts["x-forwarded-for"] ?? 0, 0);
@@ -344,7 +344,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
     recordComparisons = true;
     try {
       const made = countingRequest({ headers: {} });
-      const response = await post(made.request);
+      const response = await diagnose(made.request);
       assert.equal(response.status, 404);
       assert.equal(comparisons.length, 1);
       assert.equal(comparisons[0]?.equal, true);
@@ -363,7 +363,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
     recordComparisons = true;
     try {
       const made = countingRequest({ headers: { authorization: `Token ${TOKEN}` } });
-      const response = await post(made.request);
+      const response = await diagnose(made.request);
       assert.equal(response.status, 404);
       assert.equal(await bodyOf(response), "{\"ok\":false}");
       assert.equal(comparisons.length, 1);
@@ -379,7 +379,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
 
   test("R17 surrounding whitespace", async () => {
     const made = countingRequest({ headers: { authorization: ` Bearer ${TOKEN}` } });
-    const response = await post(made.request);
+    const response = await diagnose(made.request);
     assert.equal(response.status, 404);
   });
 
@@ -388,7 +388,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
     recordComparisons = true;
     try {
       const made = countingRequest({ headers: { authorization: `Bearer ${OTHER}` } });
-      const response = await post(made.request);
+      const response = await diagnose(made.request);
       assert.equal(response.status, 404);
       assert.equal(comparisons.length, 1);
       assert.equal(comparisons[0]?.equal, false);
@@ -403,21 +403,21 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
 
   test("R19 an authenticated query is rejected before forwarding reads", async () => {
     const headers = { authorization: `Bearer ${TOKEN}` };
-    const clean = new Request(TARGET, { method: "POST", headers });
+    const clean = new Request(TARGET, { method: "GET", headers });
     assert.equal(clean.body, null);
     assert.equal(clean.url.includes("?"), false);
-    const accepted = await post(clean);
+    const accepted = await diagnose(clean);
     assert.equal(accepted.status, 200);
 
-    const queried = new Request(`${TARGET}?access=1`, { method: "POST", headers });
-    const denied = await post(queried);
+    const queried = new Request(`${TARGET}?access=1`, { method: "GET", headers });
+    const denied = await diagnose(queried);
     assert.equal(denied.status, 404);
     assert.equal(await bodyOf(denied), "{\"ok\":false}");
 
-    const bare = new Request(`${TARGET}?`, { method: "POST", headers });
+    const bare = new Request(`${TARGET}?`, { method: "GET", headers });
     assert.equal(bare.url.endsWith("?"), true);
     assert.equal(new URL(bare.url).search, "");
-    const bareDenied = await post(bare);
+    const bareDenied = await diagnose(bare);
     assert.equal(bareDenied.status, 404);
     assert.equal(await bodyOf(bareDenied), "{\"ok\":false}");
 
@@ -425,7 +425,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
       url: `${TARGET}?access=1`,
       headers: { authorization: `Bearer ${TOKEN}`, "x-forwarded-for": "192.0.2.10" },
     });
-    const countedResponse = await post(counted.request);
+    const countedResponse = await diagnose(counted.request);
     assert.equal(countedResponse.status, 404);
     assert.equal(await bodyOf(countedResponse), "{\"ok\":false}");
     assert.equal(counted.counts["x-forwarded-for"] ?? 0, 0);
@@ -433,7 +433,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
 
   test("R20 throwing authorization accessor fails closed", async () => {
     const made = countingRequest({ throwOn: "authorization", headers: { "x-forwarded-for": "192.0.2.10" } });
-    const response = await post(made.request);
+    const response = await diagnose(made.request);
     assert.equal(response.status, 404);
     assert.equal(await bodyOf(response), "{\"ok\":false}");
     assert.equal(made.counts["x-forwarded-for"] ?? 0, 0);
@@ -441,7 +441,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
 
   test("R21 absent forwarding header", async () => {
     const made = successRequest();
-    const response = await post(made.request);
+    const response = await diagnose(made.request);
     const body = await response.json() as { headers: { xForwardedFor: { shape: string; equalsItsSentinel: boolean } } };
     assert.equal(body.headers.xForwardedFor.shape, "absent");
     assert.equal(body.headers.xForwardedFor.equalsItsSentinel, false);
@@ -449,26 +449,26 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
 
   test("R22 empty forwarding value", async () => {
     const made = successRequest({ "x-forwarded-for": "" });
-    const body = await (await post(made.request)).json() as { headers: { xForwardedFor: { shape: string } } };
+    const body = await (await diagnose(made.request)).json() as { headers: { xForwardedFor: { shape: string } } };
     assert.equal(body.headers.xForwardedFor.shape, "invalid");
   });
 
   test("R23 whitespace-only forwarding value", async () => {
     const made = successRequest({ "x-forwarded-for": "   " });
-    const body = await (await post(made.request)).json() as { headers: { xForwardedFor: { shape: string } } };
+    const body = await (await diagnose(made.request)).json() as { headers: { xForwardedFor: { shape: string } } };
     assert.equal(body.headers.xForwardedFor.shape, "invalid");
   });
 
   test("R24 strict IPv4", async () => {
     const made = successRequest({ "x-forwarded-for": "192.0.2.10" });
-    const body = await (await post(made.request)).json() as { headers: { xForwardedFor: { shape: string; equalsItsSentinel: boolean } } };
+    const body = await (await diagnose(made.request)).json() as { headers: { xForwardedFor: { shape: string; equalsItsSentinel: boolean } } };
     assert.equal(body.headers.xForwardedFor.shape, "single_ipv4");
     assert.equal(body.headers.xForwardedFor.equalsItsSentinel, true);
   });
 
   test("R25 strict IPv6", async () => {
     const made = successRequest({ "x-vercel-forwarded-for": "2001:db8::40" });
-    const body = await (await post(made.request)).json() as { headers: { xVercelForwardedFor: { shape: string; equalsItsSentinel: boolean } } };
+    const body = await (await diagnose(made.request)).json() as { headers: { xVercelForwardedFor: { shape: string; equalsItsSentinel: boolean } } };
     assert.equal(body.headers.xVercelForwardedFor.shape, "single_ipv6");
     assert.equal(body.headers.xVercelForwardedFor.equalsItsSentinel, true);
   });
@@ -476,52 +476,52 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
   test("R26 mapped IPv6 is invalid", async () => {
     const dotted = successRequest({ "x-forwarded-for": "::ffff:192.0.2.1" });
     const expanded = successRequest({ "x-forwarded-for": "0:0:0:0:0:ffff:c000:0201" });
-    const dottedBody = await (await post(dotted.request)).json() as { headers: { xForwardedFor: { shape: string } } };
-    const expandedBody = await (await post(expanded.request)).json() as { headers: { xForwardedFor: { shape: string } } };
+    const dottedBody = await (await diagnose(dotted.request)).json() as { headers: { xForwardedFor: { shape: string } } };
+    const expandedBody = await (await diagnose(expanded.request)).json() as { headers: { xForwardedFor: { shape: string } } };
     assert.equal(dottedBody.headers.xForwardedFor.shape, "invalid");
     assert.equal(expandedBody.headers.xForwardedFor.shape, "invalid");
   });
 
   test("R27 zone identifier", async () => {
     const made = successRequest({ "x-forwarded-for": "fe80::1%eth0" });
-    const body = await (await post(made.request)).json() as { headers: { xForwardedFor: { shape: string } } };
+    const body = await (await diagnose(made.request)).json() as { headers: { xForwardedFor: { shape: string } } };
     assert.equal(body.headers.xForwardedFor.shape, "invalid");
   });
 
   test("R28 comma-separated value", async () => {
     const made = successRequest({ "x-forwarded-for": "192.0.2.10,192.0.2.11" });
-    const body = await (await post(made.request)).json() as { headers: { xForwardedFor: { shape: string; equalsItsSentinel: boolean } } };
+    const body = await (await diagnose(made.request)).json() as { headers: { xForwardedFor: { shape: string; equalsItsSentinel: boolean } } };
     assert.equal(body.headers.xForwardedFor.shape, "multi_value");
     assert.equal(body.headers.xForwardedFor.equalsItsSentinel, false);
   });
 
   test("R29 port notation", async () => {
     const made = successRequest({ "x-forwarded-for": "192.0.2.10:80" });
-    const body = await (await post(made.request)).json() as { headers: { xForwardedFor: { shape: string } } };
+    const body = await (await diagnose(made.request)).json() as { headers: { xForwardedFor: { shape: string } } };
     assert.equal(body.headers.xForwardedFor.shape, "invalid");
   });
 
   test("R30 CIDR notation", async () => {
     const made = successRequest({ "x-forwarded-for": "192.0.2.0/24" });
-    const body = await (await post(made.request)).json() as { headers: { xForwardedFor: { shape: string } } };
+    const body = await (await diagnose(made.request)).json() as { headers: { xForwardedFor: { shape: string } } };
     assert.equal(body.headers.xForwardedFor.shape, "invalid");
   });
 
   test("R31 DNS name", async () => {
     const made = successRequest({ "x-forwarded-for": "example.test" });
-    const body = await (await post(made.request)).json() as { headers: { xForwardedFor: { shape: string } } };
+    const body = await (await diagnose(made.request)).json() as { headers: { xForwardedFor: { shape: string } } };
     assert.equal(body.headers.xForwardedFor.shape, "invalid");
   });
 
   test("R32 overlong value", async () => {
     const made = successRequest({ "x-forwarded-for": "a".repeat(257) });
-    const body = await (await post(made.request)).json() as { headers: { xForwardedFor: { shape: string } } };
+    const body = await (await diagnose(made.request)).json() as { headers: { xForwardedFor: { shape: string } } };
     assert.equal(body.headers.xForwardedFor.shape, "invalid");
   });
 
   test("R33 control character", async () => {
     const made = successRequest({ "x-forwarded-for": "192.0.2.10\n" });
-    const body = await (await post(made.request)).json() as { headers: { xForwardedFor: { shape: string } } };
+    const body = await (await diagnose(made.request)).json() as { headers: { xForwardedFor: { shape: string } } };
     assert.equal(body.headers.xForwardedFor.shape, "invalid");
   });
 
@@ -531,7 +531,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
       "x-vercel-forwarded-for": "198.51.100.20",
       "x-real-ip": "203.0.113.30",
     });
-    const body = await (await post(made.request)).json() as {
+    const body = await (await diagnose(made.request)).json() as {
       headers: Record<string, { equalsItsSentinel: boolean }>;
     };
     assert.equal(body.headers.xForwardedFor.equalsItsSentinel, true);
@@ -544,7 +544,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
       "x-forwarded-for": "2001:db8::40",
       "x-vercel-forwarded-for": "2001:db8::40",
     });
-    const body = await (await post(made.request)).json() as {
+    const body = await (await diagnose(made.request)).json() as {
       headers: { xForwardedFor: { equalsItsSentinel: boolean }; xVercelForwardedFor: { equalsItsSentinel: boolean } };
     };
     assert.equal(body.headers.xVercelForwardedFor.equalsItsSentinel, true);
@@ -557,7 +557,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
       "x-vercel-forwarded-for": "not-an-address",
       "x-real-ip": "not-an-address",
     });
-    const body = await (await post(made.request)).json() as { relations: Record<string, boolean> };
+    const body = await (await diagnose(made.request)).json() as { relations: Record<string, boolean> };
     assert.equal(body.relations.vercelEqualsForwarded, true);
     assert.equal(body.relations.realEqualsForwarded, true);
     assert.equal(body.relations.vercelEqualsReal, true);
@@ -565,7 +565,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
 
   test("R37 a missing side makes relations false", async () => {
     const made = successRequest({ "x-forwarded-for": "192.0.2.10" });
-    const body = await (await post(made.request)).json() as { relations: Record<string, boolean> };
+    const body = await (await diagnose(made.request)).json() as { relations: Record<string, boolean> };
     assert.equal(body.relations.vercelEqualsForwarded, false);
     assert.equal(body.relations.realEqualsForwarded, false);
     assert.equal(body.relations.vercelEqualsReal, false);
@@ -573,21 +573,21 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
 
   test("R38 a comma form is not a sentinel match", async () => {
     const made = successRequest({ "x-vercel-forwarded-for": "198.51.100.20,198.51.100.21" });
-    const body = await (await post(made.request)).json() as { headers: { xVercelForwardedFor: { shape: string; equalsItsSentinel: boolean } } };
+    const body = await (await diagnose(made.request)).json() as { headers: { xVercelForwardedFor: { shape: string; equalsItsSentinel: boolean } } };
     assert.equal(body.headers.xVercelForwardedFor.shape, "multi_value");
     assert.equal(body.headers.xVercelForwardedFor.equalsItsSentinel, false);
   });
 
   test("R39 success JSON does not contain a sentinel or marker", async () => {
     const made = successRequest({ "x-forwarded-for": "192.0.2.10" });
-    const text = await bodyOf(await post(made.request));
+    const text = await bodyOf(await diagnose(made.request));
     assert.equal(text.includes("192.0.2.10"), false);
     assert.equal(text.includes("marker-should-not-leak"), false);
   });
 
   test("R40 failures omit injected marker text", async () => {
     const made = countingRequest({ throwOn: "x-forwarded-for", headers: { authorization: `Bearer ${TOKEN}` } });
-    const text = await bodyOf(await post(made.request));
+    const text = await bodyOf(await diagnose(made.request));
     assert.equal(text, "{\"ok\":false}");
   });
 
@@ -598,8 +598,8 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
     const warn = mock.method(console, "warn", () => calls.push("warn"));
     const info = mock.method(console, "info", () => calls.push("info"));
     try {
-      await post(successRequest().request);
-      await post(countingRequest({ headers: {} }).request);
+      await diagnose(successRequest().request);
+      await diagnose(countingRequest({ headers: {} }).request);
       assert.deepEqual(calls, []);
     } finally {
       log.mock.restore();
@@ -619,14 +619,14 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
   });
 
   test("R43 responses set no cookie", async () => {
-    const ok = await post(successRequest().request);
-    const denied = await post(countingRequest({ headers: {} }).request);
+    const ok = await diagnose(successRequest().request);
+    const denied = await diagnose(countingRequest({ headers: {} }).request);
     assert.equal(ok.headers.get("set-cookie"), null);
     assert.equal(denied.headers.get("set-cookie"), null);
   });
 
   test("R44 cache and safety headers are present", async () => {
-    const response = await post(successRequest().request);
+    const response = await diagnose(successRequest().request);
     assert.equal(response.headers.get("cache-control"), "no-store, private");
     assert.equal(response.headers.get("pragma"), "no-cache");
     assert.equal(response.headers.get("x-content-type-options"), "nosniff");
@@ -635,7 +635,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
   });
 
   test("R45 success keys are exact", async () => {
-    const body = await (await post(successRequest().request)).json() as Record<string, unknown>;
+    const body = await (await diagnose(successRequest().request)).json() as Record<string, unknown>;
     assert.deepEqual(Object.keys(body).sort(), ["environment", "headers", "ok", "relations", "schemaVersion"]);
     const headers = body.headers as Record<string, unknown>;
     assert.deepEqual(Object.keys(headers).sort(), ["xForwardedFor", "xRealIp", "xVercelForwardedFor"]);
@@ -664,7 +664,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
         },
       },
     } as unknown as Request;
-    const body = await (await post(request)).json() as {
+    const body = await (await diagnose(request)).json() as {
       headers: { xForwardedFor: { equalsItsSentinel: boolean } };
     };
     assert.equal(counts["x-forwarded-for"], 1);
@@ -676,7 +676,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
 
   test("R47 a non-null body is rejected without being read", async () => {
     const made = countingRequest({ body: "stream", headers: { authorization: `Bearer ${TOKEN}`, "content-length": "0" } });
-    const response = await post(made.request);
+    const response = await diagnose(made.request);
     assert.equal(response.status, 404);
     assert.equal(made.reads.text, 0);
     assert.equal(made.reads.json, 0);
@@ -687,33 +687,42 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
 
   test("R48 production stays rejected when the flag is true", async () => {
     const made = successRequest({ "x-forwarded-for": "192.0.2.10" });
-    const response = await post(made.request, { ...openEnv, VERCEL_ENV: "production" });
+    const response = await diagnose(made.request, { ...openEnv, VERCEL_ENV: "production" });
     assert.equal(response.status, 404);
     assert.equal(made.counts["x-forwarded-for"] ?? 0, 0);
   });
 
-  test("non-POST handlers return 404 and HEAD has no body", async () => {
-    const get = GET();
-    const put = PUT();
-    const patch = PATCH();
-    const deleted = DELETE();
-    const options = OPTIONS();
-    const head = HEAD();
-    for (const response of [get, put, patch, deleted, options]) {
+  test("unsupported methods return 404 and HEAD has no body", async () => {
+    const made = countingRequest({
+      headers: {
+        authorization: `Bearer ${TOKEN}`,
+        "x-forwarded-for": "192.0.2.10",
+        "x-vercel-forwarded-for": "198.51.100.20",
+        "x-real-ip": "203.0.113.30",
+      },
+    });
+    for (const response of [POST(made.request), PUT(made.request), PATCH(made.request), DELETE(made.request), OPTIONS(made.request)]) {
       assert.equal(response.status, 404);
       assert.equal(await response.text(), "{\"ok\":false}");
     }
+    const head = HEAD(made.request);
     assert.equal(head.status, 404);
     assert.equal(head.body, null);
     assert.equal(head.headers.get("cache-control"), "no-store, private");
+    assert.equal(await head.text(), "");
+    assert.equal(made.counts["authorization"] ?? 0, 0);
+    assert.equal(made.counts["x-forwarded-for"] ?? 0, 0);
+    assert.equal(made.counts["x-vercel-forwarded-for"] ?? 0, 0);
+    assert.equal(made.counts["x-real-ip"] ?? 0, 0);
+    assert.equal(made.access.body, 0);
   });
 
   test("native Request preserves a bare question mark and an authenticated route rejects it", async () => {
-    const native = new Request(`${TARGET}?`, { method: "POST", headers: { authorization: `Bearer ${TOKEN}` } });
+    const native = new Request(`${TARGET}?`, { method: "GET", headers: { authorization: `Bearer ${TOKEN}` } });
     assert.equal(native.body, null);
     assert.equal(native.url.endsWith("?"), true);
     assert.equal(new URL(native.url).search, "");
-    const response = await post(native);
+    const response = await diagnose(native);
     assert.equal(response.status, 404);
     assert.equal(await bodyOf(response), "{\"ok\":false}");
   });
@@ -721,8 +730,8 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
   test("content-length and transfer-encoding are rejected before forwarding reads", async () => {
     const length = countingRequest({ headers: { authorization: `Bearer ${TOKEN}`, "content-length": "1", "x-forwarded-for": "192.0.2.10" } });
     const encoded = countingRequest({ headers: { authorization: `Bearer ${TOKEN}`, "transfer-encoding": "chunked", "x-forwarded-for": "192.0.2.10" } });
-    assert.equal((await post(length.request)).status, 404);
-    assert.equal((await post(encoded.request)).status, 404);
+    assert.equal((await diagnose(length.request)).status, 404);
+    assert.equal((await diagnose(encoded.request)).status, 404);
     assert.equal(length.counts["x-forwarded-for"] ?? 0, 0);
     assert.equal(encoded.counts["x-forwarded-for"] ?? 0, 0);
   });
@@ -730,14 +739,14 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
   test("malformed compression is invalid and a final IPv6 group is not a port", async () => {
     const compressed = successRequest({ "x-forwarded-for": "1:2:3:4:5:6:7::8" });
     const bracket = successRequest({ "x-forwarded-for": "[2001:db8::40]:443" });
-    const compressedBody = await (await post(compressed.request)).json() as { headers: { xForwardedFor: { shape: string } } };
-    const bracketBody = await (await post(bracket.request)).json() as { headers: { xForwardedFor: { shape: string } } };
+    const compressedBody = await (await diagnose(compressed.request)).json() as { headers: { xForwardedFor: { shape: string } } };
+    const bracketBody = await (await diagnose(bracket.request)).json() as { headers: { xForwardedFor: { shape: string } } };
     assert.equal(compressedBody.headers.xForwardedFor.shape, "invalid");
     assert.equal(bracketBody.headers.xForwardedFor.shape, "invalid");
   });
 
   test("failure responses use the same safety headers", async () => {
-    const response = await post(countingRequest({ headers: {} }).request);
+    const response = await diagnose(countingRequest({ headers: {} }).request);
     assert.equal(response.headers.get("content-type"), "application/json; charset=utf-8");
     assert.equal(response.headers.get("pragma"), "no-cache");
     assert.equal(response.headers.get("referrer-policy"), "no-referrer");
@@ -745,7 +754,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
 
   test("FIX2 the secret-compatible key permits authenticated observation", async () => {
     const made = successRequest({ "x-forwarded-for": "192.0.2.10" });
-    const response = await post(made.request, { ...openEnv, [rejectedTokenKey]: undefined });
+    const response = await diagnose(made.request, { ...openEnv, [rejectedTokenKey]: undefined });
     assert.equal(response.status, 200);
     const body = await response.json() as { ok: boolean; schemaVersion: number };
     assert.equal(body.ok, true);
@@ -762,7 +771,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
         "x-real-ip": "203.0.113.30",
       },
     });
-    const response = await post(made.request, {
+    const response = await diagnose(made.request, {
       ...openEnv,
       [TOKEN_KEY]: undefined,
       [rejectedTokenKey]: TOKEN,
@@ -792,7 +801,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
           "x-forwarded-for": "192.0.2.10",
         },
       });
-      const response = await post(made.request, {
+      const response = await diagnose(made.request, {
         ...openEnv,
         [TOKEN_KEY]: item[TOKEN_KEY],
         [rejectedTokenKey]: TOKEN,
@@ -816,8 +825,8 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
     const warn = mock.method(console, "warn", () => calls.push("warn"));
     const info = mock.method(console, "info", () => calls.push("info"));
     try {
-      const accepted = await bodyOf(await post(successRequest().request));
-      const denied = await bodyOf(await post(countingRequest({
+      const accepted = await bodyOf(await diagnose(successRequest().request));
+      const denied = await bodyOf(await diagnose(countingRequest({
         headers: { authorization: `Bearer ${TOKEN}`, "x-forwarded-for": "192.0.2.10" },
       }).request, { ...openEnv, [TOKEN_KEY]: undefined, [rejectedTokenKey]: TOKEN }));
       assert.equal(accepted.includes(TOKEN), false);
@@ -845,7 +854,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
       const made = countingRequest({
         headers: { authorization: `Bearer ${TOKEN}`, "x-forwarded-for": "192.0.2.10" },
       });
-      const response = await post(made.request, env);
+      const response = await diagnose(made.request, env);
       await assertDiagnosticFailure(response, "environment");
       assert.equal(made.counts["x-forwarded-for"] ?? 0, 0);
       assert.equal(containsSensitiveMaterial(response, "{\"ok\":false}"), false);
@@ -857,7 +866,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
       const made = countingRequest({
         headers: { authorization: `Bearer ${TOKEN}`, "x-forwarded-for": "192.0.2.10" },
       });
-      const response = await post(made.request, { ...openEnv, PUBLIC_FREE_QA_HEADER_OBSERVATION_ENABLED: value });
+      const response = await diagnose(made.request, { ...openEnv, PUBLIC_FREE_QA_HEADER_OBSERVATION_ENABLED: value });
       await assertDiagnosticFailure(response, "configuration");
       assert.equal(made.counts["x-forwarded-for"] ?? 0, 0);
     }
@@ -869,7 +878,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
       const made = countingRequest({
         headers: { authorization: `Bearer ${TOKEN}`, "x-forwarded-for": "192.0.2.10" },
       });
-      const response = await post(made.request, { ...openEnv, PUBLIC_FREE_QA_HEADER_OBSERVATION_EXPIRES_AT: expiry });
+      const response = await diagnose(made.request, { ...openEnv, PUBLIC_FREE_QA_HEADER_OBSERVATION_EXPIRES_AT: expiry });
       await assertDiagnosticFailure(response, "configuration");
       assert.equal(made.counts["x-forwarded-for"] ?? 0, 0);
       assert.equal(containsSensitiveMaterial(response, "{\"ok\":false}"), false);
@@ -882,7 +891,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
       const made = countingRequest({
         headers: { authorization: `Bearer ${TOKEN}`, "x-forwarded-for": "192.0.2.10" },
       });
-      const response = await post(made.request, { ...openEnv, [TOKEN_KEY]: value });
+      const response = await diagnose(made.request, { ...openEnv, [TOKEN_KEY]: value });
       await assertDiagnosticFailure(response, "configuration");
       assert.equal(made.counts["x-forwarded-for"] ?? 0, 0);
     }
@@ -890,7 +899,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
 
   test("FIX3 missing Authorization produces authorization", async () => {
     const made = countingRequest({ headers: { "x-forwarded-for": "192.0.2.10" } });
-    const response = await post(made.request);
+    const response = await diagnose(made.request);
     await assertDiagnosticFailure(response, "authorization");
     assert.equal(made.counts["x-forwarded-for"] ?? 0, 0);
   });
@@ -899,7 +908,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
     const made = countingRequest({
       headers: { authorization: `Token ${TOKEN}`, "x-forwarded-for": "192.0.2.10" },
     });
-    const response = await post(made.request);
+    const response = await diagnose(made.request);
     await assertDiagnosticFailure(response, "authorization");
     assert.equal(made.counts["x-forwarded-for"] ?? 0, 0);
     assert.equal(containsSensitiveMaterial(response, "{\"ok\":false}"), false);
@@ -909,7 +918,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
     const made = countingRequest({
       headers: { authorization: `Bearer ${OTHER}`, "x-forwarded-for": "192.0.2.10" },
     });
-    const response = await post(made.request);
+    const response = await diagnose(made.request);
     await assertDiagnosticFailure(response, "authorization");
     assert.equal(made.counts["x-forwarded-for"] ?? 0, 0);
     assert.equal(containsSensitiveMaterial(response, "{\"ok\":false}"), false);
@@ -920,7 +929,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
     const made = countingRequest({
       headers: { authorization: `Bearer ${alias}`, "x-forwarded-for": "192.0.2.10" },
     });
-    const response = await post(made.request);
+    const response = await diagnose(made.request);
     await assertDiagnosticFailure(response, "authorization");
     assert.equal(made.counts["x-forwarded-for"] ?? 0, 0);
   });
@@ -933,11 +942,11 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
         url: `${TARGET}?x=1`,
         headers: { authorization: `Bearer ${TOKEN}`, "x-forwarded-for": "192.0.2.10" },
       });
-      const queryResponse = await post(query.request);
+      const queryResponse = await diagnose(query.request);
       await assertDiagnosticFailure(queryResponse, "request");
       assert.equal(query.counts["x-forwarded-for"] ?? 0, 0);
-      const native = new Request(`${TARGET}?`, { method: "POST", headers: { authorization: `Bearer ${TOKEN}` } });
-      const bare = await post(native);
+      const native = new Request(`${TARGET}?`, { method: "GET", headers: { authorization: `Bearer ${TOKEN}` } });
+      const bare = await diagnose(native);
       await assertDiagnosticFailure(bare, "request");
       assert.equal(comparisons.length, 0);
     } finally {
@@ -960,9 +969,9 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
       const encoded = countingRequest({
         headers: { authorization: `Bearer ${TOKEN}`, "transfer-encoding": "chunked", "x-forwarded-for": "192.0.2.10" },
       });
-      await assertDiagnosticFailure(await post(body.request), "request");
-      await assertDiagnosticFailure(await post(length.request), "request");
-      await assertDiagnosticFailure(await post(encoded.request), "request");
+      await assertDiagnosticFailure(await diagnose(body.request), "request");
+      await assertDiagnosticFailure(await diagnose(length.request), "request");
+      await assertDiagnosticFailure(await diagnose(encoded.request), "request");
       assert.equal(body.counts["x-forwarded-for"] ?? 0, 0);
       assert.equal(length.counts["x-forwarded-for"] ?? 0, 0);
       assert.equal(encoded.counts["x-forwarded-for"] ?? 0, 0);
@@ -975,15 +984,20 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
   });
 
   test("FIX3 unsupported methods produce request", async () => {
-    for (const response of [GET(), PUT(), PATCH(), DELETE(), OPTIONS()]) {
+    const made = countingRequest({
+      headers: { authorization: `Bearer ${TOKEN}`, "x-forwarded-for": "192.0.2.10" },
+    });
+    for (const response of [POST(made.request), PUT(made.request), PATCH(made.request), DELETE(made.request), OPTIONS(made.request)]) {
       await assertDiagnosticFailure(response, "request");
     }
-    const head = HEAD();
+    const head = HEAD(made.request);
     assert.equal(head.status, 404);
     assert.equal(head.body, null);
     assert.equal(head.headers.get("X-Birello-Diagnostic-Gate"), "request");
     assert.equal(head.headers.get("x-birello-diagnostic-gate"), "request");
     assert.equal(await head.text(), "");
+    assert.equal(made.counts["authorization"] ?? 0, 0);
+    assert.equal(made.counts["x-forwarded-for"] ?? 0, 0);
   });
 
   test("FIX3 a forwarding accessor failure produces request", async () => {
@@ -991,14 +1005,14 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
       throwOn: "x-forwarded-for",
       headers: { authorization: `Bearer ${TOKEN}`, "x-forwarded-for": "192.0.2.10" },
     });
-    const response = await post(made.request);
+    const response = await diagnose(made.request);
     await assertDiagnosticFailure(response, "request");
     assert.equal(containsSensitiveMaterial(response, "{\"ok\":false}"), false);
   });
 
   test("FIX3 a successful observation has no attribution header", async () => {
     const made = successRequest({ "x-vercel-forwarded-for": "198.51.100.20" });
-    const response = await post(made.request);
+    const response = await diagnose(made.request);
     assert.equal(response.status, 200);
     assert.equal(response.headers.get("X-Birello-Diagnostic-Gate"), null);
     assert.equal(response.headers.get("x-birello-diagnostic-gate"), null);
@@ -1020,7 +1034,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
           "x-real-ip": "203.0.113.30",
         },
       });
-      const response = await post(made.request);
+      const response = await diagnose(made.request);
       await assertDiagnosticFailure(response, "authorization");
       assert.equal(comparisons.length, 1);
       assert.equal(comparisons[0]?.equal, true);
@@ -1037,14 +1051,26 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
     }
   });
 
-  test("FIX4 non-POST handlers report method", async () => {
-    for (const response of [GET(), PUT(), PATCH(), DELETE(), OPTIONS()]) {
+  test("FIX4 unsupported methods report method", async () => {
+    const made = countingRequest({
+      headers: {
+        authorization: `Bearer ${TOKEN}`,
+        "x-forwarded-for": "192.0.2.10",
+        "x-vercel-forwarded-for": "198.51.100.20",
+        "x-real-ip": "203.0.113.30",
+      },
+    });
+    for (const response of [POST(made.request), PUT(made.request), PATCH(made.request), DELETE(made.request), OPTIONS(made.request)]) {
       await assertRequestFailure(response, "method");
     }
-    const head = HEAD();
+    const head = HEAD(made.request);
     await assertRequestFailure(head, "method");
     assert.equal(head.body, null);
     assert.equal(await head.text(), "");
+    assert.equal(made.counts["authorization"] ?? 0, 0);
+    assert.equal(made.counts["x-forwarded-for"] ?? 0, 0);
+    assert.equal(made.counts["x-vercel-forwarded-for"] ?? 0, 0);
+    assert.equal(made.counts["x-real-ip"] ?? 0, 0);
   });
 
   test("FIX4 query fragment and a bare question mark report url", async () => {
@@ -1055,7 +1081,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
         url: `${TARGET}?x=1`,
         headers: { authorization: `Bearer ${TOKEN}`, "content-length": "1", "x-forwarded-for": "192.0.2.10" },
       });
-      await assertRequestFailure(await post(query.request), "url");
+      await assertRequestFailure(await diagnose(query.request), "url");
       assert.equal(query.counts["content-length"] ?? 0, 0);
       assert.equal(query.counts["authorization"] ?? 0, 0);
       assert.equal(query.counts["x-forwarded-for"] ?? 0, 0);
@@ -1065,13 +1091,13 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
         url: `${TARGET}#part`,
         headers: { authorization: `Bearer ${TOKEN}`, "content-length": "0" },
       });
-      await assertRequestFailure(await post(fragment.request), "url");
+      await assertRequestFailure(await diagnose(fragment.request), "url");
       assert.equal(fragment.counts["content-length"] ?? 0, 0);
 
-      const bare = new Request(`${TARGET}?`, { method: "POST", headers: { authorization: `Bearer ${TOKEN}` } });
+      const bare = new Request(`${TARGET}?`, { method: "GET", headers: { authorization: `Bearer ${TOKEN}` } });
       assert.equal(bare.url.endsWith("?"), true);
       assert.equal(bare.body, null);
-      await assertRequestFailure(await post(bare), "url");
+      await assertRequestFailure(await diagnose(bare), "url");
       assert.equal(comparisons.length, 0);
     } finally {
       recordComparisons = false;
@@ -1083,7 +1109,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
     const length = countingRequest({
       headers: { authorization: `Bearer ${TOKEN}`, "content-length": "1", "transfer-encoding": "chunked" },
     });
-    await assertRequestFailure(await post(length.request), "content_length");
+    await assertRequestFailure(await diagnose(length.request), "content_length");
     assert.equal(length.counts["content-length"], 1);
     assert.equal(length.counts["transfer-encoding"] ?? 0, 0);
     assert.equal(length.access.body, 0);
@@ -1091,7 +1117,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
     const encoded = countingRequest({
       headers: { authorization: `Bearer ${TOKEN}`, "content-length": "0", "transfer-encoding": "chunked" },
     });
-    await assertRequestFailure(await post(encoded.request), "transfer_encoding");
+    await assertRequestFailure(await diagnose(encoded.request), "transfer_encoding");
     assert.equal(encoded.counts["content-length"], 1);
     assert.equal(encoded.counts["transfer-encoding"], 1);
     assert.equal(encoded.access.body, 0);
@@ -1099,10 +1125,10 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
   });
 
   test("FIX4 a null body can be observed and a non-null empty stream reports body", async () => {
-    const absent = new Request(TARGET, { method: "POST", headers: { authorization: `Bearer ${TOKEN}` } });
+    const absent = new Request(TARGET, { method: "GET", headers: { authorization: `Bearer ${TOKEN}` } });
     assert.equal(absent.body, null);
     assert.equal(absent.headers.get("content-length"), null);
-    const accepted = await post(absent);
+    const accepted = await diagnose(absent);
     assert.equal(accepted.status, 200);
     assert.equal(accepted.headers.get("X-Birello-Diagnostic-Request-Reason"), null);
     assert.equal(accepted.headers.get("X-Birello-Diagnostic-Gate"), null);
@@ -1111,11 +1137,17 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
     assert.equal(acceptedBody.schemaVersion, 1);
     assert.equal(acceptedBody.headers.xForwardedFor.shape, "absent");
 
-    const empty = new Request(TARGET, { method: "POST", body: "", headers: { authorization: `Bearer ${TOKEN}` } });
-    assert.notEqual(empty.body, null);
-    assert.equal(empty.headers.get("content-length"), null);
-    assert.equal(empty.headers.get("transfer-encoding"), null);
-    await assertRequestFailure(await post(empty), "body");
+    const empty = countingRequest({
+      body: "stream",
+      headers: { authorization: `Bearer ${TOKEN}` },
+    });
+    assert.notEqual(empty.request.body, null);
+    assert.equal(empty.counts["content-length"] ?? 0, 0);
+    await assertRequestFailure(await diagnose(empty.request), "body");
+    assert.equal(empty.reads.text, 0);
+    assert.equal(empty.counts["content-length"], 1);
+    assert.equal(empty.counts["transfer-encoding"], 1);
+    assert.equal(empty.counts["authorization"] ?? 0, 0);
   });
 
   test("FIX4 an exception at a request boundary reports that boundary", async () => {
@@ -1123,13 +1155,13 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
     recordComparisons = true;
     try {
       const url = countingRequest({ throwOn: "url", headers: { authorization: `Bearer ${TOKEN}`, "content-length": "1" } });
-      const urlResponse = await post(url.request);
+      const urlResponse = await diagnose(url.request);
       await assertRequestFailure(urlResponse, "url");
       assert.equal(url.counts["content-length"] ?? 0, 0);
       assert.equal(url.access.body, 0);
 
       const headers = countingRequest({ throwOn: "headers", headers: { authorization: `Bearer ${TOKEN}`, "transfer-encoding": "chunked" } });
-      await assertRequestFailure(await post(headers.request), "content_length");
+      await assertRequestFailure(await diagnose(headers.request), "content_length");
       assert.equal(headers.counts["content-length"] ?? 0, 0);
       assert.equal(headers.counts["transfer-encoding"] ?? 0, 0);
       assert.equal(headers.access.body, 0);
@@ -1138,7 +1170,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
         throwOn: "content-length",
         headers: { authorization: `Bearer ${TOKEN}`, "transfer-encoding": "chunked" },
       });
-      await assertRequestFailure(await post(length.request), "content_length");
+      await assertRequestFailure(await diagnose(length.request), "content_length");
       assert.equal(length.counts["content-length"], 1);
       assert.equal(length.counts["transfer-encoding"] ?? 0, 0);
       assert.equal(length.access.body, 0);
@@ -1147,7 +1179,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
         throwOn: "transfer-encoding",
         headers: { authorization: `Bearer ${TOKEN}`, "content-length": "0" },
       });
-      await assertRequestFailure(await post(encoded.request), "transfer_encoding");
+      await assertRequestFailure(await diagnose(encoded.request), "transfer_encoding");
       assert.equal(encoded.counts["content-length"], 1);
       assert.equal(encoded.access.body, 0);
 
@@ -1156,7 +1188,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
         body: "stream",
         headers: { authorization: `Bearer ${TOKEN}`, "content-length": "0" },
       });
-      await assertRequestFailure(await post(body.request), "body");
+      await assertRequestFailure(await diagnose(body.request), "body");
       assert.equal(body.access.body, 1);
       assert.equal(body.reads.text, 0);
       assert.equal(body.counts["authorization"] ?? 0, 0);
@@ -1172,7 +1204,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
       throwOn: "x-forwarded-for",
       headers: { authorization: `Bearer ${TOKEN}`, "x-forwarded-for": "192.0.2.10" },
     });
-    const response = await post(made.request);
+    const response = await diagnose(made.request);
     await assertRequestFailure(response, "forwarding_headers");
     assert.equal(made.counts["x-forwarded-for"], 1);
     assert.equal(made.counts["x-vercel-forwarded-for"] ?? 0, 0);
@@ -1181,7 +1213,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
 
   test("FIX4 invalid forwarding text stays a successful observation", async () => {
     const made = successRequest({ "x-forwarded-for": "example.test" });
-    const response = await post(made.request);
+    const response = await diagnose(made.request);
     assert.equal(response.status, 200);
     assert.equal(response.headers.get("X-Birello-Diagnostic-Gate"), null);
     assert.equal(response.headers.get("x-birello-diagnostic-gate"), null);
@@ -1209,7 +1241,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
         body: "stream",
         headers: { authorization: `Bearer ${TOKEN}`, "content-length": "1", "transfer-encoding": "chunked" },
       });
-      await assertRequestFailure(await post(query.request), "url");
+      await assertRequestFailure(await diagnose(query.request), "url");
       assert.equal(query.counts["content-length"] ?? 0, 0);
       assert.equal(query.counts["transfer-encoding"] ?? 0, 0);
       assert.equal(query.access.body, 0);
@@ -1219,7 +1251,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
         body: "stream",
         headers: { authorization: `Bearer ${TOKEN}`, "content-length": "1", "transfer-encoding": "chunked" },
       });
-      await assertRequestFailure(await post(length.request), "content_length");
+      await assertRequestFailure(await diagnose(length.request), "content_length");
       assert.equal(length.counts["transfer-encoding"] ?? 0, 0);
       assert.equal(length.access.body, 0);
 
@@ -1227,7 +1259,7 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
         body: "stream",
         headers: { authorization: `Bearer ${TOKEN}`, "content-length": "0", "transfer-encoding": "chunked" },
       });
-      await assertRequestFailure(await post(encoded.request), "transfer_encoding");
+      await assertRequestFailure(await diagnose(encoded.request), "transfer_encoding");
       assert.equal(encoded.access.body, 0);
       assert.equal(encoded.counts["authorization"] ?? 0, 0);
       assert.equal(comparisons.length, 0);
@@ -1238,24 +1270,47 @@ describe("header-shape-v1", { concurrency: 1 }, () => {
   });
 
   test("FIX4 environment configuration authorization and success omit the request reason", async () => {
-    const environment = await post(successRequest().request, { ...openEnv, VERCEL: undefined });
+    const environment = await diagnose(successRequest().request, { ...openEnv, VERCEL: undefined });
     await assertDiagnosticFailure(environment, "environment");
     assert.equal(environment.headers.get("X-Birello-Diagnostic-Request-Reason"), null);
     assert.equal(environment.headers.get("x-birello-diagnostic-request-reason"), null);
 
-    const configuration = await post(successRequest().request, { ...openEnv, PUBLIC_FREE_QA_HEADER_OBSERVATION_ENABLED: undefined });
+    const configuration = await diagnose(successRequest().request, { ...openEnv, PUBLIC_FREE_QA_HEADER_OBSERVATION_ENABLED: undefined });
     await assertDiagnosticFailure(configuration, "configuration");
     assert.equal(configuration.headers.get("X-Birello-Diagnostic-Request-Reason"), null);
 
-    const authorization = await post(countingRequest({ headers: {} }).request);
+    const authorization = await diagnose(countingRequest({ headers: {} }).request);
     await assertDiagnosticFailure(authorization, "authorization");
     assert.equal(authorization.headers.get("X-Birello-Diagnostic-Request-Reason"), null);
 
-    const success = await post(successRequest().request);
+    const success = await diagnose(successRequest().request);
     assert.equal(success.status, 200);
     assert.equal(success.headers.get("X-Birello-Diagnostic-Request-Reason"), null);
     assert.equal(success.headers.get("X-Birello-Diagnostic-Gate"), null);
     const text = await success.text();
     assert.equal(text.includes("X-Birello-Diagnostic-Request-Reason"), false);
+  });
+
+  test("FIX5 an authenticated bodyless GET observes header shape", async () => {
+    const made = successRequest({ "x-forwarded-for": "192.0.2.10" });
+    const response = await withEnv(openEnv, async () => GET(made.request));
+    assert.equal(response.headers.get("X-Birello-Diagnostic-Request-Reason"), null);
+    assert.equal(response.headers.get("X-Birello-Diagnostic-Gate"), null);
+    assert.equal(response.status, 200);
+    const body = await response.json() as { ok: boolean; schemaVersion: number; headers: { xForwardedFor: { shape: string; equalsItsSentinel: boolean } } };
+    assert.equal(body.ok, true);
+    assert.equal(body.schemaVersion, 1);
+    assert.equal(body.headers.xForwardedFor.shape, "single_ipv4");
+    assert.equal(body.headers.xForwardedFor.equalsItsSentinel, true);
+    assert.equal(made.counts["x-forwarded-for"], 1);
+  });
+
+  test("FIX5 a valid POST is rejected as method", async () => {
+    const made = successRequest({ "x-forwarded-for": "192.0.2.10" });
+    const response = await withEnv(openEnv, async () => POST(made.request));
+    await assertRequestFailure(response, "method");
+    assert.equal(made.counts["authorization"] ?? 0, 0);
+    assert.equal(made.counts["x-forwarded-for"] ?? 0, 0);
+    assert.equal(made.access.body, 0);
   });
 });

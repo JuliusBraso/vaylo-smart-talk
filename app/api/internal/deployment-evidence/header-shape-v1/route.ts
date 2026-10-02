@@ -301,7 +301,7 @@ function requestBoundary(request: Request): RequestReason | null {
   return null;
 }
 
-async function post(request: Request): Promise<Response> {
+async function diagnose(request: Request): Promise<Response> {
   const ready = configurationReady(Date.now());
   if (!ready.ok) return failure(true, ready.gate);
   try {
@@ -333,30 +333,35 @@ async function post(request: Request): Promise<Response> {
   }
 }
 
-export function GET(): Response {
-  return failure(true, "request", "method");
+function methodRejection(includeBody: boolean, request?: Request): Response {
+  void request;
+  return failure(includeBody, "request", "method");
 }
 
-export function POST(request: Request): Promise<Response> {
-  return post(request);
+export function GET(request: Request): Promise<Response> {
+  return diagnose(request);
 }
 
-export function PUT(): Response {
-  return failure(true, "request", "method");
+export function POST(request?: Request): Response {
+  return methodRejection(true, request);
 }
 
-export function PATCH(): Response {
-  return failure(true, "request", "method");
+export function PUT(request?: Request): Response {
+  return methodRejection(true, request);
 }
 
-export function DELETE(): Response {
-  return failure(true, "request", "method");
+export function PATCH(request?: Request): Response {
+  return methodRejection(true, request);
 }
 
-export function HEAD(): Response {
-  return failure(false, "request", "method");
+export function DELETE(request?: Request): Response {
+  return methodRejection(true, request);
 }
 
-export function OPTIONS(): Response {
-  return failure(true, "request", "method");
+export function HEAD(request?: Request): Response {
+  return methodRejection(false, request);
+}
+
+export function OPTIONS(request?: Request): Response {
+  return methodRejection(true, request);
 }
