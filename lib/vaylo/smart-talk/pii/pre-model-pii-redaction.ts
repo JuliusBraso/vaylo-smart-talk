@@ -567,6 +567,25 @@ interface _PatternDef {
 // Some categories overlap intentionally (e.g. steuer_id and tax_id both cover "Steuer-ID").
 // The redaction engine (8.6G-4) will deduplicate/prioritise.
 const _DETECTOR_PATTERNS: _PatternDef[] = [
+  // Bounded labeled fields and greeting lines: cover the value as well as the cue.
+  {
+    category: "person_name_or_greeting",
+    pattern: /\b(?:Meno|Name|Vorname)[ \t]*:[ \t]*[^\r\n]{1,100}/giu,
+    reason: "labeled name field detected",
+    confidence: 0.9,
+  },
+  {
+    category: "person_name_or_greeting",
+    pattern: /\bSehr[ \t]+geehrte[rn]?[ \t]+(?:Frau|Herrn?)[ \t]+\p{Lu}[\p{L}'\-]{1,40}(?:[ \t]+\p{Lu}[\p{L}'\-]{1,40}){0,2}/gu,
+    reason: "greeting with name detected",
+    confidence: 0.9,
+  },
+  {
+    category: "postal_address",
+    pattern: /\b(?:Adresa|Adresse)[ \t]*:[ \t]*[^\r\n]{1,100}/giu,
+    reason: "labeled address field detected",
+    confidence: 0.9,
+  },
   // ── person_name_or_greeting ─────────────────────────────────────────────────
   {
     category: "person_name_or_greeting",
