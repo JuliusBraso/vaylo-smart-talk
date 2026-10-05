@@ -12,7 +12,11 @@
  * Full synthetic validation and final consolidation audit applied.
  * Not route-wired. Not user-visible. Not production-authorized.
  * Not pilot-authorized. Not real-document-authorized.
- * safeForModel / safeForEvidenceGates become true after successful redaction.
+ * Lane controlled_document_text keeps safeForModel and safeForEvidenceGates false
+ * on every path, including status "passed". That status only records that
+ * replacement ran. It does not authorize model or evidence-gate use.
+ * Lane synthetic_governance_test is unchanged: those flags become true only
+ * after successful redaction with hits.
  * safeForUserVisibleOutput remains always false.
  *
  * Constraints enforced by this file:
@@ -102,7 +106,7 @@ export interface PreModelPiiRedactionResult {
   status: PreModelPiiRedactionStatus;
   /**
    * 8.6G-4: redacted text with PII spans replaced by stable placeholders.
-   * Safe for model/evidence-gate use when safeForModel/safeForEvidenceGates are true.
+   * On controlled_document_text this text is never model or evidence-gate authorization.
    * Never safe for user-visible output (safeForUserVisibleOutput is always false).
    */
   redactedText: string;
@@ -115,13 +119,15 @@ export interface PreModelPiiRedactionResult {
   unresolvedRiskFlags: string[];
   blockingReasons: string[];
   /**
-   * True after successful redaction (status "passed").
-   * False for blocked inputs, zero-hit inputs, and always in blocked/needs_review paths.
+   * Always false for controlled_document_text, including status "passed".
+   * For synthetic_governance_test, true only after successful redaction with hits.
+   * sourceKind, hit count, and placeholder text do not change this flag.
    */
   safeForModel: boolean;
   /**
-   * True after successful redaction (status "passed").
-   * False for blocked inputs, zero-hit inputs, and always in blocked/needs_review paths.
+   * Always false for controlled_document_text, including status "passed".
+   * For synthetic_governance_test, true only after successful redaction with hits.
+   * sourceKind, hit count, and placeholder text do not change this flag.
    */
   safeForEvidenceGates: boolean;
   /** Always false — user-visible output authorization not granted in this phase. */
@@ -189,8 +195,8 @@ export interface PreModelPiiRedactionValidationResult {
   controlledDocumentLaneAllowsDocumentLikeTextConfirmed: true;
   sourceKindDoesNotAuthorizeEntitlementConfirmed: true;
   sourceKindDoesNotBypassLaneGuardConfirmed: true;
-  safeForModelTrueOnlyAfterSuccessfulRedactionConfirmed: true;
-  safeForEvidenceGatesTrueOnlyAfterSuccessfulRedactionConfirmed: true;
+  controlledDocumentLaneSafeForModelAlwaysFalseConfirmed: true;
+  controlledDocumentLaneSafeForEvidenceGatesAlwaysFalseConfirmed: true;
   safeForModelFalseOnBlockedConfirmed: true;
   safeForEvidenceGatesFalseOnBlockedConfirmed: true;
   safeForModelFalseOnZeroHitNeedsReviewConfirmed: true;
@@ -256,8 +262,8 @@ export interface PreModelPiiRedactionValidationResult {
  *
  * Behavior after successful redaction (status "passed"):
  *   - redactedText has all selected non-overlapping spans replaced with stable placeholders.
- *   - safeForModel: true
- *   - safeForEvidenceGates: true
+ *   - controlled_document_text: safeForModel and safeForEvidenceGates stay false.
+ *   - synthetic_governance_test: safeForModel and safeForEvidenceGates are true.
  *   - safeForUserVisibleOutput: false (always — not authorized in this phase)
  *   - rawMapReturned: false (always — raw map is local-only)
  *
@@ -492,6 +498,8 @@ export function redactPreModelPii(
   }
 
   // ── Successful redaction path: passed ─────────────────────────────────────────
+  // status records that replacement ran. On the document lane it is not authorization.
+  const documentLaneDeniesModelUse = input.lane === "controlled_document_text";
   return {
     status: "passed",
     redactedText,
@@ -504,14 +512,16 @@ export function redactPreModelPii(
       "ROUTE_WIRING_NOT_AUTHORIZED_IN_THIS_PHASE",
     ],
     blockingReasons: [],
-    safeForModel: true,
-    safeForEvidenceGates: true,
+    safeForModel: !documentLaneDeniesModelUse,
+    safeForEvidenceGates: !documentLaneDeniesModelUse,
     safeForUserVisibleOutput: false,
     rawMapReturned: false,
     detectorHits: allHits,
     notes: [
       `8.6G-4: ${selectedHits.length} span(s) replaced — redaction engine applied`,
-      "redactedText sanitized — safe for model/evidence-gate use",
+      documentLaneDeniesModelUse
+        ? "controlled_document_text redaction is not authorization for model or evidence-gate use"
+        : "redactedText sanitized — safe for model/evidence-gate use",
       "safeForUserVisibleOutput remains false — output authorization not granted",
       "rawMapReturned is false — placeholder mapping is local-only",
     ],
@@ -953,8 +963,8 @@ function _isCanonicalValidationResult(
     r.controlledDocumentLaneAllowsDocumentLikeTextConfirmed === true &&
     r.sourceKindDoesNotAuthorizeEntitlementConfirmed === true &&
     r.sourceKindDoesNotBypassLaneGuardConfirmed === true &&
-    r.safeForModelTrueOnlyAfterSuccessfulRedactionConfirmed === true &&
-    r.safeForEvidenceGatesTrueOnlyAfterSuccessfulRedactionConfirmed === true &&
+    r.controlledDocumentLaneSafeForModelAlwaysFalseConfirmed === true &&
+    r.controlledDocumentLaneSafeForEvidenceGatesAlwaysFalseConfirmed === true &&
     r.safeForModelFalseOnBlockedConfirmed === true &&
     r.safeForEvidenceGatesFalseOnBlockedConfirmed === true &&
     r.safeForModelFalseOnZeroHitNeedsReviewConfirmed === true &&
@@ -1460,16 +1470,17 @@ function _runSyntheticCases(): {
     sourceKind: "paid_user_spoofed",
   });
   sc("c42: not blocked (spoofed sourceKind does not change guards)", c42.status !== "blocked");
+  sc("c42: spoofed sourceKind does not authorize model or evidence gates", c42.safeForModel === false && c42.safeForEvidenceGates === false);
   sc("c42: safeForUserVisibleOutput false", c42.safeForUserVisibleOutput === false);
   sc("c42: rawMapReturned false", c42.rawMapReturned === false);
 
-  // ── Case 43: safeForModel true only after successful redaction with hits ───────
+  // ── Case 43: document lane stays unauthorized after redaction ────────────────
   const c43a = redactPreModelPii({
     text: "Kundennummer: SYNTHRAW_KNR_43",
     lane: "controlled_document_text",
     sourceKind: "synthetic_test",
   });
-  sc("c43a: safeForModel true after successful redaction", c43a.safeForModel === true);
+  sc("c43a: document lane safeForModel false after redaction", c43a.status === "passed" && c43a.safeForModel === false);
   const c43b = redactPreModelPii({
     text: "Diese Nachricht hat keine Daten.",
     lane: "synthetic_governance_test",
@@ -1477,13 +1488,13 @@ function _runSyntheticCases(): {
   });
   sc("c43b: safeForModel false when no hits", c43b.safeForModel === false);
 
-  // ── Case 44: safeForEvidenceGates true only after successful redaction ─────────
+  // ── Case 44: document lane evidence gates stay unauthorized after redaction ──
   const c44a = redactPreModelPii({
     text: "Kundennummer: SYNTHRAW_KNR_44",
     lane: "controlled_document_text",
     sourceKind: "synthetic_test",
   });
-  sc("c44a: safeForEvidenceGates true after redaction", c44a.safeForEvidenceGates === true);
+  sc("c44a: document lane safeForEvidenceGates false after redaction", c44a.status === "passed" && c44a.safeForEvidenceGates === false);
   const c44b = redactPreModelPii({
     text: "Kein PII in diesem Text.",
     lane: "synthetic_governance_test",
@@ -1549,6 +1560,7 @@ function _runSyntheticCases(): {
     sourceKind: "paid",
   });
   sc("c49: sourceKind paid not blocked", c49.status !== "blocked");
+  sc("c49: sourceKind paid does not authorize model or evidence gates", c49.safeForModel === false && c49.safeForEvidenceGates === false);
   sc("c49: safeForUserVisibleOutput false (paid spoof)", c49.safeForUserVisibleOutput === false);
   sc("c49: detector fires for paid sourceKind", c49.detectorHits.length > 0);
 
@@ -1576,7 +1588,7 @@ function _runSyntheticCases(): {
   });
   sc("c52: sourceKind server_entitled not blocked", c52.status !== "blocked");
   sc("c52: safeForUserVisibleOutput false (server_entitled spoof)", c52.safeForUserVisibleOutput === false);
-  sc("c52: realDocumentInputAuthorizedNow not granted by sourceKind", c52.safeForModel === true || c52.status !== "passed" || !c52.redactedText.includes("SYNTHRAW_KNR_52"));
+  sc("c52: sourceKind does not authorize document-lane model or evidence gates", c52.status === "passed" && c52.safeForModel === false && c52.safeForEvidenceGates === false && !c52.redactedText.includes("SYNTHRAW_KNR_52"));
 
   // ── Scenario group 13: all 27 categories synthetic hit coverage ───────────────
   const allCatInputs: Array<{ cat: PreModelPiiRedactionCategory; text: string }> = [
@@ -1639,6 +1651,7 @@ function _runSyntheticCases(): {
   });
   sc("c55: document-like text in controlled_document_text not blocked", c55.status !== "blocked");
   sc("c55: detector fires (hits present)", c55.detectorHits.length > 0);
+  sc("c55: hit count does not authorize model or evidence gates", c55.safeForModel === false && c55.safeForEvidenceGates === false);
   sc("c55: safeForUserVisibleOutput false even in controlled lane", c55.safeForUserVisibleOutput === false);
 
   // ── Scenario group 18: adjacent hit replacement ───────────────────────────────
@@ -1770,15 +1783,26 @@ function _runSyntheticCases(): {
   sc("c66: coverageSummary no SYNTHRAW_ token", !c66.coverageSummary.includes("SYNTHRAW_"));
   sc("c66: coverageSummary no raw email", !c66.coverageSummary.includes("@test.de"));
 
-  // ── Scenario groups 31/32: safeForModel/EvidenceGates true only after successful redaction
+  // ── Scenario groups 31/32: document lane never authorizes; synthetic lane unchanged
   const c67 = redactPreModelPii({
     text: "SYNTHRAW_EM67@test.de",
     lane: "controlled_document_text",
     sourceKind: "synthetic_test",
   });
-  sc("c67: safeForModel true after successful redaction with hits", c67.safeForModel === true);
-  sc("c67: safeForEvidenceGates true after successful redaction with hits", c67.safeForEvidenceGates === true);
-  sc("c67: status passed when safe flags true", c67.status === "passed");
+  sc("c67: document lane safeForModel false after successful redaction", c67.status === "passed" && c67.safeForModel === false);
+  sc("c67: document lane safeForEvidenceGates false after successful redaction", c67.safeForEvidenceGates === false);
+  const c67Placeholder = redactPreModelPii({
+    text: "Kundennummer: SYNTHRAW_KNR_67PH [PII:EMAIL_ADDRESS:1]",
+    lane: "controlled_document_text",
+    sourceKind: "placeholder_text_must_not_authorize",
+  });
+  sc("c67: placeholder text does not authorize document lane", c67Placeholder.status === "passed" && c67Placeholder.safeForModel === false && c67Placeholder.safeForEvidenceGates === false);
+  const c67Synthetic = redactPreModelPii({
+    text: "SYNTHRAW_EM67C@test.de",
+    lane: "synthetic_governance_test",
+    sourceKind: "synthetic_test",
+  });
+  sc("c67: synthetic lane safeForModel true only after successful redaction", c67Synthetic.status === "passed" && c67Synthetic.safeForModel === true && c67Synthetic.safeForEvidenceGates === true);
 
   // ── Scenario groups 35/36: safeForModel/EvidenceGates false on zero-hit needs_review
   const c68 = redactPreModelPii({
@@ -1946,8 +1970,8 @@ function _buildCanonicalResult(
     controlledDocumentLaneAllowsDocumentLikeTextConfirmed: true,
     sourceKindDoesNotAuthorizeEntitlementConfirmed: true,
     sourceKindDoesNotBypassLaneGuardConfirmed: true,
-    safeForModelTrueOnlyAfterSuccessfulRedactionConfirmed: true,
-    safeForEvidenceGatesTrueOnlyAfterSuccessfulRedactionConfirmed: true,
+    controlledDocumentLaneSafeForModelAlwaysFalseConfirmed: true,
+    controlledDocumentLaneSafeForEvidenceGatesAlwaysFalseConfirmed: true,
     safeForModelFalseOnBlockedConfirmed: true,
     safeForEvidenceGatesFalseOnBlockedConfirmed: true,
     safeForModelFalseOnZeroHitNeedsReviewConfirmed: true,
@@ -2072,8 +2096,8 @@ const TAMPER_CASES: TamperCase[] = [
   { label: "controlledDocumentLaneAllowsDocumentLikeTextConfirmed false", mutate: (r) => ({ ...r, controlledDocumentLaneAllowsDocumentLikeTextConfirmed: false as true }) },
   { label: "sourceKindDoesNotAuthorizeEntitlementConfirmed false", mutate: (r) => ({ ...r, sourceKindDoesNotAuthorizeEntitlementConfirmed: false as true }) },
   { label: "sourceKindDoesNotBypassLaneGuardConfirmed false", mutate: (r) => ({ ...r, sourceKindDoesNotBypassLaneGuardConfirmed: false as true }) },
-  { label: "safeForModelTrueOnlyAfterSuccessfulRedactionConfirmed false", mutate: (r) => ({ ...r, safeForModelTrueOnlyAfterSuccessfulRedactionConfirmed: false as true }) },
-  { label: "safeForEvidenceGatesTrueOnlyAfterSuccessfulRedactionConfirmed false", mutate: (r) => ({ ...r, safeForEvidenceGatesTrueOnlyAfterSuccessfulRedactionConfirmed: false as true }) },
+  { label: "controlledDocumentLaneSafeForModelAlwaysFalseConfirmed false", mutate: (r) => ({ ...r, controlledDocumentLaneSafeForModelAlwaysFalseConfirmed: false as true }) },
+  { label: "controlledDocumentLaneSafeForEvidenceGatesAlwaysFalseConfirmed false", mutate: (r) => ({ ...r, controlledDocumentLaneSafeForEvidenceGatesAlwaysFalseConfirmed: false as true }) },
   { label: "safeForModelFalseOnBlockedConfirmed false", mutate: (r) => ({ ...r, safeForModelFalseOnBlockedConfirmed: false as true }) },
   { label: "safeForEvidenceGatesFalseOnBlockedConfirmed false", mutate: (r) => ({ ...r, safeForEvidenceGatesFalseOnBlockedConfirmed: false as true }) },
   { label: "safeForModelFalseOnZeroHitNeedsReviewConfirmed false", mutate: (r) => ({ ...r, safeForModelFalseOnZeroHitNeedsReviewConfirmed: false as true }) },
@@ -2209,7 +2233,8 @@ export function runPreModelPiiRedactionSurgicalUtilityPatchValidation(): PreMode
     "overlap resolution confirmed: longer span wins when same start",
     "right-to-left replacement confirmed: offsets not corrupted",
     "placeholder format [PII:UPPERCASE_CATEGORY:N] confirmed",
-    "safeForModel/safeForEvidenceGates true only after successful redaction with hits",
+    "controlled_document_text keeps safeForModel/safeForEvidenceGates false after redaction",
+    "synthetic_governance_test sets those flags true only after successful redaction with hits",
     "safeForModel/safeForEvidenceGates false on blocked and zero-hit inputs confirmed",
     "safeForUserVisibleOutput confirmed always false",
     "rawMapReturned confirmed always false — raw PII map is local-only",
