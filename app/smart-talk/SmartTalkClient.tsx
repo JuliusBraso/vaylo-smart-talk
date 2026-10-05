@@ -434,6 +434,36 @@ function sectionTitleStyle(): CSSProperties {
  * duplicating this JSX. Used both by the main envelope-only/text/question
  * result panel and by the internal controlled-reasoning test result panel.
  */
+function formatAnswerForDownload(result: SmartTalkResult): string {
+  const steps = result.nextSteps.length
+    ? result.nextSteps.map((step, index) => `${index + 1}. ${step}`)
+    : ["Žiadne konkrétne kroky."];
+  const warnings = result.warnings.length
+    ? result.warnings.map((warning) => `• ${warning}`)
+    : ["Žiadne upozornenia."];
+
+  return [
+    "Birello – odpoveď",
+    "",
+    "Zhrnutie",
+    result.summary,
+    "",
+    "Čo to znamená",
+    result.meaning,
+    "",
+    "Naliehavosť",
+    urgencyBadgeFor(result.urgency).label,
+    "",
+    "Čo urobiť ďalej",
+    ...steps,
+    "",
+    "Na čo si dať pozor",
+    ...warnings,
+    "",
+    "Všeobecné informácie; nejde o právne poradenstvo.",
+  ].join("\n");
+}
+
 function renderSmartTalkResultCards(result: SmartTalkResult) {
   const urgencyUi = urgencyBadgeFor(result.urgency);
   return (
@@ -547,6 +577,7 @@ export default function SmartTalkClient() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SmartTalkResult | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const busyRef = useRef(false);
   const generationRef = useRef(0);
   const photoPickSeqRef = useRef(0);
@@ -576,6 +607,7 @@ export default function SmartTalkClient() {
     generationRef.current += 1;
     setError(null);
     setResult(null);
+    setSaveError(null);
     setLoading(false);
     setPhotoPreparing(false);
     setPhotoPrepareStatus(null);
@@ -950,6 +982,7 @@ export default function SmartTalkClient() {
     setLoading(true);
     setError(null);
     setResult(null);
+    setSaveError(null);
 
     try {
       const res = await fetch("/api/smart-talk", {
@@ -997,6 +1030,30 @@ export default function SmartTalkClient() {
       setLoading(false);
     }
   }, [questionInput, mode]);
+
+  const downloadAnswer = useCallback(() => {
+    if (mode !== "question" || !result) return;
+    try {
+      const blob = new Blob(["\uFEFF", formatAnswerForDownload(result)], {
+        type: "text/plain;charset=utf-8",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `birello-odpoved-${new Date().toISOString().slice(0, 10)}.txt`;
+      link.style.display = "none";
+      document.body.appendChild(link);
+      try {
+        link.click();
+        setSaveError(null);
+      } finally {
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      }
+    } catch {
+      setSaveError("Stiahnutie sa nepodarilo. Skúste to znova alebo skopírujte odpoveď.");
+    }
+  }, [mode, result]);
 
   const modeChip = (m: SmartTalkUiMode, label: string) => {
     const selected = mode === m;
@@ -1455,6 +1512,30 @@ export default function SmartTalkClient() {
               Tu je vaša analýza. Takto situáciu vyhodnotilo Vaylo:
             </p>
             {renderSmartTalkResultCards(result)}
+            {mode === "question" ? (
+              <div style={{ display: "grid", gap: 6 }}>
+                <button
+                  type="button"
+                  onClick={downloadAnswer}
+                  style={{
+                    minHeight: 44,
+                    padding: "10px 16px",
+                    borderRadius: "var(--r12)",
+                    border: "1px solid var(--accentBorder)",
+                    background: "rgba(238, 242, 255, 1)",
+                    color: "var(--text)",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  Stiahnuť odpoveď (.txt)
+                </button>
+                <span style={{ fontSize: 12, color: "var(--muted2)" }}>
+                  Súbor sa vytvorí v tomto zariadení; Birello odpoveď neukladá na server.
+                </span>
+                {saveError ? <span role="alert">{saveError}</span> : null}
+              </div>
+            ) : null}
 
             {process.env.NODE_ENV === "development" ? (
               <details
