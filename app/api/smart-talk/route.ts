@@ -49,7 +49,6 @@ const FREE_QA_INTERNAL_RUNTIME_GUARD =
 const FREE_QA_PUBLIC_BETA_MODE = "free_qa_public_beta";
 const FREE_QA_PUBLIC_RUNTIME_ENV_FLAG = "SMART_TALK_FREE_QA_PUBLIC_ENABLED";
 const TEXT_DOCUMENT_CONTROLLED_RUNTIME_MODE = "text_document_controlled_runtime";
-const TEXT_DOCUMENT_MODE_ENV_FLAG = "SMART_TALK_TEXT_DOCUMENT_MODE_ENABLED";
 const PHOTO_OCR_CONTROLLED_RUNTIME_MODE = "photo_ocr_controlled_runtime";
 const PHOTO_OCR_ENV_FLAG = "SMART_TALK_PHOTO_OCR_CONTROLLED_RUNTIME_ENABLED";
 const PHOTO_OCR_ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -1292,7 +1291,7 @@ async function handleOcrToSmartTalkHandoffRequest(
 // check above already returned ocr_quality_not_usable_for_handoff). This
 // branch performs at most ONE call into the existing, already-approved
 // runSmartTalk() model path (lib/vaylo/smart-talk/run-smart-talk.ts) — the
-// same function used by Free Q&A and Text Document Mode. No second OpenAI
+// same function used by Free Q&A. No second OpenAI
 // client is created and no new provider/model is introduced.
 
 /**
@@ -1958,127 +1957,12 @@ export async function POST(req: Request) {
   }
   // ── End Phase 8.8T public Free Q&A beta branch ─────────────────────────────
 
-  // ── Phase 8.9C — Text Document Mode controlled runtime branch ──────────────
-  // Disabled by default unless SMART_TALK_TEXT_DOCUMENT_MODE_ENABLED === "true".
-  // Pasted document text only — no OCR/photo/scanner/upload/paid/DNA/persistence.
-  // Fail-closed: no model call when disabled or when any blocker triggers.
+  // Text document mode stays rejected after the public dispatcher.
+  // This branch does not read document text, the OpenAI key, or call the model.
+  // If the dispatcher later stops containing this mode, the request still ends here.
   if (o.mode === TEXT_DOCUMENT_CONTROLLED_RUNTIME_MODE) {
-    const textDocumentModeEnabled = process.env[TEXT_DOCUMENT_MODE_ENV_FLAG] === "true";
-    if (!textDocumentModeEnabled) {
-      return textDocumentModeBlockedResponse("text_document_mode_disabled", 403);
-    }
-
-    if (o.context !== "anonymous" && o.context !== "controlled_test") {
-      return badRequest("invalid_context");
-    }
-    if (o.inputType !== "text") {
-      return badRequest("text_document_mode_text_input_only");
-    }
-    if (typeof o.text !== "string") {
-      return badRequest("invalid_text");
-    }
-    const text = o.text.trim();
-    if (text.length < MIN_TEXT) {
-      return badRequest("text_too_short");
-    }
-    if (text.length > MAX_TEXT) {
-      return badRequest("text_too_long");
-    }
-    if (!hasLetter(text) || isOnlyUrls(text)) {
-      return badRequest("invalid_text");
-    }
-
-    if (detectOcrPhotoRequest(o)) {
-      return textDocumentModeBlockedResponse("photo_ocr_blocked", 402);
-    }
-    if (detectScannerUploadRequest(o)) {
-      return textDocumentModeBlockedResponse("scanner_upload_blocked", 402);
-    }
-    if (detectFileUploadRequest(o)) {
-      return textDocumentModeBlockedResponse("file_upload_blocked", 402);
-    }
-    // Phase 8.9E-BLOCKER: use the narrow explicit-activation text detector
-    // here (not detectClientPaidDocumentModeActivation(o)), since the body's
-    // own "mode" field always contains the substring "document" in this
-    // branch and would otherwise always false-positive.
-    if (detectExplicitPaidDocumentModeActivationForTextDocumentMode(text)) {
-      return textDocumentModeBlockedResponse("paid_document_mode_blocked", 402);
-    }
-    if (detectVayloDnaSaveRequest(o)) {
-      return textDocumentModeBlockedResponse("vaylo_dna_blocked", 402);
-    }
-    if (detectPersistenceStorageRequest(o)) {
-      return textDocumentModeBlockedResponse("persistence_storage_blocked", 402);
-    }
-    if (detectCredentialSecretText(text)) {
-      return textDocumentModeBlockedResponse("sensitive_credential_data_blocked", 402);
-    }
-    if (detectFinancialAccountOrPaymentAuthorizationText(text)) {
-      return textDocumentModeBlockedResponse("sensitive_financial_data_blocked", 402);
-    }
-    if (detectIdentityDocumentNumberText(text)) {
-      return textDocumentModeBlockedResponse("sensitive_identity_data_blocked", 402);
-    }
-    if (detectExactLegalDeadlineRequest(text)) {
-      return textDocumentModeBlockedResponse("exact_legal_deadline_calculation_blocked", 402);
-    }
-    if (detectBindingLegalAdviceRequest(text)) {
-      return textDocumentModeBlockedResponse("binding_legal_advice_blocked", 402);
-    }
-    if (detectOfficialFilingGenerationRequest(text)) {
-      return textDocumentModeBlockedResponse("official_filing_generation_blocked", 402);
-    }
-    if (detectHighRiskCourtPoliceMedicalTaxSignal(text)) {
-      return textDocumentModeBlockedResponse("high_risk_signal_escalation_blocked", 402);
-    }
-    if (!isDocumentLikeSignalPresent(text)) {
-      return textDocumentModeBlockedResponse("no_document_signal_blocked", 400);
-    }
-
-    let locale: SmartTalkLocale = "sk";
-    if (o.locale !== undefined && o.locale !== null) {
-      if (typeof o.locale !== "string" || !ALLOWED_LOCALES.has(o.locale as SmartTalkLocale)) {
-        return badRequest("invalid_locale");
-      }
-      locale = o.locale as SmartTalkLocale;
-    }
-
-    const apiKey = process.env.OPENAI_API_KEY?.trim();
-    if (!apiKey) {
-      return NextResponse.json({ ok: false, error: "smart_talk_unavailable" }, { status: 503 });
-    }
-
-    let out: Awaited<ReturnType<typeof runSmartTalk>>;
-    try {
-      out = await Promise.race([
-        runSmartTalk({ text, locale, inputType: "text" }),
-        new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error("smart_talk_timeout")), SMART_TALK_ROUTE_TIMEOUT_MS);
-        }),
-      ]);
-    } catch {
-      return NextResponse.json({ ok: false, error: "smart_talk_timeout" }, { status: 504 });
-    }
-
-    if (!out.ok) {
-      const requestId = createRequestId();
-      logRouteError("[smart-talk] text document controlled runtime openai failed", requestId, {
-        kind: out.error.kind,
-        status: out.error.kind === "openai_http" ? out.error.status : undefined,
-      });
-      return internalErrorResponse({ requestId, status: 500 });
-    }
-
-    const context = o.context as "anonymous" | "controlled_test";
-    return NextResponse.json({
-      ok: true,
-      mode: TEXT_DOCUMENT_CONTROLLED_RUNTIME_MODE,
-      context,
-      result: out.result,
-      textDocumentMeta: buildTextDocumentModeSafetyFlags(true),
-    });
+    return containedRuntimeUnavailable();
   }
-  // ── End Phase 8.9C Text Document Mode controlled runtime branch ────────────
 
   // ── Phase 8.12C — First Contact Controlled Runtime branch ──────────────────
   // Disabled by default unless SMART_TALK_FIRST_CONTACT_MODE_ENABLED === "true"
