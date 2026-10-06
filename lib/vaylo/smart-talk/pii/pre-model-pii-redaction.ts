@@ -439,6 +439,29 @@ export function redactPreModelPii(
     };
   }
 
+  // A line-start party label with no same-line value is not a name on the next line.
+  if (
+    input.lane === "controlled_document_text" &&
+    _hasBareLineStartPartyLabel(input.text)
+  ) {
+    return {
+      status: "blocked",
+      redactedText: "",
+      placeholderCounts: {},
+      placeholderCategories: [],
+      detectorSummary: "blocked: party label has no same-line value",
+      coverageSummary: "no coverage — input blocked before detection",
+      unresolvedRiskFlags: [],
+      blockingReasons: ["MULTILINE_PARTY_BOUNDARY_UNCLEAR"],
+      safeForModel: false,
+      safeForEvidenceGates: false,
+      safeForUserVisibleOutput: false,
+      rawMapReturned: false,
+      detectorHits: [],
+      notes: ["blocked: party label has no value on the same line"],
+    };
+  }
+
   // ── Run detector patterns ────────────────────────────────────────────────────
   const allHits = _runDetectors(input.text);
 
@@ -697,6 +720,23 @@ function _hasUnclearLineLabelNameBoundary(text: string): boolean {
       i = nameToken.lastIndex;
       if (tokens >= 3) return true;
     }
+  }
+  return false;
+}
+
+/**
+ * True when An:, Absender:, Empfänger:, or Empfaenger: starts a line and the
+ * rest of that line is only horizontal space. Does not read the next line
+ * and does not treat a label inside a sentence as this case.
+ */
+function _hasBareLineStartPartyLabel(text: string): boolean {
+  const labelPattern = /(?:Empf\u00e4nger|Empfaenger|Absender|An)[ \t]*:/g;
+  let label: RegExpExecArray | null;
+  while ((label = labelPattern.exec(text)) !== null) {
+    if (!_isAtLineStart(text, label.index)) continue;
+    let i = label.index + label[0].length;
+    while (i < text.length && (text[i] === " " || text[i] === "\t")) i++;
+    if (i >= text.length || text[i] === "\n" || text[i] === "\r") return true;
   }
   return false;
 }
