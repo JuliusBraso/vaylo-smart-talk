@@ -394,6 +394,29 @@ export function redactPreModelPii(
     };
   }
 
+  // A recipient name is removed only when punctuation or the line end closes it.
+  // Extra words on the same line make the boundary unclear; do not guess it.
+  if (_hasUnclearRecipientNameBoundary(input.text)) {
+    return {
+      status: "blocked",
+      redactedText: "",
+      placeholderCounts: {},
+      placeholderCategories: [],
+      detectorSummary: "blocked: recipient name boundary unclear",
+      coverageSummary: "no coverage — input blocked before detection",
+      unresolvedRiskFlags: [],
+      blockingReasons: ["RECIPIENT_NAME_BOUNDARY_UNCLEAR"],
+      safeForModel: false,
+      safeForEvidenceGates: false,
+      safeForUserVisibleOutput: false,
+      rawMapReturned: false,
+      detectorHits: [],
+      notes: [
+        "blocked: recipient name boundary is not delimited by punctuation or line end",
+      ],
+    };
+  }
+
   // ── Run detector patterns ────────────────────────────────────────────────────
   const allHits = _runDetectors(input.text);
 
@@ -562,6 +585,50 @@ function _isDocumentLikeText(text: string): boolean {
   return false;
 }
 
+/**
+ * True when an Empfänger/Empfaenger line has three or more name-like words,
+ * including when a period or the line end follows the third word.
+ * A one- or two-word name that then continues into other text on the same
+ * line is also unclear. Identifier-shaped values that do not split into
+ * separate words are ignored. This does not use a list of official words.
+ */
+function _hasUnclearRecipientNameBoundary(text: string): boolean {
+  const labelPattern = /(?:Empf\u00e4nger|Empfaenger)[ \t]*:/g;
+  const nameToken = /\p{Lu}[\p{L}'\-]{1,40}/yu;
+  const punctuation = ".,;:!?";
+  let label: RegExpExecArray | null;
+  while ((label = labelPattern.exec(text)) !== null) {
+    let i = label.index + label[0].length;
+    while (i < text.length && (text[i] === " " || text[i] === "\t")) i++;
+    nameToken.lastIndex = i;
+    const first = nameToken.exec(text);
+    if (first === null || first.index !== i) continue;
+    let tokens = 1;
+    i = nameToken.lastIndex;
+    for (;;) {
+      let j = i;
+      while (j < text.length && (text[j] === " " || text[j] === "\t")) j++;
+      const atLineEnd = j >= text.length || text[j] === "\n" || text[j] === "\r";
+      const atPunctuation = j < text.length && punctuation.includes(text[j]);
+      if (j === i) {
+        if ((atLineEnd || atPunctuation) && tokens >= 3) return true;
+        break;
+      }
+      if (atLineEnd || atPunctuation) {
+        if (tokens >= 3) return true;
+        break;
+      }
+      nameToken.lastIndex = j;
+      const next = nameToken.exec(text);
+      if (next === null || next.index !== j) return true;
+      tokens++;
+      i = nameToken.lastIndex;
+      if (tokens >= 3) return true;
+    }
+  }
+  return false;
+}
+
 // ─── Detector pattern definitions ────────────────────────────────────────────
 
 interface _PatternDef {
@@ -588,6 +655,20 @@ const _DETECTOR_PATTERNS: _PatternDef[] = [
     category: "person_name_or_greeting",
     pattern: /\bSehr[ \t]+geehrte[rn]?[ \t]+(?:Frau|Herrn?)[ \t]+\p{Lu}[\p{L}'\-]{1,40}(?:[ \t]+\p{Lu}[\p{L}'\-]{1,40}){0,2}/gu,
     reason: "greeting with name detected",
+    confidence: 0.9,
+  },
+  // One or two name words, and only when punctuation or the line end closes them.
+  // Three or more name-like words on the same line are blocked before detection.
+  {
+    category: "recipient_block",
+    pattern: /(?:Empf\u00e4nger|Empfaenger)[ \t]*:[ \t]*\p{Lu}[\p{L}'\-]{1,40}(?:[ \t]+\p{Lu}[\p{L}'\-]{1,40}){0,1}(?=[ \t]*(?:[.,;:!?\r\n]|$))/gu,
+    reason: "recipient label with delimited name detected",
+    confidence: 0.9,
+  },
+  {
+    category: "person_name_or_greeting",
+    pattern: /\bVážená[ \t]+pani[ \t]+\p{Lu}[\p{L}'\-]{1,40}(?:[ \t]+\p{Lu}[\p{L}'\-]{1,40}){0,2}/gu,
+    reason: "slovak greeting with name detected",
     confidence: 0.9,
   },
   {
