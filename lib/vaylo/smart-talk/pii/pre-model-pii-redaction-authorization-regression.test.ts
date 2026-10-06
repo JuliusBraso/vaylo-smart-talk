@@ -31,13 +31,15 @@ describe("document lane redaction does not authorize model use", () => {
     assert.equal(result.detectorHits.some((hit) => hit.category === "postal_address"), true);
   });
 
-  test("a recipient line and case number do not authorize a partial redaction", () => {
+  test("a removed recipient name and case number do not authorize model use", () => {
     const result = assertDocumentLaneStaysClosed(
       "An: Petra Prikladova\nAktenzeichen: SP-2024/00077",
       "paid_document",
     );
     assert.equal(result.status, "passed");
-    assert.equal(result.redactedText.includes("Petra Prikladova"), true);
+    assert.equal(result.redactedText.includes("Petra Prikladova"), false);
+    assert.equal(result.redactedText.includes("Petra"), false);
+    assert.equal(result.redactedText.includes("Prikladova"), false);
     assert.equal(result.redactedText.includes("SP-2024/00077"), false);
     assert.equal(result.detectorHits.length > 1, true);
   });

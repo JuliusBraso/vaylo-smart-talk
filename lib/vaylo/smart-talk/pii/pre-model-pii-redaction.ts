@@ -417,6 +417,28 @@ export function redactPreModelPii(
     };
   }
 
+  // Line-start An: and Absender: use the same one- or two-word limit.
+  if (_hasUnclearLineLabelNameBoundary(input.text)) {
+    return {
+      status: "blocked",
+      redactedText: "",
+      placeholderCounts: {},
+      placeholderCategories: [],
+      detectorSummary: "blocked: labeled name boundary unclear",
+      coverageSummary: "no coverage — input blocked before detection",
+      unresolvedRiskFlags: [],
+      blockingReasons: ["LINE_LABEL_NAME_BOUNDARY_UNCLEAR"],
+      safeForModel: false,
+      safeForEvidenceGates: false,
+      safeForUserVisibleOutput: false,
+      rawMapReturned: false,
+      detectorHits: [],
+      notes: [
+        "blocked: labeled name boundary is not delimited by punctuation or line end",
+      ],
+    };
+  }
+
   // ── Run detector patterns ────────────────────────────────────────────────────
   const allHits = _runDetectors(input.text);
 
@@ -629,6 +651,56 @@ function _hasUnclearRecipientNameBoundary(text: string): boolean {
   return false;
 }
 
+function _isAtLineStart(text: string, index: number): boolean {
+  let k = index;
+  while (k > 0 && (text[k - 1] === " " || text[k - 1] === "\t")) k--;
+  return k === 0 || text[k - 1] === "\n" || text[k - 1] === "\r";
+}
+
+/**
+ * True for a line-start An: or Absender: value with three or more name-like
+ * words, or with other text continuing on the same line. A third name-like
+ * word stays unclear even when a period or the line end follows it.
+ * Horizontal spaces only; this does not use a list of official words.
+ */
+function _hasUnclearLineLabelNameBoundary(text: string): boolean {
+  const labelPattern = /(?:An|Absender)[ \t]*:/g;
+  const nameToken = /\p{Lu}[\p{L}'\-]{1,40}/yu;
+  const punctuation = ".,;:!?";
+  let label: RegExpExecArray | null;
+  while ((label = labelPattern.exec(text)) !== null) {
+    if (!_isAtLineStart(text, label.index)) continue;
+    let i = label.index + label[0].length;
+    while (i < text.length && (text[i] === " " || text[i] === "\t")) i++;
+    nameToken.lastIndex = i;
+    const first = nameToken.exec(text);
+    if (first === null || first.index !== i) continue;
+    let tokens = 1;
+    i = nameToken.lastIndex;
+    for (;;) {
+      let j = i;
+      while (j < text.length && (text[j] === " " || text[j] === "\t")) j++;
+      const atLineEnd = j >= text.length || text[j] === "\n" || text[j] === "\r";
+      const atPunctuation = j < text.length && punctuation.includes(text[j]);
+      if (j === i) {
+        if ((atLineEnd || atPunctuation) && tokens >= 3) return true;
+        break;
+      }
+      if (atLineEnd || atPunctuation) {
+        if (tokens >= 3) return true;
+        break;
+      }
+      nameToken.lastIndex = j;
+      const next = nameToken.exec(text);
+      if (next === null || next.index !== j) return true;
+      tokens++;
+      i = nameToken.lastIndex;
+      if (tokens >= 3) return true;
+    }
+  }
+  return false;
+}
+
 // ─── Detector pattern definitions ────────────────────────────────────────────
 
 interface _PatternDef {
@@ -663,6 +735,19 @@ const _DETECTOR_PATTERNS: _PatternDef[] = [
     category: "recipient_block",
     pattern: /(?:Empf\u00e4nger|Empfaenger)[ \t]*:[ \t]*\p{Lu}[\p{L}'\-]{1,40}(?:[ \t]+\p{Lu}[\p{L}'\-]{1,40}){0,1}(?=[ \t]*(?:[.,;:!?\r\n]|$))/gu,
     reason: "recipient label with delimited name detected",
+    confidence: 0.9,
+  },
+  // Line-start only. [ \t] does not cross onto the next line.
+  {
+    category: "recipient_block",
+    pattern: /^[ \t]*An[ \t]*:[ \t]*\p{Lu}[\p{L}'\-]{1,40}(?:[ \t]+\p{Lu}[\p{L}'\-]{1,40})?(?=[ \t]*(?:[.,;:!?\r\n]|$))/gmu,
+    reason: "line-start An label with delimited name detected",
+    confidence: 0.9,
+  },
+  {
+    category: "sender_block",
+    pattern: /^[ \t]*Absender[ \t]*:[ \t]*\p{Lu}[\p{L}'\-]{1,40}(?:[ \t]+\p{Lu}[\p{L}'\-]{1,40})?(?=[ \t]*(?:[.,;:!?\r\n]|$))/gmu,
+    reason: "line-start Absender label with delimited name detected",
     confidence: 0.9,
   },
   {
