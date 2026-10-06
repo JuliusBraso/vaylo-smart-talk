@@ -59,6 +59,9 @@ const QUESTION_MODE_PRIVACY_GUIDANCE = {
     "Nevkladajte celý list ani dokument. Vlastnými slovami opíšte, čo potrebujete vybaviť.",
 };
 
+const EXPLAIN_TEXT_ASK_GUIDE =
+  "Vlastnými slovami opíšte, o aký druh dokumentu ide, čo od vás úrad alebo inštitúcia žiada, ktorá lehota je dôležitá a čo potrebujete vysvetliť. Vynechajte mená, kontakty, adresy, čísla účtov a spisov aj celé znenie dokumentu.";
+
 const GUIDANCE_PRIMARY: Record<SmartTalkUiMode, string> = {
   question: "",
   text: "Toto je zatiaľ skúšobná lokálna príprava. Dokument sa nevysvetľuje a text sa nikam neodosiela. Použite fiktívny text.",
@@ -1159,6 +1162,14 @@ export default function SmartTalkClient() {
             {GUIDANCE_PRIMARY[mode]}
           </p>
         ) : null}
+        {mode === "text" ? (
+          <p
+            id="smart-talk-explain-text-ask-guide"
+            style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: "var(--text)" }}
+          >
+            {EXPLAIN_TEXT_ASK_GUIDE}
+          </p>
+        ) : null}
         {mode === "photo" ? (
           <p role="status" style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: "var(--muted)" }}>
             Táto možnosť je momentálne nedostupná. Zatiaľ môžete použiť režim Opýtať sa.
@@ -1434,7 +1445,7 @@ export default function SmartTalkClient() {
               aria-describedby={
                 mode === "question"
                   ? "smart-talk-question-privacy-guidance"
-                  : "smart-talk-explain-text-guidance"
+                  : "smart-talk-explain-text-guidance smart-talk-explain-text-ask-guide"
               }
               // Phase 8.13C-BLOCKER: value/onChange are routed to the
               // isolated state for the currently active mode only —
@@ -1480,6 +1491,26 @@ export default function SmartTalkClient() {
             </p>
           ) : null}
         </>
+      ) : null}
+
+      {mode === "text" ? (
+        <button
+          type="button"
+          onClick={() => setMode("question")}
+          style={{
+            width: "100%",
+            minHeight: 44,
+            borderRadius: "var(--r999)",
+            border: "1px solid var(--accentBorder)",
+            background: "rgba(238, 242, 255, 1)",
+            color: "var(--text)",
+            fontWeight: 800,
+            fontSize: 15,
+            cursor: "pointer",
+          }}
+        >
+          Opýtať sa bez osobných údajov
+        </button>
       ) : null}
 
       <button
