@@ -47,7 +47,7 @@ type SmartTalkUiMode = "question" | "text" | "photo";
 const PLACEHOLDER: Record<SmartTalkUiMode, string> = {
   question:
     "Pracujem v Rakúsku a rodina býva na Slovensku. Ako mám postupovať pri žiadosti o rodinné dávky?",
-  text: "Sem vložte fiktívny skúšobný text…",
+  text: "Sem vložte skopírovaný fiktívny e-mail…",
   photo: "",
 };
 
@@ -60,11 +60,11 @@ const QUESTION_MODE_PRIVACY_GUIDANCE = {
 };
 
 const EXPLAIN_TEXT_ASK_GUIDE =
-  "Vlastnými slovami opíšte, o aký druh dokumentu ide, čo od vás úrad alebo inštitúcia žiada, ktorá lehota je dôležitá a čo potrebujete vysvetliť. Vynechajte mená, kontakty, adresy, čísla účtov a spisov aj celé znenie dokumentu.";
+  "Skopírujte fiktívny e-mail a vložte ho do poľa. Vynechajte mená, kontakty, adresy, čísla účtov a spisov.";
 
 const GUIDANCE_PRIMARY: Record<SmartTalkUiMode, string> = {
   question: "",
-  text: "Toto je zatiaľ skúšobná lokálna príprava. Dokument sa nevysvetľuje a text sa nikam neodosiela. Použite fiktívny text.",
+  text: "Toto je zatiaľ skúšobná lokálna príprava s fiktívnym textom. Nič sa neodosiela a e-mail sa nevysvetľuje.",
   photo:
     "Pridajte až 3 strany dokumentu (poradie zachováme): kamerou alebo viac obrázkov z galérie (JPG/PNG/WebP; max. 8 MB pred úpravou na súbor). Spolu max. 4 MB po úprave. Dobré svetlo zlepší OCR.",
 };
@@ -108,7 +108,7 @@ function explainTextLocalMessages(input: string): readonly string[] {
     ];
   }
   return [
-    "Lokálna predkontrola nenašla podporovaný signál osobných údajov. Táto kontrola nepotvrdzuje anonymitu ani povolenie odoslania. Dokument sa zatiaľ nevysvetľuje.",
+    "Lokálna predkontrola nenašla podporovaný signál osobných údajov. Táto kontrola nepotvrdzuje anonymitu ani povolenie odoslania. E-mail sa zatiaľ nevysvetľuje.",
   ];
 }
 
@@ -117,7 +117,7 @@ const EXPLAIN_TEXT_WORKING_COPY_ABSENT =
 
 const SUBMIT_LABEL: Record<SmartTalkUiMode, string> = {
   question: "Opýtať sa Vayla",
-  text: "Vysvetliť text",
+  text: "Vysvetliť e-mail",
   photo: "Analyzovať dokument",
 };
 
@@ -1157,7 +1157,7 @@ export default function SmartTalkClient() {
         style={{ display: "flex", flexWrap: "wrap", gap: 8 }}
       >
         {modeChip("question", "Opýtať sa")}
-        {modeChip("text", "Vysvetliť text")}
+        {modeChip("text", "Vložte e-mail")}
         {modeChip("photo", "Odfotiť dokument")}
       </div>
 
@@ -1406,7 +1406,7 @@ export default function SmartTalkClient() {
         ) : (
           <>
             <label htmlFor="smart-talk-input" className="sr-only">
-              {mode === "question" ? "Otázka pre Vayla" : "Text dokumentu"}
+              {mode === "question" ? "Otázka pre Vayla" : "Vložený e-mail"}
             </label>
             {mode === "question" ? (
               <div
@@ -1448,7 +1448,7 @@ export default function SmartTalkClient() {
             ) : null}
             {mode === "text" ? (
               <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 700, color: "var(--text)" }}>
-                Pôvodný text
+                Vložený e-mail
               </p>
             ) : null}
             <textarea
@@ -1517,7 +1517,7 @@ export default function SmartTalkClient() {
                       cursor: "pointer",
                     }}
                   >
-                    Vymazať dokumentové texty
+                    Vymazať e-mail a pracovnú kópiu
                   </button>
                 </div>
                 {textWorkingCopy !== null ? (
