@@ -20,6 +20,10 @@ import {
   PrepareDocumentPhotoError,
   SMART_TALK_MAX_GALLERY_PHOTO_BYTES,
 } from "@/lib/vaylo/smart-talk/prepare-document-photo-for-upload";
+import {
+  precheckExplainTextInput,
+  type ExplainTextPrecheckReasonCode,
+} from "@/lib/vaylo/smart-talk/pii/explain-text-input-precheck";
 
 const MAX_TEXT_LENGTH = 12000;
 const RECOMMENDED_TEXT_LENGTH = 4000;
@@ -43,7 +47,7 @@ type SmartTalkUiMode = "question" | "text" | "photo";
 const PLACEHOLDER: Record<SmartTalkUiMode, string> = {
   question:
     "Pracujem v Rakúsku a rodina býva na Slovensku. Ako mám postupovať pri žiadosti o rodinné dávky?",
-  text: "Sem vložte text z listu, úradu alebo formulára…",
+  text: "Sem vložte fiktívny skúšobný text…",
   photo: "",
 };
 
@@ -57,10 +61,53 @@ const QUESTION_MODE_PRIVACY_GUIDANCE = {
 
 const GUIDANCE_PRIMARY: Record<SmartTalkUiMode, string> = {
   question: "",
-  text: "Najlepšie funguje, keď vložíte najdôležitejšiu časť listu alebo formulára.",
+  text: "Toto je zatiaľ skúšobná lokálna príprava. Dokument sa nevysvetľuje a text sa nikam neodosiela. Použite fiktívny text.",
   photo:
     "Pridajte až 3 strany dokumentu (poradie zachováme): kamerou alebo viac obrázkov z galérie (JPG/PNG/WebP; max. 8 MB pred úpravou na súbor). Spolu max. 4 MB po úprave. Dobré svetlo zlepší OCR.",
 };
+
+const EXPLAIN_TEXT_BLOCKED_MESSAGES: Partial<Record<ExplainTextPrecheckReasonCode, string>> = {
+  empty_input: "Vložte fiktívny skúšobný text. Predkontrola zatiaľ nemá čo posúdiť.",
+  input_too_long: "Text je príliš dlhý na lokálnu predkontrolu. Skráťte ho na maximálne 12 000 znakov.",
+  malformed_unicode: "Text obsahuje poškodené znaky. Vložte obyčajný fiktívny text.",
+  non_string_input: "Tento vstup nie je možné lokálne pripraviť.",
+};
+
+const EXPLAIN_TEXT_REVISION_MESSAGES: Partial<Record<ExplainTextPrecheckReasonCode, string>> = {
+  letter_header_name_and_address:
+    "V hlavičke je tvar mena a adresy. Použite fiktívne údaje alebo túto časť odstráňte.",
+  email_address: "Text obsahuje e-mailovú adresu. Odstráňte ju a použite fiktívny text.",
+  phone_number: "Text obsahuje telefónne číslo. Odstráňte ho a použite fiktívny text.",
+  iban: "Text obsahuje IBAN. Odstráňte ho a použite fiktívny text.",
+  case_or_customer_number:
+    "Text obsahuje číslo spisu alebo zákazníka. Odstráňte ho a použite fiktívny text.",
+  unknown_identifier_format:
+    "Text obsahuje neznámy tvar identifikátora. Odstráňte ho a použite fiktívny text.",
+};
+
+function explainTextLocalMessages(input: string): readonly string[] {
+  const result = precheckExplainTextInput(input);
+  if (result.disposition === "blocked") {
+    const code = result.reasonCodes[0];
+    return [
+      EXPLAIN_TEXT_BLOCKED_MESSAGES[code] ??
+        "Tento vstup nie je možné lokálne pripraviť.",
+    ];
+  }
+  if (result.disposition === "needs_user_revision") {
+    const details = result.reasonCodes.flatMap((code) => {
+      const message = EXPLAIN_TEXT_REVISION_MESSAGES[code];
+      return message ? [message] : [];
+    });
+    return [
+      "Lokálna predkontrola žiada úpravu skúšobného textu. Text nie je anonymný ani pripravený na odoslanie.",
+      ...details,
+    ];
+  }
+  return [
+    "Lokálna predkontrola nenašla podporovaný signál osobných údajov. Text tým nie je anonymný ani bezpečný na odoslanie. Dokument sa zatiaľ nevysvetľuje.",
+  ];
+}
 
 const SUBMIT_LABEL: Record<SmartTalkUiMode, string> = {
   question: "Opýtať sa Vayla",
@@ -925,6 +972,8 @@ export default function SmartTalkClient() {
   const photoOverUploadBudget =
     mode === "photo" &&
     photoBytesTotal > SMART_TALK_MAX_PHOTO_UPLOAD_TOTAL_BYTES;
+  const explainTextFeedback =
+    mode === "text" ? explainTextLocalMessages(textDocumentInput) : null;
   const publicModeUnavailable = mode !== "question";
 
   const submitDisabled =
@@ -1103,11 +1152,14 @@ export default function SmartTalkClient() {
 
       <div style={{ display: "grid", gap: 6 }}>
         {GUIDANCE_PRIMARY[mode] ? (
-          <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: "var(--muted)" }}>
+          <p
+            id={mode === "text" ? "smart-talk-explain-text-guidance" : undefined}
+            style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: "var(--muted)" }}
+          >
             {GUIDANCE_PRIMARY[mode]}
           </p>
         ) : null}
-        {publicModeUnavailable ? (
+        {mode === "photo" ? (
           <p role="status" style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: "var(--muted)" }}>
             Táto možnosť je momentálne nedostupná. Zatiaľ môžete použiť režim Opýtať sa.
           </p>
@@ -1382,7 +1434,7 @@ export default function SmartTalkClient() {
               aria-describedby={
                 mode === "question"
                   ? "smart-talk-question-privacy-guidance"
-                  : undefined
+                  : "smart-talk-explain-text-guidance"
               }
               // Phase 8.13C-BLOCKER: value/onChange are routed to the
               // isolated state for the currently active mode only —
@@ -1396,7 +1448,7 @@ export default function SmartTalkClient() {
               }}
               placeholder={PLACEHOLDER[mode]}
               className="w-full resize-y rounded-[var(--r12)] border border-[var(--border)] bg-[var(--bg0)] px-3 py-3 text-[15px] leading-relaxed text-[var(--text)] outline-none placeholder:text-[var(--muted2)] focus:border-[color:rgba(199,210,254,1)] focus:shadow-[0_0_0_3px_rgba(199,210,254,0.45)] min-h-[168px]"
-              disabled={loading || publicModeUnavailable}
+              disabled={mode === "question" && loading}
             />
           </>
         )}
@@ -1424,7 +1476,7 @@ export default function SmartTalkClient() {
             <p style={{ margin: "-4px 0 0", fontSize: 13, lineHeight: 1.5, color: "var(--muted2)" }}>
               {mode === "question"
                 ? "Pre najlepší výsledok skúste otázku formulovať stručne a konkrétne."
-                : "Pre najlepší výsledok odporúčame vložiť iba najdôležitejšiu časť listu alebo formulára."}
+                : "Skúšobný text nech je fiktívny. Na lokálnu prípravu stačí kratšia ukážka."}
             </p>
           ) : null}
         </>
@@ -1468,7 +1520,8 @@ export default function SmartTalkClient() {
                 photoPreparing ||
                 cameraStarting ||
                 photoInfoLine ||
-                photoPrepareStatus
+                photoPrepareStatus ||
+                mode === "text"
               ? "1px solid rgba(226, 232, 240, 1)"
               : "1px dashed rgba(203, 213, 225, 1)",
           background: error ? "rgba(254, 242, 242, 1)" : "rgba(248, 250, 252, 1)",
@@ -1478,7 +1531,15 @@ export default function SmartTalkClient() {
           color: "var(--muted)",
         }}
       >
-        {loading || photoPreparing || cameraStarting ? (
+        {mode === "text" && explainTextFeedback ? (
+          <div role="status" style={{ display: "grid", gap: 8 }}>
+            {explainTextFeedback.map((message) => (
+              <p key={message} style={{ margin: 0 }}>
+                {message}
+              </p>
+            ))}
+          </div>
+        ) : loading || photoPreparing || cameraStarting ? (
           <p style={{ margin: 0 }}>
             {cameraStarting
               ? MSG.cameraOpening
