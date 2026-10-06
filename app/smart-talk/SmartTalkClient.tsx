@@ -108,9 +108,12 @@ function explainTextLocalMessages(input: string): readonly string[] {
     ];
   }
   return [
-    "Lokálna predkontrola nenašla podporovaný signál osobných údajov. Text tým nie je anonymný ani bezpečný na odoslanie. Dokument sa zatiaľ nevysvetľuje.",
+    "Lokálna predkontrola nenašla podporovaný signál osobných údajov. Táto kontrola nepotvrdzuje anonymitu ani povolenie odoslania. Dokument sa zatiaľ nevysvetľuje.",
   ];
 }
+
+const EXPLAIN_TEXT_WORKING_COPY_ABSENT =
+  "Pracovná kópia zatiaľ nie je vytvorená. Predkontrola beží iba na nej a nič neodosiela.";
 
 const SUBMIT_LABEL: Record<SmartTalkUiMode, string> = {
   question: "Opýtať sa Vayla",
@@ -621,6 +624,7 @@ export default function SmartTalkClient() {
   // other. Photo mode never reads either of these.
   const [questionInput, setQuestionInput] = useState("");
   const [textDocumentInput, setTextDocumentInput] = useState("");
+  const [textWorkingCopy, setTextWorkingCopy] = useState<string | null>(null);
   const [photoPages, setPhotoPages] = useState<SmartTalkPhotoPage[]>([]);
   const [photoPreparing, setPhotoPreparing] = useState(false);
   const [photoPrepareStatus, setPhotoPrepareStatus] = useState<string | null>(null);
@@ -976,7 +980,11 @@ export default function SmartTalkClient() {
     mode === "photo" &&
     photoBytesTotal > SMART_TALK_MAX_PHOTO_UPLOAD_TOTAL_BYTES;
   const explainTextFeedback =
-    mode === "text" ? explainTextLocalMessages(textDocumentInput) : null;
+    mode !== "text"
+      ? null
+      : textWorkingCopy === null
+        ? [EXPLAIN_TEXT_WORKING_COPY_ABSENT]
+        : explainTextLocalMessages(textWorkingCopy);
   const publicModeUnavailable = mode !== "question";
 
   const submitDisabled =
@@ -1438,6 +1446,11 @@ export default function SmartTalkClient() {
                 </p>
               </div>
             ) : null}
+            {mode === "text" ? (
+              <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 700, color: "var(--text)" }}>
+                Pôvodný text
+              </p>
+            ) : null}
             <textarea
               id="smart-talk-input"
               name="smart-talk-text"
@@ -1451,16 +1464,86 @@ export default function SmartTalkClient() {
               // isolated state for the currently active mode only —
               // question and text-document drafts never share a value or
               // a setter, so switching modes can never copy one into the
-              // other.
+              // other. Editing the original document text also drops any
+              // working copy taken from an older version.
               value={mode === "question" ? questionInput : textDocumentInput}
               onChange={(e) => {
-                if (mode === "question") setQuestionInput(e.target.value);
-                else setTextDocumentInput(e.target.value);
+                if (mode === "question") {
+                  setQuestionInput(e.target.value);
+                  return;
+                }
+                setTextDocumentInput(e.target.value);
+                setTextWorkingCopy(null);
               }}
               placeholder={PLACEHOLDER[mode]}
               className="w-full resize-y rounded-[var(--r12)] border border-[var(--border)] bg-[var(--bg0)] px-3 py-3 text-[15px] leading-relaxed text-[var(--text)] outline-none placeholder:text-[var(--muted2)] focus:border-[color:rgba(199,210,254,1)] focus:shadow-[0_0_0_3px_rgba(199,210,254,0.45)] min-h-[168px]"
               disabled={mode === "question" && loading}
             />
+            {mode === "text" ? (
+              <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => setTextWorkingCopy(textDocumentInput)}
+                    style={{
+                      minHeight: 44,
+                      padding: "10px 16px",
+                      borderRadius: "var(--r12)",
+                      border: "1px solid var(--accentBorder)",
+                      background: "rgba(238, 242, 255, 1)",
+                      color: "var(--text)",
+                      fontWeight: 700,
+                      fontSize: 14,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Vytvoriť pracovnú kópiu
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTextDocumentInput("");
+                      setTextWorkingCopy(null);
+                    }}
+                    style={{
+                      minHeight: 44,
+                      padding: "10px 16px",
+                      borderRadius: "var(--r12)",
+                      border: "1px solid var(--border)",
+                      background: "rgba(255, 255, 255, 0.96)",
+                      color: "var(--text)",
+                      fontWeight: 700,
+                      fontSize: 14,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Vymazať dokumentové texty
+                  </button>
+                </div>
+                {textWorkingCopy !== null ? (
+                  <div style={{ display: "grid", gap: 6 }}>
+                    <label
+                      htmlFor="smart-talk-working-copy"
+                      style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--text)" }}
+                    >
+                      Pracovná kópia
+                    </label>
+                    <textarea
+                      id="smart-talk-working-copy"
+                      name="smart-talk-working-copy"
+                      rows={8}
+                      value={textWorkingCopy}
+                      onChange={(e) => setTextWorkingCopy(e.target.value)}
+                      placeholder="Tu ručne odstráňte údaje z fiktívneho textu…"
+                      className="w-full resize-y rounded-[var(--r12)] border border-[var(--border)] bg-[var(--bg0)] px-3 py-3 text-[15px] leading-relaxed text-[var(--text)] outline-none placeholder:text-[var(--muted2)] focus:border-[color:rgba(199,210,254,1)] focus:shadow-[0_0_0_3px_rgba(199,210,254,0.45)] min-h-[168px]"
+                    />
+                    <p style={{ margin: 0, fontSize: 12, lineHeight: 1.45, color: "var(--muted2)" }}>
+                      Úprava tejto kópie nemení pôvodný text. Ak zmeníte pôvodný text, kópia sa zruší.
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </>
         )}
 
