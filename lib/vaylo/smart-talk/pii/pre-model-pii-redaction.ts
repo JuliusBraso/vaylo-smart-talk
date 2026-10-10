@@ -462,6 +462,29 @@ export function redactPreModelPii(
     };
   }
 
+  // A line-start Von/From/To value is one clear party or the whole input stays closed.
+  if (
+    input.lane === "controlled_document_text" &&
+    _hasUnclearEmailHeaderLine(input.text)
+  ) {
+    return {
+      status: "blocked",
+      redactedText: "",
+      placeholderCounts: {},
+      placeholderCategories: [],
+      detectorSummary: "blocked: email header party boundary unclear",
+      coverageSummary: "no coverage — input blocked before detection",
+      unresolvedRiskFlags: [],
+      blockingReasons: ["EMAIL_HEADER_PARTY_BOUNDARY_UNCLEAR"],
+      safeForModel: false,
+      safeForEvidenceGates: false,
+      safeForUserVisibleOutput: false,
+      rawMapReturned: false,
+      detectorHits: [],
+      notes: ["blocked: email header party is not one clear same-line address"],
+    };
+  }
+
   // ── Run detector patterns ────────────────────────────────────────────────────
   const allHits = _runDetectors(input.text);
 
@@ -741,6 +764,41 @@ function _hasBareLineStartPartyLabel(text: string): boolean {
   return false;
 }
 
+/** One display-name plus one bracketed address. The match stops at the line end. */
+const _EMAIL_HEADER_LINE_LIMIT = 200;
+const _CLEAR_EMAIL_HEADER_LINE =
+  /^[ \t]*(?:Von|From|To)[ \t]*:[ \t]*\p{Lu}[\p{L}'\-]{1,40}[ \t]+\p{Lu}[\p{L}'\-]{1,40}[ \t]*<[ \t]*[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}[ \t]*>[ \t]*$/u;
+
+/**
+ * True when a line-start Von:, From:, or To: is not exactly one clear party
+ * within the fixed line limit, or the next physical line is indented and
+ * still has a character after those spaces or tabs. A line of only spaces
+ * or tabs is empty. That line is not read past its end.
+ */
+function _hasUnclearEmailHeaderLine(text: string): boolean {
+  const labelPattern = /(?:Von|From|To)[ \t]*:/g;
+  let label: RegExpExecArray | null;
+  while ((label = labelPattern.exec(text)) !== null) {
+    if (!_isAtLineStart(text, label.index)) continue;
+    let start = label.index;
+    while (start > 0 && text[start - 1] !== "\n" && text[start - 1] !== "\r") start--;
+    let end = label.index;
+    while (end < text.length && text[end] !== "\n" && text[end] !== "\r") end++;
+    const line = text.slice(start, end);
+    if (line.length > _EMAIL_HEADER_LINE_LIMIT || !_CLEAR_EMAIL_HEADER_LINE.test(line)) {
+      return true;
+    }
+    let next = end;
+    if (text[next] === "\r" && text[next + 1] === "\n") next += 2;
+    else if (text[next] === "\n" || text[next] === "\r") next += 1;
+    if (text[next] !== " " && text[next] !== "\t") continue;
+    let cursor = next;
+    while (cursor < text.length && (text[cursor] === " " || text[cursor] === "\t")) cursor++;
+    if (cursor < text.length && text[cursor] !== "\n" && text[cursor] !== "\r") return true;
+  }
+  return false;
+}
+
 // ─── Detector pattern definitions ────────────────────────────────────────────
 
 interface _PatternDef {
@@ -830,6 +888,13 @@ const _DETECTOR_PATTERNS: _PatternDef[] = [
     pattern: /(?:\+49|0049|01\d{2,3})[\d\s/\-]{6,15}/g,
     reason: "German phone number pattern detected",
     confidence: 0.85,
+  },
+  // Whole clear Von/From/To line, including the display name. Does not cross lines.
+  {
+    category: "email_address",
+    pattern: new RegExp(_CLEAR_EMAIL_HEADER_LINE.source, "gmu"),
+    reason: "line-start email header with one party detected",
+    confidence: 0.95,
   },
   // ── email_address ───────────────────────────────────────────────────────────
   {
