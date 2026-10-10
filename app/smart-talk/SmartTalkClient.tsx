@@ -24,6 +24,11 @@ import {
   precheckExplainTextInput,
   type ExplainTextPrecheckReasonCode,
 } from "@/lib/vaylo/smart-talk/pii/explain-text-input-precheck";
+import {
+  assessExplainTextCandidate,
+  type ExplainTextAssessmentCode,
+  type ExplainTextRedactionFindings,
+} from "@/lib/vaylo/smart-talk/pii/explain-text-controlled-assessment";
 import { useT } from "@/lib/i18n/useT";
 
 const MAX_TEXT_LENGTH = 12000;
@@ -115,6 +120,36 @@ function explainTextLocalMessages(input: string): readonly string[] {
 
 const EXPLAIN_TEXT_WORKING_COPY_ABSENT =
   "Pracovná kópia zatiaľ nie je vytvorená. Predkontrola beží iba na nej a nič neodosiela.";
+
+const LOCAL_EMAIL_CHECK_MESSAGES: Record<
+  ExplainTextAssessmentCode,
+  Record<ExplainTextRedactionFindings, string>
+> = {
+  closed: {
+    not_run: "Lokálna kontrola sa bezpečne uzavrela.",
+    none: "Lokálna kontrola sa bezpečne uzavrela.",
+    present: "Lokálna kontrola sa bezpečne uzavrela.",
+    unavailable: "Lokálna kontrola sa bezpečne uzavrela.",
+  },
+  precheck_blocked: {
+    not_run: "Lokálna kontrola sa bezpečne uzavrela.",
+    none: "Lokálna kontrola sa bezpečne uzavrela.",
+    present: "Lokálna kontrola sa bezpečne uzavrela.",
+    unavailable: "Lokálna kontrola sa bezpečne uzavrela.",
+  },
+  needs_user_revision: {
+    not_run: "Upravte pracovnú kópiu ručne.",
+    none: "Upravte pracovnú kópiu ručne.",
+    present: "Upravte pracovnú kópiu ručne.",
+    unavailable: "Upravte pracovnú kópiu ručne.",
+  },
+  no_supported_signal: {
+    not_run: "Nulový nález nepotvrdzuje anonymitu ani povolenie odoslania.",
+    none: "Nulový nález nepotvrdzuje anonymitu ani povolenie odoslania.",
+    present: "Nulový nález nepotvrdzuje anonymitu ani povolenie odoslania.",
+    unavailable: "Nulový nález nepotvrdzuje anonymitu ani povolenie odoslania.",
+  },
+};
 
 const SUBMIT_LABEL: Record<SmartTalkUiMode, string> = {
   question: "Opýtať sa Vayla",
@@ -627,6 +662,10 @@ export default function SmartTalkClient() {
   const [questionInput, setQuestionInput] = useState("");
   const [textDocumentInput, setTextDocumentInput] = useState("");
   const [textWorkingCopy, setTextWorkingCopy] = useState<string | null>(null);
+  const [localEmailCheck, setLocalEmailCheck] = useState<{
+    code: ExplainTextAssessmentCode;
+    redactionFindings: ExplainTextRedactionFindings;
+  } | null>(null);
   const [photoPages, setPhotoPages] = useState<SmartTalkPhotoPage[]>([]);
   const [photoPreparing, setPhotoPreparing] = useState(false);
   const [photoPrepareStatus, setPhotoPrepareStatus] = useState<string | null>(null);
@@ -1485,6 +1524,7 @@ export default function SmartTalkClient() {
                 }
                 setTextDocumentInput(e.target.value);
                 setTextWorkingCopy(null);
+                setLocalEmailCheck(null);
               }}
               placeholder={PLACEHOLDER[mode]}
               className="w-full resize-y rounded-[var(--r12)] border border-[var(--border)] bg-[var(--bg0)] px-3 py-3 text-[15px] leading-relaxed text-[var(--text)] outline-none placeholder:text-[var(--muted2)] focus:border-[color:rgba(199,210,254,1)] focus:shadow-[0_0_0_3px_rgba(199,210,254,0.45)] min-h-[168px]"
@@ -1495,7 +1535,10 @@ export default function SmartTalkClient() {
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                   <button
                     type="button"
-                    onClick={() => setTextWorkingCopy(textDocumentInput)}
+                    onClick={() => {
+                      setTextWorkingCopy(textDocumentInput);
+                      setLocalEmailCheck(null);
+                    }}
                     style={{
                       minHeight: 44,
                       padding: "10px 16px",
@@ -1515,6 +1558,7 @@ export default function SmartTalkClient() {
                     onClick={() => {
                       setTextDocumentInput("");
                       setTextWorkingCopy(null);
+                      setLocalEmailCheck(null);
                     }}
                     style={{
                       minHeight: 44,
@@ -1544,13 +1588,45 @@ export default function SmartTalkClient() {
                       name="smart-talk-working-copy"
                       rows={8}
                       value={textWorkingCopy}
-                      onChange={(e) => setTextWorkingCopy(e.target.value)}
+                      onChange={(e) => {
+                        setTextWorkingCopy(e.target.value);
+                        setLocalEmailCheck(null);
+                      }}
                       placeholder="Tu ručne odstráňte údaje z fiktívneho textu…"
                       className="w-full resize-y rounded-[var(--r12)] border border-[var(--border)] bg-[var(--bg0)] px-3 py-3 text-[15px] leading-relaxed text-[var(--text)] outline-none placeholder:text-[var(--muted2)] focus:border-[color:rgba(199,210,254,1)] focus:shadow-[0_0_0_3px_rgba(199,210,254,0.45)] min-h-[168px]"
                     />
                     <p style={{ margin: 0, fontSize: 12, lineHeight: 1.45, color: "var(--muted2)" }}>
                       Úprava tejto kópie nemení pôvodný text. Ak zmeníte pôvodný text, kópia sa zruší.
                     </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const assessed = assessExplainTextCandidate(textWorkingCopy);
+                        setLocalEmailCheck({
+                          code: assessed.code,
+                          redactionFindings: assessed.redactionFindings,
+                        });
+                      }}
+                      style={{
+                        minHeight: 44,
+                        padding: "10px 16px",
+                        borderRadius: "var(--r12)",
+                        border: "1px solid var(--border)",
+                        background: "rgba(255, 255, 255, 0.96)",
+                        color: "var(--text)",
+                        fontWeight: 700,
+                        fontSize: 14,
+                        cursor: "pointer",
+                        justifySelf: "start",
+                      }}
+                    >
+                      Skontrolovať pracovnú kópiu lokálne
+                    </button>
+                    {localEmailCheck ? (
+                      <p role="status" style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: "var(--text)" }}>
+                        {LOCAL_EMAIL_CHECK_MESSAGES[localEmailCheck.code][localEmailCheck.redactionFindings]}
+                      </p>
+                    ) : null}
                   </div>
                 ) : null}
               </div>
