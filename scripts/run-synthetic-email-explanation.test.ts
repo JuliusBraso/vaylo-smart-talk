@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { describe, test } from "node:test";
+import { fileURLToPath } from "node:url";
 // @ts-expect-error TS5097 Node's type-stripping loader requires the .ts specifier.
 import { FIXED_EMAIL_SAMPLES, executeSyntheticEmailExplanation, type SyntheticEmailRunner } from "./run-synthetic-email-explanation.ts";
 
@@ -108,5 +110,40 @@ describe("synthetic email explanation launcher", () => {
     }));
     assert.deepEqual(missing, { exitCode: 1, lines: ["status: invalid_result"] });
     assert.equal(missing.lines.join("\n").includes(secret), false);
+  });
+
+  test("empty next steps or warnings are not an explanation", async () => {
+    const base = {
+      summary: "Fiktívna výzva žiada úhradu.",
+      meaning: "Text opisuje vymyslenú platbu.",
+      urgency: "low",
+      nextSteps: ["Skontrolujte, že ide o fiktívny text."],
+      warnings: ["Neposielajte skutočné údaje."],
+    };
+    for (const field of ["nextSteps", "warnings"] as const) {
+      const report = await executeSyntheticEmailExplanation(["--live-synthetic", "de"], async () => ({
+        ok: true,
+        result: { ...base, [field]: [] },
+      }));
+      assert.deepEqual(report, { exitCode: 1, lines: ["status: invalid_result"] });
+      assert.equal(report.lines.join("\n").includes("summary:"), false);
+      assert.equal(report.lines.join("\n").includes(base.summary), false);
+    }
+  });
+
+  test("a direct dry run and an unknown argument exit without calling the model", () => {
+    const script = fileURLToPath(new URL("./run-synthetic-email-explanation.ts", import.meta.url));
+    const dry = spawnSync(process.execPath, ["--experimental-strip-types", script], { encoding: "utf8" });
+    assert.equal(dry.status, 0);
+    assert.equal(dry.stdout.includes("status: dry_run"), true);
+    assert.equal(dry.stdout.includes("status: explained"), false);
+
+    const unknown = spawnSync(process.execPath, ["--experimental-strip-types", script, "not-a-mode"], {
+      encoding: "utf8",
+    });
+    assert.equal(unknown.status, 2);
+    assert.equal(unknown.stdout.includes("status: unknown_argument"), true);
+    assert.equal(unknown.stdout.includes("status: explained"), false);
+    assert.equal(unknown.stderr.includes("synthetic-runner-secret"), false);
   });
 });

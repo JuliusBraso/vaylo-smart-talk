@@ -73,7 +73,8 @@ function explanationLines(sampleId: FixedEmailSampleId, result: Record<string, u
   if (typeof result.summary !== "string" || result.summary.trim().length === 0) return null;
   if (typeof result.meaning !== "string" || result.meaning.trim().length === 0) return null;
   if (typeof result.urgency !== "string" || !URGENCY.has(result.urgency)) return null;
-  if (!isStringList(result.nextSteps) || !isStringList(result.warnings)) return null;
+  if (!isStringList(result.nextSteps) || result.nextSteps.length === 0) return null;
+  if (!isStringList(result.warnings) || result.warnings.length === 0) return null;
   if (SUBSTITUTE_SUMMARIES.has(result.summary) || SUBSTITUTE_MEANINGS.has(result.meaning)) return null;
   return [
     "status: explained",
@@ -129,7 +130,7 @@ async function main(): Promise<void> {
     return mod.runSmartTalk(params);
   });
   for (const line of report.lines) console.log(line);
-  process.exit(report.exitCode);
+  process.exitCode = report.exitCode;
 }
 
 if (isDirectRun()) {
