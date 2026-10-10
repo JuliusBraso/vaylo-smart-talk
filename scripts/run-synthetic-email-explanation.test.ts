@@ -24,6 +24,18 @@ function countingRunner(): { calls: Parameters<SyntheticEmailRunner>[0][]; run: 
 }
 
 describe("synthetic email explanation launcher", () => {
+  test("both fixed emails share the test amount, deadline, and conditional fee", () => {
+    for (const sample of [FIXED_EMAIL_SAMPLES.de, FIXED_EMAIL_SAMPLES.sk]) {
+      assert.equal(sample.includes("120,00 EUR"), true);
+      assert.equal(sample.includes("15.11.2026"), true);
+      assert.equal(sample.includes("5,00 EUR"), true);
+      assert.equal(sample.includes("Beispielstelle Nord"), true);
+      assert.equal(/IBAN|https?:\/\//i.test(sample), false);
+    }
+    assert.equal(FIXED_EMAIL_SAMPLES.de.startsWith("Betreff:"), true);
+    assert.equal(FIXED_EMAIL_SAMPLES.sk.startsWith("Predmet:"), true);
+  });
+
   test("the default run and unknown arguments make no external call", async () => {
     const dry = countingRunner();
     const dryReport = await executeSyntheticEmailExplanation([], dry.run);

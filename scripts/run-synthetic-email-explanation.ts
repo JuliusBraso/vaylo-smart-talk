@@ -12,14 +12,18 @@ import { pathToFileURL } from "node:url";
 
 export const FIXED_EMAIL_SAMPLES = {
   de: [
-    "Fiktive Nachricht der Beispielkasse Nord.",
-    "Bitte zahlen Sie den ausdrücklich fiktiven Betrag 120,00 EUR bis zum ebenfalls fiktiven Datum 15.03.2026.",
-    "Es gibt kein echtes Konto, kein Aktenzeichen und keine echte Adresse.",
+    "Betreff: Testzahlung der Beispielstelle Nord",
+    "",
+    "Dies ist nur ein Test. Die Beispielstelle Nord und die Forderung sind nicht wirklich. Zahlen Sie nichts.",
+    "Die Testsumme beträgt 120,00 EUR. Der Zahlungstermin ist der 15.11.2026.",
+    "Bei Versäumnis gilt ein ausdrücklich fiktives Entgelt von 5,00 EUR.",
   ].join("\n"),
   sk: [
-    "Fiktívna správa Beispielkasse Nord.",
-    "Prosím zaplaťte výslovne fiktívnu sumu 120,00 EUR do taktiež fiktívneho dátumu 15.03.2026.",
-    "Nie je žiadny skutočný účet, žiadne číslo spisu a žiadna skutočná adresa.",
+    "Predmet: Testovacia platba Beispielstelle Nord",
+    "",
+    "Toto je len test. Beispielstelle Nord a pohľadávka nie sú skutočné. Nič neplaťte.",
+    "Testovacia suma je 120,00 EUR. Platobný termín je 15.11.2026.",
+    "Pri zmeškaní platí výslovne fiktívny poplatok 5,00 EUR.",
   ].join("\n"),
 } as const;
 
