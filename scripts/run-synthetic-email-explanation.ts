@@ -5,6 +5,10 @@
  * may call runSmartTalk once, and only with one of the two fixed samples.
  * This is not permission to send a real email to the model.
  *
+ * A structurally complete result is printed as generated_for_review for
+ * local human review. That status is not approval of the content for a
+ * client, not permission to pay, and not permission for a public mode.
+ *
  * FIXED_EMAIL_SAMPLES are exclusively invented fixed samples.
  * They are not a real email, a real person, or a real institution.
  * The sample text cannot come from arguments, a file, stdin, or the environment.
@@ -121,7 +125,7 @@ function explanationLines(sampleId: FixedEmailSampleId, result: Record<string, u
   const nextSteps = result.nextSteps as string[];
   const warnings = result.warnings as string[];
   return [
-    "status: explained",
+    "status: generated_for_review",
     `sample: ${sampleId}`,
     "summary:",
     result.summary as string,

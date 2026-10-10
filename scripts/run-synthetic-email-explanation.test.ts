@@ -83,7 +83,7 @@ describe("synthetic email explanation launcher", () => {
           { locale: "sk", inputType: "text" },
         );
         assert.equal(report.exitCode, 0);
-        assert.equal(report.lines[0], "status: explained");
+        assert.equal(report.lines[0], "status: generated_for_review");
         assert.equal(report.lines.includes("summary:"), true);
         assert.equal(report.lines.includes("meaning:"), true);
         assert.equal(report.lines.includes("urgency: low"), true);
@@ -160,6 +160,7 @@ describe("synthetic email explanation launcher", () => {
     assert.equal(dry.status, 0);
     assert.equal(dry.stdout.includes("status: dry_run"), true);
     assert.equal(dry.stdout.includes("status: explained"), false);
+    assert.equal(dry.stdout.includes("status: generated_for_review"), false);
 
     const unknown = spawnSync(process.execPath, ["--experimental-strip-types", script, "not-a-mode"], {
       encoding: "utf8",
@@ -167,6 +168,7 @@ describe("synthetic email explanation launcher", () => {
     assert.equal(unknown.status, 2);
     assert.equal(unknown.stdout.includes("status: unknown_argument"), true);
     assert.equal(unknown.stdout.includes("status: explained"), false);
+    assert.equal(unknown.stdout.includes("status: generated_for_review"), false);
     assert.equal(unknown.stderr.includes("synthetic-runner-secret"), false);
   });
 
@@ -226,5 +228,50 @@ describe("synthetic email explanation launcher", () => {
     const unknown = await executeSyntheticEmailExplanation(["--live-synthetic", "de", "--diagnose", "extra"], blocked.run);
     assert.equal(blocked.calls.length, 0);
     assert.deepEqual(unknown, { exitCode: 2, lines: ["status: unknown_argument"] });
+  });
+
+  test("the last complete synthetic result is generated for review", async () => {
+    const result = {
+      summary:
+        "Oznámenie o nezaplatenej spracovateľskej poplatku vo výške 120,00 EUR, ktorý je potrebné uhradiť do 15.11.2026.",
+      meaning:
+        "Dokument informuje o nezaplatenej spracovateľskej poplatku a vyžaduje jeho úhradu do uvedeného dátumu. Ak platba nebude vykonaná včas, bude pridaný ďalší poplatok vo výške 5,00 EUR.",
+      urgency: "unknown",
+      nextSteps: [
+        "Overte si, či ste už zaplatili, alebo kontaktujte odosielateľa, ak sinie ste istí požiadavkou.",
+      ],
+      warnings: [
+        "Ak platba nebude vykonaná do 15.11.2026, môže byť pridaný dodatočný poplatok vo výške 5,00 EUR.",
+      ],
+    };
+    let calls = 0;
+    const report = await executeSyntheticEmailExplanation(["--live-synthetic", "de"], async (params) => {
+      calls += 1;
+      assert.equal(params.text, FIXED_EMAIL_SAMPLES.de);
+      assert.equal(params.locale, "sk");
+      assert.equal(params.inputType, "text");
+      return { ok: true, result };
+    });
+    assert.equal(calls, 1);
+    assert.deepEqual(report, {
+      exitCode: 0,
+      lines: [
+        "status: generated_for_review",
+        "sample: de",
+        "summary:",
+        result.summary,
+        "meaning:",
+        result.meaning,
+        "urgency: unknown",
+        "nextSteps:",
+        `- ${result.nextSteps[0]}`,
+        "warnings:",
+        `- ${result.warnings[0]}`,
+      ],
+    });
+    const printed = report.lines.join("\n");
+    assert.equal(printed.includes("status: explained"), false);
+    assert.equal(printed.includes("paymentAuthorized"), false);
+    assert.equal(printed.includes("publicProcessingPermitted"), false);
   });
 });
