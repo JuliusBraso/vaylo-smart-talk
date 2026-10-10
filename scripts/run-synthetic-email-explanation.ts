@@ -50,17 +50,34 @@ export type SyntheticEmailReport = {
   lines: readonly string[];
 };
 
+const DIAGNOSTIC_CODES = {
+  substitute_explanation: "diagnostic: substitute_explanation",
+  missing_summary_or_meaning: "diagnostic: missing_summary_or_meaning",
+  invalid_urgency: "diagnostic: invalid_urgency",
+  empty_next_steps: "diagnostic: empty_next_steps",
+  empty_warnings: "diagnostic: empty_warnings",
+  invalid_result_shape: "diagnostic: invalid_result_shape",
+} as const;
+
+type DiagnosticCode = keyof typeof DIAGNOSTIC_CODES;
+
 export function parseSyntheticEmailArgs(
   argv: readonly string[],
-): { kind: "dry" } | { kind: "unknown" } | { kind: "live"; sampleId: FixedEmailSampleId } {
+): { kind: "dry" } | { kind: "unknown" } | { kind: "live"; sampleId: FixedEmailSampleId; diagnose: boolean } {
   if (argv.length === 0) return { kind: "dry" };
-  if (argv.length === 1 && argv[0] === "--live-synthetic") return { kind: "live", sampleId: "de" };
+  if (argv.length === 1 && argv[0] === "--live-synthetic") {
+    return { kind: "live", sampleId: "de", diagnose: false };
+  }
+  if (argv.length === 2 && argv[0] === "--live-synthetic" && (argv[1] === "de" || argv[1] === "sk")) {
+    return { kind: "live", sampleId: argv[1], diagnose: false };
+  }
   if (
-    argv.length === 2 &&
-    argv[0] === "--live-synthetic" &&
-    (argv[1] === "de" || argv[1] === "sk")
+    (argv.length === 3 &&
+      argv[0] === "--live-synthetic" &&
+      (argv[1] === "de" || argv[1] === "sk") &&
+      argv[2] === "--diagnose")
   ) {
-    return { kind: "live", sampleId: argv[1] };
+    return { kind: "live", sampleId: argv[1], diagnose: true };
   }
   return { kind: "unknown" };
 }
@@ -73,26 +90,51 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function explanationLines(sampleId: FixedEmailSampleId, result: Record<string, unknown>): string[] | null {
-  if (typeof result.summary !== "string" || result.summary.trim().length === 0) return null;
-  if (typeof result.meaning !== "string" || result.meaning.trim().length === 0) return null;
-  if (typeof result.urgency !== "string" || !URGENCY.has(result.urgency)) return null;
-  if (!isStringList(result.nextSteps) || result.nextSteps.length === 0) return null;
-  if (!isStringList(result.warnings) || result.warnings.length === 0) return null;
-  if (SUBSTITUTE_SUMMARIES.has(result.summary) || SUBSTITUTE_MEANINGS.has(result.meaning)) return null;
+function diagnosticCode(result: unknown): DiagnosticCode | null {
+  if (!isRecord(result)) return "invalid_result_shape";
+  if (
+    typeof result.summary !== "string" ||
+    result.summary.trim().length === 0 ||
+    typeof result.meaning !== "string" ||
+    result.meaning.trim().length === 0
+  ) {
+    return "missing_summary_or_meaning";
+  }
+  if (SUBSTITUTE_SUMMARIES.has(result.summary) || SUBSTITUTE_MEANINGS.has(result.meaning)) {
+    return "substitute_explanation";
+  }
+  if (typeof result.urgency !== "string" || !URGENCY.has(result.urgency)) return "invalid_urgency";
+  if (!Array.isArray(result.nextSteps)) return "invalid_result_shape";
+  if (result.nextSteps.length === 0) return "empty_next_steps";
+  if (!isStringList(result.nextSteps)) return "invalid_result_shape";
+  if (!Array.isArray(result.warnings)) return "invalid_result_shape";
+  if (result.warnings.length === 0) return "empty_warnings";
+  if (!isStringList(result.warnings)) return "invalid_result_shape";
+  return null;
+}
+
+function explanationLines(sampleId: FixedEmailSampleId, result: Record<string, unknown>): string[] {
+  const nextSteps = result.nextSteps as string[];
+  const warnings = result.warnings as string[];
   return [
     "status: explained",
     `sample: ${sampleId}`,
     "summary:",
-    result.summary,
+    result.summary as string,
     "meaning:",
-    result.meaning,
+    result.meaning as string,
     `urgency: ${result.urgency as string}`,
     "nextSteps:",
-    ...result.nextSteps.map((step) => `- ${step}`),
+    ...nextSteps.map((step) => `- ${step}`),
     "warnings:",
-    ...result.warnings.map((warning) => `- ${warning}`),
+    ...warnings.map((warning) => `- ${warning}`),
   ];
+}
+
+function invalidResult(diagnose: boolean, code: DiagnosticCode): SyntheticEmailReport {
+  const lines = ["status: invalid_result"];
+  if (diagnose) lines.push(DIAGNOSTIC_CODES[code]);
+  return { exitCode: 1, lines };
 }
 
 export async function executeSyntheticEmailExplanation(
@@ -113,12 +155,10 @@ export async function executeSyntheticEmailExplanation(
   if (!isRecord(outcome) || outcome.ok === false) {
     return { exitCode: 1, lines: ["status: model_failed"] };
   }
-  if (outcome.ok !== true || !isRecord(outcome.result)) {
-    return { exitCode: 1, lines: ["status: invalid_result"] };
-  }
-  const lines = explanationLines(parsed.sampleId, outcome.result);
-  if (!lines) return { exitCode: 1, lines: ["status: invalid_result"] };
-  return { exitCode: 0, lines };
+  if (outcome.ok !== true) return invalidResult(parsed.diagnose, "invalid_result_shape");
+  const code = diagnosticCode(outcome.result);
+  if (code) return invalidResult(parsed.diagnose, code);
+  return { exitCode: 0, lines: explanationLines(parsed.sampleId, outcome.result as Record<string, unknown>) };
 }
 
 function isDirectRun(): boolean {

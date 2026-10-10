@@ -158,4 +158,62 @@ describe("synthetic email explanation launcher", () => {
     assert.equal(unknown.stdout.includes("status: explained"), false);
     assert.equal(unknown.stderr.includes("synthetic-runner-secret"), false);
   });
+
+  test("diagnose adds one fixed code and the plain run stays unchanged", async () => {
+    const secret = "model-field-secret-19c4";
+    const valid = {
+      summary: "Fiktívna výzva žiada úhradu.",
+      meaning: "Text opisuje vymyslenú platbu.",
+      urgency: "low",
+      nextSteps: ["Skontrolujte, že ide o fiktívny text."],
+      warnings: ["Neposielajte skutočné údaje."],
+    };
+    const cases: Array<{ result: unknown; code: string }> = [
+      {
+        result: {
+          ...valid,
+          summary: "Nepodarilo sa spoľahlivo spracovať odpoveď AI.",
+          meaning: "Skúste text odoslať znova alebo vložte kratšiu, jasnejšiu časť dokumentu.",
+        },
+        code: "diagnostic: substitute_explanation",
+      },
+      { result: { ...valid, summary: "", meaning: secret }, code: "diagnostic: missing_summary_or_meaning" },
+      { result: { ...valid, urgency: "panic" }, code: "diagnostic: invalid_urgency" },
+      { result: { ...valid, nextSteps: [] }, code: "diagnostic: empty_next_steps" },
+      { result: { ...valid, warnings: [] }, code: "diagnostic: empty_warnings" },
+      { result: null, code: "diagnostic: invalid_result_shape" },
+    ];
+
+    for (const item of cases) {
+      let calls = 0;
+      const plain = await executeSyntheticEmailExplanation(["--live-synthetic", "de"], async (params) => {
+        calls += 1;
+        assert.equal(params.text, FIXED_EMAIL_SAMPLES.de);
+        return { ok: true, result: item.result };
+      });
+      assert.equal(calls, 1);
+      assert.deepEqual(plain, { exitCode: 1, lines: ["status: invalid_result"] });
+      assert.equal(plain.lines.join("\n").includes(secret), false);
+
+      calls = 0;
+      const diagnosed = await executeSyntheticEmailExplanation(
+        ["--live-synthetic", "de", "--diagnose"],
+        async (params) => {
+          calls += 1;
+          assert.equal(params.text, FIXED_EMAIL_SAMPLES.de);
+          assert.equal(params.locale, "sk");
+          assert.equal(params.inputType, "text");
+          return { ok: true, result: item.result };
+        },
+      );
+      assert.equal(calls, 1);
+      assert.deepEqual(diagnosed, { exitCode: 1, lines: ["status: invalid_result", item.code] });
+      assert.equal(diagnosed.lines.join("\n").includes(secret), false);
+    }
+
+    const blocked = countingRunner();
+    const unknown = await executeSyntheticEmailExplanation(["--live-synthetic", "de", "--diagnose", "extra"], blocked.run);
+    assert.equal(blocked.calls.length, 0);
+    assert.deepEqual(unknown, { exitCode: 2, lines: ["status: unknown_argument"] });
+  });
 });
