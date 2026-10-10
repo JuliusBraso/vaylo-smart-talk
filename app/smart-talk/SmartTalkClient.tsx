@@ -24,6 +24,7 @@ import {
   precheckExplainTextInput,
   type ExplainTextPrecheckReasonCode,
 } from "@/lib/vaylo/smart-talk/pii/explain-text-input-precheck";
+import { useT } from "@/lib/i18n/useT";
 
 const MAX_TEXT_LENGTH = 12000;
 const RECOMMENDED_TEXT_LENGTH = 4000;
@@ -617,6 +618,7 @@ function renderSmartTalkResultCards(result: SmartTalkResult) {
 }
 
 export default function SmartTalkClient() {
+  const { locale, localeLabel } = useT();
   const [mode, setMode] = useState<SmartTalkUiMode>("question");
   // Phase 8.13C-BLOCKER: question-mode and text-document-mode inputs are
   // intentionally isolated in separate state. They must never share a
@@ -1176,6 +1178,15 @@ export default function SmartTalkClient() {
             style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: "var(--text)" }}
           >
             {EXPLAIN_TEXT_ASK_GUIDE}
+          </p>
+        ) : null}
+        {mode === "text" ? (
+          <p
+            id="smart-talk-email-language-note"
+            style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: "var(--muted)" }}
+          >
+            Zvolený jazyk aplikácie: {localeLabel(locale)}. Vložený e-mail môže byť po
+            slovensky, nemecky alebo zmiešaný.
           </p>
         ) : null}
         {mode === "photo" ? (

@@ -485,6 +485,30 @@ export function redactPreModelPii(
     };
   }
 
+  // Masculine Slovak greeting: one surname closed by punctuation or the line end,
+  // or the whole input stays closed. The UI locale is not an input.
+  if (
+    input.lane === "controlled_document_text" &&
+    _hasUnclearSlovakMasculineGreeting(input.text)
+  ) {
+    return {
+      status: "blocked",
+      redactedText: "",
+      placeholderCounts: {},
+      placeholderCategories: [],
+      detectorSummary: "blocked: slovak greeting name boundary unclear",
+      coverageSummary: "no coverage — input blocked before detection",
+      unresolvedRiskFlags: [],
+      blockingReasons: ["SLOVAK_GREETING_NAME_BOUNDARY_UNCLEAR"],
+      safeForModel: false,
+      safeForEvidenceGates: false,
+      safeForUserVisibleOutput: false,
+      rawMapReturned: false,
+      detectorHits: [],
+      notes: ["blocked: slovak greeting name is not one delimited surname"],
+    };
+  }
+
   // ── Run detector patterns ────────────────────────────────────────────────────
   const allHits = _runDetectors(input.text);
 
@@ -799,6 +823,36 @@ function _hasUnclearEmailHeaderLine(text: string): boolean {
   return false;
 }
 
+function _hasUnclearSlovakMasculineGreeting(text: string): boolean {
+  const cue = /\bVážený[ \t]+pán/gu;
+  const name = /^\p{Lu}[\p{L}'\-]{1,40}/u;
+  let match: RegExpExecArray | null;
+  while ((match = cue.exec(text)) !== null) {
+    let index = match.index + match[0].length;
+    while (index < text.length && (text[index] === " " || text[index] === "\t")) index++;
+    if (index >= text.length || text[index] === "\n" || text[index] === "\r") return true;
+    const surname = name.exec(text.slice(index));
+    if (!surname) continue;
+    index += surname[0].length;
+    while (index < text.length && (text[index] === " " || text[index] === "\t")) index++;
+    if (
+      index >= text.length ||
+      text[index] === "\n" ||
+      text[index] === "\r" ||
+      text[index] === "." ||
+      text[index] === "," ||
+      text[index] === ";" ||
+      text[index] === ":" ||
+      text[index] === "!" ||
+      text[index] === "?"
+    ) {
+      continue;
+    }
+    return true;
+  }
+  return false;
+}
+
 // ─── Detector pattern definitions ────────────────────────────────────────────
 
 interface _PatternDef {
@@ -852,6 +906,12 @@ const _DETECTOR_PATTERNS: _PatternDef[] = [
     category: "person_name_or_greeting",
     pattern: /\bVážená[ \t]+pani[ \t]+\p{Lu}[\p{L}'\-]{1,40}(?:[ \t]+\p{Lu}[\p{L}'\-]{1,40}){0,2}/gu,
     reason: "slovak greeting with name detected",
+    confidence: 0.9,
+  },
+  {
+    category: "person_name_or_greeting",
+    pattern: /\bVážený[ \t]+pán[ \t]+\p{Lu}[\p{L}'\-]{1,40}(?=[ \t]*(?:[.,;:!?]|\r|\n|$))/gu,
+    reason: "slovak masculine greeting with delimited surname detected",
     confidence: 0.9,
   },
   {
