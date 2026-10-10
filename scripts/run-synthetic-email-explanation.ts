@@ -9,6 +9,14 @@
  * local human review. That status is not approval of the content for a
  * client, not permission to pay, and not permission for a public mode.
  *
+ * After the structure check, this local synthetic fixture also requires the
+ * exact tokens "120,00 EUR", "15.11.2026", and "5,00 EUR" in the reviewed
+ * fields, and rejects any other amount or DD.MM.YYYY date. A thousands
+ * group separated by a space, non-breaking space, narrow no-break space,
+ * or dot stays part of that whole amount.
+ * Matching those tokens does not approve payment advice, contacting the
+ * sender, or a public mode. It is not a general email validator.
+ *
  * FIXED_EMAIL_SAMPLES are exclusively invented fixed samples.
  * They are not a real email, a real person, or a real institution.
  * The sample text cannot come from arguments, a file, stdin, or the environment.
@@ -65,6 +73,7 @@ const DIAGNOSTIC_CODES = {
   empty_next_steps: "diagnostic: empty_next_steps",
   empty_warnings: "diagnostic: empty_warnings",
   invalid_result_shape: "diagnostic: invalid_result_shape",
+  synthetic_fact_anchor_mismatch: "diagnostic: synthetic_fact_anchor_mismatch",
 } as const;
 
 type DiagnosticCode = keyof typeof DIAGNOSTIC_CODES;
@@ -121,6 +130,34 @@ function diagnosticCode(result: unknown): DiagnosticCode | null {
   return null;
 }
 
+function anchorSurface(result: Record<string, unknown>): string {
+  const nextSteps = result.nextSteps as string[];
+  const warnings = result.warnings as string[];
+  return [result.summary as string, result.meaning as string, ...nextSteps, ...warnings].join("\n");
+}
+
+function syntheticFactAnchorMismatch(result: Record<string, unknown>): boolean {
+  const text = anchorSurface(result);
+  const amounts = new Set(
+    [
+      ...text.matchAll(
+        /(?:^|[^\d\u00A0\u202F.])(\d{1,3}(?:[ \u00A0\u202F.]\d{3})+,\d{2} EUR|\d+,\d{2} EUR)/g,
+      ),
+    ].map((match) => match[1]),
+  );
+  const dates = new Set(
+    [...text.matchAll(/(?:^|[^\d])(\d{2}\.\d{2}\.\d{4})(?!\d)/g)].map((match) => match[1]),
+  );
+  if (!amounts.has("120,00 EUR") || !amounts.has("5,00 EUR") || !dates.has("15.11.2026")) return true;
+  for (const amount of amounts) {
+    if (amount !== "120,00 EUR" && amount !== "5,00 EUR") return true;
+  }
+  for (const date of dates) {
+    if (date !== "15.11.2026") return true;
+  }
+  return false;
+}
+
 function explanationLines(sampleId: FixedEmailSampleId, result: Record<string, unknown>): string[] {
   const nextSteps = result.nextSteps as string[];
   const warnings = result.warnings as string[];
@@ -166,7 +203,11 @@ export async function executeSyntheticEmailExplanation(
   if (outcome.ok !== true) return invalidResult(parsed.diagnose, "invalid_result_shape");
   const code = diagnosticCode(outcome.result);
   if (code) return invalidResult(parsed.diagnose, code);
-  return { exitCode: 0, lines: explanationLines(parsed.sampleId, outcome.result as Record<string, unknown>) };
+  const reviewed = outcome.result as Record<string, unknown>;
+  if (syntheticFactAnchorMismatch(reviewed)) {
+    return invalidResult(parsed.diagnose, "synthetic_fact_anchor_mismatch");
+  }
+  return { exitCode: 0, lines: explanationLines(parsed.sampleId, reviewed) };
 }
 
 function isDirectRun(): boolean {

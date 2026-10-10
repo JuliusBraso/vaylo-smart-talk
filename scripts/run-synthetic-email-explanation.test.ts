@@ -12,11 +12,11 @@ function countingRunner(): { calls: Parameters<SyntheticEmailRunner>[0][]; run: 
     return {
       ok: true,
       result: {
-        summary: "Fiktívna výzva žiada úhradu.",
-        meaning: "Text opisuje vymyslenú platbu.",
+        summary: "Fiktívna výzva žiada úhradu 120,00 EUR.",
+        meaning: "Text opisuje vymyslenú platbu do 15.11.2026.",
         urgency: "low",
         nextSteps: ["Skontrolujte, že ide o fiktívny text."],
-        warnings: ["Neposielajte skutočné údaje."],
+        warnings: ["Neposielajte skutočné údaje. Text spomína 5,00 EUR."],
       },
     };
   };
@@ -270,8 +270,131 @@ describe("synthetic email explanation launcher", () => {
       ],
     });
     const printed = report.lines.join("\n");
+    assert.equal(printed.includes("kontaktujte odosielateľa"), true);
     assert.equal(printed.includes("status: explained"), false);
     assert.equal(printed.includes("paymentAuthorized"), false);
     assert.equal(printed.includes("publicProcessingPermitted"), false);
+    assert.equal(printed.includes("diagnostic: synthetic_fact_anchor_mismatch"), false);
+  });
+
+  test("missing, changed, or extra synthetic fact anchors stay invalid without model text", async () => {
+    const complete = {
+      summary:
+        "Oznámenie o nezaplatenej spracovateľskej poplatku vo výške 120,00 EUR, ktorý je potrebné uhradiť do 15.11.2026.",
+      meaning:
+        "Dokument informuje o nezaplatenej spracovateľskej poplatku a vyžaduje jeho úhradu do uvedeného dátumu. Ak platba nebude vykonaná včas, bude pridaný ďalší poplatok vo výške 5,00 EUR.",
+      urgency: "unknown",
+      nextSteps: [
+        "Overte si, či ste už zaplatili, alebo kontaktujte odosielateľa, ak sinie ste istí požiadavkou.",
+      ],
+      warnings: [
+        "Ak platba nebude vykonaná do 15.11.2026, môže byť pridaný dodatočný poplatok vo výške 5,00 EUR.",
+      ],
+    };
+    const cases = [
+      {
+        result: {
+          ...complete,
+          meaning: complete.meaning.replace("5,00 EUR", "poplatok"),
+          warnings: [complete.warnings[0].replace("5,00 EUR", "poplatok")],
+        },
+      },
+      {
+        result: {
+          ...complete,
+          summary: complete.summary.replace("15.11.2026", "16.11.2026"),
+          warnings: [complete.warnings[0].replace("15.11.2026", "16.11.2026")],
+        },
+      },
+      {
+        result: {
+          ...complete,
+          warnings: [...complete.warnings, "Ďalší údaj 80,00 EUR ku dňu 03.01.2027."],
+        },
+      },
+    ];
+    for (const item of cases) {
+      let calls = 0;
+      const plain = await executeSyntheticEmailExplanation(["--live-synthetic", "de"], async (params) => {
+        calls += 1;
+        assert.equal(params.text, FIXED_EMAIL_SAMPLES.de);
+        return { ok: true, result: item.result };
+      });
+      assert.equal(calls, 1);
+      assert.deepEqual(plain, { exitCode: 1, lines: ["status: invalid_result"] });
+
+      calls = 0;
+      const diagnosed = await executeSyntheticEmailExplanation(
+        ["--live-synthetic", "de", "--diagnose"],
+        async (params) => {
+          calls += 1;
+          assert.equal(params.text, FIXED_EMAIL_SAMPLES.de);
+          return { ok: true, result: item.result };
+        },
+      );
+      assert.equal(calls, 1);
+      assert.deepEqual(diagnosed, {
+        exitCode: 1,
+        lines: ["status: invalid_result", "diagnostic: synthetic_fact_anchor_mismatch"],
+      });
+      const printed = `${plain.lines.join("\n")}\n${diagnosed.lines.join("\n")}`;
+      assert.equal(printed.includes(item.result.summary), false);
+      assert.equal(printed.includes(item.result.meaning), false);
+      assert.equal(printed.includes(item.result.nextSteps[0]), false);
+      assert.equal(printed.includes("80,00 EUR"), false);
+      assert.equal(printed.includes("03.01.2027"), false);
+      assert.equal(printed.includes("16.11.2026"), false);
+    }
+  });
+
+  test("a grouped thousands amount is not reduced to the allowed tail", async () => {
+    const complete = {
+      summary:
+        "Oznámenie o nezaplatenej spracovateľskej poplatku vo výške 120,00 EUR, ktorý je potrebné uhradiť do 15.11.2026.",
+      meaning:
+        "Dokument informuje o nezaplatenej spracovateľskej poplatku a vyžaduje jeho úhradu do uvedeného dátumu. Ak platba nebude vykonaná včas, bude pridaný ďalší poplatok vo výške 5,00 EUR.",
+      urgency: "unknown",
+      nextSteps: [
+        "Overte si, či ste už zaplatili, alebo kontaktujte odosielateľa, ak sinie ste istí požiadavkou.",
+      ],
+      warnings: [
+        "Ak platba nebude vykonaná do 15.11.2026, môže byť pridaný dodatočný poplatok vo výške 5,00 EUR.",
+      ],
+    };
+    const extras = ["1 120,00 EUR", "1.120,00 EUR", "1\u00A0120,00 EUR", "1\u202F120,00 EUR"];
+    for (const extra of extras) {
+      const result = {
+        ...complete,
+        warnings: [...complete.warnings, `Ďalší údaj ${extra}.`],
+      };
+      let calls = 0;
+      const plain = await executeSyntheticEmailExplanation(["--live-synthetic", "de"], async (params) => {
+        calls += 1;
+        assert.equal(params.text, FIXED_EMAIL_SAMPLES.de);
+        return { ok: true, result };
+      });
+      assert.equal(calls, 1);
+      assert.deepEqual(plain, { exitCode: 1, lines: ["status: invalid_result"] });
+
+      calls = 0;
+      const diagnosed = await executeSyntheticEmailExplanation(
+        ["--live-synthetic", "de", "--diagnose"],
+        async (params) => {
+          calls += 1;
+          assert.equal(params.text, FIXED_EMAIL_SAMPLES.de);
+          return { ok: true, result };
+        },
+      );
+      assert.equal(calls, 1);
+      assert.deepEqual(diagnosed, {
+        exitCode: 1,
+        lines: ["status: invalid_result", "diagnostic: synthetic_fact_anchor_mismatch"],
+      });
+      const printed = `${plain.lines.join("\n")}\n${diagnosed.lines.join("\n")}`;
+      assert.equal(printed.includes(extra), false);
+      assert.equal(printed.includes(result.summary), false);
+      assert.equal(printed.includes(result.meaning), false);
+      assert.equal(printed.includes(result.nextSteps[0]), false);
+    }
   });
 });
