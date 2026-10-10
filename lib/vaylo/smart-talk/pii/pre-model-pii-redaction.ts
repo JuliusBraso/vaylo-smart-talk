@@ -509,6 +509,30 @@ export function redactPreModelPii(
     };
   }
 
+  // Email signature: the next line is one clear two-word name, or the input stays closed.
+  // Slovak and German closings are both checked. The UI locale is not an input.
+  if (
+    input.lane === "controlled_document_text" &&
+    _hasUnclearEmailSignature(input.text)
+  ) {
+    return {
+      status: "blocked",
+      redactedText: "",
+      placeholderCounts: {},
+      placeholderCategories: [],
+      detectorSummary: "blocked: email signature name boundary unclear",
+      coverageSummary: "no coverage — input blocked before detection",
+      unresolvedRiskFlags: [],
+      blockingReasons: ["EMAIL_SIGNATURE_NAME_BOUNDARY_UNCLEAR"],
+      safeForModel: false,
+      safeForEvidenceGates: false,
+      safeForUserVisibleOutput: false,
+      rawMapReturned: false,
+      detectorHits: [],
+      notes: ["blocked: email signature name is not one clear next line"],
+    };
+  }
+
   // ── Run detector patterns ────────────────────────────────────────────────────
   const allHits = _runDetectors(input.text);
 
@@ -853,6 +877,31 @@ function _hasUnclearSlovakMasculineGreeting(text: string): boolean {
   return false;
 }
 
+const _CLEAR_SIGNATURE_NAME_LINE =
+  /^[ \t]*\p{Lu}[\p{L}'\-]{1,40}[ \t]+\p{Lu}[\p{L}'\-]{1,40}[ \t]*[.,;:!?]?[ \t]*$/u;
+
+function _hasUnclearEmailSignature(text: string): boolean {
+  const cue = /(?:S[ \t]+pozdravom|Mit[ \t]+freundlichen[ \t]+Grüßen)/g;
+  let match: RegExpExecArray | null;
+  while ((match = cue.exec(text)) !== null) {
+    if (!_isAtLineStart(text, match.index)) continue;
+    let index = match.index + match[0].length;
+    while (index < text.length && (text[index] === " " || text[index] === "\t")) index++;
+    if (text[index] === ",") {
+      index++;
+      while (index < text.length && (text[index] === " " || text[index] === "\t")) index++;
+    }
+    if (index < text.length && text[index] !== "\n" && text[index] !== "\r") return true;
+    if (index >= text.length) return true;
+    if (text[index] === "\r" && text[index + 1] === "\n") index += 2;
+    else index += 1;
+    let lineEnd = index;
+    while (lineEnd < text.length && text[lineEnd] !== "\n" && text[lineEnd] !== "\r") lineEnd++;
+    if (!_CLEAR_SIGNATURE_NAME_LINE.test(text.slice(index, lineEnd))) return true;
+  }
+  return false;
+}
+
 // ─── Detector pattern definitions ────────────────────────────────────────────
 
 interface _PatternDef {
@@ -912,6 +961,12 @@ const _DETECTOR_PATTERNS: _PatternDef[] = [
     category: "person_name_or_greeting",
     pattern: /\bVážený[ \t]+pán[ \t]+\p{Lu}[\p{L}'\-]{1,40}(?=[ \t]*(?:[.,;:!?]|\r|\n|$))/gu,
     reason: "slovak masculine greeting with delimited surname detected",
+    confidence: 0.9,
+  },
+  {
+    category: "person_name_or_greeting",
+    pattern: /^[ \t]*(?:S[ \t]+pozdravom|Mit[ \t]+freundlichen[ \t]+Grüßen)[ \t]*,?[ \t]*(?:\r\n|\n|\r)[ \t]*\p{Lu}[\p{L}'\-]{1,40}[ \t]+\p{Lu}[\p{L}'\-]{1,40}(?=[ \t]*[.,;:!?]?[ \t]*(?:\r\n|\n|\r|$))/gmu,
+    reason: "email signature with one next-line name detected",
     confidence: 0.9,
   },
   {
