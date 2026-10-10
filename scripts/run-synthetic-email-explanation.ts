@@ -5,6 +5,8 @@
  * may call runSmartTalk once, and only with one of the two fixed samples.
  * This is not permission to send a real email to the model.
  *
+ * FIXED_EMAIL_SAMPLES are exclusively invented fixed samples.
+ * They are not a real email, a real person, or a real institution.
  * The sample text cannot come from arguments, a file, stdin, or the environment.
  */
 
@@ -12,18 +14,20 @@ import { pathToFileURL } from "node:url";
 
 export const FIXED_EMAIL_SAMPLES = {
   de: [
-    "Betreff: Testzahlung der Beispielstelle Nord",
+    "Absender: Beispielstelle Nord",
+    "Betreff: Offene Bearbeitungsgebühr",
     "",
-    "Dies ist nur ein Test. Die Beispielstelle Nord und die Forderung sind nicht wirklich. Zahlen Sie nichts.",
-    "Die Testsumme beträgt 120,00 EUR. Der Zahlungstermin ist der 15.11.2026.",
-    "Bei Versäumnis gilt ein ausdrücklich fiktives Entgelt von 5,00 EUR.",
+    "Die Bearbeitungsgebühr von 120,00 EUR ist noch nicht eingegangen. Bitte überweisen Sie den Betrag bis zum 15.11.2026.",
+    "Wenn die Zahlung bis zu diesem Termin nicht eingeht, kommt ein zusätzlicher Betrag von 5,00 EUR hinzu.",
+    "Antworten Sie bitte, wenn Sie bereits gezahlt haben oder die Forderung nicht zuordnen können.",
   ].join("\n"),
   sk: [
-    "Predmet: Testovacia platba Beispielstelle Nord",
+    "Odosielateľ: Beispielstelle Nord",
+    "Predmet: Neuhradený spracovateľský poplatok",
     "",
-    "Toto je len test. Beispielstelle Nord a pohľadávka nie sú skutočné. Nič neplaťte.",
-    "Testovacia suma je 120,00 EUR. Platobný termín je 15.11.2026.",
-    "Pri zmeškaní platí výslovne fiktívny poplatok 5,00 EUR.",
+    "Spracovateľský poplatok 120,00 EUR ešte nie je uhradený. Úhradu prosíme do 15.11.2026.",
+    "Ak platba do tohto termínu nepríde, pripočíta sa dodatočný poplatok 5,00 EUR.",
+    "Odpovedzte, prosím, ak ste už zaplatili alebo pohľadávku neviete priradiť.",
   ].join("\n"),
 } as const;
 

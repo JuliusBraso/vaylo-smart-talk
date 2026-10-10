@@ -24,16 +24,27 @@ function countingRunner(): { calls: Parameters<SyntheticEmailRunner>[0][]; run: 
 }
 
 describe("synthetic email explanation launcher", () => {
-  test("both fixed emails share the test amount, deadline, and conditional fee", () => {
-    for (const sample of [FIXED_EMAIL_SAMPLES.de, FIXED_EMAIL_SAMPLES.sk]) {
+  test("both fixed emails share the fee, deadline, reply option, and no contact identifiers", () => {
+    const de = FIXED_EMAIL_SAMPLES.de;
+    const sk = FIXED_EMAIL_SAMPLES.sk;
+    for (const sample of [de, sk]) {
       assert.equal(sample.includes("120,00 EUR"), true);
       assert.equal(sample.includes("15.11.2026"), true);
       assert.equal(sample.includes("5,00 EUR"), true);
       assert.equal(sample.includes("Beispielstelle Nord"), true);
-      assert.equal(/IBAN|https?:\/\//i.test(sample), false);
+      assert.equal(/IBAN|https?:\/\/|www\.|@/i.test(sample), false);
+      assert.equal(/nur ein Test|len test|Nič neplaťte|Zahlen Sie nichts|fikt[ií]v/i.test(sample), false);
     }
-    assert.equal(FIXED_EMAIL_SAMPLES.de.startsWith("Betreff:"), true);
-    assert.equal(FIXED_EMAIL_SAMPLES.sk.startsWith("Predmet:"), true);
+    assert.equal(de.startsWith("Absender: Beispielstelle Nord"), true);
+    assert.equal(de.includes("Betreff: Offene Bearbeitungsgebühr"), true);
+    assert.equal(de.includes("noch nicht eingegangen"), true);
+    assert.equal(de.includes("Wenn die Zahlung bis zu diesem Termin nicht eingeht"), true);
+    assert.equal(de.includes("bereits gezahlt haben oder die Forderung nicht zuordnen können"), true);
+    assert.equal(sk.startsWith("Odosielateľ: Beispielstelle Nord"), true);
+    assert.equal(sk.includes("Predmet: Neuhradený spracovateľský poplatok"), true);
+    assert.equal(sk.includes("ešte nie je uhradený"), true);
+    assert.equal(sk.includes("Ak platba do tohto termínu nepríde"), true);
+    assert.equal(sk.includes("už zaplatili alebo pohľadávku neviete priradiť"), true);
   });
 
   test("the default run and unknown arguments make no external call", async () => {
