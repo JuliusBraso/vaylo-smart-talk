@@ -533,6 +533,30 @@ export function redactPreModelPii(
     };
   }
 
+  // A forwarded or quoted thread is not trimmed to the newest message.
+  // Slovak and German reply headers are both checked. The UI locale is not an input.
+  if (
+    input.lane === "controlled_document_text" &&
+    _hasQuotedEmailThread(input.text)
+  ) {
+    return {
+      status: "blocked",
+      redactedText: "",
+      placeholderCounts: {},
+      placeholderCategories: [],
+      detectorSummary: "blocked: quoted email thread boundary unclear",
+      coverageSummary: "no coverage — input blocked before detection",
+      unresolvedRiskFlags: [],
+      blockingReasons: ["EMAIL_QUOTED_THREAD_BOUNDARY_UNCLEAR"],
+      safeForModel: false,
+      safeForEvidenceGates: false,
+      safeForUserVisibleOutput: false,
+      rawMapReturned: false,
+      detectorHits: [],
+      notes: ["blocked: quoted or forwarded email thread is not one message"],
+    };
+  }
+
   // ── Run detector patterns ────────────────────────────────────────────────────
   const allHits = _runDetectors(input.text);
 
@@ -898,6 +922,32 @@ function _hasUnclearEmailSignature(text: string): boolean {
     let lineEnd = index;
     while (lineEnd < text.length && text[lineEnd] !== "\n" && text[lineEnd] !== "\r") lineEnd++;
     if (!_CLEAR_SIGNATURE_NAME_LINE.test(text.slice(index, lineEnd))) return true;
+  }
+  return false;
+}
+
+const _FORWARDED_MESSAGE_LINE = "---------- Forwarded message ---------";
+const _SLOVAK_REPLY_HEADER =
+  /^[ \t]*Dňa[ \t]+\d{2}\.\d{2}\.\d{4}[ \t]+\p{Lu}[\p{L}'\-]{1,40}(?:[ \t]+\p{Lu}[\p{L}'\-]{1,40})?[ \t]+napísala[ \t]*:[ \t]*$/u;
+const _GERMAN_REPLY_HEADER =
+  /^[ \t]*Am[ \t]+\d{2}\.\d{2}\.\d{4}[ \t]+schrieb[ \t]+\p{Lu}[\p{L}'\-]{1,40}(?:[ \t]+\p{Lu}[\p{L}'\-]{1,40})?[ \t]*:[ \t]*$/u;
+
+function _hasQuotedEmailThread(text: string): boolean {
+  let start = 0;
+  while (start <= text.length) {
+    let end = start;
+    while (end < text.length && text[end] !== "\n" && text[end] !== "\r") end++;
+    const line = text.slice(start, end);
+    let trimStart = 0;
+    let trimEnd = line.length;
+    while (trimStart < trimEnd && (line[trimStart] === " " || line[trimStart] === "\t")) trimStart++;
+    while (trimEnd > trimStart && (line[trimEnd - 1] === " " || line[trimEnd - 1] === "\t")) trimEnd--;
+    if (line.slice(trimStart, trimEnd) === _FORWARDED_MESSAGE_LINE) return true;
+    if (line.startsWith("> ")) return true;
+    if (_SLOVAK_REPLY_HEADER.test(line) || _GERMAN_REPLY_HEADER.test(line)) return true;
+    if (end >= text.length) break;
+    if (text[end] === "\r" && text[end + 1] === "\n") start = end + 2;
+    else start = end + 1;
   }
   return false;
 }
